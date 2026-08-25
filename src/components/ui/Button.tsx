@@ -1,39 +1,44 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes } from "react";
 import { cn } from "../../utils/cn.ts";
 
-// Props reutilizables para nuestro botón
+type ButtonVariant = "default" | "ghost";
+
+type ButtonSize = "default" | "sm" | "lg" | "icon";
+
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  children: ReactNode;
-  variant?: "default" | "ghost";
+  variant?: ButtonVariant;
+  size?: ButtonSize;
 }
 
-// Componente Button reutilizable
 export function Button({
-  children,
-  variant = "default",
   className,
+  variant = "default",
+  size = "default",
+  type = "button",
   ...props
 }: ButtonProps) {
   return (
     <button
+      type={type}
       className={cn(
-        // Estilos base del botón
-        "inline-flex items-center justify-center rounded-md transition-colors duration-200",
-        "focus:outline-none focus:ring-2 focus:ring-[#00A8CC]/30",
+        "inline-flex items-center justify-center",
+        "transition-colors duration-200",
+        "focus:outline-none",
+        {
+          "bg-[#00A8CC] text-white hover:bg-[#008B9B]":
+            variant === "default",
 
-        // Variante principal
-        variant === "default" &&
-          "bg-[#00A8CC] text-white hover:bg-[#008B9B]",
+          "bg-transparent hover:bg-[#EEF9FB]":
+            variant === "ghost",
 
-        // Variante transparente para botones del Sidebar
-        variant === "ghost" &&
-          "bg-transparent text-[#6B7C8A] hover:bg-[#E8F8FB] hover:text-[#00A8CC]",
-
+          "h-10 px-4": size === "default",
+          "h-9 px-3 text-sm": size === "sm",
+          "h-11 px-6": size === "lg",
+          "h-10 w-10 p-0": size === "icon",
+        },
         className
       )}
       {...props}
-    >
-      {children}
-    </button>
+    />
   );
 }
