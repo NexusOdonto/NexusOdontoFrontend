@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Menu,
   LayoutDashboard,
@@ -16,68 +17,65 @@ import {
 import logo from "../../assets/nexus-odonto-logo.png";
 import "./Sidebar.css";
 
-interface SidebarProps {
-  onNavigate?: (path: string) => void;
-}
-
-export function Sidebar({ onNavigate }: SidebarProps) {
+export function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const navigate = useNavigate();
 
   const menuItems = [
     {
       label: "Dashboard",
       icon: LayoutDashboard,
-      path: "../../dashboard",
+      path: "/dashboard",
     },
     {
       label: "Agenda",
       icon: CalendarDays,
-      path: "../../agenda",
+      path: "/agenda",
     },
     {
       label: "Citas",
       icon: ClipboardList,
-      path: "../../citas",
+      path: "/citas",
     },
     {
       label: "Pacientes",
       icon: Users,
-      path: "../../pacientes",
+      path: "/pacientes",
     },
     {
       label: "Profesionales",
       icon: Stethoscope,
-      path: "../../profesionales",
+      path: "/profesionales",
     },
     {
       label: "Servicios",
       icon: FileText,
-      path: "../../servicios",
+      path: "/servicios",
     },
     {
       label: "Historia clínica",
       icon: FileText,
-      path: "../../historia-clinica",
+      path: "/historia-clinica",
     },
     {
       label: "Odontograma",
       icon: Stethoscope,
-      path: "../../odontograma",
+      path: "/odontograma",
     },
     {
       label: "Usuarios",
       icon: Users,
-      path: "../../usuarios",
+      path: "/usuarios",
     },
     {
       label: "Roles y permisos",
       icon: ShieldCheck,
-      path: "../../roles-permisos",
+      path: "/roles-permisos",
     },
   ];
 
   const handleNavigation = (path: string) => {
-    onNavigate?.(path);
+    navigate(path);
     setMobileOpen(false);
   };
 
@@ -138,7 +136,6 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                 onClick={() => handleNavigation(item.path)}
               >
                 <Icon size={19} strokeWidth={1.8} />
-
                 <span>{item.label}</span>
               </button>
             );
