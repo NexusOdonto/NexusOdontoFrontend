@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { LoginInput } from '../components/login/LoginInput';
 import { LoginButton } from '../components/login/LoginButton';
 
@@ -6,12 +7,14 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const navigate = useNavigate();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Login attempt:', { email, password });
     // Aquí iría la lógica de autenticación
-    alert('Funcionalidad de login en desarrollo');
+    // Simulamos inicio de sesión exitoso y redirigimos al Dashboard
+    navigate('/dashboard');
   };
 
   return (
