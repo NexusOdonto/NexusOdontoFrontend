@@ -1,7 +1,4 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import {
-  Menu,
   LayoutDashboard,
   CalendarDays,
   ClipboardList,
@@ -11,14 +8,21 @@ import {
   ShieldCheck,
   Settings,
   LogOut,
-  X,
 } from "lucide-react";
 
-import logo from "../../assets/nexus-odonto-logo.png";
-import "./Sidebar.css";
+import { useNavigate } from "react-router-dom";
 
-export function Sidebar() {
-  const [mobileOpen, setMobileOpen] = useState(false);
+import "../ui/styles/Sidebar.css";
+
+interface SidebarProps {
+  mobileOpen: boolean;
+  onMobileClose: () => void;
+}
+
+export function Sidebar({
+  mobileOpen,
+  onMobileClose,
+}: SidebarProps) {
   const navigate = useNavigate();
 
   const menuItems = [
@@ -76,54 +80,23 @@ export function Sidebar() {
 
   const handleNavigation = (path: string) => {
     navigate(path);
-    setMobileOpen(false);
+    onMobileClose();
   };
 
   return (
     <>
-      <div className="mobile-header">
-        <button
-          type="button"
-          className="mobile-menu-button"
-          onClick={() => setMobileOpen((prev) => !prev)}
-          aria-label={mobileOpen ? "Cerrar menú" : "Abrir menú"}
-        >
-          {mobileOpen ? <X size={22} /> : <Menu size={22} />}
-        </button>
-
-        <div className="mobile-brand">
-          <img
-            src={logo}
-            alt="NexusOdonto"
-            className="mobile-logo"
-          />
-
-          <span className="mobile-brand-name">
-            NexusOdonto
-          </span>
-        </div>
-      </div>
-
       {mobileOpen && (
         <div
           className="sidebar-overlay"
-          onClick={() => setMobileOpen(false)}
+          onClick={onMobileClose}
         />
       )}
 
-      <aside className={`sidebar ${mobileOpen ? "sidebar-open" : ""}`}>
-        <div className="sidebar-brand">
-          <img
-            src={logo}
-            alt="NexusOdonto"
-            className="sidebar-logo"
-          />
-
-          <span className="sidebar-brand-name">
-            NexusOdonto
-          </span>
-        </div>
-
+      <aside
+        className={`sidebar ${
+          mobileOpen ? "sidebar-open" : ""
+        }`}
+      >
         <nav className="sidebar-nav">
           {menuItems.map((item) => {
             const Icon = item.icon;
@@ -136,6 +109,7 @@ export function Sidebar() {
                 onClick={() => handleNavigation(item.path)}
               >
                 <Icon size={19} strokeWidth={1.8} />
+
                 <span>{item.label}</span>
               </button>
             );
@@ -146,7 +120,9 @@ export function Sidebar() {
           <button
             type="button"
             className="sidebar-item"
-            onClick={() => handleNavigation("/configuracion")}
+            onClick={() =>
+              handleNavigation("/configuracion")
+            }
           >
             <Settings size={19} strokeWidth={1.8} />
             <span>Configuración</span>
@@ -155,7 +131,9 @@ export function Sidebar() {
           <button
             type="button"
             className="sidebar-item"
-            onClick={() => handleNavigation("/login")}
+            onClick={() =>
+              handleNavigation("/login")
+            }
           >
             <LogOut size={19} strokeWidth={1.8} />
             <span>Cerrar sesión</span>

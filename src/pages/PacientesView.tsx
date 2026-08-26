@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import { PacientesTable } from "../components/pacientes/PacientesTable";
-import "./PacientesView.css";
+import "../pages/PacienteRegistroView.css";
 
-interface Paciente {
+export interface Paciente {
   id: number;
   nombre: string;
   documento: string;
@@ -56,13 +57,57 @@ const pacientesIniciales: Paciente[] = [
   },
 ];
 
+const STORAGE_KEY = "nexusodontopacientes";
+
 const ITEMS_PER_PAGE = 5;
 const DEBOUNCE_TIME = 400;
+const INITIAL_LOADING_TIME = 800;
 
 export function PacientesView() {
+  const navigate = useNavigate();
+
+  const [pacientes, setPacientes] = useState<Paciente[]>([]);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const pacientesGuardados =
+      localStorage.getItem(STORAGE_KEY);
+
+    if (pacientesGuardados) {
+      try {
+        const pacientesParseados = JSON.parse(
+          pacientesGuardados,
+        ) as Paciente[];
+
+        setPacientes(pacientesParseados);
+      } catch {
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify(pacientesIniciales),
+        );
+
+        setPacientes(pacientesIniciales);
+      }
+    } else {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(pacientesIniciales),
+      );
+
+      setPacientes(pacientesIniciales);
+    }
+
+    const timeout = setTimeout(() => {
+      setLoading(false);
+    }, INITIAL_LOADING_TIME);
+
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, []);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -79,15 +124,17 @@ export function PacientesView() {
     const searchValue = search.trim().toLowerCase();
 
     if (!searchValue) {
-      return pacientesIniciales;
+      return pacientes;
     }
 
-    return pacientesIniciales.filter(
+    return pacientes.filter(
       (paciente) =>
-        paciente.nombre.toLowerCase().includes(searchValue) ||
+        paciente.nombre
+          .toLowerCase()
+          .includes(searchValue) ||
         paciente.documento.includes(searchValue),
     );
-  }, [search]);
+  }, [pacientes, search]);
 
   const totalItems = pacientesFiltrados.length;
 
@@ -115,41 +162,47 @@ export function PacientesView() {
 
   return (
     <div className="patients-page">
-      <header className="patients-page-header">
-        <div>
-          <h1>Pacientes</h1>
+      <div className="patients-content">
+        <div className="patients-page-title">
+          <div>
+            <h1>Pacientes</h1>
 
-          <p>
-            Consulta y administra los pacientes activos del consultorio.
-          </p>
+            <p>
+              Consulta y administra los pacientes activos del
+              consultorio.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            className="patients-primary-button"
+            onClick={() => navigate("/pacientes/nuevo")}
+          >
+            + Nuevo paciente
+          </button>
         </div>
 
-        <button
-          type="button"
-          className="patients-primary-button"
-        >
-          + Nuevo paciente
-        </button>
-      </header>
+        <section className="patients-search">
+          <input
+            type="search"
+            value={searchInput}
+            onChange={(event) =>
+              handleSearch(event.target.value)
+            }
+            placeholder="Buscar por nombre o número de documento..."
+            aria-label="Buscar pacientes"
+          />
+        </section>
 
-      <section className="patients-search">
-        <input
-          type="search"
-          value={searchInput}
-          onChange={(event) => handleSearch(event.target.value)}
-          placeholder="Buscar por nombre o número de documento..."
-          aria-label="Buscar pacientes"
+        <PacientesTable
+          pacientes={pacientesPagina}
+          loading={loading}
+          totalItems={totalItems}
+          totalPages={totalPages}
+          currentPage={currentPage}
+          onPageChange={handlePageChange}
         />
-      </section>
-
-      <PacientesTable
-        pacientes={pacientesPagina}
-        loading={false}
-        totalItems={totalItems}
-        totalPages={totalPages}
-        currentPage={currentPage}
-        onPageChange={handlePageChange}
-      />
+      </div>
     </div>
   );
 }

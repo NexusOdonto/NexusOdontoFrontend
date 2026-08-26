@@ -28,7 +28,10 @@ export function PacientesTable({
       <div className="patients-table-header">
         <div>
           <h2>Pacientes</h2>
-          <p>{totalItems} pacientes registrados</p>
+          <p>
+            {totalItems} paciente{totalItems !== 1 ? "s" : ""} registrado
+            {totalItems !== 1 ? "s" : ""}
+          </p>
         </div>
       </div>
 
@@ -45,17 +48,20 @@ export function PacientesTable({
 
           <tbody>
             {loading ? (
-              Array.from({ length: 6 }).map((_, index) => (
-                <tr key={index}>
+              Array.from({ length: 5 }).map((_, index) => (
+                <tr key={`skeleton-${index}`}>
                   <td>
                     <span className="patients-skeleton patients-skeleton-name" />
                   </td>
+
                   <td>
                     <span className="patients-skeleton" />
                   </td>
+
                   <td>
                     <span className="patients-skeleton" />
                   </td>
+
                   <td>
                     <span className="patients-skeleton patients-skeleton-status" />
                   </td>
@@ -64,9 +70,16 @@ export function PacientesTable({
             ) : pacientes.length > 0 ? (
               pacientes.map((paciente) => (
                 <tr key={paciente.id}>
-                  <td className="patient-name">{paciente.nombre}</td>
+                  <td className="patient-name">
+                    {paciente.nombre}
+                  </td>
+
                   <td>{paciente.documento}</td>
-                  <td>{paciente.telefono || "No registrado"}</td>
+
+                  <td>
+                    {paciente.telefono || "No registrado"}
+                  </td>
+
                   <td>
                     <span
                       className={`patient-status ${
@@ -83,7 +96,16 @@ export function PacientesTable({
             ) : (
               <tr>
                 <td colSpan={4} className="patients-empty">
-                  No se encontraron pacientes.
+                  <div className="patients-empty-content">
+                    <span className="patients-empty-icon">⌕</span>
+
+                    <strong>No se encontraron pacientes</strong>
+
+                    <p>
+                      Intenta buscar por otro nombre o número
+                      de documento.
+                    </p>
+                  </div>
                 </td>
               </tr>
             )}
@@ -91,7 +113,7 @@ export function PacientesTable({
         </table>
       </div>
 
-      {!loading && totalPages > 0 && (
+      {!loading && pacientes.length > 0 && totalPages > 1 && (
         <div className="patients-pagination">
           <span>
             Página {currentPage} de {totalPages}

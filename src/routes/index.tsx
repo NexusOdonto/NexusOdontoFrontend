@@ -7,6 +7,7 @@ import {
 
 import { DashboardLayout } from "../layouts/DashboardLayout.tsx";
 import { PacientesView } from "../pages/PacientesView.tsx";
+import { PacienteRegistroView } from "../pages/PacienteRegistroView.tsx";
 
 function DashboardPage() {
   return (
@@ -40,6 +41,15 @@ export default function AppRoutes() {
           element={
             <DashboardLayout>
               <PacientesView />
+            </DashboardLayout>
+          }
+        />
+
+        <Route
+          path="/pacientes/nuevo"
+          element={
+            <DashboardLayout>
+              <PacienteRegistroView />
             </DashboardLayout>
           }
         />
