@@ -164,14 +164,14 @@ export function PacientesView() {
 
   return (
     <div className="p-6">
-      <div className="bg-[var(--bg-surface)] rounded-xl border border-[var(--border-color)] p-6">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-[var(--text-main)]">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
               Pacientes
             </h1>
 
-            <p className="mt-1 text-sm text-[var(--text-muted)]">
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
               Consulta y administra los pacientes activos del
               consultorio.
             </p>
@@ -195,7 +195,7 @@ export function PacientesView() {
             }
             placeholder="Buscar por nombre o número de documento..."
             aria-label="Buscar pacientes"
-            className="w-full px-4 py-2.5 bg-[var(--bg-surface-subtle)] border border-[var(--border-color)] rounded-lg text-[var(--text-main)] placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+            className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
           />
         </section>
 

@@ -14,7 +14,7 @@ export function DashboardLayout({
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg(--bg-app)">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <PageHeader
         userName="Brayan"
         mobileOpen={mobileOpen}

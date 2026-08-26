@@ -91,7 +91,7 @@ export function Sidebar({
       )}
 
       <aside
-        className={`fixed lg:static z-50 h-full w-64 bg-[var(--bg-surface)] border-r border-[var(--border-color)] overflow-y-auto transition-transform duration-300 ease-in-out ${
+        className={`fixed lg:static z-50 h-full w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 overflow-y-auto transition-transform duration-300 ease-in-out ${
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
@@ -103,7 +103,7 @@ export function Sidebar({
               <button
                 key={item.path}
                 type="button"
-                className="flex items-center gap-3 px-4 py-3 rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-surface-subtle)] hover:text-[var(--text-main)] transition-colors"
+                className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
                 onClick={() => handleNavigation(item.path)}
               >
                 <Icon size={19} strokeWidth={1.8} />
@@ -114,10 +114,10 @@ export function Sidebar({
           })}
         </nav>
 
-        <div className="mt-auto p-4 border-t border-[var(--border-color)] flex flex-col gap-1">
+        <div className="mt-auto p-4 border-t border-slate-200 dark:border-slate-800 flex flex-col gap-1">
           <button
             type="button"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-surface-subtle)] hover:text-[var(--text-main)] transition-colors"
+            className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
             onClick={() =>
               handleNavigation("/configuracion")
             }
@@ -128,7 +128,7 @@ export function Sidebar({
 
           <button
             type="button"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-surface-subtle)] hover:text-[var(--text-main)] transition-colors"
+            className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
             onClick={() =>
               handleNavigation("/login")
             }
