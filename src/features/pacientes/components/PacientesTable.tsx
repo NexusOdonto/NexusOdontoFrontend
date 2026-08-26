@@ -1,10 +1,4 @@
-interface Paciente {
-  id: number | string;
-  nombre: string;
-  documento: string;
-  telefono?: string;
-  estado?: string;
-}
+import { type Paciente } from "../../../types/pacientes";
 
 interface PacientesTableProps {
   pacientes: Paciente[];
@@ -24,12 +18,14 @@ export function PacientesTable({
   onPageChange,
 }: PacientesTableProps) {
   return (
-    <section className="patients-table-container">
-      <div className="patients-table-header">
+    <section className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+      <div className="p-4 border-b border-slate-200 dark:border-slate-800">
         <div>
-          <h2>Pacientes</h2>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+            Pacientes
+          </h2>
 
-          <p>
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             {totalItems} paciente
             {totalItems !== 1 ? "s" : ""} registrado
             {totalItems !== 1 ? "s" : ""}
@@ -37,61 +33,71 @@ export function PacientesTable({
         </div>
       </div>
 
-      <div className="patients-table-wrapper">
-        <table className="patients-table">
-          <thead>
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-slate-50 dark:bg-slate-800">
             <tr>
-              <th>Nombre</th>
-              <th>Documento</th>
-              <th>Teléfono</th>
-              <th>Estado</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-slate-700 dark:text-slate-300">
+                Nombre
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-slate-700 dark:text-slate-300">
+                Documento
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-slate-700 dark:text-slate-300">
+                Teléfono
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-slate-700 dark:text-slate-300">
+                Estado
+              </th>
             </tr>
           </thead>
 
-          <tbody>
+          <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
             {loading ? (
               Array.from({ length: 5 }).map(
                 (_, index) => (
                   <tr key={`skeleton-${index}`}>
-                    <td>
-                      <span className="patients-skeleton patients-skeleton-name" />
+                    <td className="px-4 py-3">
+                      <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded animate-pulse w-3/4" />
                     </td>
 
-                    <td>
-                      <span className="patients-skeleton" />
+                    <td className="px-4 py-3">
+                      <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded animate-pulse w-1/2" />
                     </td>
 
-                    <td>
-                      <span className="patients-skeleton" />
+                    <td className="px-4 py-3">
+                      <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded animate-pulse w-1/3" />
                     </td>
 
-                    <td>
-                      <span className="patients-skeleton patients-skeleton-status" />
+                    <td className="px-4 py-3">
+                      <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded-full animate-pulse w-20" />
                     </td>
                   </tr>
                 ),
               )
             ) : pacientes.length > 0 ? (
               pacientes.map((paciente) => (
-                <tr key={paciente.id}>
-                  <td className="patient-name">
+                <tr key={paciente.id} className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                  <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-slate-100">
                     {paciente.nombre}
                   </td>
 
-                  <td>{paciente.documento}</td>
+                  <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">
+                    {paciente.documento}
+                  </td>
 
-                  <td>
+                  <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">
                     {paciente.telefono ||
                       "No registrado"}
                   </td>
 
-                  <td>
+                  <td className="px-4 py-3">
                     <span
-                      className={`patient-status ${
+                      className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${
                         paciente.estado?.toLowerCase() ===
                         "activo"
-                          ? "patient-status-active"
-                          : "patient-status-inactive"
+                          ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                          : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-400"
                       }`}
                     >
                       {paciente.estado || "Activo"}
@@ -103,18 +109,18 @@ export function PacientesTable({
               <tr>
                 <td
                   colSpan={4}
-                  className="patients-empty"
+                  className="px-4 py-12 text-center"
                 >
-                  <div className="patients-empty-content">
-                    <span className="patients-empty-icon">
+                  <div className="flex flex-col items-center gap-2">
+                    <span className="text-4xl text-slate-300 dark:text-slate-600">
                       ⌕
                     </span>
 
-                    <strong>
+                    <strong className="text-slate-900 dark:text-slate-100">
                       No se encontraron pacientes
                     </strong>
 
-                    <p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">
                       Intenta buscar por otro nombre o
                       número de documento.
                     </p>
@@ -129,18 +135,19 @@ export function PacientesTable({
       {!loading &&
         pacientes.length > 0 &&
         totalPages > 1 && (
-          <div className="patients-pagination">
-            <span>
+          <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <span className="text-sm text-slate-600 dark:text-slate-400">
               Página {currentPage} de {totalPages}
             </span>
 
-            <div className="patients-pagination-buttons">
+            <div className="flex gap-2">
               <button
                 type="button"
                 disabled={currentPage === 1}
                 onClick={() =>
                   onPageChange(currentPage - 1)
                 }
+                className="px-3 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Anterior
               </button>
@@ -151,6 +158,7 @@ export function PacientesTable({
                 onClick={() =>
                   onPageChange(currentPage + 1)
                 }
+                className="px-3 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Siguiente
               </button>

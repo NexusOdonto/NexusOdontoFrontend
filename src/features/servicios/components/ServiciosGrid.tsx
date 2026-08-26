@@ -1,13 +1,5 @@
 import { formatCurrency } from "../../../utils/currency";
-
-interface Servicio {
-  id: number;
-  nombre: string;
-  descripcion: string;
-  duracion: number;
-  precio: number;
-  activo: boolean;
-}
+import { type Servicio } from "../../../types/servicios";
 
 const serviciosIniciales: Servicio[] = [
   {
@@ -65,40 +57,44 @@ export function ServiciosGrid({
   servicios = serviciosIniciales,
 }: ServiciosGridProps) {
   return (
-    <div className="services-grid">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {servicios.map((servicio) => (
         <article
           key={servicio.id}
-          className={`service-card ${
+          className={`bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 transition-all hover:shadow-lg ${
             !servicio.activo
-              ? "service-card-inactive"
+              ? "opacity-60"
               : ""
           }`}
         >
-          <div className="service-card-icon">
+          <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center text-2xl mb-4">
             🦷
           </div>
 
-          <div className="service-card-content">
-            <h2>{servicio.nombre}</h2>
+          <div className="space-y-3">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+              {servicio.nombre}
+            </h2>
 
-            <p>{servicio.descripcion}</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              {servicio.descripcion}
+            </p>
 
-            <div className="service-card-info">
-              <span>
+            <div className="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-400">
+              <span className="flex items-center gap-1">
                 ⏱ {servicio.duracion} min
               </span>
 
-              <span>
+              <span className="font-medium text-slate-900 dark:text-slate-100">
                 {formatCurrency(servicio.precio)}
               </span>
             </div>
 
             <span
-              className={`service-card-status ${
+              className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${
                 servicio.activo
-                  ? "service-card-status-active"
-                  : "service-card-status-inactive"
+                  ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                  : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-400"
               }`}
             >
               {servicio.activo
