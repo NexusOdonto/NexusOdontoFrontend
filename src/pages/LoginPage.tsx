@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { InputGroup } from '../components/ui/InputGroup';
-import { Button } from '../components/ui/Button';
+import { LoginInput } from '../components/login/LoginInput';
+import { LoginButton } from '../components/login/LoginButton';
 
-export default function Login() {
+export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -16,8 +16,7 @@ export default function Login() {
 
   return (
     <div 
-      className="min-h-screen bg-cover bg-center bg-no-repeat flex items-center justify-center"
-      style={{ backgroundImage: "url('/fondoLogin.jpg')" }}
+      className="relative min-h-screen w-full flex items-center justify-center bg-[url('/fondoLogin.jpg')] bg-cover bg-center bg-no-repeat overflow-hidden"
     >
       {/* Container with interactive hover effect */}
       <div className="relative w-full max-w-md mx-4 group cursor-pointer transition-all duration-500 hover:-translate-y-1.5">
@@ -29,7 +28,7 @@ export default function Login() {
         <div className="absolute -inset-2 rotate-[3deg] rounded-3xl bg-slate-900/30 backdrop-blur-md border border-cyan-400/20 shadow-2xl pointer-events-none transition-all duration-500 ease-out group-hover:-inset-5 group-hover:rotate-[8deg] group-hover:scale-105 group-hover:bg-slate-900/60"></div>
         
         {/* Tarjeta Principal */}
-        <div className="relative z-10 w-full p-8 md:p-10 rounded-3xl bg-slate-950/40 backdrop-blur-lg border border-white/15 shadow-[0_20px_50px_rgba(0,0,0,0.6)] transition-all duration-500 ease-out flex flex-col gap-6 group-hover:scale-[1.02] group-hover:-translate-y-1">
+        <div className="relative z-10 w-full p-8 md:p-10 rounded-3xl bg-slate-950/40 backdrop-blur-md border border-white/15 shadow-[0_20px_50px_rgba(0,0,0,0.6)] transition-all duration-500 ease-out flex flex-col gap-6 group-hover:scale-[1.02] group-hover:-translate-y-1">
           
           {/* Title with gradient */}
           <h1 className="bg-gradient-to-r from-white via-slate-100 to-teal-300 bg-clip-text text-transparent font-extrabold text-4xl tracking-tight text-center transition-all duration-300 hover:scale-105 hover:tracking-normal cursor-default select-none">
@@ -39,7 +38,7 @@ export default function Login() {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Email Input */}
-            <InputGroup
+            <LoginInput
               type="email"
               name="email"
               placeholder="Correo electrónico"
@@ -48,7 +47,7 @@ export default function Login() {
             />
 
             {/* Password Input with visibility toggle */}
-            <InputGroup
+            <LoginInput
               type="password"
               name="password"
               placeholder="Contraseña"
@@ -67,9 +66,9 @@ export default function Login() {
             </button>
 
             {/* Submit Button */}
-            <Button type="submit">
+            <LoginButton type="submit">
               Iniciar Sesión
-            </Button>
+            </LoginButton>
           </form>
 
           {/* Sign up link */}
