@@ -5,6 +5,7 @@ import {
   Routes,
 } from "react-router-dom";
 
+import LoginPage from "../pages/LoginPage";
 import { DashboardLayout } from "../layouts/DashboardLayout.tsx";
 import { PacientesView } from "../pages/PacientesView.tsx";
 import { PacienteRegistroView } from "../pages/PacienteRegistroView.tsx";
@@ -28,6 +29,8 @@ export default function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        
         <Route
           path="/dashboard"
           element={
@@ -62,6 +65,11 @@ export default function AppRoutes() {
               <ServiciosView />
             </DashboardLayout>
           }
+        />
+
+        <Route
+          path="/"
+          element={<Navigate to="/login" replace />}
         />
 
         <Route
