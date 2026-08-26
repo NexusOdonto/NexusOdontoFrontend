@@ -1,8 +1,14 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
 
 import { DashboardLayout } from "../layouts/DashboardLayout.tsx";
+import { PacientesView } from "../pages/PacientesView.tsx";
+import { PacienteRegistroView } from "../pages/PacienteRegistroView.tsx";
 
-// Página temporal del Dashboard
 function DashboardPage() {
   return (
     <div className="p-6">
@@ -17,12 +23,10 @@ function DashboardPage() {
   );
 }
 
-// Configuración de las rutas
 export default function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Dashboard */}
         <Route
           path="/dashboard"
           element={
@@ -32,7 +36,24 @@ export default function AppRoutes() {
           }
         />
 
-        {/* Ruta inicial */}
+        <Route
+          path="/pacientes"
+          element={
+            <DashboardLayout>
+              <PacientesView />
+            </DashboardLayout>
+          }
+        />
+
+        <Route
+          path="/pacientes/nuevo"
+          element={
+            <DashboardLayout>
+              <PacienteRegistroView />
+            </DashboardLayout>
+          }
+        />
+
         <Route
           path="*"
           element={<Navigate to="/dashboard" replace />}
