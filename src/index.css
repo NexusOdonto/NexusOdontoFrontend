@@ -1,5 +1,58 @@
 @import "tailwindcss";
 
+@theme {
+  /* Base de Marca (Celeste Cian & Menta Tech) */
+  --color-primary-50: #E6F7FA;
+  --color-primary-100: #B3ECF5;
+  --color-primary-300: #4DD5EB;
+  --color-primary-500: #00A8CC; /* Primario Oficial */
+  --color-primary-700: #008B9B; /* Hover Oficial */
+  --color-primary-900: #00505B;
+
+  --color-secondary-100: #E2F8F0;
+  --color-secondary-300: #9CE7CF;
+  --color-secondary-500: #66D2B1; /* Acento Menta Tech */
+  --color-secondary-700: #3AA887;
+
+  /* Colores Complementarios y Módulos de Odontología */
+  --color-accent-indigo: #6366F1;  /* Especialidades y Tratamientos Complejos */
+  --color-accent-purple: #A855F7;  /* Facturación y Promociones */
+  --color-accent-sky: #0EA5E9;     /* Agendamiento y Citas */
+
+  /* Estados del Sistema (Alertas y Feedback) */
+  --color-success-bg: #ECFDF5;
+  --color-success-text: #059669;  /* Citas Confirmadas / Pagado */
+  --color-warning-bg: #FFFBEB;
+  --color-warning-text: #D97706;  /* En Espera / Pendiente */
+  --color-danger-bg: #FEF2F2;
+  --color-danger-text: #DC2626;   /* Cancelado / Urgencia Médica */
+  --color-info-bg: #EFF6FF;
+  --color-info-text: #2563EB;     /* Historial / Notas */
+}
+
+/* Mapeo de Variables para Modo Claro y Modo Oscuro */
+:root {
+  --bg-app: #F8FAFC;              /* Gris Claro Cero Cansancio */
+  --bg-surface: #FFFFFF;          /* Blanco Puro (Cards/Modales) */
+  --bg-surface-subtle: #F1F5F9;   /* Fondo secundario de tablas */
+  --border-color: #E2E8F0;        /* Gris Fino */
+
+  --text-main: #1A3644;           /* Azul Noche Profundo */
+  --text-muted: #64748B;          /* Gris Neutro */
+  --text-subtle: #94A3B8;         /* Textos Deshabilitados / Placeholder */
+}
+
+.dark {
+  --bg-app: #0B132B;              /* Azul Noche Extremo (Fondo App) */
+  --bg-surface: #1C2541;          /* Azul Profundo Slated (Cards/Modales) */
+  --bg-surface-subtle: #2A365B;   /* Encabezados y Filas de Tablas */
+  --border-color: #334155;        /* Bordes de Contraste Oscuro */
+
+  --text-main: #F8FAFC;           /* Blanco Hueso Lectura Nocturna */
+  --text-muted: #CBD5E1;          /* Gris Claro Soft */
+  --text-subtle: #64748B;         /* Secundario Oscuro */
+}
+
 html,
 body,
 #root {
