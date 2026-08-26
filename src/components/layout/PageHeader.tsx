@@ -8,7 +8,6 @@ import {
 } from "lucide-react";
 
 import logo from "../../assets/nexus-odonto-logo.png";
-import "../ui/styles/PageHeader.css";
 
 interface PageHeaderProps {
   userName?: string;

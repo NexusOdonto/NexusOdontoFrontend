@@ -1,5 +1,4 @@
 import { formatCurrency } from "../../../utils/currency";
-import "../../servicios/styles/ServiciosGrid.css";
 
 interface Servicio {
   id: number;

@@ -1,19 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { PacientesTable } from "../components/pacientes/tsx/PacientesTable";
-import "./PacientesView.css";
-
-export interface Paciente {
-  id: number;
-  nombre: string;
-  documento: string;
-  telefono: string;
-  estado: string;
-}
-
-export const PACIENTES_STORAGE_KEY =
-  "nexusodontopacientes";
+import { PacientesTable } from "./components/PacientesTable";
+import { PACIENTES_STORAGE_KEY, type Paciente } from "../../types/pacientes";
 
 const pacientesIniciales: Paciente[] = [
   {

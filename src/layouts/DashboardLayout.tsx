@@ -1,10 +1,8 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
 
-import { Sidebar } from "../components/ui/Sidebar.tsx";
-import { PageHeader } from "../components/ui/PageHeader.tsx";
-
-import "../layouts/DashboardLayout.css";
+import { Sidebar } from "../components/layout/Sidebar.tsx";
+import { PageHeader } from "../components/layout/PageHeader.tsx";
 
 interface DashboardLayoutProps {
   children: ReactNode;

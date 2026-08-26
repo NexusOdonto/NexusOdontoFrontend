@@ -12,8 +12,6 @@ import {
 
 import { useNavigate } from "react-router-dom";
 
-import "../ui/styles/Sidebar.css";
-
 interface SidebarProps {
   mobileOpen: boolean;
   onMobileClose: () => void;

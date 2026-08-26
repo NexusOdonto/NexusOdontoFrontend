@@ -1,5 +1,3 @@
-import "../css/PacientesTable.css";
-
 interface Paciente {
   id: number | string;
   nombre: string;

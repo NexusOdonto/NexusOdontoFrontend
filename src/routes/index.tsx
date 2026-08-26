@@ -5,11 +5,11 @@ import {
   Routes,
 } from "react-router-dom";
 
-import LoginPage from "../pages/LoginPage";
+import LoginPage from "../features/auth/LoginPage";
 import { DashboardLayout } from "../layouts/DashboardLayout.tsx";
-import { PacientesView } from "../pages/PacientesView.tsx";
-import { PacienteRegistroView } from "../pages/PacienteRegistroView.tsx";
-import { ServiciosView } from "../components/servicios/tsx/ServiciosView.tsx";
+import { PacientesView } from "../features/pacientes/PacientesView.tsx";
+import { PacienteRegistroView } from "../features/pacientes/PacienteRegistroView.tsx";
+import { ServiciosView } from "../features/servicios/ServiciosView.tsx";
 
 function DashboardPage() {
   return (

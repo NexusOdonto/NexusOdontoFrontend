@@ -1,7 +1,6 @@
 import { useNavigate } from "react-router-dom";
 
-import { PacienteForm } from "../components/pacientes/tsx/PacienteForm";
-import "./PacienteRegistroView.css";
+import { PacienteForm } from "./components/PacienteForm";
 
 export function PacienteRegistroView() {
   const navigate = useNavigate();

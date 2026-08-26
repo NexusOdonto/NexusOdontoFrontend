@@ -7,9 +7,7 @@ import { useNavigate } from "react-router-dom";
 import {
   PACIENTES_STORAGE_KEY,
   type Paciente,
-} from "../../../pages/PacientesView";
-
-import "../css/PacienteForm.css";
+} from "../../../types/pacientes";
 
 const pacienteSchema = z.object({
   nombres: z

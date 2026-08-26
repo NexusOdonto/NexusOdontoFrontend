@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LoginInput } from '../components/login/LoginInput';
-import { LoginButton } from '../components/login/LoginButton';
+import { LoginInput } from './components/LoginInput';
+import { LoginButton } from './components/LoginButton';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
