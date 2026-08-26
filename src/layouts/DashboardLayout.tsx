@@ -14,20 +14,20 @@ export function DashboardLayout({
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="app-layout">
+    <div className="min-h-screen bg(--bg-app)">
       <PageHeader
         userName="Brayan"
         mobileOpen={mobileOpen}
         onMenuClick={() => setMobileOpen((prev) => !prev)}
       />
 
-      <div className="app-body">
+      <div className="flex">
         <Sidebar
           mobileOpen={mobileOpen}
           onMobileClose={() => setMobileOpen(false)}
         />
 
-        <main className="dashboard-main">
+        <main className="flex-1 p-6">
           {children}
         </main>
       </div>

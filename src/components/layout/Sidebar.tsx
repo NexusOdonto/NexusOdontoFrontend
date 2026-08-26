@@ -85,17 +85,17 @@ export function Sidebar({
     <>
       {mobileOpen && (
         <div
-          className="sidebar-overlay"
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
           onClick={onMobileClose}
         />
       )}
 
       <aside
-        className={`sidebar ${
-          mobileOpen ? "sidebar-open" : ""
+        className={`fixed lg:static z-50 h-full w-64 bg-[var(--bg-surface)] border-r border-[var(--border-color)] overflow-y-auto transition-transform duration-300 ease-in-out ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
-        <nav className="sidebar-nav">
+        <nav className="flex flex-col gap-1 p-4">
           {menuItems.map((item) => {
             const Icon = item.icon;
 
@@ -103,7 +103,7 @@ export function Sidebar({
               <button
                 key={item.path}
                 type="button"
-                className="sidebar-item"
+                className="flex items-center gap-3 px-4 py-3 rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-surface-subtle)] hover:text-[var(--text-main)] transition-colors"
                 onClick={() => handleNavigation(item.path)}
               >
                 <Icon size={19} strokeWidth={1.8} />
@@ -114,10 +114,10 @@ export function Sidebar({
           })}
         </nav>
 
-        <div className="sidebar-footer">
+        <div className="mt-auto p-4 border-t border-[var(--border-color)] flex flex-col gap-1">
           <button
             type="button"
-            className="sidebar-item"
+            className="flex items-center gap-3 px-4 py-3 rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-surface-subtle)] hover:text-[var(--text-main)] transition-colors"
             onClick={() =>
               handleNavigation("/configuracion")
             }
@@ -128,7 +128,7 @@ export function Sidebar({
 
           <button
             type="button"
-            className="sidebar-item"
+            className="flex items-center gap-3 px-4 py-3 rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg-surface-subtle)] hover:text-[var(--text-main)] transition-colors"
             onClick={() =>
               handleNavigation("/login")
             }

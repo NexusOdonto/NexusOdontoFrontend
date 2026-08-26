@@ -199,22 +199,24 @@ export function PacienteForm() {
 
   return (
     <form
-      className="patient-form"
+      className="space-y-6"
       onSubmit={handleSubmit(onSubmit)}
       noValidate
     >
       {submitError && (
-        <div className="patient-form-submit-error">
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
           {submitError}
         </div>
       )}
 
-      <section className="patient-form-section">
-        <h2>Datos personales</h2>
+      <section className="space-y-4">
+        <h2 className="text-lg font-semibold text-[var(--text-main)]">
+          Datos personales
+        </h2>
 
-        <div className="patient-form-grid">
-          <div className="patient-form-field">
-            <label htmlFor="nombres">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label htmlFor="nombres" className="block text-sm font-medium text-[var(--text-main)]">
               Nombres *
             </label>
 
@@ -223,17 +225,18 @@ export function PacienteForm() {
               type="text"
               placeholder="Ej. Juan"
               {...register("nombres")}
+              className="w-full px-4 py-2.5 bg-[var(--bg-surface-subtle)] border border-[var(--border-color)] rounded-lg text-[var(--text-main)] placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
             />
 
             {errors.nombres && (
-              <span className="patient-form-error">
+              <span className="text-sm text-red-500">
                 {errors.nombres.message}
               </span>
             )}
           </div>
 
-          <div className="patient-form-field">
-            <label htmlFor="apellidos">
+          <div className="space-y-2">
+            <label htmlFor="apellidos" className="block text-sm font-medium text-[var(--text-main)]">
               Apellidos *
             </label>
 
@@ -242,17 +245,18 @@ export function PacienteForm() {
               type="text"
               placeholder="Ej. Pérez"
               {...register("apellidos")}
+              className="w-full px-4 py-2.5 bg-[var(--bg-surface-subtle)] border border-[var(--border-color)] rounded-lg text-[var(--text-main)] placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
             />
 
             {errors.apellidos && (
-              <span className="patient-form-error">
+              <span className="text-sm text-red-500">
                 {errors.apellidos.message}
               </span>
             )}
           </div>
 
-          <div className="patient-form-field">
-            <label htmlFor="numeroDocumento">
+          <div className="space-y-2">
+            <label htmlFor="numeroDocumento" className="block text-sm font-medium text-[var(--text-main)]">
               Número de documento *
             </label>
 
@@ -261,17 +265,18 @@ export function PacienteForm() {
               type="text"
               placeholder="Ej. 12345678"
               {...register("numeroDocumento")}
+              className="w-full px-4 py-2.5 bg-[var(--bg-surface-subtle)] border border-[var(--border-color)] rounded-lg text-[var(--text-main)] placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
             />
 
             {errors.numeroDocumento && (
-              <span className="patient-form-error">
+              <span className="text-sm text-red-500">
                 {errors.numeroDocumento.message}
               </span>
             )}
           </div>
 
-          <div className="patient-form-field">
-            <label htmlFor="fechaNacimiento">
+          <div className="space-y-2">
+            <label htmlFor="fechaNacimiento" className="block text-sm font-medium text-[var(--text-main)]">
               Fecha de nacimiento *
             </label>
 
@@ -279,17 +284,18 @@ export function PacienteForm() {
               id="fechaNacimiento"
               type="date"
               {...register("fechaNacimiento")}
+              className="w-full px-4 py-2.5 bg-[var(--bg-surface-subtle)] border border-[var(--border-color)] rounded-lg text-[var(--text-main)] placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
             />
 
             {errors.fechaNacimiento && (
-              <span className="patient-form-error">
+              <span className="text-sm text-red-500">
                 {errors.fechaNacimiento.message}
               </span>
             )}
           </div>
 
-          <div className="patient-form-field">
-            <label htmlFor="genero">
+          <div className="space-y-2">
+            <label htmlFor="genero" className="block text-sm font-medium text-[var(--text-main)]">
               Género *
             </label>
 
@@ -297,6 +303,7 @@ export function PacienteForm() {
               id="genero"
               defaultValue=""
               {...register("genero")}
+              className="w-full px-4 py-2.5 bg-[var(--bg-surface-subtle)] border border-[var(--border-color)] rounded-lg text-[var(--text-main)] placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
             >
               <option value="">
                 Seleccione...
@@ -316,14 +323,14 @@ export function PacienteForm() {
             </select>
 
             {errors.genero && (
-              <span className="patient-form-error">
+              <span className="text-sm text-red-500">
                 {errors.genero.message}
               </span>
             )}
           </div>
 
-          <div className="patient-form-field">
-            <label htmlFor="telefono">
+          <div className="space-y-2">
+            <label htmlFor="telefono" className="block text-sm font-medium text-[var(--text-main)]">
               Teléfono celular *
             </label>
 
@@ -332,17 +339,18 @@ export function PacienteForm() {
               type="tel"
               placeholder="300 123 4567"
               {...register("telefono")}
+              className="w-full px-4 py-2.5 bg-[var(--bg-surface-subtle)] border border-[var(--border-color)] rounded-lg text-[var(--text-main)] placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
             />
 
             {errors.telefono && (
-              <span className="patient-form-error">
+              <span className="text-sm text-red-500">
                 {errors.telefono.message}
               </span>
             )}
           </div>
 
-          <div className="patient-form-field patient-form-field-full">
-            <label htmlFor="correo">
+          <div className="space-y-2 md:col-span-2">
+            <label htmlFor="correo" className="block text-sm font-medium text-[var(--text-main)]">
               Correo electrónico
             </label>
 
@@ -351,10 +359,11 @@ export function PacienteForm() {
               type="email"
               placeholder="ejemplo@correo.com"
               {...register("correo")}
+              className="w-full px-4 py-2.5 bg-[var(--bg-surface-subtle)] border border-[var(--border-color)] rounded-lg text-[var(--text-main)] placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
             />
 
             {errors.correo && (
-              <span className="patient-form-error">
+              <span className="text-sm text-red-500">
                 {errors.correo.message}
               </span>
             )}
@@ -362,11 +371,13 @@ export function PacienteForm() {
         </div>
       </section>
 
-      <section className="patient-form-tutor">
-        <div className="patient-form-tutor-header">
-          <h2>Tutor legal</h2>
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-[var(--text-main)]">
+            Tutor legal
+          </h2>
 
-          <label className="patient-form-checkbox">
+          <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
               checked={tutorEnabled}
@@ -375,15 +386,16 @@ export function PacienteForm() {
                   event.target.checked,
                 )
               }
+              className="w-4 h-4 rounded border-[var(--border-color)] text-primary-500 focus:ring-primary-500"
             />
 
-            <span>Habilitar</span>
+            <span className="text-sm text-[var(--text-muted)]">Habilitar</span>
           </label>
         </div>
 
-        <div className="patient-form-grid">
-          <div className="patient-form-field">
-            <label htmlFor="tutor">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label htmlFor="tutor" className="block text-sm font-medium text-[var(--text-main)]">
               Nombre del tutor
             </label>
 
@@ -392,11 +404,12 @@ export function PacienteForm() {
               type="text"
               placeholder="Nombre completo"
               disabled={!tutorEnabled}
+              className="w-full px-4 py-2.5 bg-[var(--bg-surface-subtle)] border border-[var(--border-color)] rounded-lg text-[var(--text-main)] placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             />
           </div>
 
-          <div className="patient-form-field">
-            <label htmlFor="vinculo">
+          <div className="space-y-2">
+            <label htmlFor="vinculo" className="block text-sm font-medium text-[var(--text-main)]">
               Vínculo
             </label>
 
@@ -404,6 +417,7 @@ export function PacienteForm() {
               id="vinculo"
               defaultValue=""
               disabled={!tutorEnabled}
+              className="w-full px-4 py-2.5 bg-[var(--bg-surface-subtle)] border border-[var(--border-color)] rounded-lg text-[var(--text-main)] placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <option value="">
                 Seleccione...
@@ -425,27 +439,29 @@ export function PacienteForm() {
         </div>
       </section>
 
-      <section className="patient-form-section">
-        <h2>Antecedentes básicos</h2>
+      <section className="space-y-4">
+        <h2 className="text-lg font-semibold text-[var(--text-main)]">
+          Antecedentes básicos
+        </h2>
 
-        <label className="patient-form-check-row">
-          <input type="checkbox" />
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" className="w-4 h-4 rounded border-[var(--border-color)] text-primary-500 focus:ring-primary-500" />
 
-          <span>
+          <span className="text-sm text-[var(--text-muted)]">
             ¿Es alérgico a algún medicamento?
           </span>
         </label>
 
-        <label className="patient-form-check-row">
-          <input type="checkbox" />
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" className="w-4 h-4 rounded border-[var(--border-color)] text-primary-500 focus:ring-primary-500" />
 
-          <span>
+          <span className="text-sm text-[var(--text-muted)]">
             ¿Toma medicación de forma crónica?
           </span>
         </label>
 
-        <div className="patient-form-field patient-form-observations">
-          <label htmlFor="observaciones">
+        <div className="space-y-2">
+          <label htmlFor="observaciones" className="block text-sm font-medium text-[var(--text-main)]">
             Observaciones clínicas previas
           </label>
 
@@ -453,14 +469,15 @@ export function PacienteForm() {
             id="observaciones"
             rows={4}
             placeholder="Breve nota sobre el estado inicial del paciente..."
+            className="w-full px-4 py-2.5 bg-[var(--bg-surface-subtle)] border border-[var(--border-color)] rounded-lg text-[var(--text-main)] placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all resize-none"
           />
         </div>
       </section>
 
-      <div className="patient-form-actions">
+      <div className="flex items-center gap-4 pt-4">
         <button
           type="button"
-          className="patient-form-cancel"
+          className="px-6 py-2.5 bg-[var(--bg-surface-subtle)] border border-[var(--border-color)] text-[var(--text-main)] font-medium rounded-lg hover:bg-[var(--border-color)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={() => navigate("/pacientes")}
           disabled={isSubmitting}
         >
@@ -469,7 +486,7 @@ export function PacienteForm() {
 
         <button
           type="submit"
-          className="patient-form-submit"
+          className="px-6 py-2.5 bg-gradient-to-r from-primary-500 to-primary-700 text-white font-medium rounded-lg hover:from-primary-600 hover:to-primary-800 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
           disabled={isSubmitting}
         >
           {isSubmitting
