@@ -1,0 +1,162 @@
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(240px, 1fr)
+  );
+  gap: 20px;
+  width: 100%;
+}
+
+.service-card {
+  display: flex;
+  flex-direction: column;
+
+  min-height: 240px;
+
+  padding: 20px;
+
+  border: 1px solid #e2e8ec;
+  border-radius: 12px;
+
+  background: #ffffff;
+
+  box-sizing: border-box;
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.service-card:hover {
+  transform: translateY(-2px);
+
+  border-color: #c7eaf1;
+
+  box-shadow: 0 8px 24px rgba(26, 54, 68, 0.08);
+}
+
+.service-card-inactive {
+  opacity: 0.5;
+
+  background: #f4f6f7;
+
+  cursor: not-allowed;
+}
+
+.service-card-inactive:hover {
+  transform: none;
+
+  border-color: #e2e8ec;
+
+  box-shadow: none;
+}
+
+.service-card-icon {
+  width: 46px;
+  height: 46px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-bottom: 16px;
+
+  border-radius: 10px;
+
+  background: #e6f7fa;
+  color: #00a8cc;
+
+  font-size: 21px;
+}
+
+.service-card-content {
+  display: flex;
+  flex-direction: column;
+
+  flex: 1;
+}
+
+.service-card-content h2 {
+  margin: 0;
+
+  color: #1a3644;
+
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.service-card-content p {
+  margin: 8px 0 18px;
+
+  color: #71808a;
+
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.service-card-info {
+  display: flex;
+  flex-direction: column;
+
+  gap: 8px;
+
+  margin-top: auto;
+}
+
+.service-card-info span {
+  display: flex;
+  align-items: center;
+
+  color: #53636d;
+
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.service-card-info span:last-child {
+  color: #1a3644;
+
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.service-card-status {
+  display: inline-flex;
+  align-items: center;
+
+  align-self: flex-start;
+
+  margin-top: 14px;
+  padding: 5px 10px;
+
+  border-radius: 999px;
+
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.service-card-status-active {
+  background: #e9f8f1;
+  color: #16845c;
+}
+
+.service-card-status-inactive {
+  background: #eef0f2;
+  color: #697780;
+}
+
+@media (max-width: 768px) {
+  .services-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .service-card {
+    min-height: 220px;
+
+    padding: 18px;
+  }
+}
