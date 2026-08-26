@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { useNavigate } from "react-router-dom";
+import logo from "../../assets/nexus-odonto-logo.png";
 
 interface SidebarProps {
   mobileOpen: boolean;
@@ -91,11 +92,28 @@ export function Sidebar({
       )}
 
       <aside
-        className={`fixed lg:static z-50 h-full w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 overflow-y-auto transition-transform duration-300 ease-in-out ${
+        className={`fixed lg:static z-50 h-screen w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col transition-transform duration-300 ease-in-out ${
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
-        <nav className="flex flex-col gap-1 p-4">
+        {/* Logo Section */}
+        <div className="p-4 border-b border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className="bg-white p-1 rounded-lg w-8 h-8 flex items-center justify-center shadow-sm">
+              <img
+                src={logo}
+                alt="NexusOdonto"
+                className="w-6 h-6"
+              />
+            </div>
+            <span className="font-bold text-lg text-slate-900 dark:text-slate-100">
+              NexusOdonto
+            </span>
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 flex flex-col gap-1 p-4 overflow-y-auto">
           {menuItems.map((item) => {
             const Icon = item.icon;
 
@@ -114,7 +132,8 @@ export function Sidebar({
           })}
         </nav>
 
-        <div className="mt-auto p-4 border-t border-slate-200 dark:border-slate-800 flex flex-col gap-1">
+        {/* Footer */}
+        <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex flex-col gap-1">
           <button
             type="button"
             className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"

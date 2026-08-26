@@ -9,7 +9,6 @@ import {
   Sun,
 } from "lucide-react";
 
-import logo from "../../assets/nexus-odonto-logo.png";
 import { useTheme } from "../../hooks/useTheme";
 
 interface PageHeaderProps {
@@ -44,17 +43,9 @@ export function PageHeader({
           )}
         </button>
 
-        <div className="flex items-center gap-3">
-          <img
-            src={logo}
-            alt="NexusOdonto"
-            className="h-8 w-auto"
-          />
-
-          <span className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-            NexusOdonto
-          </span>
-        </div>
+        <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+          NexusOdonto
+        </h1>
       </div>
 
       <div className="flex items-center gap-2">
