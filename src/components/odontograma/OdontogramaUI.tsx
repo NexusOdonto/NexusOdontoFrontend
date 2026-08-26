@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Tooth } from './Tooth';
 import { DiagnosticTools, ToothStatusTools } from './DiagnosticTools';
 import { ColorLegend } from './ColorLegend';
@@ -17,6 +18,7 @@ import {
 } from './types';
 
 export default function OdontogramaUI() {
+  const navigate = useNavigate();
   const [dentitionType, setDentitionType] = useState<'permanent' | 'temporary' | 'mixed'>('permanent');
   const [selectedSurface, setSelectedSurface] = useState<{ toothNumber: number; surface: Surface } | null>(null);
   const [selectedTooth, setSelectedTooth] = useState<number | null>(null);
@@ -180,37 +182,47 @@ export default function OdontogramaUI() {
           <p className="text-sm text-slate-400 mt-1">Sistema de Registro Clínico Dental - FDI</p>
         </div>
         
-        {/* Dentition Type Controls */}
-        <div className="flex flex-wrap gap-2 bg-slate-800 p-1 rounded-lg">
+        <div className="flex flex-wrap items-center gap-4">
+          {/* Dentition Type Controls */}
+          <div className="flex flex-wrap gap-2 bg-slate-800 p-1 rounded-lg">
+            <button
+              onClick={() => handleDentitionTypeChange('permanent')}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition focus:outline-none focus:ring-0 ${
+                dentitionType === 'permanent' 
+                  ? 'bg-blue-600 text-white shadow-lg' 
+                  : 'text-slate-400 hover:text-white hover:bg-slate-700'
+              }`}
+            >
+              Permanente
+            </button>
+            <button
+              onClick={() => handleDentitionTypeChange('temporary')}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition focus:outline-none focus:ring-0 ${
+                dentitionType === 'temporary' 
+                  ? 'bg-blue-600 text-white shadow-lg' 
+                  : 'text-slate-400 hover:text-white hover:bg-slate-700'
+              }`}
+            >
+              Temporal
+            </button>
+            <button
+              onClick={() => handleDentitionTypeChange('mixed')}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition focus:outline-none focus:ring-0 ${
+                dentitionType === 'mixed' 
+                  ? 'bg-blue-600 text-white shadow-lg' 
+                  : 'text-slate-400 hover:text-white hover:bg-slate-700'
+              }`}
+            >
+              Mixta
+            </button>
+          </div>
+
+          {/* Logout Button */}
           <button
-            onClick={() => handleDentitionTypeChange('permanent')}
-            className={`px-3 py-1.5 rounded-md text-sm font-medium transition focus:outline-none focus:ring-0 ${
-              dentitionType === 'permanent' 
-                ? 'bg-blue-600 text-white shadow-lg' 
-                : 'text-slate-400 hover:text-white hover:bg-slate-700'
-            }`}
+            onClick={() => navigate('/login')}
+            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors focus:outline-none focus:ring-0"
           >
-            Permanente
-          </button>
-          <button
-            onClick={() => handleDentitionTypeChange('temporary')}
-            className={`px-3 py-1.5 rounded-md text-sm font-medium transition focus:outline-none focus:ring-0 ${
-              dentitionType === 'temporary' 
-                ? 'bg-blue-600 text-white shadow-lg' 
-                : 'text-slate-400 hover:text-white hover:bg-slate-700'
-            }`}
-          >
-            Temporal
-          </button>
-          <button
-            onClick={() => handleDentitionTypeChange('mixed')}
-            className={`px-3 py-1.5 rounded-md text-sm font-medium transition focus:outline-none focus:ring-0 ${
-              dentitionType === 'mixed' 
-                ? 'bg-blue-600 text-white shadow-lg' 
-                : 'text-slate-400 hover:text-white hover:bg-slate-700'
-            }`}
-          >
-            Mixta
+            Cerrar Sesión
           </button>
         </div>
       </div>
@@ -239,7 +251,7 @@ export default function OdontogramaUI() {
             ))}
           </div>
           
-          <div className="w-px h-12 lg:h-16 bg-slate-700 flex-shrink-0" />
+          <div className="w-px h-12 lg:h-16 bg-slate-700 shrink-0" />
           
           <div className="flex flex-nowrap items-center justify-center overflow-hidden w-full gap-1 sm:gap-2">
             {currentQuadrants.topLeft
@@ -274,7 +286,7 @@ export default function OdontogramaUI() {
             ))}
           </div>
           
-          <div className="w-px h-12 lg:h-16 bg-slate-700 flex-shrink-0" />
+          <div className="w-px h-12 lg:h-16 bg-slate-700 shrink-0" />
           
           <div className="flex flex-nowrap items-center justify-center overflow-hidden w-full gap-1 sm:gap-2">
             {currentQuadrants.bottomLeft

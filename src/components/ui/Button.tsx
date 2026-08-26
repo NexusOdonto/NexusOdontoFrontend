@@ -1,39 +1,38 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
-import { cn } from "../../utils/cn.ts";
+import React from 'react';
 
-// Props reutilizables para nuestro botón
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  children: ReactNode;
-  variant?: "default" | "ghost";
+interface ButtonProps {
+  children: React.ReactNode;
+  onClick?: () => void;
+  type?: 'button' | 'submit';
+  disabled?: boolean;
+  className?: string;
+  variant?: 'primary' | 'secondary' | 'ghost';
 }
 
-// Componente Button reutilizable
-export function Button({
+export const Button: React.FC<ButtonProps> = ({
   children,
-  variant = "default",
-  className,
-  ...props
-}: ButtonProps) {
+  onClick,
+  type = 'button',
+  disabled = false,
+  className = '',
+  variant = 'primary',
+}) => {
+  const baseClasses = 'w-full font-medium transition-colors duration-200 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed';
+  
+  const variantClasses = variant === 'primary' 
+    ? 'bg-teal-600 hover:bg-teal-500 text-white text-sm rounded-xl py-3.5'
+    : variant === 'secondary'
+    ? 'bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-xl py-3'
+    : 'bg-transparent hover:bg-slate-800 text-slate-300 text-sm rounded-xl py-3';
+
   return (
     <button
-      className={cn(
-        // Estilos base del botón
-        "inline-flex items-center justify-center rounded-md transition-colors duration-200",
-        "focus:outline-none focus:ring-2 focus:ring-[#00A8CC]/30",
-
-        // Variante principal
-        variant === "default" &&
-          "bg-[#00A8CC] text-white hover:bg-[#008B9B]",
-
-        // Variante transparente para botones del Sidebar
-        variant === "ghost" &&
-          "bg-transparent text-[#6B7C8A] hover:bg-[#E8F8FB] hover:text-[#00A8CC]",
-
-        className
-      )}
-      {...props}
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      className={`${baseClasses} ${variantClasses} ${className}`}
     >
       {children}
     </button>
   );
-}
+};
