@@ -1,4 +1,4 @@
-import { ServiciosGrid } from "../styles/ServiciosGrid.tsx";
+import { ServiciosGrid } from "../../servicios/tsx/ServiciosGrid.tsx";
 
 export function ServiciosView() {
   return (
