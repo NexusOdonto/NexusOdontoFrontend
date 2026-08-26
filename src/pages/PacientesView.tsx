@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { PacientesTable } from "../components/pacientes/PacientesTable";
-import "../pages/PacienteRegistroView.css";
+import { PacientesTable } from "../components/pacientes/tsx/PacientesTable";
+import "./PacientesView.css";
 
 export interface Paciente {
   id: number;
@@ -11,6 +11,9 @@ export interface Paciente {
   telefono: string;
   estado: string;
 }
+
+export const PACIENTES_STORAGE_KEY =
+  "nexusodontopacientes";
 
 const pacientesIniciales: Paciente[] = [
   {
@@ -57,49 +60,59 @@ const pacientesIniciales: Paciente[] = [
   },
 ];
 
-const STORAGE_KEY = "nexusodontopacientes";
-
 const ITEMS_PER_PAGE = 5;
 const DEBOUNCE_TIME = 400;
 const INITIAL_LOADING_TIME = 800;
 
+function cargarPacientes(): Paciente[] {
+  const pacientesGuardados = localStorage.getItem(
+    PACIENTES_STORAGE_KEY,
+  );
+
+  if (!pacientesGuardados) {
+    localStorage.setItem(
+      PACIENTES_STORAGE_KEY,
+      JSON.stringify(pacientesIniciales),
+    );
+
+    return pacientesIniciales;
+  }
+
+  try {
+    const pacientes = JSON.parse(
+      pacientesGuardados,
+    ) as Paciente[];
+
+    if (Array.isArray(pacientes)) {
+      return pacientes;
+    }
+
+    localStorage.setItem(
+      PACIENTES_STORAGE_KEY,
+      JSON.stringify(pacientesIniciales),
+    );
+
+    return pacientesIniciales;
+  } catch {
+    localStorage.setItem(
+      PACIENTES_STORAGE_KEY,
+      JSON.stringify(pacientesIniciales),
+    );
+
+    return pacientesIniciales;
+  }
+}
+
 export function PacientesView() {
   const navigate = useNavigate();
 
-  const [pacientes, setPacientes] = useState<Paciente[]>([]);
+  const [pacientes] = useState<Paciente[]>(cargarPacientes);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const pacientesGuardados =
-      localStorage.getItem(STORAGE_KEY);
-
-    if (pacientesGuardados) {
-      try {
-        const pacientesParseados = JSON.parse(
-          pacientesGuardados,
-        ) as Paciente[];
-
-        setPacientes(pacientesParseados);
-      } catch {
-        localStorage.setItem(
-          STORAGE_KEY,
-          JSON.stringify(pacientesIniciales),
-        );
-
-        setPacientes(pacientesIniciales);
-      }
-    } else {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify(pacientesIniciales),
-      );
-
-      setPacientes(pacientesIniciales);
-    }
-
     const timeout = setTimeout(() => {
       setLoading(false);
     }, INITIAL_LOADING_TIME);
