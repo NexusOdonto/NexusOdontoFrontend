@@ -1,28 +1,38 @@
 import type { ReactNode } from "react";
+import { useState } from "react";
 
 import { Sidebar } from "../components/ui/Sidebar.tsx";
+import { PageHeader } from "../components/ui/PageHeader.tsx";
 
-// Props del layout principal
+import "../layouts/DashboardLayout.css";
+
 interface DashboardLayoutProps {
   children: ReactNode;
 }
 
-// Layout general de la aplicación
 export function DashboardLayout({
   children,
 }: DashboardLayoutProps) {
-  return (
-    <div className="min-h-screen bg-[#F8FAFC] flex">
-      {/* Sidebar de navegación */}
-      <Sidebar />
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-      {/* =====================================================
-          CONTENIDO PRINCIPAL
-          El contenido queda al lado del Sidebar.
-          ===================================================== */}
-      <main className="flex-1 min-w-0 overflow-auto">
-        {children}
-      </main>
+  return (
+    <div className="app-layout">
+      <PageHeader
+        userName="Brayan"
+        mobileOpen={mobileOpen}
+        onMenuClick={() => setMobileOpen((prev) => !prev)}
+      />
+
+      <div className="app-body">
+        <Sidebar
+          mobileOpen={mobileOpen}
+          onMobileClose={() => setMobileOpen(false)}
+        />
+
+        <main className="dashboard-main">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

@@ -1,0 +1,439 @@
+.patients-page {
+  width: 100%;
+  min-width: 0;
+  background: #f8fafc;
+}
+
+.patients-content {
+  width: 100%;
+  padding: 28px 32px 32px;
+  box-sizing: border-box;
+}
+
+.patients-page-title {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.patients-page-title h1 {
+  margin: 0;
+
+  color: #1a3644;
+
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.patients-page-title p {
+  margin: 7px 0 0;
+
+  color: #64748b;
+
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.patients-primary-button {
+  flex-shrink: 0;
+
+  padding: 11px 18px;
+
+  border: 0;
+  border-radius: 8px;
+
+  background: #00a8cc;
+  color: #ffffff;
+
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.patients-primary-button:hover {
+  background: #008b9b;
+}
+
+.patients-primary-button:active {
+  transform: translateY(1px);
+}
+
+.patients-search {
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.patients-search input {
+  width: 100%;
+  height: 46px;
+
+  padding: 0 16px;
+
+  border: 1px solid #dce4e8;
+  border-radius: 9px;
+
+  outline: none;
+
+  background: #ffffff;
+  color: #1a3644;
+
+  font-family: inherit;
+  font-size: 14px;
+
+  box-sizing: border-box;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.patients-search input::placeholder {
+  color: #9aa7b0;
+}
+
+.patients-search input:focus {
+  border-color: #00a8cc;
+
+  box-shadow: 0 0 0 3px rgba(0, 168, 204, 0.12);
+}
+
+.patients-table-container {
+  width: 100%;
+
+  overflow: hidden;
+
+  border: 1px solid #e2e8ec;
+  border-radius: 12px;
+
+  background: #ffffff;
+}
+
+.patients-table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 20px 22px;
+
+  border-bottom: 1px solid #e8edf0;
+}
+
+.patients-table-header h2 {
+  margin: 0;
+
+  color: #1a3644;
+
+  font-size: 17px;
+  font-weight: 650;
+}
+
+.patients-table-header p {
+  margin: 5px 0 0;
+
+  color: #7a8790;
+
+  font-size: 13px;
+}
+
+.patients-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.patients-table {
+  width: 100%;
+  min-width: 650px;
+  border-collapse: collapse;
+}
+
+.patients-table th {
+  height: 46px;
+  padding: 0 20px;
+
+  background: #f8fafb;
+  color: #687780;
+
+  font-size: 12px;
+  font-weight: 650;
+
+  text-align: left;
+  white-space: nowrap;
+}
+
+.patients-table td {
+  height: 58px;
+  padding: 0 20px;
+
+  border-top: 1px solid #edf1f3;
+
+  color: #53636d;
+
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.patients-table tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+.patients-table tbody tr:hover {
+  background: #f9fcfd;
+}
+
+.patient-name {
+  color: #1a3644 !important;
+  font-weight: 600;
+}
+
+.patient-status {
+  display: inline-flex;
+  align-items: center;
+
+  min-height: 26px;
+  padding: 0 10px;
+
+  border-radius: 999px;
+
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.patient-status-active {
+  background: #e9f8f1;
+  color: #16845c;
+}
+
+.patient-status-inactive {
+  background: #f1f3f5;
+  color: #697780;
+}
+
+.patients-empty {
+  height: 180px !important;
+
+  color: #8a969e !important;
+
+  text-align: center !important;
+}
+
+.patients-empty-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+
+  gap: 6px;
+}
+
+.patients-empty-icon {
+  width: 44px;
+  height: 44px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-bottom: 6px;
+
+  border-radius: 12px;
+
+  background: #e6f7fa;
+  color: #00a8cc;
+
+  font-size: 22px;
+}
+
+.patients-empty-content strong {
+  color: #1a3644;
+
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.patients-empty-content p {
+  margin: 0;
+
+  color: #87949c;
+
+  font-size: 12px;
+}
+
+.patients-skeleton {
+  position: relative;
+
+  display: block;
+
+  width: 100px;
+  height: 13px;
+
+  overflow: hidden;
+
+  border-radius: 5px;
+
+  background: #eef2f4;
+}
+
+.patients-skeleton::after {
+  position: absolute;
+  inset: 0;
+
+  content: "";
+
+  transform: translateX(-100%);
+
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.75),
+    transparent
+  );
+
+  animation: patients-skeleton-loading 1.4s infinite;
+}
+
+.patients-skeleton-name {
+  width: 150px;
+}
+
+.patients-skeleton-status {
+  width: 65px;
+}
+
+@keyframes patients-skeleton-loading {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.patients-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 16px;
+
+  padding: 16px 20px;
+
+  border-top: 1px solid #e8edf0;
+}
+
+.patients-pagination > span {
+  color: #74828a;
+  font-size: 12px;
+}
+
+.patients-pagination-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.patients-pagination-buttons button {
+  min-width: 88px;
+  height: 34px;
+
+  padding: 0 12px;
+
+  border: 1px solid #dce4e8;
+  border-radius: 7px;
+
+  background: #ffffff;
+  color: #53636d;
+
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.patients-pagination-buttons button:hover:not(:disabled) {
+  border-color: #00a8cc;
+  color: #00a8cc;
+  background: #f1fafc;
+}
+
+.patients-pagination-buttons button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .patients-page {
+    width: 100%;
+  }
+
+  .patients-content {
+    padding: 24px 0;
+  }
+
+  .patients-page-title {
+    align-items: flex-start;
+    flex-direction: column;
+
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .patients-page-title h1 {
+    font-size: 24px;
+  }
+
+  .patients-page-title p {
+    font-size: 13px;
+  }
+
+  .patients-primary-button {
+    width: 100%;
+  }
+
+  .patients-search {
+    margin-bottom: 16px;
+  }
+
+  .patients-table-header {
+    padding: 17px 16px;
+  }
+
+  .patients-table-header h2 {
+    font-size: 16px;
+  }
+
+  .patients-table-header p {
+    font-size: 12px;
+  }
+
+  .patients-table th,
+  .patients-table td {
+    padding: 0 16px;
+  }
+
+  .patients-pagination {
+    align-items: flex-start;
+    flex-direction: column;
+
+    padding: 14px 16px;
+  }
+
+  .patients-pagination-buttons {
+    width: 100%;
+  }
+
+  .patients-pagination-buttons button {
+    flex: 1;
+  }
+}
