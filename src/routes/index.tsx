@@ -1,13 +1,14 @@
 import {
   BrowserRouter,
-  Routes,
-  Route,
   Navigate,
+  Route,
+  Routes,
 } from "react-router-dom";
 
 import { DashboardLayout } from "../layouts/DashboardLayout.tsx";
 import { PacientesView } from "../pages/PacientesView.tsx";
 import { PacienteRegistroView } from "../pages/PacienteRegistroView.tsx";
+import { ServiciosView } from "../components/servicios/tsx/ServiciosView.tsx";
 
 function DashboardPage() {
   return (
@@ -55,8 +56,22 @@ export default function AppRoutes() {
         />
 
         <Route
+          path="/servicios"
+          element={
+            <DashboardLayout>
+              <ServiciosView />
+            </DashboardLayout>
+          }
+        />
+
+        <Route
           path="*"
-          element={<Navigate to="/dashboard" replace />}
+          element={
+            <Navigate
+              to="/dashboard"
+              replace
+            />
+          }
         />
       </Routes>
     </BrowserRouter>
