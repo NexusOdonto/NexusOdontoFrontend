@@ -5,9 +5,12 @@ import {
   Bell,
   UserCircle,
   X,
+  Moon,
+  Sun,
 } from "lucide-react";
 
 import logo from "../../assets/nexus-odonto-logo.png";
+import { useTheme } from "../../hooks/useTheme";
 
 interface PageHeaderProps {
   userName?: string;
@@ -23,6 +26,8 @@ export function PageHeader({
   onMenuClick,
   mobileOpen = false,
 }: PageHeaderProps) {
+  const { theme, toggleTheme } = useTheme();
+
   return (
     <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30">
       <div className="flex items-center gap-4">
@@ -53,6 +58,19 @@ export function PageHeader({
       </div>
 
       <div className="flex items-center gap-2">
+        <button
+          type="button"
+          className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-600 dark:text-slate-400"
+          onClick={toggleTheme}
+          aria-label="Cambiar tema"
+        >
+          {theme === 'dark' ? (
+            <Sun size={19} />
+          ) : (
+            <Moon size={19} />
+          )}
+        </button>
+
         <button
           type="button"
           className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-600 dark:text-slate-400"
