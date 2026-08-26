@@ -1,3 +1,5 @@
+import { ServiciosView } from "../components/servicios/tsx/ServiciosView.tsx";
+
 import {
   BrowserRouter,
   Routes,
@@ -44,6 +46,15 @@ export default function AppRoutes() {
             </DashboardLayout>
           }
         />
+
+        <Route
+        path="/servicios"
+        element={
+        <DashboardLayout>
+          <ServiciosView />
+          </DashboardLayout>
+        }
+/>
 
         <Route
           path="/pacientes/nuevo"
