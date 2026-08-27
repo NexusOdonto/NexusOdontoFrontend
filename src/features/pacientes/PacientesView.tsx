@@ -1,19 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { PacientesTable } from "../components/pacientes/tsx/PacientesTable";
-import "./PacientesView.css";
-
-export interface Paciente {
-  id: number;
-  nombre: string;
-  documento: string;
-  telefono: string;
-  estado: string;
-}
-
-export const PACIENTES_STORAGE_KEY =
-  "nexusodontopacientes";
+import { PacientesTable } from "./components/PacientesTable";
+import { PACIENTES_STORAGE_KEY, type Paciente } from "../../types/pacientes";
 
 const pacientesIniciales: Paciente[] = [
   {
@@ -174,13 +163,15 @@ export function PacientesView() {
   };
 
   return (
-    <div className="patients-page">
-      <div className="patients-content">
-        <div className="patients-page-title">
+    <div className="p-6">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
-            <h1>Pacientes</h1>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+              Pacientes
+            </h1>
 
-            <p>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
               Consulta y administra los pacientes activos del
               consultorio.
             </p>
@@ -188,14 +179,14 @@ export function PacientesView() {
 
           <button
             type="button"
-            className="patients-primary-button"
+            className="px-4 py-2 bg-gradient-to-r from-primary-500 to-primary-700 text-white font-medium rounded-lg hover:from-primary-600 hover:to-primary-800 transition-all active:scale-[0.98]"
             onClick={() => navigate("/pacientes/nuevo")}
           >
             + Nuevo paciente
           </button>
         </div>
 
-        <section className="patients-search">
+        <section className="mb-6">
           <input
             type="search"
             value={searchInput}
@@ -204,6 +195,7 @@ export function PacientesView() {
             }
             placeholder="Buscar por nombre o número de documento..."
             aria-label="Buscar pacientes"
+            className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
           />
         </section>
 
