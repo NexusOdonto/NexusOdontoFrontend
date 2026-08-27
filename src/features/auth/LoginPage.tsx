@@ -2,12 +2,16 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LoginInput } from './components/LoginInput';
 import { LoginButton } from './components/LoginButton';
+import { useTheme } from '../../hooks/useTheme';
+import fondoLoginLight from '../../assets/fondo-Login-ligh.jpg';
+import fondoLoginDark from '../../assets/fondoLogin.jpg';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const { theme } = useTheme();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,9 +21,12 @@ export default function LoginPage() {
     navigate('/dashboard');
   };
 
+  const backgroundImage = theme === 'dark' ? fondoLoginDark : fondoLoginLight;
+
   return (
     <div 
-      className="relative min-h-screen w-full flex items-center justify-center bg-[url('/fondoLogin.jpg')] bg-cover bg-center bg-no-repeat overflow-hidden"
+      className="relative min-h-screen w-full flex items-center justify-center bg-cover bg-center bg-no-repeat overflow-hidden"
+      style={{ backgroundImage: `url(${backgroundImage})` }}
     >
       {/* Container with interactive hover effect */}
       <div className="relative w-full max-w-md mx-4 group cursor-pointer transition-all duration-500 hover:-translate-y-1.5">
@@ -63,7 +70,7 @@ export default function LoginPage() {
             {/* Forgot Password Link */}
             <button 
               type="button"
-              className="text-xs text-slate-400 hover:text-teal-400 transition-colors text-right block w-full bg-transparent border-none"
+              className="text-xs text-slate-300 hover:text-teal-300 transition-colors text-right block w-full bg-transparent border-none"
             >
               ¿Olvidaste tu contraseña?
             </button>
@@ -76,11 +83,11 @@ export default function LoginPage() {
 
           {/* Sign up link */}
           <div className="text-center">
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-slate-300">
               ¿No tienes cuenta?{' '}
               <button 
                 type="button"
-                className="text-teal-400 hover:underline font-medium transition-colors bg-transparent border-none"
+                className="text-teal-300 hover:underline font-medium transition-colors bg-transparent border-none"
               >
                 Regístrate
               </button>
