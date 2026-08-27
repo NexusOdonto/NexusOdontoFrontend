@@ -6,11 +6,8 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import {
-  CitasTable,
-  type Cita,
-  type EstadoCita,
-} from "../components/citas/CitasTable";
+import { CitasTable } from "./components/CitasTable";
+import { type Cita, type EstadoCita } from "./types";
 
 const citasIniciales: Cita[] = [
   {

@@ -6,23 +6,8 @@ import {
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 
-import { cn } from "../../utils/cn";
-
-export type EstadoCita =
-  | "Agendada"
-  | "Confirmada"
-  | "Atendida"
-  | "Cancelada";
-
-export interface Cita {
-  id: number;
-  paciente: string;
-  profesional: string;
-  servicio: string;
-  fecha: string;
-  hora: string;
-  estado: EstadoCita;
-}
+import { cn } from "../../../utils/cn";
+import { type Cita, type EstadoCita } from "../types";
 
 interface CitasTableProps {
   citas: Cita[];

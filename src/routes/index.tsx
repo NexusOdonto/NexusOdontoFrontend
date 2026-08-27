@@ -47,7 +47,7 @@ const ServiciosView = lazy(() =>
 );
 
 const CitasView = lazy(() =>
-  import("../pages/CitasView").then(
+  import("../features/citas/CitasView").then(
     (module) => ({
       default: module.CitasView,
     }),
