@@ -1,7 +1,9 @@
-import { formatCurrency } from "../../../utils/currency";
-import "../../servicios/styles/ServiciosGrid.css";
+import { MoreVertical } from "lucide-react";
 
-interface Servicio {
+import { formatCurrency } from "../../../utils/currency";
+import "../styles/ServiciosGrid.css";
+
+export interface Servicio {
   id: number;
   nombre: string;
   descripcion: string;
@@ -10,60 +12,12 @@ interface Servicio {
   activo: boolean;
 }
 
-const serviciosIniciales: Servicio[] = [
-  {
-    id: 1,
-    nombre: "Blanqueamiento dental",
-    descripcion:
-      "Tratamiento para mejorar el tono y apariencia de los dientes.",
-    duracion: 60,
-    precio: 80000,
-    activo: true,
-  },
-  {
-    id: 2,
-    nombre: "Calza dental",
-    descripcion:
-      "Restauración de una pieza dental afectada por caries.",
-    duracion: 45,
-    precio: 60000,
-    activo: true,
-  },
-  {
-    id: 3,
-    nombre: "Extracción dental",
-    descripcion:
-      "Procedimiento para retirar una pieza dental.",
-    duracion: 30,
-    precio: 50000,
-    activo: false,
-  },
-  {
-    id: 4,
-    nombre: "Limpieza dental",
-    descripcion:
-      "Limpieza profesional para eliminar placa y sarro.",
-    duracion: 40,
-    precio: 45000,
-    activo: true,
-  },
-  {
-    id: 5,
-    nombre: "Fluorización",
-    descripcion:
-      "Aplicación de flúor para ayudar a prevenir caries.",
-    duracion: 20,
-    precio: 30000,
-    activo: true,
-  },
-];
-
 interface ServiciosGridProps {
-  servicios?: Servicio[];
+  servicios: Servicio[];
 }
 
 export function ServiciosGrid({
-  servicios = serviciosIniciales,
+  servicios,
 }: ServiciosGridProps) {
   return (
     <div className="services-grid">
@@ -76,6 +30,28 @@ export function ServiciosGrid({
               : ""
           }`}
         >
+          <div className="service-card-top">
+            <span
+              className={`service-card-status ${
+                servicio.activo
+                  ? "service-card-status-active"
+                  : "service-card-status-inactive"
+              }`}
+            >
+              {servicio.activo
+                ? "ACTIVO"
+                : "INACTIVO"}
+            </span>
+
+            <button
+              type="button"
+              className="service-card-menu"
+              aria-label={`Opciones de ${servicio.nombre}`}
+            >
+              <MoreVertical size={18} />
+            </button>
+          </div>
+
           <div className="service-card-icon">
             🦷
           </div>
@@ -94,18 +70,6 @@ export function ServiciosGrid({
                 {formatCurrency(servicio.precio)}
               </span>
             </div>
-
-            <span
-              className={`service-card-status ${
-                servicio.activo
-                  ? "service-card-status-active"
-                  : "service-card-status-inactive"
-              }`}
-            >
-              {servicio.activo
-                ? "Activo"
-                : "Inactivo"}
-            </span>
           </div>
         </article>
       ))}
