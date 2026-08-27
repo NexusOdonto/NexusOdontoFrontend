@@ -1,4 +1,5 @@
 import {
+  Mail,
   Plus,
   Search,
   ShieldCheck,
@@ -16,8 +17,8 @@ import type {
 const usuariosIniciales: Usuario[] = [
   {
     id: 1,
-    nombre: "Six Sevenaldo Da Silva Jr",
-    correo: "Six.Seveent@nexusodonto.com",
+    nombre: "Six Sevenando Da Silva Jr",
+    correo: "six.seven@nexusodonto.com",
     rol: "Odontólogo",
     estado: "Activo",
   },
@@ -75,7 +76,7 @@ const usuariosIniciales: Usuario[] = [
 const ITEMS_PER_PAGE = 5;
 
 export function UsuariosView() {
-  const [usuarios] =
+  const [usuarios, setUsuarios] =
     useState<Usuario[]>(usuariosIniciales);
 
   const [search, setSearch] = useState("");
@@ -94,13 +95,28 @@ export function UsuariosView() {
   const [showModal, setShowModal] =
     useState(false);
 
+  const [nuevoNombre, setNuevoNombre] =
+    useState("");
+
+  const [nuevoCorreo, setNuevoCorreo] =
+    useState("");
+
+  const [nuevoRol, setNuevoRol] =
+    useState<RolUsuario>("Odontólogo");
+
+  const [nuevoEstado, setNuevoEstado] =
+    useState<Usuario["estado"]>("Activo");
+
+  const [errorForm, setErrorForm] =
+    useState("");
+
   const usuariosFiltrados = useMemo(() => {
     const searchValue =
       search.trim().toLowerCase();
 
     return usuarios.filter((usuario) => {
-      const matchSearch =
-        !searchValue ||
+      const coincideBusqueda =
+        searchValue.length === 0 ||
         usuario.nombre
           .toLowerCase()
           .includes(searchValue) ||
@@ -108,18 +124,18 @@ export function UsuariosView() {
           .toLowerCase()
           .includes(searchValue);
 
-      const matchRol =
+      const coincideRol =
         rol === "Todos" ||
         usuario.rol === rol;
 
-      const matchEstado =
+      const coincideEstado =
         estado === "Todos" ||
         usuario.estado === estado;
 
       return (
-        matchSearch &&
-        matchRol &&
-        matchEstado
+        coincideBusqueda &&
+        coincideRol &&
+        coincideEstado
       );
     });
   }, [usuarios, search, rol, estado]);
@@ -172,36 +188,100 @@ export function UsuariosView() {
     setCurrentPage(1);
   };
 
+  const abrirModal = () => {
+    setNuevoNombre("");
+    setNuevoCorreo("");
+    setNuevoRol("Odontólogo");
+    setNuevoEstado("Activo");
+    setErrorForm("");
+    setShowModal(true);
+  };
+
+  const cerrarModal = () => {
+    setShowModal(false);
+    setErrorForm("");
+  };
+
+  const registrarUsuario = () => {
+    const nombre = nuevoNombre.trim();
+    const correo = nuevoCorreo.trim();
+
+    if (!nombre || !correo) {
+      setErrorForm(
+        "Completa todos los campos obligatorios.",
+      );
+      return;
+    }
+
+    const correoExiste = usuarios.some(
+      (usuario) =>
+        usuario.correo.toLowerCase() ===
+        correo.toLowerCase(),
+    );
+
+    if (correoExiste) {
+      setErrorForm(
+        "Ya existe un usuario con ese correo.",
+      );
+      return;
+    }
+
+    const nuevoId =
+      usuarios.length > 0
+        ? Math.max(
+            ...usuarios.map(
+              (usuario) => usuario.id,
+            ),
+          ) + 1
+        : 1;
+
+    const nuevoUsuario: Usuario = {
+      id: nuevoId,
+      nombre,
+      correo,
+      rol: nuevoRol,
+      estado: nuevoEstado,
+    };
+
+    setUsuarios((actuales) => [
+      ...actuales,
+      nuevoUsuario,
+    ]);
+
+    setSearch("");
+    setRol("Todos");
+    setEstado("Todos");
+    setCurrentPage(1);
+
+    cerrarModal();
+  };
+
   return (
     <div className="min-h-full w-full bg-slate-50 p-6 transition-colors duration-300 dark:bg-slate-950">
       <div className="mx-auto w-full max-w-[1600px]">
         <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition-colors duration-300 dark:border-slate-800 dark:bg-slate-900">
           <header className="mb-7 flex items-start justify-between gap-6">
-            <div>
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-500/10 text-primary-500">
-                  <ShieldCheck size={22} />
-                </div>
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-500/10 text-primary-500">
+                <ShieldCheck size={22} />
+              </div>
 
-                <div>
-                  <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-                    Usuarios
-                  </h1>
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+                  Usuarios
+                </h1>
 
-                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-                    Gestiona el personal autorizado
-                    para acceder a NexusOdonto.
-                  </p>
-                </div>
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                  Gestiona el personal autorizado
+                  para acceder a NexusOdonto.
+                </p>
               </div>
             </div>
 
             <button
               type="button"
-              onClick={() =>
-                setShowModal(true)
-              }
-              className="inline-flex h-11 shrink-0 items-center gap-2 rounded-lg bg-primary-500 px-5 text-sm font-semibold text-white transition-colors hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500/30"
+              onClick={abrirModal}
+              className="inline-flex h-11 shrink-0 items-center gap-2 rounded-lg bg-primary-500 px-5 text-sm font-semibold text-white transition-colors duration-200 hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500/30"
             >
               <Plus size={18} />
               Nuevo Usuario
@@ -299,19 +379,17 @@ export function UsuariosView() {
             )}
           </section>
 
-          <div className="mb-4 flex items-center justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                Personal autorizado
-              </h2>
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+              Personal autorizado
+            </h2>
 
-              <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-                {usuariosFiltrados.length}{" "}
-                {usuariosFiltrados.length === 1
-                  ? "usuario encontrado"
-                  : "usuarios encontrados"}
-              </p>
-            </div>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+              {usuariosFiltrados.length}{" "}
+              {usuariosFiltrados.length === 1
+                ? "usuario encontrado"
+                : "usuarios encontrados"}
+            </p>
           </div>
 
           <UsuariosTable
@@ -325,13 +403,14 @@ export function UsuariosView() {
 
       {showModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 px-4 dark:bg-slate-950/60"
-          onClick={() =>
-            setShowModal(false)
-          }
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-sm dark:bg-slate-950/60"
+          onClick={cerrarModal}
         >
           <div
-            className="w-full max-w-md rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="nuevo-usuario-title"
+            className="w-full max-w-lg overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900"
             onClick={(event) =>
               event.stopPropagation()
             }
@@ -343,22 +422,23 @@ export function UsuariosView() {
                 </div>
 
                 <div>
-                  <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                  <h2
+                    id="nuevo-usuario-title"
+                    className="text-lg font-semibold text-slate-900 dark:text-slate-100"
+                  >
                     Nuevo Usuario
                   </h2>
 
                   <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-                    El formulario se agregará en una
-                    tarea posterior.
+                    Registra un nuevo usuario en el
+                    sistema.
                   </p>
                 </div>
               </div>
 
               <button
                 type="button"
-                onClick={() =>
-                  setShowModal(false)
-                }
+                onClick={cerrarModal}
                 className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
                 aria-label="Cerrar modal"
               >
@@ -366,23 +446,145 @@ export function UsuariosView() {
               </button>
             </div>
 
-            <div className="px-6 py-8">
-              <div className="flex min-h-32 items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-800">
-                <p className="text-sm text-slate-600 dark:text-slate-400">
-                  Formulario de usuario pendiente.
-                </p>
+            <div className="space-y-5 p-6">
+              <div>
+                <label
+                  htmlFor="nuevo-nombre"
+                  className="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100"
+                >
+                  Nombre completo
+                </label>
+
+                <input
+                  id="nuevo-nombre"
+                  type="text"
+                  value={nuevoNombre}
+                  onChange={(event) =>
+                    setNuevoNombre(
+                      event.target.value,
+                    )
+                  }
+                  placeholder="Ej. Six Sevenaldo Da Silva Jr"
+                  className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition-colors focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                />
               </div>
+
+              <div>
+                <label
+                  htmlFor="nuevo-correo"
+                  className="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100"
+                >
+                  Correo electrónico
+                </label>
+
+                <div className="relative">
+                  <Mail
+                    size={16}
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400"
+                  />
+
+                  <input
+                    id="nuevo-correo"
+                    type="email"
+                    value={nuevoCorreo}
+                    onChange={(event) =>
+                      setNuevoCorreo(
+                        event.target.value,
+                      )
+                    }
+                    placeholder="correo@nexusodonto.com"
+                    className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50 pl-10 pr-3 text-sm text-slate-900 outline-none transition-colors focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label
+                    htmlFor="nuevo-rol"
+                    className="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100"
+                  >
+                    Rol
+                  </label>
+
+                  <select
+                    id="nuevo-rol"
+                    value={nuevoRol}
+                    onChange={(event) =>
+                      setNuevoRol(
+                        event.target
+                          .value as RolUsuario,
+                      )
+                    }
+                    className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                  >
+                    <option value="Odontólogo">
+                      Odontólogo
+                    </option>
+
+                    <option value="Recepcionista">
+                      Recepcionista
+                    </option>
+
+                    <option value="Admin">
+                      Admin
+                    </option>
+                  </select>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="nuevo-estado"
+                    className="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100"
+                  >
+                    Estado
+                  </label>
+
+                  <select
+                    id="nuevo-estado"
+                    value={nuevoEstado}
+                    onChange={(event) =>
+                      setNuevoEstado(
+                        event.target
+                          .value as Usuario["estado"],
+                      )
+                    }
+                    className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                  >
+                    <option value="Activo">
+                      Activo
+                    </option>
+
+                    <option value="Inactivo">
+                      Inactivo
+                    </option>
+                  </select>
+                </div>
+              </div>
+
+              {errorForm && (
+                <p className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
+                  {errorForm}
+                </p>
+              )}
             </div>
 
-            <div className="flex justify-end border-t border-slate-200 px-6 py-4 dark:border-slate-800">
+            <div className="flex justify-end gap-3 border-t border-slate-200 px-6 py-4 dark:border-slate-800">
               <button
                 type="button"
-                onClick={() =>
-                  setShowModal(false)
-                }
+                onClick={cerrarModal}
                 className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
               >
-                Cerrar
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                onClick={registrarUsuario}
+                className="inline-flex items-center gap-2 rounded-lg bg-primary-500 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-600"
+              >
+                <Plus size={16} />
+                Registrar usuario
               </button>
             </div>
           </div>
