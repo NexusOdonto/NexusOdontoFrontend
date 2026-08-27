@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { LoginInput } from './components/LoginInput';
 import { LoginButton } from './components/LoginButton';
 import { useTheme } from '../../context/ThemeContext';
-import fondoLoginLight from '../../assets/fondo-Login-ligh.jpg';
-import fondoLoginDark from '../../assets/fondoLogin.jpg';
+import fondoLoginLight from '../../assets/fondo-Login-ligh.webp';
+import fondoLoginDark from '../../assets/fondoLogin.webp';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');

@@ -4,8 +4,8 @@ import { useState } from "react";
 import { Sidebar } from "../components/layout/Sidebar.tsx";
 import { PageHeader } from "../components/layout/PageHeader.tsx";
 import { useTheme } from "../context/ThemeContext";
-import fondoLight from "../assets/fondo-ligh.jpg";
-import fondoDark from "../assets/fondo-darck.jpg";
+import fondoLight from "../assets/fondo-ligh.webp";
+import fondoDark from "../assets/fondo-darck.webp";
 
 interface DashboardLayoutProps {
   children: ReactNode;
