@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import { Sidebar } from "../components/layout/Sidebar.tsx";
 import { PageHeader } from "../components/layout/PageHeader.tsx";
-import { useTheme } from "../hooks/useTheme";
+import { useTheme } from "../context/ThemeContext";
 import fondoLight from "../assets/fondo-ligh.jpg";
 import fondoDark from "../assets/fondo-darck.jpg";
 
@@ -39,7 +39,7 @@ export function DashboardLayout({
             backgroundImage: `url(${backgroundImage})` 
           }}
         >
-          <div className="bg-white/40 dark:bg-slate-900/50 backdrop-blur-xs p-6 rounded-2xl border border-slate-200/50 dark:border-slate-800/50">
+          <div className="bg-white/70 dark:bg-slate-900/60 backdrop-blur-md p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
             {children}
           </div>
         </main>
