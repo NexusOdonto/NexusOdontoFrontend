@@ -6,22 +6,53 @@ import {
   Routes,
 } from "react-router-dom";
 
-// Helper function para lazy loading de named exports
-const lazyImport = <T extends Record<string, any>, K extends keyof T>(
-  factory: () => Promise<T>,
-  key: K
-) =>
-  lazy(() =>
-    factory().then((module) => ({
-      default: module[key],
-    }))
-  );
+const LoginPage = lazy(() =>
+  import("../features/auth/LoginPage").then(
+    (module) => ({
+      default: module.default,
+    }),
+  ),
+);
 
-const LoginPage = lazy(() => import("../features/auth/LoginPage"));
-const DashboardLayout = lazyImport(() => import("../layouts/DashboardLayout"), "DashboardLayout");
-const PacientesView = lazyImport(() => import("../features/pacientes/PacientesView"), "PacientesView");
-const PacienteRegistroView = lazyImport(() => import("../features/pacientes/PacienteRegistroView"), "PacienteRegistroView");
-const ServiciosView = lazyImport(() => import("../features/servicios/ServiciosView"), "ServiciosView");
+const DashboardLayout = lazy(() =>
+  import("../layouts/DashboardLayout").then(
+    (module) => ({
+      default: module.DashboardLayout,
+    }),
+  ),
+);
+
+const PacientesView = lazy(() =>
+  import("../features/pacientes/PacientesView").then(
+    (module) => ({
+      default: module.PacientesView,
+    }),
+  ),
+);
+
+const PacienteRegistroView = lazy(() =>
+  import(
+    "../features/pacientes/PacienteRegistroView"
+  ).then((module) => ({
+    default: module.PacienteRegistroView,
+  })),
+);
+
+const ServiciosView = lazy(() =>
+  import("../features/servicios/ServiciosView").then(
+    (module) => ({
+      default: module.ServiciosView,
+    }),
+  ),
+);
+
+const CitasView = lazy(() =>
+  import("../pages/CitasView").then(
+    (module) => ({
+      default: module.CitasView,
+    }),
+  ),
+);
 
 function DashboardPage() {
   return (
@@ -37,13 +68,15 @@ function DashboardPage() {
   );
 }
 
-// Componente de carga para Suspense
 function LoadingFallback() {
   return (
-    <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
       <div className="text-center">
-        <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-        <p className="text-slate-600 dark:text-slate-400">Cargando...</p>
+        <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-primary-500 border-t-transparent" />
+
+        <p className="text-sm text-slate-600 dark:text-slate-400">
+          Cargando...
+        </p>
       </div>
     </div>
   );
@@ -54,8 +87,11 @@ export default function AppRoutes() {
     <BrowserRouter>
       <Suspense fallback={<LoadingFallback />}>
         <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          
+          <Route
+            path="/login"
+            element={<LoginPage />}
+          />
+
           <Route
             path="/dashboard"
             element={
@@ -93,8 +129,22 @@ export default function AppRoutes() {
           />
 
           <Route
+            path="/citas"
+            element={
+              <DashboardLayout>
+                <CitasView />
+              </DashboardLayout>
+            }
+          />
+
+          <Route
             path="/"
-            element={<Navigate to="/login" replace />}
+            element={
+              <Navigate
+                to="/login"
+                replace
+              />
+            }
           />
 
           <Route
