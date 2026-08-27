@@ -31,14 +31,14 @@ export function Sidebar({
       path: "/dashboard",
     },
     {
-      label: "Agenda",
+      label: "Citas",
       icon: CalendarDays,
-      path: "/agenda",
+      path: "/citas",
     },
     {
-      label: "Citas",
+      label: "Agenda",
       icon: ClipboardList,
-      path: "/citas",
+      path: "/agenda",
     },
     {
       label: "Pacientes",
