@@ -47,9 +47,17 @@ const ServiciosView = lazy(() =>
 );
 
 const CitasView = lazy(() =>
-  import("../features/citas/CitasView").then(
+  import("../features/citas/CitasView.tsx").then(
     (module) => ({
       default: module.CitasView,
+    }),
+  ),
+);
+
+const UsuariosView = lazy(() =>
+  import("../features/usuarios/UsuariosView").then(
+    (module) => ({
+      default: module.UsuariosView,
     }),
   ),
 );
@@ -133,6 +141,15 @@ export default function AppRoutes() {
             element={
               <DashboardLayout>
                 <CitasView />
+              </DashboardLayout>
+            }
+          />
+
+          <Route
+            path="/usuarios"
+            element={
+              <DashboardLayout>
+                <UsuariosView />
               </DashboardLayout>
             }
           />
