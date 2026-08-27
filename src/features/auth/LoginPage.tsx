@@ -50,8 +50,8 @@ export default function LoginPage() {
             {/* Email Input */}
             <LoginInput
               type="email"
-              name="email"
-              placeholder="Correo electrónico"
+              name="identifier"
+              placeholder="Usuario"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
