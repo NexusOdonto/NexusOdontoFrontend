@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 
 import { cn } from "../../../utils/cn";
+
 import type {
   EstadoUsuario,
   RolUsuario,
@@ -53,28 +54,51 @@ function getStatusClasses(
 
 function UsuariosTableSkeleton() {
   return (
-    <div className="divide-y divide-slate-200 dark:divide-slate-800">
-      {Array.from({ length: 5 }).map(
-        (_, index) => (
-          <div
-            key={index}
-            className="grid grid-cols-4 gap-4 px-5 py-5"
-          >
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
+    <>
+      <div className="hidden divide-y divide-slate-200 dark:divide-slate-800 md:block">
+        {Array.from({ length: 5 }).map(
+          (_, index) => (
+            <div
+              key={index}
+              className="grid grid-cols-4 gap-4 px-5 py-5"
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
 
-              <div className="h-4 w-32 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+                <div className="h-4 w-32 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+              </div>
+
+              <div className="h-4 w-40 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+
+              <div className="h-6 w-24 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
+
+              <div className="h-6 w-20 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
             </div>
+          ),
+        )}
+      </div>
 
-            <div className="h-4 w-40 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+      <div className="space-y-3 p-4 md:hidden">
+        {Array.from({ length: 4 }).map(
+          (_, index) => (
+            <div
+              key={index}
+              className="rounded-lg border border-slate-200 p-4 dark:border-slate-800"
+            >
+              <div className="mb-4 flex items-center gap-3">
+                <div className="h-10 w-10 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
 
-            <div className="h-6 w-24 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
+                <div className="h-4 w-32 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+              </div>
 
-            <div className="h-6 w-20 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
-          </div>
-        ),
-      )}
-    </div>
+              <div className="mb-3 h-4 w-48 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+
+              <div className="h-6 w-24 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" />
+            </div>
+          ),
+        )}
+      </div>
+    </>
   );
 }
 
@@ -102,8 +126,7 @@ export function UsuariosTable({
 
         <p className="mt-1 max-w-sm text-sm text-slate-600 dark:text-slate-400">
           No se encontraron usuarios que
-          coincidan con los filtros
-          seleccionados.
+          coincidan con los filtros seleccionados.
         </p>
       </div>
     );
@@ -111,8 +134,8 @@ export function UsuariosTable({
 
   return (
     <div className="w-full">
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[800px] border-collapse">
+      <div className="hidden overflow-x-auto md:block">
+        <table className="w-full border-collapse">
           <thead>
             <tr className="border-y border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/60">
               <th className="px-5 py-3.5 text-left text-xs font-semibold text-slate-600 dark:text-slate-400">
@@ -155,7 +178,9 @@ export function UsuariosTable({
                   <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
                     <Mail size={15} />
 
-                    {usuario.correo}
+                    <span className="break-all">
+                      {usuario.correo}
+                    </span>
                   </div>
                 </td>
 
@@ -194,13 +219,77 @@ export function UsuariosTable({
         </table>
       </div>
 
-      <div className="flex items-center justify-between border-t border-slate-200 px-5 py-4 dark:border-slate-800">
+      <div className="space-y-3 md:hidden">
+        {usuarios.map((usuario) => (
+          <article
+            key={usuario.id}
+            className="rounded-lg border border-slate-200 p-4 dark:border-slate-800"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-500/10 text-primary-500">
+                  <UserRound size={17} />
+                </div>
+
+                <div className="min-w-0">
+                  <h3 className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    {usuario.nombre}
+                  </h3>
+
+                  <div className="mt-1 flex items-start gap-2 text-xs text-slate-600 dark:text-slate-400">
+                    <Mail
+                      size={14}
+                      className="mt-0.5 shrink-0"
+                    />
+
+                    <span className="break-all">
+                      {usuario.correo}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <span
+                className={getStatusClasses(
+                  usuario.estado,
+                )}
+              >
+                <span
+                  className={cn(
+                    "h-1.5 w-1.5 rounded-full",
+                    usuario.estado === "Activo"
+                      ? "bg-success"
+                      : "bg-danger",
+                  )}
+                />
+
+                {usuario.estado}
+              </span>
+            </div>
+
+            <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-3 dark:border-slate-800">
+              <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                Rol
+              </span>
+
+              <span
+                className={getRoleClasses(
+                  usuario.rol,
+                )}
+              >
+                {usuario.rol}
+              </span>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <div className="mt-4 flex flex-col gap-3 border-t border-slate-200 pt-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs text-slate-600 dark:text-slate-400">
-          Página {currentPage} de{" "}
-          {totalPages}
+          Página {currentPage} de {totalPages}
         </p>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-2 sm:justify-end">
           <button
             type="button"
             disabled={currentPage === 1}
