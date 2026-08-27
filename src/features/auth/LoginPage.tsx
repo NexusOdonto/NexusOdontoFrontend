@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LoginInput } from './components/LoginInput';
 import { LoginButton } from './components/LoginButton';
-import { useTheme } from '../../hooks/useTheme';
+import { useTheme } from '../../context/ThemeContext';
 import fondoLoginLight from '../../assets/fondo-Login-ligh.jpg';
 import fondoLoginDark from '../../assets/fondoLogin.jpg';
 
