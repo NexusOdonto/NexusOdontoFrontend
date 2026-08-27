@@ -1,3 +1,4 @@
+import { Suspense, lazy } from "react";
 import {
   BrowserRouter,
   Navigate,
@@ -5,11 +6,22 @@ import {
   Routes,
 } from "react-router-dom";
 
-import LoginPage from "../features/auth/LoginPage";
-import { DashboardLayout } from "../layouts/DashboardLayout.tsx";
-import { PacientesView } from "../features/pacientes/PacientesView.tsx";
-import { PacienteRegistroView } from "../features/pacientes/PacienteRegistroView.tsx";
-import { ServiciosView } from "../features/servicios/ServiciosView.tsx";
+// Helper function para lazy loading de named exports
+const lazyImport = <T extends Record<string, any>, K extends keyof T>(
+  factory: () => Promise<T>,
+  key: K
+) =>
+  lazy(() =>
+    factory().then((module) => ({
+      default: module[key],
+    }))
+  );
+
+const LoginPage = lazy(() => import("../features/auth/LoginPage"));
+const DashboardLayout = lazyImport(() => import("../layouts/DashboardLayout"), "DashboardLayout");
+const PacientesView = lazyImport(() => import("../features/pacientes/PacientesView"), "PacientesView");
+const PacienteRegistroView = lazyImport(() => import("../features/pacientes/PacienteRegistroView"), "PacienteRegistroView");
+const ServiciosView = lazyImport(() => import("../features/servicios/ServiciosView"), "ServiciosView");
 
 function DashboardPage() {
   return (
@@ -25,63 +37,77 @@ function DashboardPage() {
   );
 }
 
+// Componente de carga para Suspense
+function LoadingFallback() {
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
+      <div className="text-center">
+        <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-slate-600 dark:text-slate-400">Cargando...</p>
+      </div>
+    </div>
+  );
+}
+
 export default function AppRoutes() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        
-        <Route
-          path="/dashboard"
-          element={
-            <DashboardLayout>
-              <DashboardPage />
-            </DashboardLayout>
-          }
-        />
+      <Suspense fallback={<LoadingFallback />}>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          
+          <Route
+            path="/dashboard"
+            element={
+              <DashboardLayout>
+                <DashboardPage />
+              </DashboardLayout>
+            }
+          />
 
-        <Route
-          path="/pacientes"
-          element={
-            <DashboardLayout>
-              <PacientesView />
-            </DashboardLayout>
-          }
-        />
+          <Route
+            path="/pacientes"
+            element={
+              <DashboardLayout>
+                <PacientesView />
+              </DashboardLayout>
+            }
+          />
 
-        <Route
-          path="/pacientes/nuevo"
-          element={
-            <DashboardLayout>
-              <PacienteRegistroView />
-            </DashboardLayout>
-          }
-        />
+          <Route
+            path="/pacientes/nuevo"
+            element={
+              <DashboardLayout>
+                <PacienteRegistroView />
+              </DashboardLayout>
+            }
+          />
 
-        <Route
-          path="/servicios"
-          element={
-            <DashboardLayout>
-              <ServiciosView />
-            </DashboardLayout>
-          }
-        />
+          <Route
+            path="/servicios"
+            element={
+              <DashboardLayout>
+                <ServiciosView />
+              </DashboardLayout>
+            }
+          />
 
-        <Route
-          path="/"
-          element={<Navigate to="/login" replace />}
-        />
+          <Route
+            path="/"
+            element={<Navigate to="/login" replace />}
+          />
 
-        <Route
-          path="*"
-          element={
-            <Navigate
-              to="/dashboard"
-              replace
-            />
-          }
-        />
-      </Routes>
+          <Route
+            path="*"
+            element={
+              <Navigate
+                to="/dashboard"
+                replace
+              />
+            }
+          />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }
