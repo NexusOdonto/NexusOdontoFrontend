@@ -1,10 +1,11 @@
 import { Suspense, lazy } from "react";
 import {
-  BrowserRouter,
   Navigate,
   Route,
   Routes,
 } from "react-router-dom";
+
+import ProtectedRoute from "./ProtectedRoute";
 
 const LoginPage = lazy(() =>
   import("../features/auth/LoginPage").then(
@@ -92,14 +93,14 @@ function LoadingFallback() {
 
 export default function AppRoutes() {
   return (
-    <BrowserRouter>
-      <Suspense fallback={<LoadingFallback />}>
-        <Routes>
-          <Route
-            path="/login"
-            element={<LoginPage />}
-          />
+    <Suspense fallback={<LoadingFallback />}>
+      <Routes>
+        <Route
+          path="/login"
+          element={<LoginPage />}
+        />
 
+        <Route element={<ProtectedRoute />}>
           <Route
             path="/dashboard"
             element={
@@ -153,28 +154,28 @@ export default function AppRoutes() {
               </DashboardLayout>
             }
           />
+        </Route>
 
-          <Route
-            path="/"
-            element={
-              <Navigate
-                to="/login"
-                replace
-              />
-            }
-          />
+        <Route
+          path="/"
+          element={
+            <Navigate
+              to="/login"
+              replace
+            />
+          }
+        />
 
-          <Route
-            path="*"
-            element={
-              <Navigate
-                to="/dashboard"
-                replace
-              />
-            }
-          />
-        </Routes>
-      </Suspense>
-    </BrowserRouter>
+        <Route
+          path="*"
+          element={
+            <Navigate
+              to="/dashboard"
+              replace
+            />
+          }
+        />
+      </Routes>
+    </Suspense>
   );
 }

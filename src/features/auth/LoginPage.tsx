@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Key, X } from 'lucide-react';
 import { LoginInput } from './components/LoginInput';
 import { LoginButton } from './components/LoginButton';
 import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from './AuthContext';
 import fondoLoginLight from '../../assets/fondo-Login-ligh.webp';
 import fondoLoginDark from '../../assets/fondoLogin.webp';
 
@@ -10,15 +11,20 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const navigate = useNavigate();
+  const [error, setError] = useState('');
+  const [showCredentials, setShowCredentials] = useState(false);
   const { theme } = useTheme();
+  const { login, isLoading } = useAuth();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Login attempt:', { email, password });
-    // Aquí iría la lógica de autenticación
-    // Simulamos inicio de sesión exitoso y redirigimos al Dashboard
-    navigate('/dashboard');
+    setError('');
+    
+    const success = await login(email, password);
+    
+    if (!success) {
+      setError('Credenciales incorrectas. Por favor intenta nuevamente.');
+    }
   };
 
   const backgroundImage = theme === 'dark' ? fondoLoginDark : fondoLoginLight;
@@ -47,11 +53,17 @@ export default function LoginPage() {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
+            {error && (
+              <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-300 text-sm text-center">
+                {error}
+              </div>
+            )}
+
             {/* Email Input */}
             <LoginInput
-              type="email"
+              type="text"
               name="identifier"
-              placeholder="Usuario"
+              placeholder="Cédula o Correo Electrónico"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
@@ -76,8 +88,8 @@ export default function LoginPage() {
             </button>
 
             {/* Submit Button */}
-            <LoginButton type="submit">
-              Iniciar Sesión
+            <LoginButton type="submit" disabled={isLoading}>
+              {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
             </LoginButton>
           </form>
 
@@ -93,6 +105,55 @@ export default function LoginPage() {
               </button>
             </p>
           </div>
+
+          {/* Credentials Toggle Button */}
+          <button
+            type="button"
+            onClick={() => setShowCredentials(!showCredentials)}
+            className="mt-4 text-xs text-slate-400 hover:text-teal-300 transition-colors flex items-center justify-center gap-2 bg-transparent border-none w-full"
+          >
+            <Key size={14} />
+            {showCredentials ? 'Ocultar credenciales de prueba' : 'Mostrar credenciales de prueba'}
+          </button>
+
+          {/* Credentials Panel */}
+          {showCredentials && (
+            <div className="mt-4 p-4 bg-slate-900/60 backdrop-blur-sm rounded-xl border border-slate-700/50">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-teal-300">Credenciales de Prueba</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowCredentials(false)}
+                  className="text-slate-400 hover:text-white transition-colors bg-transparent border-none"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              
+              <div className="space-y-3 text-xs">
+                <div className="p-2 bg-slate-800/50 rounded-lg">
+                  <div className="text-slate-300 font-medium">🔐 ADMINISTRADOR</div>
+                  <div className="text-slate-400 mt-1">Email: admin@nexusodonto.com</div>
+                  <div className="text-slate-400">Cédula: 123456789</div>
+                  <div className="text-slate-400">Contraseña: admin123</div>
+                </div>
+                
+                <div className="p-2 bg-slate-800/50 rounded-lg">
+                  <div className="text-slate-300 font-medium">👨‍⚕️ ODONTÓLOGO</div>
+                  <div className="text-slate-400 mt-1">Email: doctor@nexusodonto.com</div>
+                  <div className="text-slate-400">Cédula: 987654321</div>
+                  <div className="text-slate-400">Contraseña: doctor123</div>
+                </div>
+                
+                <div className="p-2 bg-slate-800/50 rounded-lg">
+                  <div className="text-slate-300 font-medium">👩‍💼 RECEPCIONISTA</div>
+                  <div className="text-slate-400 mt-1">Email: recepcion@nexusodonto.com</div>
+                  <div className="text-slate-400">Cédula: 456789123</div>
+                  <div className="text-slate-400">Contraseña: recepcion123</div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

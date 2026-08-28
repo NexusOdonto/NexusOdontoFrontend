@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Sidebar } from "../components/layout/Sidebar.tsx";
 import { PageHeader } from "../components/layout/PageHeader.tsx";
 import { useTheme } from "../context/ThemeContext";
+import { useAuth } from "../features/auth/AuthContext";
+import { RoleSwitcher } from "../features/auth/components/RoleSwitcher";
 
 import fondoLight from "../assets/fondo-ligh.webp";
 import fondoDark from "../assets/fondo-darck.webp";
@@ -19,11 +21,14 @@ export function DashboardLayout({
     useState(false);
 
   const { theme } = useTheme();
+  const { user } = useAuth();
 
   const backgroundImage =
     theme === "dark"
       ? fondoDark
       : fondoLight;
+
+  const userName = user ? `${user.nombre} ${user.apellido}` : "Usuario";
 
   return (
     <div className="flex min-h-screen min-w-0 max-w-full overflow-x-hidden text-slate-900 dark:text-slate-100">
@@ -36,7 +41,7 @@ export function DashboardLayout({
 
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
         <PageHeader
-          userName="Brayan"
+          userName={userName}
           mobileOpen={mobileOpen}
           onMenuClick={() =>
             setMobileOpen(
@@ -56,6 +61,8 @@ export function DashboardLayout({
           </div>
         </main>
       </div>
+
+      <RoleSwitcher />
     </div>
   );
 }

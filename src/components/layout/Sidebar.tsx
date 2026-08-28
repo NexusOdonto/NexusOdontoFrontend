@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../features/auth/AuthContext";
+import { ROLE_PERMISSIONS, type Role } from "../../features/auth/mocks/users.mock";
 import logo from "../../assets/nexus-odonto-logo.webp";
 
 interface SidebarProps {
@@ -23,6 +25,7 @@ export function Sidebar({
   onMobileClose,
 }: SidebarProps) {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
 
   const menuItems = [
     {
@@ -77,8 +80,18 @@ export function Sidebar({
     },
   ];
 
+  // Filter menu items based on user's role permissions
+  const filteredMenuItems = user 
+    ? menuItems.filter(item => ROLE_PERMISSIONS[user.rol as Role].includes(item.path))
+    : [];
+
   const handleNavigation = (path: string) => {
     navigate(path);
+    onMobileClose();
+  };
+
+  const handleLogout = () => {
+    logout();
     onMobileClose();
   };
 
@@ -114,7 +127,7 @@ export function Sidebar({
 
         {/* Navigation */}
         <nav className="flex-1 flex flex-col gap-1 p-4 overflow-y-auto">
-          {menuItems.map((item) => {
+          {filteredMenuItems.map((item) => {
             const Icon = item.icon;
 
             return (
@@ -148,9 +161,7 @@ export function Sidebar({
           <button
             type="button"
             className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white transition-colors"
-            onClick={() =>
-              handleNavigation("/login")
-            }
+            onClick={handleLogout}
           >
             <LogOut size={19} strokeWidth={1.8} />
             <span>Cerrar sesión</span>
