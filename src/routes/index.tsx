@@ -1,10 +1,11 @@
 import { Suspense, lazy } from "react";
 import {
-  BrowserRouter,
   Navigate,
   Route,
   Routes,
 } from "react-router-dom";
+
+import ProtectedRoute from "./ProtectedRoute";
 
 const LoginPage = lazy(() =>
   import("../features/auth/LoginPage").then(
@@ -47,9 +48,17 @@ const ServiciosView = lazy(() =>
 );
 
 const CitasView = lazy(() =>
-  import("../features/citas/CitasView").then(
+  import("../features/citas/CitasView.tsx").then(
     (module) => ({
       default: module.CitasView,
+    }),
+  ),
+);
+
+const UsuariosView = lazy(() =>
+  import("../features/usuarios/UsuariosView").then(
+    (module) => ({
+      default: module.UsuariosView,
     }),
   ),
 );
@@ -84,14 +93,14 @@ function LoadingFallback() {
 
 export default function AppRoutes() {
   return (
-    <BrowserRouter>
-      <Suspense fallback={<LoadingFallback />}>
-        <Routes>
-          <Route
-            path="/login"
-            element={<LoginPage />}
-          />
+    <Suspense fallback={<LoadingFallback />}>
+      <Routes>
+        <Route
+          path="/login"
+          element={<LoginPage />}
+        />
 
+        <Route element={<ProtectedRoute />}>
           <Route
             path="/dashboard"
             element={
@@ -138,26 +147,35 @@ export default function AppRoutes() {
           />
 
           <Route
-            path="/"
+            path="/usuarios"
             element={
-              <Navigate
-                to="/login"
-                replace
-              />
+              <DashboardLayout>
+                <UsuariosView />
+              </DashboardLayout>
             }
           />
+        </Route>
 
-          <Route
-            path="*"
-            element={
-              <Navigate
-                to="/dashboard"
-                replace
-              />
-            }
-          />
-        </Routes>
-      </Suspense>
-    </BrowserRouter>
+        <Route
+          path="/"
+          element={
+            <Navigate
+              to="/login"
+              replace
+            />
+          }
+        />
+
+        <Route
+          path="*"
+          element={
+            <Navigate
+              to="/dashboard"
+              replace
+            />
+          }
+        />
+      </Routes>
+    </Suspense>
   );
 }

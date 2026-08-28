@@ -4,6 +4,9 @@ import { useState } from "react";
 import { Sidebar } from "../components/layout/Sidebar.tsx";
 import { PageHeader } from "../components/layout/PageHeader.tsx";
 import { useTheme } from "../context/ThemeContext";
+import { useAuth } from "../features/auth/AuthContext";
+import { RoleSwitcher } from "../features/auth/components/RoleSwitcher";
+
 import fondoLight from "../assets/fondo-ligh.webp";
 import fondoDark from "../assets/fondo-darck.webp";
 
@@ -14,36 +17,52 @@ interface DashboardLayoutProps {
 export function DashboardLayout({
   children,
 }: DashboardLayoutProps) {
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const { theme } = useTheme();
+  const [mobileOpen, setMobileOpen] =
+    useState(false);
 
-  const backgroundImage = theme === 'dark' ? fondoDark : fondoLight;
+  const { theme } = useTheme();
+  const { user } = useAuth();
+
+  const backgroundImage =
+    theme === "dark"
+      ? fondoDark
+      : fondoLight;
+
+  const userName = user ? `${user.nombre} ${user.apellido}` : "Usuario";
 
   return (
-    <div className="flex min-h-screen text-slate-900 dark:text-slate-100">
+    <div className="flex min-h-screen min-w-0 max-w-full overflow-x-hidden text-slate-900 dark:text-slate-100">
       <Sidebar
         mobileOpen={mobileOpen}
-        onMobileClose={() => setMobileOpen(false)}
+        onMobileClose={() =>
+          setMobileOpen(false)
+        }
       />
 
-      <div className="flex-1 flex flex-col min-h-screen">
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
         <PageHeader
-          userName="Brayan"
+          userName={userName}
           mobileOpen={mobileOpen}
-          onMenuClick={() => setMobileOpen((prev) => !prev)}
+          onMenuClick={() =>
+            setMobileOpen(
+              (prev) => !prev,
+            )
+          }
         />
 
-        <main 
-          className="flex-1 p-6 bg-cover bg-center bg-no-repeat transition-all duration-300"
-          style={{ 
-            backgroundImage: `url(${backgroundImage})` 
+        <main
+          className="min-w-0 flex-1 overflow-x-hidden bg-cover bg-center bg-no-repeat p-3 transition-all duration-300 sm:p-4 md:p-6"
+          style={{
+            backgroundImage: `url(${backgroundImage})`,
           }}
         >
-          <div className="bg-white/70 dark:bg-slate-900/60 backdrop-blur-md p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div className="box-border min-w-0 max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition-colors duration-300 sm:p-4 md:p-6 dark:border-slate-800 dark:bg-slate-900">
             {children}
           </div>
         </main>
       </div>
+
+      <RoleSwitcher />
     </div>
   );
 }
