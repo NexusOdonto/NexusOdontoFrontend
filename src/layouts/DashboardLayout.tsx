@@ -14,40 +14,27 @@ interface DashboardLayoutProps {
   children: ReactNode;
 }
 
-export function DashboardLayout({
-  children,
-}: DashboardLayoutProps) {
-  const [mobileOpen, setMobileOpen] =
-    useState(false);
+export function DashboardLayout({ children }: DashboardLayoutProps) {
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const { theme } = useTheme();
   const { user } = useAuth();
 
-  const backgroundImage =
-    theme === "dark"
-      ? fondoDark
-      : fondoLight;
-
+  const backgroundImage = theme === "dark" ? fondoDark : fondoLight;
   const userName = user ? `${user.nombre} ${user.apellido}` : "Usuario";
 
   return (
     <div className="flex min-h-screen min-w-0 max-w-full overflow-x-hidden text-slate-900 dark:text-slate-100">
       <Sidebar
         mobileOpen={mobileOpen}
-        onMobileClose={() =>
-          setMobileOpen(false)
-        }
+        onMobileClose={() => setMobileOpen(false)}
       />
 
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
         <PageHeader
           userName={userName}
           mobileOpen={mobileOpen}
-          onMenuClick={() =>
-            setMobileOpen(
-              (prev) => !prev,
-            )
-          }
+          onMenuClick={() => setMobileOpen((prev) => !prev)}
         />
 
         <main

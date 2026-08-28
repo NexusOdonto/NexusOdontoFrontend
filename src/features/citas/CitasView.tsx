@@ -144,8 +144,8 @@ export function CitasView() {
       citas.length > 0
         ? Math.max(
             ...citas.map(
-              (cita) => cita.id,
-            ),
+              (cita) => cita.id
+            )
           ) + 1
         : 1;
 
@@ -181,145 +181,141 @@ export function CitasView() {
   };
 
   return (
-    <div className="min-h-full w-full bg-slate-50 p-6 transition-colors duration-300 dark:bg-slate-950">
-      <div className="mx-auto w-full max-w-[1600px]">
-        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition-colors duration-300 dark:border-slate-800 dark:bg-slate-900">
-          <header className="mb-7 flex items-start justify-between gap-6">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-                Citas
-              </h1>
+    <>
+      {/* CONTENIDO PRINCIPAL SIN CUADRO EXTRA */}
+      <div className="w-full">
+        <header className="mb-7 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+              Citas
+            </h1>
 
-              <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-                Consulta y gestiona todas las
-                citas del consultorio.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() =>
-                setShowForm(true)
-              }
-              className="inline-flex h-11 shrink-0 items-center gap-2 rounded-lg bg-primary-500 px-5 text-sm font-semibold text-white transition-colors duration-200 hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500/30"
-            >
-              <Plus size={18} />
-              Nueva cita
-            </button>
-          </header>
-
-          <section className="mb-7 grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_220px_220px]">
-            <div className="flex h-12 items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 transition-colors duration-200 focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800">
-              <Search
-                size={18}
-                className="shrink-0 text-slate-500 dark:text-slate-400"
-              />
-
-              <input
-                type="search"
-                value={search}
-                onChange={(event) =>
-                  setSearch(
-                    event.target.value,
-                  )
-                }
-                placeholder="Buscar paciente..."
-                className="h-full w-full border-0 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-500 dark:text-slate-100 dark:placeholder:text-slate-400"
-              />
-            </div>
-
-            <div className="relative">
-              <CalendarDays
-                size={17}
-                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400"
-              />
-
-              <input
-                type="date"
-                value={fecha}
-                onChange={(event) =>
-                  setFecha(
-                    event.target.value,
-                  )
-                }
-                className="h-12 w-full rounded-lg border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm text-slate-900 outline-none transition-colors duration-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              />
-            </div>
-
-            <select
-              value={estado}
-              onChange={(event) =>
-                setEstado(
-                  event.target
-                    .value as
-                    | "Todos"
-                    | EstadoCita,
-                )
-              }
-              className="h-12 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition-colors duration-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-            >
-              <option value="Todos">
-                Todos los estados
-              </option>
-
-              <option value="Agendada">
-                Agendada
-              </option>
-
-              <option value="Confirmada">
-                Confirmada
-              </option>
-
-              <option value="Atendida">
-                Atendida
-              </option>
-
-              <option value="Cancelada">
-                Cancelada
-              </option>
-            </select>
-          </section>
-
-          <div className="mb-5 flex items-center justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                Citas programadas
-              </h2>
-
-              <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-                {citasFiltradas.length}{" "}
-                {citasFiltradas.length === 1
-                  ? "cita encontrada"
-                  : "citas encontradas"}
-              </p>
-            </div>
-
-            {(search ||
-              fecha ||
-              estado !== "Todos") && (
-              <button
-                type="button"
-                onClick={limpiarFiltros}
-                className="text-sm font-medium text-primary-500 transition-colors hover:text-primary-600"
-              >
-                Limpiar filtros
-              </button>
-            )}
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+              Consulta y gestiona todas las citas del consultorio.
+            </p>
           </div>
 
-          <CitasTable
-            citas={citasFiltradas}
-            loading={loading}
-          />
+          <button
+            type="button"
+            onClick={() => setShowForm(true)}
+            className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-primary-500 px-5 text-sm font-semibold text-white transition-colors duration-200 hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500/30"
+          >
+            <Plus size={18} />
+            Nueva cita
+          </button>
+        </header>
+
+        {/* FILTROS */}
+        <section className="mb-7 grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_220px_220px]">
+          {/* BÚSQUEDA */}
+          <div className="flex h-12 items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 transition-colors duration-200 focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800">
+            <Search
+              size={18}
+              className="shrink-0 text-slate-500 dark:text-slate-400"
+            />
+
+            <input
+              type="search"
+              value={search}
+              onChange={(event) =>
+                setSearch(event.target.value)
+              }
+              placeholder="Buscar paciente..."
+              className="h-full w-full border-0 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-500 dark:text-slate-100 dark:placeholder:text-slate-400"
+            />
+          </div>
+
+          {/* FECHA */}
+          <div className="relative">
+            <CalendarDays
+              size={17}
+              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400"
+            />
+
+            <input
+              type="date"
+              value={fecha}
+              onChange={(event) =>
+                setFecha(event.target.value)
+              }
+              className="h-12 w-full rounded-lg border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm text-slate-900 outline-none transition-colors duration-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            />
+          </div>
+
+          {/* ESTADO */}
+          <select
+            value={estado}
+            onChange={(event) =>
+              setEstado(
+                event.target.value as
+                  | "Todos"
+                  | EstadoCita
+              )
+            }
+            className="h-12 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition-colors duration-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          >
+            <option value="Todos">
+              Todos los estados
+            </option>
+
+            <option value="Agendada">
+              Agendada
+            </option>
+
+            <option value="Confirmada">
+              Confirmada
+            </option>
+
+            <option value="Atendida">
+              Atendida
+            </option>
+
+            <option value="Cancelada">
+              Cancelada
+            </option>
+          </select>
+        </section>
+
+        {/* ENCABEZADO DE TABLA */}
+        <div className="mb-5 flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+              Citas programadas
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+              {citasFiltradas.length}{" "}
+              {citasFiltradas.length === 1
+                ? "cita encontrada"
+                : "citas encontradas"}
+            </p>
+          </div>
+
+          {(search ||
+            fecha ||
+            estado !== "Todos") && (
+            <button
+              type="button"
+              onClick={limpiarFiltros}
+              className="text-sm font-medium text-primary-500 transition-colors hover:text-primary-600"
+            >
+              Limpiar filtros
+            </button>
+          )}
         </div>
+
+        {/* TABLA SIN CUADRO EXTRA */}
+        <CitasTable
+          citas={citasFiltradas}
+          loading={loading}
+        />
       </div>
 
+      {/* MODAL NUEVA CITA */}
       {showForm && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 px-4 transition-colors duration-300 dark:bg-slate-950/60"
-          onClick={() =>
-            setShowForm(false)
-          }
+          onClick={() => setShowForm(false)}
         >
           <div
             className="w-full max-w-xl rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900"
@@ -351,6 +347,7 @@ export function CitasView() {
             </div>
 
             <div className="grid gap-4 p-6 md:grid-cols-2">
+              {/* PACIENTE */}
               <div className="md:col-span-2">
                 <label
                   htmlFor="paciente"
@@ -365,7 +362,7 @@ export function CitasView() {
                   value={nuevoPaciente}
                   onChange={(event) =>
                     setNuevoPaciente(
-                      event.target.value,
+                      event.target.value
                     )
                   }
                   placeholder="Nombre del paciente"
@@ -373,6 +370,7 @@ export function CitasView() {
                 />
               </div>
 
+              {/* PROFESIONAL */}
               <div>
                 <label
                   htmlFor="profesional"
@@ -387,7 +385,7 @@ export function CitasView() {
                   value={nuevoProfesional}
                   onChange={(event) =>
                     setNuevoProfesional(
-                      event.target.value,
+                      event.target.value
                     )
                   }
                   placeholder="Profesional"
@@ -395,6 +393,7 @@ export function CitasView() {
                 />
               </div>
 
+              {/* SERVICIO */}
               <div>
                 <label
                   htmlFor="servicio"
@@ -409,7 +408,7 @@ export function CitasView() {
                   value={nuevoServicio}
                   onChange={(event) =>
                     setNuevoServicio(
-                      event.target.value,
+                      event.target.value
                     )
                   }
                   placeholder="Servicio"
@@ -417,6 +416,7 @@ export function CitasView() {
                 />
               </div>
 
+              {/* FECHA */}
               <div>
                 <label
                   htmlFor="fecha-cita"
@@ -431,13 +431,14 @@ export function CitasView() {
                   value={nuevaFecha}
                   onChange={(event) =>
                     setNuevaFecha(
-                      event.target.value,
+                      event.target.value
                     )
                   }
                   className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none transition-colors focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 />
               </div>
 
+              {/* HORA */}
               <div>
                 <label
                   htmlFor="hora-cita"
@@ -452,13 +453,14 @@ export function CitasView() {
                   value={nuevaHora}
                   onChange={(event) =>
                     setNuevaHora(
-                      event.target.value,
+                      event.target.value
                     )
                   }
                   className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none transition-colors focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 />
               </div>
 
+              {/* ESTADO */}
               <div>
                 <label
                   htmlFor="estado-cita"
@@ -472,8 +474,7 @@ export function CitasView() {
                   value={nuevoEstado}
                   onChange={(event) =>
                     setNuevoEstado(
-                      event.target
-                        .value as EstadoCita,
+                      event.target.value as EstadoCita
                     )
                   }
                   className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none transition-colors focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
@@ -497,6 +498,7 @@ export function CitasView() {
               </div>
             </div>
 
+            {/* BOTONES */}
             <div className="flex justify-end gap-3 border-t border-slate-200 px-6 py-4 dark:border-slate-800">
               <button
                 type="button"
@@ -519,6 +521,6 @@ export function CitasView() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
