@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { useTheme } from "../../context/ThemeContext";
+import { useAuth } from "../../features/auth/AuthContext";
 
 interface PageHeaderProps {
   userName?: string;
@@ -26,6 +27,10 @@ export function PageHeader({
   mobileOpen = false,
 }: PageHeaderProps) {
   const { theme, toggleTheme } = useTheme();
+  const { user } = useAuth();
+
+  const displayName = user ? `${user.nombre} ${user.apellido}` : userName;
+  const displayImage = user?.avatar || userImage;
 
   return (
     <header className="h-16 bg-white/80 dark:bg-slate-950/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30">
@@ -80,10 +85,10 @@ export function PageHeader({
         </button>
 
         <div className="flex items-center gap-3 pl-4 border-l border-slate-200 dark:border-slate-800">
-          {userImage ? (
+          {displayImage ? (
             <img
-              src={userImage}
-              alt={userName}
+              src={displayImage}
+              alt={displayName}
               className="w-8 h-8 rounded-full object-cover"
             />
           ) : (
@@ -93,7 +98,7 @@ export function PageHeader({
           )}
 
           <span className="text-sm font-medium text-slate-800 dark:text-slate-100 hidden sm:block">
-            {userName}
+            {displayName}
           </span>
         </div>
       </div>

@@ -2,7 +2,7 @@ import React from 'react';
 import { User, Lock, Eye, EyeOff } from 'lucide-react';
 
 interface LoginInputProps {
-  type: 'email' | 'password';
+  type: 'text' | 'email' | 'password';
   placeholder: string;
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -20,7 +20,7 @@ export const LoginInput: React.FC<LoginInputProps> = ({
   showPassword,
   onTogglePassword,
 }) => {
-  const icon = type === 'email' ? <User className="w-5 h-5 text-slate-300" /> : <Lock className="w-5 h-5 text-slate-300" />;
+  const icon = type === 'email' || type === 'text' ? <User className="w-5 h-5 text-slate-300" /> : <Lock className="w-5 h-5 text-slate-300" />;
 
   return (
     <div className="relative">
