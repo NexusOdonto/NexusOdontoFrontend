@@ -10,11 +10,9 @@ const LoginPage = lazy(() =>
 );
 
 const RegisterPage = lazy(() =>
-  import("../features/auth/RegisterPage").then(
-    (module) => ({
-      default: module.default,
-    }),
-  ),
+  import("../features/auth/RegisterPage").then((module) => ({
+    default: module.default,
+  })),
 );
 
 const DashboardLayout = lazy(() =>
@@ -59,30 +57,23 @@ const OdontogramaUI = lazy(() =>
   })),
 );
 
-const PerfilView = lazy(
-  () => import("../features/perfil/PerfilView"),
+const PerfilView = lazy(() =>
+  import("../features/perfil/PerfilView").then((module) => ({
+    default: module.default,
+  })),
 );
 
-function DashboardPage() {
-  return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-        Dashboard
-      </h1>
-
-      <p className="mt-2 text-slate-600 dark:text-slate-400">
-        Vista de prueba del Dashboard.
-      </p>
-    </div>
-  );
-}
+const DashboardPage = lazy(() =>
+  import("../features/dashboard/DashboardPage").then((module) => ({
+    default: module.default,
+  })),
+);
 
 function LoadingFallback() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
       <div className="text-center">
         <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-primary-500 border-t-transparent" />
-
         <p className="text-sm text-slate-600 dark:text-slate-400">
           Cargando...
         </p>
@@ -95,22 +86,35 @@ export default function AppRoutes() {
   return (
     <Suspense fallback={<LoadingFallback />}>
       <Routes>
-        <Route
-          path="/login"
-          element={<LoginPage />}
-        />
+        {/* Rutas Públicas */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
 
-        <Route
-          path="/register"
-          element={<RegisterPage />}
-        />
-
+        {/* Rutas Protegidas por RBAC */}
         <Route element={<ProtectedRoute />}>
           <Route
             path="/dashboard"
             element={
               <DashboardLayout>
                 <DashboardPage />
+              </DashboardLayout>
+            }
+          />
+
+          <Route
+            path="/citas"
+            element={
+              <DashboardLayout>
+                <CitasView />
+              </DashboardLayout>
+            }
+          />
+
+          <Route
+            path="/agenda"
+            element={
+              <DashboardLayout>
+                <CitasView />
               </DashboardLayout>
             }
           />
@@ -134,6 +138,15 @@ export default function AppRoutes() {
           />
 
           <Route
+            path="/profesionales"
+            element={
+              <DashboardLayout>
+                <UsuariosView />
+              </DashboardLayout>
+            }
+          />
+
+          <Route
             path="/servicios"
             element={
               <DashboardLayout>
@@ -143,16 +156,25 @@ export default function AppRoutes() {
           />
 
           <Route
-            path="/citas"
+            path="/historia-clinica"
             element={
               <DashboardLayout>
-                <CitasView />
+                <PacientesView />
               </DashboardLayout>
             }
           />
 
           <Route
             path="/usuarios"
+            element={
+              <DashboardLayout>
+                <UsuariosView />
+              </DashboardLayout>
+            }
+          />
+
+          <Route
+            path="/roles-permisos"
             element={
               <DashboardLayout>
                 <UsuariosView />
@@ -170,6 +192,15 @@ export default function AppRoutes() {
           />
 
           <Route
+            path="/configuracion"
+            element={
+              <DashboardLayout>
+                <ServiciosView />
+              </DashboardLayout>
+            }
+          />
+
+          <Route
             path="/perfil"
             element={
               <DashboardLayout>
@@ -179,25 +210,8 @@ export default function AppRoutes() {
           />
         </Route>
 
-        <Route
-          path="/"
-          element={
-            <Navigate
-              to="/login"
-              replace
-            />
-          }
-        />
-
-        <Route
-          path="*"
-          element={
-            <Navigate
-              to="/dashboard"
-              replace
-            />
-          }
-        />
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </Suspense>
   );

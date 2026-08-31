@@ -7,16 +7,16 @@ import {
   FileText,
   ShieldCheck,
   Settings,
-  LogOut,
   Smile,
   ChevronLeft,
   ChevronRight,
+  UserCircle,
 } from "lucide-react";
 
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../features/auth/AuthContext";
-import { hasRouteAccess } from "../../utils/routePermissions";
+import { hasRouteAccess, getUserRole } from "../../utils/routePermissions";
 import logo from "../../assets/nexus-odonto-logo.webp";
 
 interface SidebarProps {
@@ -29,8 +29,12 @@ export function Sidebar({
   onMobileClose,
 }: SidebarProps) {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const location = useLocation();
+  const { user } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(true);
+
+  const role = getUserRole(user);
+  const isPaciente = role === "PACIENTE";
 
   const menuItems = [
     {
@@ -39,7 +43,7 @@ export function Sidebar({
       path: "/dashboard",
     },
     {
-      label: "Citas",
+      label: isPaciente ? "Mis Citas" : "Citas",
       icon: CalendarDays,
       path: "/citas",
     },
@@ -88,20 +92,20 @@ export function Sidebar({
       icon: Settings,
       path: "/configuracion",
     },
+    {
+      label: "Mi Perfil",
+      icon: UserCircle,
+      path: "/perfil",
+    },
   ];
 
-  // Filtrar elementos del menú según los permisos y rol del usuario
+  // Filtrar estrictamente los elementos del menú según el rol del usuario
   const filteredMenuItems = user 
     ? menuItems.filter(item => hasRouteAccess(user, item.path))
     : [];
 
   const handleNavigation = (path: string) => {
     navigate(path);
-    onMobileClose();
-  };
-
-  const handleLogout = async () => {
-    await logout();
     onMobileClose();
   };
 
@@ -144,66 +148,42 @@ export function Sidebar({
           <button
             type="button"
             onClick={toggleCollapse}
-            className="hidden lg:flex bg-transparent hover:bg-slate-800/50 text-slate-400 hover:text-white rounded-lg p-1 transition-colors border-none outline-none focus:outline-none"
-            title={isCollapsed ? "Expandir sidebar" : "Colapsar sidebar"}
+            className="hidden lg:flex p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 transition-colors cursor-pointer"
+            aria-label={isCollapsed ? "Expandir menú" : "Colapsar menú"}
           >
-            {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+            {isCollapsed ? (
+              <ChevronRight size={18} />
+            ) : (
+              <ChevronLeft size={18} />
+            )}
           </button>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 flex flex-col gap-1 p-4 overflow-y-auto">
+        {/* Navigation Section */}
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {filteredMenuItems.map((item) => {
             const Icon = item.icon;
-
+            const isActive = location.pathname === item.path;
             return (
               <button
                 key={item.path}
                 type="button"
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white transition-colors relative group ${
-                  isCollapsed ? "justify-center" : ""
-                }`}
                 onClick={() => handleNavigation(item.path)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-left font-medium cursor-pointer ${
+                  isActive
+                    ? "bg-primary-500/10 text-primary-600 dark:text-primary-400 font-semibold"
+                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200"
+                } ${isCollapsed ? "justify-center" : ""}`}
+                title={isCollapsed ? item.label : undefined}
               >
-                <Icon size={19} strokeWidth={1.8} className="flex-shrink-0" />
+                <Icon size={20} className={isActive ? "text-primary-500" : "flex-shrink-0"} />
                 {!isCollapsed && (
-                  <span className="whitespace-nowrap">
-                    {item.label}
-                  </span>
-                )}
-                {/* Tooltip for collapsed state */}
-                {isCollapsed && (
-                  <div className="absolute left-full ml-2 px-2 py-1 bg-slate-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
-                    {item.label}
-                  </div>
+                  <span className="truncate text-sm">{item.label}</span>
                 )}
               </button>
             );
           })}
         </nav>
-
-        {/* Footer */}
-        <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex flex-col gap-1">
-          <button
-            type="button"
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white transition-colors relative group ${
-              isCollapsed ? "justify-center" : ""
-            }`}
-            onClick={handleLogout}
-          >
-            <LogOut size={19} strokeWidth={1.8} className="flex-shrink-0" />
-            {!isCollapsed && (
-              <span className="whitespace-nowrap">
-                Cerrar sesión
-              </span>
-            )}
-            {isCollapsed && (
-              <div className="absolute left-full ml-2 px-2 py-1 bg-slate-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
-                Cerrar sesión
-              </div>
-            )}
-          </button>
-        </div>
       </aside>
     </>
   );

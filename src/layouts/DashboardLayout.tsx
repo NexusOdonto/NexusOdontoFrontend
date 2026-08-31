@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import { Sidebar } from "../components/layout/Sidebar.tsx";
 import { PageHeader } from "../components/layout/PageHeader.tsx";
+import ChatBotWidget from "../components/chatbot/ChatBotWidget.tsx";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../features/auth/AuthContext";
 
@@ -27,7 +28,7 @@ export function DashboardLayout({
   const userName = user?.name || "Usuario";
 
   return (
-    <div className="flex min-h-screen min-w-0 max-w-full overflow-x-hidden text-slate-900 dark:text-slate-100">
+    <div className="flex min-h-screen min-w-0 max-w-full overflow-x-hidden text-slate-900 dark:text-slate-100 relative">
       <Sidebar
         mobileOpen={mobileOpen}
         onMobileClose={() => setMobileOpen(false)}
@@ -53,6 +54,9 @@ export function DashboardLayout({
           </div>
         </main>
       </div>
+
+      {/* ASISTENTE VIRTUAL FLOTANTE */}
+      <ChatBotWidget />
     </div>
   );
 }

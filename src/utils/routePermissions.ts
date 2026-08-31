@@ -63,58 +63,55 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
   "/usuarios": "USERS:VIEW",
   "/roles-permisos": "ROLES:VIEW",
   "/configuracion": "CATALOGS:VIEW",
+  "/perfil": "PROFILE:VIEW",
 };
 
 /**
- * Valida si un usuario tiene acceso a una ruta específica.
+ * Obtiene el rol canónico del usuario
+ */
+export function getUserRole(user: { roleIds?: string[]; rol?: string } | null): SystemRole {
+  if (!user) return "PACIENTE";
+  const roleName = (user.rol || "").toUpperCase();
+  if (roleName === "ADMINISTRADOR" || roleName === "ADMIN") return "ADMINISTRADOR";
+  if (roleName === "ODONTOLOGO" || roleName === "DENTIST") return "ODONTOLOGO";
+  if (roleName === "RECEPCIONISTA" || roleName === "RECEPTIONIST") return "RECEPCIONISTA";
+  if (roleName === "PACIENTE" || roleName === "PATIENT") return "PACIENTE";
+
+  const roleIds = user.roleIds || [];
+  for (const [key, guid] of Object.entries(ROLE_GUIDS)) {
+    if (roleIds.some((r) => r.toLowerCase() === guid.toLowerCase() || r.toUpperCase() === key)) {
+      return key as SystemRole;
+    }
+  }
+
+  return "PACIENTE";
+}
+
+/**
+ * Valida de forma estricta si un usuario tiene acceso a una ruta específica.
  * El dashboard y perfil siempre son accesibles para todo usuario autenticado.
  */
 export function hasRouteAccess(
-  user: { roleIds?: string[]; permissions?: string[] } | null,
+  user: { roleIds?: string[]; permissions?: string[]; rol?: string } | null,
   path: string
 ): boolean {
   if (!user) return false;
 
+  // Normalizar ruta
+  const cleanPath = path.split("?")[0].replace(/\/$/, "") || "/";
+
   // /dashboard, /perfil y / siempre son accesibles para cualquier usuario autenticado
-  if (path === "/dashboard" || path === "/perfil" || path === "/") {
+  if (cleanPath === "/dashboard" || cleanPath === "/perfil" || cleanPath === "/") {
     return true;
   }
 
-  const roleIds = user.roleIds || [];
-  const permissions = user.permissions || [];
+  const role = getUserRole(user);
 
-  // Si tiene permiso administrativo total (USERS:VIEW o rol ADMINISTRADOR), acceso completo
-  const isAdmin =
-    roleIds.some(
-      (r) =>
-        r.toUpperCase() === "ADMINISTRADOR" ||
-        r.toUpperCase() === "ADMIN" ||
-        r.toLowerCase() === ROLE_GUIDS.ADMINISTRADOR.toLowerCase()
-    ) || permissions.includes("USERS:VIEW");
-
-  if (isAdmin) {
+  // Si es ADMINISTRADOR, acceso total
+  if (role === "ADMINISTRADOR") {
     return true;
   }
 
-  // 1. Validar coincidencia con las rutas permitidas del Rol
-  for (const [roleKey, allowedRoutes] of Object.entries(ROLE_ALLOWED_ROUTES)) {
-    const roleGuid = (ROLE_GUIDS as Record<string, string>)[roleKey];
-    const userHasRole = roleIds.some(
-      (r) =>
-        r.toUpperCase() === roleKey.toUpperCase() ||
-        (roleGuid && r.toLowerCase() === roleGuid.toLowerCase())
-    );
-
-    if (userHasRole && allowedRoutes.includes(path)) {
-      return true;
-    }
-  }
-
-  // 2. Validar coincidencia con los permisos específicos
-  const requiredPermission = ROUTE_PERMISSIONS[path];
-  if (requiredPermission && permissions.includes(requiredPermission)) {
-    return true;
-  }
-
-  return false;
+  const allowedRoutes = ROLE_ALLOWED_ROUTES[role] || [];
+  return allowedRoutes.includes(cleanPath);
 }

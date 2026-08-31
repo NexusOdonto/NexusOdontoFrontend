@@ -18,7 +18,7 @@ import {
 import { useAuth } from "../auth/AuthContext";
 
 export default function PerfilView() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
 
   const [isEditing, setIsEditing] = useState(false);
 
@@ -70,8 +70,9 @@ export default function PerfilView() {
   };
 
   const handleSave = () => {
-    console.log(profileData);
-
+    if (updateUser) {
+      updateUser(profileData);
+    }
     setIsEditing(false);
   };
 

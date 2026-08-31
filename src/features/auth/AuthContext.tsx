@@ -18,6 +18,8 @@ export interface User {
   rol?: string;
   direccion?: string;
   sexo?: string;
+  tipoDocumento?: string;
+  fechaNacimiento?: string;
 }
 
 interface AuthContextType {
