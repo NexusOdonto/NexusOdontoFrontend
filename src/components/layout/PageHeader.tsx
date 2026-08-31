@@ -47,10 +47,6 @@ export function PageHeader({
             <Menu size={20} />
           )}
         </button>
-
-        <h1 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
-          NexusOdonto
-        </h1>
       </div>
 
       <div className="flex items-center gap-2">
