@@ -13,7 +13,9 @@ interface DashboardLayoutProps {
   children: ReactNode;
 }
 
-export function DashboardLayout({ children }: DashboardLayoutProps) {
+export function DashboardLayout({
+  children,
+}: DashboardLayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const { theme } = useTheme();
@@ -33,7 +35,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <PageHeader
           userName={userName}
           mobileOpen={mobileOpen}
-          onMenuClick={() => setMobileOpen((prev) => !prev)}
+          onMenuClick={() =>
+            setMobileOpen((prev) => !prev)
+          }
         />
 
         <main
@@ -47,7 +51,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
         </main>
       </div>
-
     </div>
   );
 }
