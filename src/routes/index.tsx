@@ -1,74 +1,58 @@
 import { Suspense, lazy } from "react";
-import {
-  Navigate,
-  Route,
-  Routes,
-} from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 
 import ProtectedRoute from "./ProtectedRoute";
 
 const LoginPage = lazy(() =>
-  import("../features/auth/LoginPage").then(
-    (module) => ({
-      default: module.default,
-    }),
-  ),
+  import("../features/auth/LoginPage").then((module) => ({
+    default: module.default,
+  })),
 );
 
 const DashboardLayout = lazy(() =>
-  import("../layouts/DashboardLayout").then(
-    (module) => ({
-      default: module.DashboardLayout,
-    }),
-  ),
+  import("../layouts/DashboardLayout").then((module) => ({
+    default: module.DashboardLayout,
+  })),
 );
 
 const PacientesView = lazy(() =>
-  import("../features/pacientes/PacientesView").then(
-    (module) => ({
-      default: module.PacientesView,
-    }),
-  ),
+  import("../features/pacientes/PacientesView").then((module) => ({
+    default: module.PacientesView,
+  })),
 );
 
 const PacienteRegistroView = lazy(() =>
-  import(
-    "../features/pacientes/PacienteRegistroView"
-  ).then((module) => ({
+  import("../features/pacientes/PacienteRegistroView").then((module) => ({
     default: module.PacienteRegistroView,
   })),
 );
 
 const ServiciosView = lazy(() =>
-  import("../features/servicios/ServiciosView").then(
-    (module) => ({
-      default: module.ServiciosView,
-    }),
-  ),
+  import("../features/servicios/ServiciosView").then((module) => ({
+    default: module.ServiciosView,
+  })),
 );
 
 const CitasView = lazy(() =>
-  import("../features/citas/CitasView.tsx").then(
-    (module) => ({
-      default: module.CitasView,
-    }),
-  ),
+  import("../features/citas/CitasView").then((module) => ({
+    default: module.CitasView,
+  })),
 );
 
 const UsuariosView = lazy(() =>
-  import("../features/usuarios/UsuariosView").then(
-    (module) => ({
-      default: module.UsuariosView,
-    }),
-  ),
+  import("../features/usuarios/UsuariosView").then((module) => ({
+    default: module.UsuariosView,
+  })),
 );
 
 const OdontogramaUI = lazy(() =>
-  import("../features/odontograma/OdontogramaUI").then(
-    (module) => ({
-      default: module.default,
-    }),
-  ),
+  import("../features/odontograma/OdontogramaUI").then((module) => ({
+    default: module.default,
+  })),
+);
+
+const PerfilView = lazy(
+  () => import("../features/perfil/PerfilView"),
 );
 
 function DashboardPage() {
@@ -168,6 +152,15 @@ export default function AppRoutes() {
             element={
               <DashboardLayout>
                 <OdontogramaUI />
+              </DashboardLayout>
+            }
+          />
+
+          <Route
+            path="/perfil"
+            element={
+              <DashboardLayout>
+                <PerfilView />
               </DashboardLayout>
             }
           />
