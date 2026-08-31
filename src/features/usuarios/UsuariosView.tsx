@@ -5,88 +5,36 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { UsuariosTable } from "./components/UsuariosTable";
 
 import type {
-  RolUsuario,
   Usuario,
+  Role,
 } from "../../types/usuarios";
-
-const usuariosIniciales: Usuario[] = [
-  {
-    id: 1,
-    nombre: "Six Sevenando Da Silva Jr",
-    correo: "six.seven@nexusodonto.com",
-    rol: "Odontólogo",
-    estado: "Activo",
-  },
-  {
-    id: 2,
-    nombre: "Carlos Martínez",
-    correo: "carlos.martinez@nexusodonto.com",
-    rol: "Recepcionista",
-    estado: "Activo",
-  },
-  {
-    id: 3,
-    nombre: "Ana Rodríguez",
-    correo: "ana.rodriguez@nexusodonto.com",
-    rol: "Admin",
-    estado: "Activo",
-  },
-  {
-    id: 4,
-    nombre: "Juan Pérez",
-    correo: "juan.perez@nexusodonto.com",
-    rol: "Odontólogo",
-    estado: "Inactivo",
-  },
-  {
-    id: 5,
-    nombre: "María López",
-    correo: "maria.lopez@nexusodonto.com",
-    rol: "Recepcionista",
-    estado: "Activo",
-  },
-  {
-    id: 6,
-    nombre: "Andrés Silva",
-    correo: "andres.silva@nexusodonto.com",
-    rol: "Admin",
-    estado: "Activo",
-  },
-  {
-    id: 7,
-    nombre: "Sofía Torres",
-    correo: "sofia.torres@nexusodonto.com",
-    rol: "Odontólogo",
-    estado: "Activo",
-  },
-  {
-    id: 8,
-    nombre: "Diego Ramírez",
-    correo: "diego.ramirez@nexusodonto.com",
-    rol: "Recepcionista",
-    estado: "Inactivo",
-  },
-];
+import { userService } from "../../api/userService";
+import { roleService } from "../../api/roleService";
+import { personService } from "../../api/personService";
+import { documentTypeService } from "../../api/documentTypeService";
 
 const ITEMS_PER_PAGE = 5;
 
 export function UsuariosView() {
-  const [usuarios, setUsuarios] =
-    useState<Usuario[]>(usuariosIniciales);
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [documentTypes, setDocumentTypes] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [search, setSearch] = useState("");
 
   const [rol, setRol] = useState<
-    "Todos" | RolUsuario
+    "Todos" | string
   >("Todos");
 
   const [estado, setEstado] = useState<
-    "Todos" | Usuario["estado"]
+    "Todos" | "Activo" | "Inactivo"
   >("Todos");
 
   const [currentPage, setCurrentPage] =
@@ -95,20 +43,57 @@ export function UsuariosView() {
   const [showModal, setShowModal] =
     useState(false);
 
-  const [nuevoNombre, setNuevoNombre] =
-    useState("");
+  // Campos de persona
+  const [nuevoNombre, setNuevoNombre] = useState("");
+  const [nuevoApellido, setNuevoApellido] = useState("");
+  const [nuevoCorreo, setNuevoCorreo] = useState("");
+  const [nuevoTelefono, setNuevoTelefono] = useState("");
+  const [nuevoDocumento, setNuevoDocumento] = useState("");
+  const [nuevoTipoDocumento, setNuevoTipoDocumento] = useState("");
+  
+  // Campos de usuario
+  const [nuevoPassword, setNuevoPassword] = useState("");
+  const [nuevoRol, setNuevoRol] = useState("");
 
-  const [nuevoCorreo, setNuevoCorreo] =
-    useState("");
+  const [errorForm, setErrorForm] = useState("");
 
-  const [nuevoRol, setNuevoRol] =
-    useState<RolUsuario>("Odontólogo");
-
-  const [nuevoEstado, setNuevoEstado] =
-    useState<Usuario["estado"]>("Activo");
-
-  const [errorForm, setErrorForm] =
-    useState("");
+  // Cargar usuarios, roles y tipos de documento al montar
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const [usersData, rolesData, docTypesData] = await Promise.all([
+          userService.getAll(),
+          roleService.getAll(),
+          documentTypeService.getAll()
+        ]);
+        setUsuarios(
+          usersData.map((u) => ({
+            id: u.id,
+            personId: u.personId,
+            name: u.name || "",
+            email: u.email || "",
+            roleIds: u.roleIds || [],
+            permissions: u.permissions || [],
+            isActive: u.isActive ?? true,
+          }))
+        );
+        setRoles(rolesData);
+        setDocumentTypes(docTypesData);
+        
+        // Establecer el tipo de documento por defecto (CC - Cédula)
+        const ccType = docTypesData.find(dt => dt.code === "CC");
+        if (ccType) {
+          setNuevoTipoDocumento(ccType.id);
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
   const usuariosFiltrados = useMemo(() => {
     const searchValue =
@@ -117,20 +102,20 @@ export function UsuariosView() {
     return usuarios.filter((usuario) => {
       const coincideBusqueda =
         !searchValue ||
-        usuario.nombre
+        usuario.name
           .toLowerCase()
           .includes(searchValue) ||
-        usuario.correo
+        usuario.email
           .toLowerCase()
           .includes(searchValue);
 
       const coincideRol =
         rol === "Todos" ||
-        usuario.rol === rol;
+        usuario.roleIds.includes(rol);
 
       const coincideEstado =
         estado === "Todos" ||
-        usuario.estado === estado;
+        (estado === "Activo" ? usuario.isActive : !usuario.isActive);
 
       return (
         coincideBusqueda &&
@@ -166,7 +151,7 @@ export function UsuariosView() {
   };
 
   const handleRolChange = (
-    value: "Todos" | RolUsuario,
+    value: "Todos" | string,
   ) => {
     setRol(value);
     setCurrentPage(1);
@@ -175,7 +160,8 @@ export function UsuariosView() {
   const handleEstadoChange = (
     value:
       | "Todos"
-      | Usuario["estado"],
+      | "Activo"
+      | "Inactivo",
   ) => {
     setEstado(value);
     setCurrentPage(1);
@@ -189,10 +175,18 @@ export function UsuariosView() {
   };
 
   const abrirModal = () => {
+    // Reset campos de persona
     setNuevoNombre("");
+    setNuevoApellido("");
     setNuevoCorreo("");
-    setNuevoRol("Odontólogo");
-    setNuevoEstado("Activo");
+    setNuevoTelefono("");
+    setNuevoDocumento("");
+    setNuevoTipoDocumento(documentTypes[0]?.id || "");
+    
+    // Reset campos de usuario
+    setNuevoPassword("");
+    setNuevoRol(roles[0]?.id || "");
+    
     setErrorForm("");
     setShowModal(true);
   };
@@ -202,195 +196,248 @@ export function UsuariosView() {
     setErrorForm("");
   };
 
-  const registrarUsuario = () => {
+  const registrarUsuario = async () => {
     const nombre = nuevoNombre.trim();
+    const apellido = nuevoApellido.trim();
     const correo = nuevoCorreo.trim();
+    const telefono = nuevoTelefono.trim();
+    const documento = nuevoDocumento.trim();
+    const password = nuevoPassword.trim();
+    const tipoDocumento = nuevoTipoDocumento;
+    const roleId = nuevoRol;
 
-    if (!nombre || !correo) {
-      setErrorForm(
-        "Completa todos los campos obligatorios.",
-      );
+    // Validación de campos obligatorios
+    if (!nombre || !apellido || !correo || !password || !documento || !tipoDocumento || !roleId) {
+      setErrorForm("Completa todos los campos obligatorios: nombre, apellido, correo, documento, tipo de documento, contraseña y rol.");
       return;
     }
 
+    // Validación de formato de correo
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(correo)) {
+      setErrorForm("Ingresa un correo electrónico válido.");
+      return;
+    }
+
+    // Validación de contraseña
+    if (password.length < 6) {
+      setErrorForm("La contraseña debe tener al menos 6 caracteres.");
+      return;
+    }
+
+    // Verificar si el correo ya existe
     const correoExiste = usuarios.some(
       (usuario) =>
-        usuario.correo.toLowerCase() ===
+        usuario.email.toLowerCase() ===
         correo.toLowerCase(),
     );
 
     if (correoExiste) {
-      setErrorForm(
-        "Ya existe un usuario con ese correo.",
-      );
+      setErrorForm("Ya existe un usuario con ese correo.");
       return;
     }
 
-    const nuevoId =
-      usuarios.length > 0
-        ? Math.max(
-            ...usuarios.map(
-              (usuario) => usuario.id,
-            ),
-          ) + 1
-        : 1;
+    setIsSubmitting(true);
 
-    const nuevoUsuario: Usuario = {
-      id: nuevoId,
-      nombre,
-      correo,
-      rol: nuevoRol,
-      estado: nuevoEstado,
-    };
+    try {
+      // PASO 1: Crear la persona
+      const personaCreada = await personService.create({
+        documentTypeId: tipoDocumento,
+        documentNumber: documento,
+        firstName: nombre,
+        lastName: apellido,
+        email: correo,
+        phone: telefono || undefined,
+      });
 
-    setUsuarios((actuales) => [
-      ...actuales,
-      nuevoUsuario,
-    ]);
+      // PASO 2: Crear el usuario asociado a la persona
+      await userService.create({
+        personId: personaCreada.id,
+        password: password,
+        roleId: roleId,
+      });
 
-    setSearch("");
-    setRol("Todos");
-    setEstado("Todos");
-    setCurrentPage(1);
+      // Actualizar la lista de usuarios
+      const usuariosActualizados = await userService.getAll();
+      setUsuarios(
+        usuariosActualizados.map((u) => ({
+          id: u.id,
+          personId: u.personId,
+          name: u.name || "",
+          email: u.email || "",
+          roleIds: u.roleIds || [],
+          permissions: u.permissions || [],
+          isActive: u.isActive ?? true,
+        }))
+      );
 
-    cerrarModal();
+      // Limpiar filtros y cerrar modal
+      setSearch("");
+      setRol("Todos");
+      setEstado("Todos");
+      setCurrentPage(1);
+      cerrarModal();
+
+    } catch (error: any) {
+      console.error('Error creating user:', error);
+      
+      if (error.response?.data?.message) {
+        setErrorForm(error.response.data.message);
+      } else if (error.message) {
+        setErrorForm(error.message);
+      } else {
+        setErrorForm("Error al crear el usuario. Intente nuevamente.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className="box-border w-full min-w-0 max-w-full overflow-x-hidden">
-      <header className="mb-6 flex w-full min-w-0 flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-        <div className="flex min-w-0 items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-500/10 text-primary-500 sm:h-11 sm:w-11">
-            <ShieldCheck size={21} />
-          </div>
-
-          <div className="min-w-0 flex-1">
-            <h1 className="break-words text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl dark:text-slate-100">
-              Usuarios
-            </h1>
-
-            <p className="mt-1 max-w-2xl break-words text-sm leading-5 text-slate-600 dark:text-slate-400">
-              Gestiona el personal autorizado para
-              acceder a NexusOdonto.
+      {loading ? (
+        <div className="flex min-h-[400px] items-center justify-center">
+          <div className="text-center">
+            <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-primary-500 border-t-transparent" />
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Cargando usuarios...
             </p>
           </div>
         </div>
+      ) : (
+        <>
+          <header className="mb-6 flex w-full min-w-0 flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-500/10 text-primary-500 sm:h-11 sm:w-11">
+                <ShieldCheck size={21} />
+              </div>
 
-        <button
-          type="button"
-          onClick={abrirModal}
-          className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-primary-500 px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500/30 sm:w-auto sm:px-5"
-        >
-          <Plus size={18} />
-          Nuevo Usuario
-        </button>
-      </header>
+              <div className="min-w-0 flex-1">
+                <h1 className="break-words text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl dark:text-slate-100">
+                  Usuarios
+                </h1>
 
-      <section className="mb-6 w-full min-w-0">
-        <div className="grid w-full min-w-0 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_200px_180px]">
-          <div className="flex h-11 min-w-0 w-full items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 transition-colors focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800">
-            <Search
-              size={17}
-              className="shrink-0 text-slate-500 dark:text-slate-400"
-            />
+                <p className="mt-1 max-w-2xl break-words text-sm leading-5 text-slate-600 dark:text-slate-400">
+                  Gestiona el personal autorizado para
+                  acceder a NexusOdonto.
+                </p>
+              </div>
+            </div>
 
-            <input
-              type="search"
-              value={search}
-              onChange={(event) =>
-                handleSearchChange(
-                  event.target.value,
-                )
-              }
-              placeholder="Buscar por nombre o correo..."
-              className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-500 dark:text-slate-100 dark:placeholder:text-slate-400"
-            />
-          </div>
-
-          <select
-            value={rol}
-            onChange={(event) =>
-              handleRolChange(
-                event.target.value as
-                  | "Todos"
-                  | RolUsuario,
-              )
-            }
-            className="h-11 w-full min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition-colors focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-          >
-            <option value="Todos">
-              Todos los roles
-            </option>
-            <option value="Odontólogo">
-              Odontólogo
-            </option>
-            <option value="Recepcionista">
-              Recepcionista
-            </option>
-            <option value="Admin">
-              Admin
-            </option>
-          </select>
-
-          <select
-            value={estado}
-            onChange={(event) =>
-              handleEstadoChange(
-                event.target.value as
-                  | "Todos"
-                  | Usuario["estado"],
-              )
-            }
-            className="h-11 w-full min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition-colors focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-          >
-            <option value="Todos">
-              Todos los estados
-            </option>
-            <option value="Activo">
-              Activo
-            </option>
-            <option value="Inactivo">
-              Inactivo
-            </option>
-          </select>
-        </div>
-
-        {(search ||
-          rol !== "Todos" ||
-          estado !== "Todos") && (
-          <div className="mt-3 flex justify-end">
             <button
               type="button"
-              onClick={limpiarFiltros}
-              className="text-sm font-medium text-primary-500 transition-colors hover:text-primary-600"
+              onClick={abrirModal}
+              className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-primary-500 px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500/30 sm:w-auto sm:px-5"
             >
-              Limpiar filtros
+              <Plus size={18} />
+              Nuevo Usuario
             </button>
+          </header>
+
+          <section className="mb-6 w-full min-w-0">
+            <div className="grid w-full min-w-0 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_200px_180px]">
+              <div className="flex h-11 min-w-0 w-full items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 transition-colors focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800">
+                <Search
+                  size={17}
+                  className="shrink-0 text-slate-500 dark:text-slate-400"
+                />
+
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(event) =>
+                    handleSearchChange(
+                      event.target.value,
+                    )
+                  }
+                  placeholder="Buscar por nombre o correo..."
+                  className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-500 dark:text-slate-100 dark:placeholder:text-slate-400"
+                />
+              </div>
+
+              <select
+                value={rol}
+                onChange={(event) =>
+                  handleRolChange(
+                    event.target.value as
+                      | "Todos"
+                      | string,
+                  )
+                }
+                className="h-11 w-full min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition-colors focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              >
+                <option value="Todos">
+                  Todos los roles
+                </option>
+                {roles.map((role) => (
+                  <option key={role.id} value={role.id}>
+                    {role.name}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={estado}
+                onChange={(event) =>
+                  handleEstadoChange(
+                    event.target.value as
+                      | "Todos"
+                      | "Activo"
+                      | "Inactivo",
+                  )
+                }
+                className="h-11 w-full min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition-colors focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              >
+                <option value="Todos">
+                  Todos los estados
+                </option>
+                <option value="Activo">
+                  Activo
+                </option>
+                <option value="Inactivo">
+                  Inactivo
+                </option>
+              </select>
+            </div>
+
+            {(search ||
+              rol !== "Todos" ||
+              estado !== "Todos") && (
+              <div className="mt-3 flex justify-end">
+                <button
+                  type="button"
+                  onClick={limpiarFiltros}
+                  className="text-sm font-medium text-primary-500 transition-colors hover:text-primary-600"
+                >
+                  Limpiar filtros
+                </button>
+              </div>
+            )}
+          </section>
+
+          <div className="mb-4 min-w-0">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+              Personal autorizado
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+              {usuariosFiltrados.length}{" "}
+              {usuariosFiltrados.length === 1
+                ? "usuario encontrado"
+                : "usuarios encontrados"}
+            </p>
           </div>
-        )}
-      </section>
 
-      <div className="mb-4 min-w-0">
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-          Personal autorizado
-        </h2>
-
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-          {usuariosFiltrados.length}{" "}
-          {usuariosFiltrados.length === 1
-            ? "usuario encontrado"
-            : "usuarios encontrados"}
-        </p>
-      </div>
-
-      <div className="w-full min-w-0 max-w-full">
-        <UsuariosTable
-          usuarios={usuariosPagina}
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
-        />
-      </div>
+          <div className="w-full min-w-0 max-w-full">
+            <UsuariosTable
+              usuarios={usuariosPagina}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          </div>
+        </>
+      )}
 
       {showModal && (
         <div
@@ -437,26 +484,50 @@ export function UsuariosView() {
             </div>
 
             <div className="space-y-5 p-4 sm:p-6">
-              <div>
-                <label
-                  htmlFor="nuevo-nombre"
-                  className="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100"
-                >
-                  Nombre completo
-                </label>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="min-w-0">
+                  <label
+                    htmlFor="nuevo-nombre"
+                    className="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100"
+                  >
+                    Nombre
+                  </label>
 
-                <input
-                  id="nuevo-nombre"
-                  type="text"
-                  value={nuevoNombre}
-                  onChange={(event) =>
-                    setNuevoNombre(
-                      event.target.value,
-                    )
-                  }
-                  placeholder="Ej. Laura Gómez"
-                  className="box-border h-11 w-full max-w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition-colors focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                />
+                  <input
+                    id="nuevo-nombre"
+                    type="text"
+                    value={nuevoNombre}
+                    onChange={(event) =>
+                      setNuevoNombre(
+                        event.target.value,
+                      )
+                    }
+                    placeholder="Ej. Laura"
+                    className="box-border h-11 w-full max-w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition-colors focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                  />
+                </div>
+
+                <div className="min-w-0">
+                  <label
+                    htmlFor="nuevo-apellido"
+                    className="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100"
+                  >
+                    Apellido
+                  </label>
+
+                  <input
+                    id="nuevo-apellido"
+                    type="text"
+                    value={nuevoApellido}
+                    onChange={(event) =>
+                      setNuevoApellido(
+                        event.target.value,
+                      )
+                    }
+                    placeholder="Ej. Gómez"
+                    className="box-border h-11 w-full max-w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition-colors focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                  />
+                </div>
               </div>
 
               <div>
@@ -484,62 +555,121 @@ export function UsuariosView() {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="min-w-0">
                   <label
-                    htmlFor="nuevo-rol"
+                    htmlFor="nuevo-tipo-documento"
                     className="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100"
                   >
-                    Rol
+                    Tipo de documento
                   </label>
 
                   <select
-                    id="nuevo-rol"
-                    value={nuevoRol}
+                    id="nuevo-tipo-documento"
+                    value={nuevoTipoDocumento}
                     onChange={(event) =>
-                      setNuevoRol(
-                        event.target
-                          .value as RolUsuario,
+                      setNuevoTipoDocumento(
+                        event.target.value,
                       )
                     }
                     className="h-11 w-full min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                   >
-                    <option value="Odontólogo">
-                      Odontólogo
-                    </option>
-                    <option value="Recepcionista">
-                      Recepcionista
-                    </option>
-                    <option value="Admin">
-                      Admin
-                    </option>
+                    {documentTypes.map((docType) => (
+                      <option key={docType.id} value={docType.id}>
+                        {docType.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
                 <div className="min-w-0">
                   <label
-                    htmlFor="nuevo-estado"
+                    htmlFor="nuevo-documento"
                     className="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100"
                   >
-                    Estado
+                    Número de documento
                   </label>
 
-                  <select
-                    id="nuevo-estado"
-                    value={nuevoEstado}
+                  <input
+                    id="nuevo-documento"
+                    type="text"
+                    value={nuevoDocumento}
                     onChange={(event) =>
-                      setNuevoEstado(
-                        event.target
-                          .value as Usuario["estado"],
+                      setNuevoDocumento(
+                        event.target.value,
                       )
                     }
-                    className="h-11 w-full min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                  >
-                    <option value="Activo">
-                      Activo
-                    </option>
-                    <option value="Inactivo">
-                      Inactivo
-                    </option>
-                  </select>
+                    placeholder="Ej. 1234567890"
+                    className="box-border h-11 w-full max-w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition-colors focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                  />
                 </div>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="nuevo-telefono"
+                  className="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100"
+                >
+                  Teléfono (opcional)
+                </label>
+
+                <input
+                  id="nuevo-telefono"
+                  type="tel"
+                  value={nuevoTelefono}
+                  onChange={(event) =>
+                    setNuevoTelefono(
+                      event.target.value,
+                    )
+                  }
+                  placeholder="Ej. +57 300 123 4567"
+                  className="box-border h-11 w-full max-w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition-colors focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="nuevo-password"
+                  className="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100"
+                >
+                  Contraseña
+                </label>
+
+                <input
+                  id="nuevo-password"
+                  type="password"
+                  value={nuevoPassword}
+                  onChange={(event) =>
+                    setNuevoPassword(
+                      event.target.value,
+                    )
+                  }
+                  placeholder="•••••••••"
+                  className="box-border h-11 w-full max-w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition-colors focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="nuevo-rol"
+                  className="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100"
+                >
+                  Rol
+                </label>
+
+                <select
+                  id="nuevo-rol"
+                  value={nuevoRol}
+                  onChange={(event) =>
+                    setNuevoRol(
+                      event.target.value,
+                    )
+                  }
+                  className="h-11 w-full min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                >
+                  {roles.filter(role => role.code !== "ASISTENTE").map((role) => (
+                    <option key={role.id} value={role.id}>
+                      {role.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {errorForm && (
@@ -561,10 +691,20 @@ export function UsuariosView() {
               <button
                 type="button"
                 onClick={registrarUsuario}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary-500 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-600 sm:w-auto"
+                disabled={isSubmitting}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary-500 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto"
               >
-                <Plus size={16} />
-                Registrar usuario
+                {isSubmitting ? (
+                  <>
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    Registrando...
+                  </>
+                ) : (
+                  <>
+                    <Plus size={16} />
+                    Registrar usuario
+                  </>
+                )}
               </button>
             </div>
           </div>

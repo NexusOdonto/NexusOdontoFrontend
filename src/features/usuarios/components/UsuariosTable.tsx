@@ -8,8 +8,6 @@ import {
 import { cn } from "../../../utils/cn";
 
 import type {
-  EstadoUsuario,
-  RolUsuario,
   Usuario,
 } from "../../../types/usuarios";
 
@@ -21,33 +19,19 @@ interface UsuariosTableProps {
   onPageChange: (page: number) => void;
 }
 
-function getRoleClasses(rol: RolUsuario) {
-  return cn(
-    "inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold",
-    {
-      "border-purple-500/30 bg-purple-500/10 text-purple-700 dark:text-purple-300":
-        rol === "Odontólogo",
 
-      "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300":
-        rol === "Recepcionista",
-
-      "border-indigo-500/30 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300":
-        rol === "Admin",
-    },
-  );
-}
 
 function getStatusClasses(
-  estado: EstadoUsuario,
+  isActive: boolean,
 ) {
   return cn(
     "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold",
     {
       "border-success/30 bg-success/10 text-success":
-        estado === "Activo",
+        isActive,
 
       "border-danger/30 bg-danger/10 text-danger":
-        estado === "Inactivo",
+        !isActive,
     },
   );
 }
@@ -147,7 +131,7 @@ export function UsuariosTable({
               </th>
 
               <th className="px-5 py-3.5 text-left text-xs font-semibold text-slate-600 dark:text-slate-400">
-                Rol
+                Permisos
               </th>
 
               <th className="px-5 py-3.5 text-left text-xs font-semibold text-slate-600 dark:text-slate-400">
@@ -169,7 +153,7 @@ export function UsuariosTable({
                     </div>
 
                     <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                      {usuario.nombre}
+                      {usuario.name}
                     </span>
                   </div>
                 </td>
@@ -179,38 +163,33 @@ export function UsuariosTable({
                     <Mail size={15} />
 
                     <span className="break-all">
-                      {usuario.correo}
+                      {usuario.email}
                     </span>
                   </div>
                 </td>
 
                 <td className="px-5 py-4">
-                  <span
-                    className={getRoleClasses(
-                      usuario.rol,
-                    )}
-                  >
-                    {usuario.rol}
+                  <span className="text-xs text-slate-600 dark:text-slate-400">
+                    {usuario.permissions.length} permisos
                   </span>
                 </td>
 
                 <td className="px-5 py-4">
                   <span
                     className={getStatusClasses(
-                      usuario.estado,
+                      usuario.isActive,
                     )}
                   >
                     <span
                       className={cn(
                         "h-1.5 w-1.5 rounded-full",
-                        usuario.estado ===
-                          "Activo"
+                        usuario.isActive
                           ? "bg-success"
                           : "bg-danger",
                       )}
                     />
 
-                    {usuario.estado}
+                    {usuario.isActive ? "Activo" : "Inactivo"}
                   </span>
                 </td>
               </tr>
@@ -233,7 +212,7 @@ export function UsuariosTable({
 
                 <div className="min-w-0">
                   <h3 className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-                    {usuario.nombre}
+                    {usuario.name}
                   </h3>
 
                   <div className="mt-1 flex items-start gap-2 text-xs text-slate-600 dark:text-slate-400">
@@ -243,7 +222,7 @@ export function UsuariosTable({
                     />
 
                     <span className="break-all">
-                      {usuario.correo}
+                      {usuario.email}
                     </span>
                   </div>
                 </div>
@@ -251,33 +230,29 @@ export function UsuariosTable({
 
               <span
                 className={getStatusClasses(
-                  usuario.estado,
+                  usuario.isActive,
                 )}
               >
                 <span
                   className={cn(
                     "h-1.5 w-1.5 rounded-full",
-                    usuario.estado === "Activo"
+                    usuario.isActive
                       ? "bg-success"
                       : "bg-danger",
                   )}
                 />
 
-                {usuario.estado}
+                {usuario.isActive ? "Activo" : "Inactivo"}
               </span>
             </div>
 
             <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-3 dark:border-slate-800">
               <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                Rol
+                Permisos
               </span>
 
-              <span
-                className={getRoleClasses(
-                  usuario.rol,
-                )}
-              >
-                {usuario.rol}
+              <span className="text-xs text-slate-600 dark:text-slate-400">
+                {usuario.permissions.length}
               </span>
             </div>
           </article>
