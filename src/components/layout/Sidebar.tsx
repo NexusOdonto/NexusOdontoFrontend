@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   Settings,
   LogOut,
+  Smile,
 } from "lucide-react";
 
 import { useNavigate } from "react-router-dom";
@@ -65,7 +66,7 @@ export function Sidebar({
     },
     {
       label: "Odontograma",
-      icon: Stethoscope,
+      icon: Smile,
       path: "/odontograma",
     },
     {
