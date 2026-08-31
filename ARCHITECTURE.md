@@ -1,331 +1,266 @@
-# Arquitectura del Proyecto - NexusOdonto Frontend
+# Arquitectura del Sistema Frontend — NexusOdonto
 
-## 📁 Estructura del Proyecto
+> **Versión del Documento:** 2.1.0  
+> **Estado:** Referencia Técnica Oficial del Frontend  
+> **Tecnologías:** React 19, TypeScript, Vite 8, Tailwind CSS v4, React Router v7, Lucide React  
+> **Última Actualización:** 2026-08-31
 
-El proyecto sigue una arquitectura **Feature-First** modular con React + Vite + Tailwind CSS v4.
+---
+
+## 1. Visión General del Ecosistema
+
+NexusOdonto Frontend es una **Single Page Application (SPA)** moderna, reactiva y desacoplada, orientada a la gestión integral de consultorios y clínicas odontológicas. Se comunica con el backend .NET mediante una API RESTful protegida con JSON Web Tokens (JWT) y políticas de control de acceso basadas en roles (RBAC).
 
 ```
-src/
-├── api/                          # Cliente HTTP y configuración de API
-│   └── axiosClient.ts
-├── assets/                       # Imágenes y recursos estáticos
-│   ├── fondo-Login-ligh.webp     # Fondo login modo claro
-│   ├── fondoLogin.webp           # Fondo login modo oscuro
-│   ├── fondo-ligh.webp           # Fondo dashboard modo claro
-│   ├── fondo-darck.webp          # Fondo dashboard modo oscuro
-│   └── nexus-odonto-logo.webp    # Logo de la marca
-├── components/                   # Componentes UI globales reutilizables
-│   ├── layout/                   # Componentes de layout compartidos
-│   │   ├── PageHeader.tsx        # Header principal con toggle de tema
-│   │   └── Sidebar.tsx           # Sidebar de navegación
-│   └── ui/                       # Componentes UI atómicos (botones, inputs, etc.)
-│       └── Button.tsx
-├── context/                      # Contextos globales de React
-│   └── ThemeContext.tsx          # Contexto para gestión de tema claro/oscuro
-├── features/                     # Módulos por funcionalidad (Feature-First)
-│   ├── auth/                     # Módulo de autenticación
-│   │   ├── LoginPage.tsx         # Vista de login
-│   │   └── components/           # Componentes específicos de auth
-│   │       ├── LoginButton.tsx
-│   │       └── LoginInput.tsx
-│   ├── pacientes/                # Módulo de gestión de pacientes
-│   │   ├── PacientesView.tsx    # Vista listado de pacientes
-│   │   ├── PacienteRegistroView.tsx  # Vista registro de paciente
-│   │   └── components/           # Componentes específicos de pacientes
-│   │       ├── PacienteForm.tsx
-│   │       └── PacientesTable.tsx
-│   └── servicios/                # Módulo de servicios
-│       ├── ServiciosView.tsx     # Vista de servicios
-│       └── components/
-│           └── ServiciosGrid.tsx
-├── layouts/                      # Layouts que envuelven vistas
-│   └── DashboardLayout.tsx       # Layout principal del dashboard
-├── routes/                       # Configuración de rutas
-│   ├── ProtectedRoute.tsx        # Ruta protegida (auth)
-│   └── index.tsx                 # Definición de rutas con lazy loading
-├── types/                        # Definiciones de tipos TypeScript
-│   ├── pacientes.ts              # Tipos del módulo pacientes
-│   └── servicios.ts              # Tipos del módulo servicios
-├── utils/                        # Utilidades y helpers
-│   ├── cn.ts                     # Función para combinar clases
-│   ├── currency.ts               # Formateo de moneda
-│   └── dentalBgStyles.ts         # Estilos para odontograma
-├── App.tsx                       # Componente raíz
-├── index.css                     # Estilos globales + Tailwind CSS v4
-├── main.tsx                      # Punto de entrada de la aplicación
-└── vite-env.d.ts                 # Tipos de Vite
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│                      NEXUSODONTO FRONTEND (Arquitectura SPA)                     │
+│  React 19 + TypeScript + Vite 8.x + Tailwind CSS v4 + Lucide React              │
+│  • Context API: AuthContext (Sesión y Roles) / ThemeContext (Dark/Light)         │
+│  • Interceptores Axios: Inyección Bearer JWT + Gestión Resiliente 401           │
+│  • Sistema de Enrutamiento Seguro: React Router v7 + ProtectedRoute RBAC         │
+│  • Componente Flotante de Asistencia: ChatBotWidget contextual por Rol          │
+└────────────────────────────────────────┬─────────────────────────────────────────┘
+                                         │ HTTPS / REST JSON API
+                                         ▼
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│                   BACKEND (.NET Clean Architecture - REST API)                   │
+│  Controllers RESTful, DTOs con FluentValidation, Identity JWT, SQL Server EF Core│
+└──────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## 🎨 Sistema de Diseño y Tema
+---
 
-### Gestión de Tema (Claro/Oscuro)
+## 2. Estructura Real del Árbol de Carpetas (`src/`)
 
-El proyecto usa un **Context Provider global** (`ThemeContext.tsx`) para gestionar el tema:
+El código fuente sigue una estructura **Feature-Driven (Feature-First)** organizada por dominios funcionales:
 
-- **Estado global**: El tema se almacena en `localStorage` y se sincroniza con toda la app
-- **Clase `.dark`**: Se aplica a `document.documentElement` para activar el modo oscuro
-- **Desconectado del sistema**: El tema NO responde a `prefers-color-scheme` del navegador; el botón Sol/Luna es la única fuente de verdad
-- **Variantes Tailwind**: Todos los componentes usan `dark:` para estilos adaptativos
-
-### Variables de Diseño (Tailwind CSS v4)
-
-Definidas en `src/index.css` con la directiva `@theme`:
-
-- **Colores primarios**: Celeste Cian (#00A8CC) y Menta Tech (#66D2B1)
-- **Colores de acento**: Indigo, Purple, Sky para diferentes módulos
-- **Estados del sistema**: Success, Warning, Danger, Info
-
-## 🚀 Buenas Prácticas de Desarrollo
-
-### Importación de Componentes
-
-**Componentes UI Globales:**
-```typescript
-import { Button } from "@/components/ui/Button";
-import { PageHeader } from "@/components/layout/PageHeader";
+```
+NexusOdontoFrontend/
+├── informacion.md              # Documento maestro integral de negocio y contratos
+├── ARCHITECTURE.md             # Esta guía arquitectónica oficial
+├── package.json                # Dependencias (React 19, Lucide, Tailwind v4, Axios)
+├── tsconfig.json               # Configuración estricta de TypeScript
+├── vite.config.ts              # Configuración de compilación con Vite 8
+└── src/
+    ├── api/                    # Servicios de comunicación HTTP desacoplados
+    │   ├── axiosClient.ts      # Cliente Axios centralizado con interceptores
+    │   ├── authService.ts      # Endpoints públicos de login, register y perfil
+    │   ├── personService.ts    # Gestión de personas físicas (/v1/Persons)
+    │   ├── userService.ts      # Gestión de usuarios del sistema (/v1/Users)
+    │   ├── roleService.ts      # Catálogo de roles del sistema (/v1/Roles)
+    │   ├── documentTypeService.ts # Catálogo de tipos de documento
+    │   └── sexService.ts       # Catálogo de sexos/géneros
+    ├── assets/                 # Recursos estáticos (Logotipos e imágenes WebP)
+    │   ├── fondo-Login-ligh.webp
+    │   ├── fondoLogin.webp
+    │   ├── fondo-ligh.webp
+    │   ├── fondo-darck.webp
+    │   └── nexus-odonto-logo.webp
+    ├── components/             # Componentes transversales
+    │   ├── layout/
+    │   │   ├── PageHeader.tsx  # Barra superior, selector de tema y avatar
+    │   │   ├── Sidebar.tsx     # Menú lateral reactivo con aislamiento RBAC
+    │   │   └── UserProfileDropdown.tsx # Menú flotante de perfil y logout
+    │   └── chatbot/
+    │       └── ChatBotWidget.tsx # Widget flotante del asistente virtual
+    ├── context/                # Estados globales transversales
+    │   └── ThemeContext.tsx    # Manejo de tema Claro / Oscuro
+    ├── features/               # Módulos de negocio (Feature-First)
+    │   ├── auth/               # Autenticación, registro público y contexto
+    │   │   ├── LoginPage.tsx
+    │   │   ├── RegisterPage.tsx
+    │   │   ├── AuthContext.tsx # Proveedor de identidad, token y permisos
+    │   │   ├── components/     # Componentes de entrada y botones de login
+    │   │   └── mocks/          # Usuarios de prueba y validación dual
+    │   ├── dashboard/          # Métricas inteligentes por rol
+    │   │   └── DashboardPage.tsx
+    │   ├── citas/              # Ciclo de vida y agendamiento de citas
+    │   │   ├── CitasView.tsx   # Vista principal con modales y pestañas
+    │   │   ├── types.ts        # Tipos y estados (Pendiente, Confirmada, etc.)
+    │   │   └── components/
+    │   │       └── CitasTable.tsx # Tabla reactiva con acciones por rol
+    │   ├── pacientes/          # Directorio y admisión de pacientes
+    │   │   ├── PacientesView.tsx
+    │   │   ├── PacienteRegistroView.tsx
+    │   │   └── components/
+    │   ├── odontograma/        # Odontograma clínico interactivo
+    │   │   ├── OdontogramaUI.tsx
+    │   │   ├── types.ts
+    │   │   └── components/     # Dientes, cuadrantes y convenciones
+    │   ├── servicios/          # Catálogo de servicios y tarifas
+    │   │   ├── ServiciosView.tsx
+    │   │   └── ServicioRegistroView.tsx
+    │   ├── usuarios/           # Gestión de personal médico y administrativo
+    │   │   └── UsuariosView.tsx
+    │   └── perfil/             # Gestión de cuenta de usuario
+    │       └── PerfilView.tsx
+    ├── layouts/                # Envoltorios de vistas
+    │   └── DashboardLayout.tsx # Layout privado con Sidebar, Header y Chatbot
+    ├── routes/                 # Enrutamiento de la aplicación
+    │   ├── index.tsx           # AppRoutes con carga perezosa (lazy loading)
+    │   └── ProtectedRoute.tsx  # Guard de protección de rutas y permisos RBAC
+    ├── utils/                  # Funciones de soporte
+    │   └── routePermissions.ts # Reglas de acceso a rutas por rol
+    ├── index.css               # Estilos globales y tokens de diseño Tailwind v4
+    └── main.tsx                # Punto de entrada de la aplicación React
 ```
 
-**Componentes de Features:**
-```typescript
-import { PacientesView } from "@/features/pacientes/PacientesView";
-import { PacienteForm } from "@/features/pacientes/components/PacienteForm";
+---
+
+## 3. Matriz de Control de Acceso Basada en Roles (RBAC)
+
+### 3.1 Identificadores Canónicos de Roles
+El sistema opera con 4 roles humanos fundamentales:
+
+| Rol | GUID Oficial en Base de Datos | Responsabilidad Principal |
+| :--- | :--- | :--- |
+| **`ADMINISTRADOR`** | `13000000-0000-0000-0000-000000000001` | Control administrativo y asistencial total. Configuración, usuarios y roles. |
+| **`ODONTOLOGO`** | `13000000-0000-0000-0000-000000000002` | Atención clínica, evolución de pacientes, odontograma e historias clínicas. |
+| **`RECEPCIONISTA`** | `13000000-0000-0000-0000-000000000003` | Admisión de pacientes, asignación y aprobación de citas, catálogo de tarifas. |
+| **`PACIENTE`** | `13000000-0000-0000-0000-000000000005` | Auto-registro, solicitud de citas propias, consulta de historial y perfil. |
+
+---
+
+### 3.2 Mapeo de Rutas Permitidas y Aislamiento de Seguridad
+
+| Ruta del Frontend | PACIENTE | RECEPCIONISTA | ODONTÓLOGO | ADMINISTRADOR |
+| :--- | :---: | :---: | :---: | :---: |
+| `/dashboard` | Resumen Personal | Operativo General | Agenda del Día | Métricas Totales |
+| `/citas` | Mis Citas (Solicitar) | Bandeja de Citas | Citas Asignadas | Control Total |
+| `/agenda` | Bloqueado | Agenda Global | Agenda Clínica | Control Total |
+| `/pacientes` | Bloqueado | Directorio Pacientes | Pacientes Asignados | Control Total |
+| `/pacientes/nuevo` | Bloqueado | Admisión Paciente | Admisión Paciente | Control Total |
+| `/profesionales` | Bloqueado | Directorio Médico | Bloqueado | Control Total |
+| `/servicios` | Bloqueado | Tarifas y Servicios | Bloqueado | Control Total |
+| `/historia-clinica` | Bloqueado | Bloqueado | Evolución Médica | Control Total |
+| `/odontograma` | Bloqueado | Bloqueado | Registro Dental | Control Total |
+| `/usuarios` | Bloqueado | Bloqueado | Bloqueado | Control Total |
+| `/roles-permisos` | Bloqueado | Bloqueado | Bloqueado | Control Total |
+| `/configuracion` | Bloqueado | Bloqueado | Bloqueado | Control Total |
+| `/perfil` | Datos de Contacto | Datos Laborales | Datos Profesionales | Super Administrador |
+
+> **Mecanismo de Bloqueo:** El guard `ProtectedRoute.tsx` consulta `hasRouteAccess(user, pathname)`. Si el rol no tiene la ruta permitida, bloquea la renderización y muestra la pantalla de **Acceso Restringido** con botón de redirección automática hacia `/dashboard`.
+
+---
+
+## 4. Arquitectura de Estilos Centralizada (`src/index.css`)
+
+### 4.1 Variables CSS y Configuración de Tema (Tailwind CSS v4)
+La identidad visual de NexusOdonto se encuentra centralizada en `src/index.css` mediante tokens en `:root` y mapeo en `@theme`:
+
+```css
+:root {
+  /* Paleta Corporativa Oficial (Cian Médico, Turquesa y Menta Tech) */
+  --nexus-primary-50: #E6F7FA;
+  --nexus-primary-100: #B3ECF5;
+  --nexus-primary-300: #4DD5EB;
+  --nexus-primary-500: #00A8CC;
+  --nexus-primary-600: #0093B3;
+  --nexus-primary-700: #008B9B;
+  --nexus-primary-900: #00505B;
+
+  --nexus-secondary-100: #E2F8F0;
+  --nexus-secondary-300: #9CE7CF;
+  --nexus-secondary-500: #66D2B1;
+  --nexus-secondary-700: #3AA887;
+
+  /* Acentos de Especialidades Clínicas */
+  --nexus-accent-cyan: #06B6D4;
+  --nexus-accent-teal: #14B8A6;
+  --nexus-accent-indigo: #6366F1;
+  --nexus-accent-purple: #A855F7;
+  --nexus-accent-sky: #0EA5E9;
+
+  /* Estados Clínicos */
+  --nexus-success-bg: #ECFDF5;
+  --nexus-success-text: #059669;
+  --nexus-warning-bg: #FFFBEB;
+  --nexus-warning-text: #D97706;
+  --nexus-danger-bg: #FEF2F2;
+  --nexus-danger-text: #DC2626;
+  --nexus-info-bg: #EFF6FF;
+  --nexus-info-text: #2563EB;
+}
 ```
 
-### Tipos Centralizados
+### 4.2 Regla Estricta de Iconografía (Cero Emojis)
+* Todos los elementos visuales de estado, botones, sugerencias de chat y alertas utilizan exclusivamente componentes de **`lucide-react`** (`CalendarDays`, `UserRound`, `Stethoscope`, `Smile`, `ShieldCheck`, `FileText`, `CheckCircle`, `AlertCircle`, `Receipt`, `UserPlus`, etc.).
 
-Siempre usa tipos centralizados desde `src/types/`:
+---
 
-```typescript
-import { type Paciente } from "@/types/pacientes";
-import { type Servicio } from "@/types/servicios";
+## 5. Flujo de Negocio Clínico y Ciclo de Vida de las Citas
+
+```mermaid
+stateDiagram-v2
+    [*] --> Pendiente : Paciente solicita cita desde /citas
+    Pendiente --> Confirmada : Recepción valida cupo y asigna Odontólogo
+    Pendiente --> Cancelada : Solicitud rechazada por recepción o paciente
+    Confirmada --> En_Atencion : Odontólogo inicia consulta clínica
+    Confirmada --> Cancelada : Cancelación previa de cita
+    En_Atencion --> Completada : Odontólogo finaliza y registra Odontograma / Historia
+    Completada --> Facturacion : Recepción emite comprobante de servicio
+    Facturacion --> [*]
+    Cancelada --> [*]
 ```
 
-### Hooks Personalizados
+### 5.1 Interacción Paso a Paso
+1. **Solicitud (Paciente):** El paciente hace clic en **"Solicitar Cita"** en `/citas`, seleccionando fecha tentativa, horario y motivo. La cita se registra con estado `Pendiente`.
+2. **Asignación y Aprobación (Recepción / Admin):** En la pestaña de **"Solicitudes Pendientes"**, el recepcionista selecciona **"Asignar / Aprobar"**, define el odontólogo tratante y confirma la cita (`Confirmada`).
+3. **Atención Médica (Odontólogo):** El doctor abre su agenda, selecciona al paciente y marca **"Atender"** (`En Atención`). Durante la consulta:
+   - Abre el **Odontograma Interactivo** (`/odontograma`) para marcar hallazgos en piezas y superficies dentales.
+   - Abre la **Historia Clínica** (`/historia-clinica`) para registrar la evolución médica y el diagnóstico CIE-10.
+4. **Finalización:** El doctor marca **"Completar"** (`Completada`). El paciente visualiza su historial actualizado en su perfil.
 
-```typescript
-import { useTheme } from "@/context/ThemeContext";
+---
 
-const { theme, toggleTheme } = useTheme();
-```
+## 6. Catálogo de Servicios API y Endpoints Consumidos
 
-## 🛠️ Guía Paso a Paso: Crear una Nueva Vista
+### 6.1 Autenticación (`src/api/authService.ts`)
+* `POST /api/auth/login` — Autenticación con identificador dual (Cédula o Correo) + Contraseña.
+* `POST /api/auth/register` — Auto-registro público asignando por defecto el rol `PACIENTE`.
+* `GET /api/auth/me` — Consulta de la sesión activa y permisos.
+* `POST /api/auth/refresh` — Renovación de token de sesión mediante refresh token.
 
-Ejemplo: Crear una vista de **Citas** (Appointments)
+### 6.2 Citas y Agenda (`/api/v1/Appointments`)
+* `GET /api/v1/Appointments` — Listado de citas filtrables por rol, fecha o estado.
+* `POST /api/v1/Appointments` — Solicitud o creación directa de citas.
+* `PATCH /api/v1/Appointments/{id}/assign` — Asignación de doctor y consultorio.
+* `PATCH /api/v1/Appointments/{id}/status` — Cambio de estado de la cita.
 
-### Paso 1: Estructura de la Feature
+### 6.3 Pacientes y Personas (`/api/v1/Patients`, `/api/v1/Persons`)
+* `GET /api/v1/Persons` — Catálogo general de personas.
+* `GET /api/v1/Patients` — Directorio de pacientes clínicos.
+* `POST /api/v1/Patients` — Admisión y creación de nuevo paciente.
 
-Crea la carpeta de la feature dentro de `src/features/`:
+### 6.4 Historia Clínica y Odontograma (`/api/v1/ClinicalHistories`, `/api/v1/Odontograms`)
+* `GET /api/v1/ClinicalHistories/patient/{patientId}` — Consulta de expediente médico.
+* `POST /api/v1/ClinicalAttentions` — Registro de consulta y evolución clínica.
+* `GET /api/v1/Odontograms/patient/{patientId}` — Consulta de odontograma y superficies dentales.
+* `POST /api/v1/DentalFindings` — Registro de patología o procedimiento en pieza dental.
 
+---
+
+## 7. Instrucciones para Desarrolladores
+
+### Comandos de Desarrollo y Construcción
 ```bash
-src/features/citas/
-├── CitasView.tsx              # Vista principal
-├── components/                # Componentes específicos
-│   ├── CitasList.tsx
-│   ├── CitaCard.tsx
-│   └── CitaForm.tsx
-└── types.ts                   # Tipos específicos (opcional)
-```
+# Navegar al directorio del frontend
+cd NexusOdontoFrontend
 
-### Paso 2: Creación del Componente y Vista
-
-**Archivo: `src/features/citas/CitasView.tsx`**
-
-```typescript
-import { useState } from "react";
-import { CitasList } from "./components/CitasList";
-import { CitaForm } from "./components/CitaForm";
-
-interface Cita {
-  id: number;
-  paciente: string;
-  fecha: string;
-  hora: string;
-  estado: "pendiente" | "confirmada" | "cancelada";
-}
-
-export function CitasView() {
-  const [citas, setCitas] = useState<Cita[]>([]);
-  const [showForm, setShowForm] = useState(false);
-
-  return (
-    <div className="p-6">
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-              Citas
-            </h1>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-              Gestión de citas del consultorio.
-            </p>
-          </div>
-          <button
-            type="button"
-            className="px-4 py-2 bg-gradient-to-r from-primary-500 to-primary-700 text-white font-medium rounded-lg hover:from-primary-600 hover:to-primary-800 transition-all"
-            onClick={() => setShowForm(true)}
-          >
-            + Nueva Cita
-          </button>
-        </div>
-
-        {showForm && <CitaForm onCancel={() => setShowForm(false)} />}
-        <CitasList citas={citas} />
-      </div>
-    </div>
-  );
-}
-```
-
-### Paso 3: Lógica y Estado
-
-**Usar hooks personalizados:**
-
-```typescript
-import { useTheme } from "@/context/ThemeContext";
-
-export function CitasView() {
-  const { theme } = useTheme();
-  const [citas, setCitas] = useState<Cita[]>([]);
-  
-  // Ejemplo: cargar datos desde API
-  useEffect(() => {
-    const fetchCitas = async () => {
-      const response = await axiosClient.get('/citas');
-      setCitas(response.data);
-    };
-    fetchCitas();
-  }, []);
-  
-  // ...
-}
-```
-
-### Paso 4: Estilizado con Tailwind CSS v4
-
-**Clases adaptativas a modo claro/oscuro:**
-
-```typescript
-// Contenedor principal
-<div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
-
-// Textos
-<h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-<p className="text-sm text-slate-600 dark:text-slate-400">
-
-// Botones
-<button className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors">
-
-// Inputs
-<input className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500">
-
-// Transiciones suaves
-<div className="transition-colors duration-300">
-```
-
-**Reglas de contraste:**
-- **Modo claro**: `text-slate-900` (texto principal), `text-slate-600` (secundario)
-- **Modo oscuro**: `dark:text-slate-100` (texto principal), `dark:text-slate-400` (secundario)
-- **Bordes**: `border-slate-200 dark:border-slate-800`
-- **Fondos**: `bg-white dark:bg-slate-900`
-
-### Paso 5: Registro e Integración en el Enrutador
-
-**Archivo: `src/routes/index.tsx`**
-
-Agrega el import lazy al inicio del archivo:
-
-```typescript
-import { Suspense, lazy } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-
-// Helper function para lazy loading de named exports
-const lazyImport = <T extends Record<string, any>, K extends keyof T>(
-  factory: () => Promise<T>,
-  key: K
-) =>
-  lazy(() =>
-    factory().then((module) => ({
-      default: module[key],
-    }))
-  );
-
-// Imports existentes...
-const LoginPage = lazy(() => import("../features/auth/LoginPage"));
-const DashboardLayout = lazyImport(() => import("../layouts/DashboardLayout"), "DashboardLayout");
-
-// NUEVO: Importar CitasView
-const CitasView = lazyImport(() => import("../features/citas/CitasView"), "CitasView");
-```
-
-Agrega la ruta dentro de `<Routes>`:
-
-```typescript
-<Route
-  path="/citas"
-  element={
-    <DashboardLayout>
-      <CitasView />
-    </DashboardLayout>
-  }
-/>
-```
-
-**Agrega el enlace en el Sidebar:**
-
-**Archivo: `src/components/layout/Sidebar.tsx`**
-
-```typescript
-import { CalendarDays } from "lucide-react";
-
-const menuItems = [
-  // ... items existentes
-  {
-    label: "Citas",
-    icon: CalendarDays,
-    path: "/citas",
-  },
-  // ... más items
-];
-```
-
-## 📦 Optimizaciones de Rendimiento
-
-### Code Splitting
-
-Todas las vistas se cargan de forma diferida usando `React.lazy`:
-
-- El bundle inicial solo contiene el código necesario para el Login
-- Las vistas del Dashboard (Pacientes, Servicios, Citas) se cargan bajo demanda
-- Chunks manuales separan React, íconos y código de aplicación
-
-### Imágenes Optimizadas
-
-- Formato: WebP (más eficiente que JPEG/PNG)
-- Tamaño objetivo: 80-150 KB por imagen
-- Compresión: 75-80% de calidad
-- Resolución máxima: 1920px de ancho
-
-## 🔧 Scripts de Desarrollo
-
-```bash
 # Instalar dependencias
 npm install
 
-# Servidor de desarrollo
+# Iniciar servidor de desarrollo con Vite
 npm run dev
 
-# Build de producción
-npm run build
+# Verificación estricta de tipos de TypeScript (0 errores)
+npx tsc --noEmit
 
-# Preview del build
-npm run preview
+# Compilación para producción (generación de /dist)
+npm run build
 ```
 
-## 📝 Convenciones de Código
-
-- **TypeScript**: Usar tipos estrictos en todas las interfaces
-- **Componentes**: Usar `export function` en lugar de componentes con nombre
-- **Imports**: Usar imports nombrados de Lucide React para tree-shaking
-- **Estilos**: 100% Tailwind CSS v4, sin archivos CSS adicionales
-- **Tema**: Siempre usar variantes `dark:` para soporte de modo oscuro
-- **Naming**: Usar PascalCase para componentes, camelCase para funciones/hooks
+### Reglas de Mantenimiento
+1. **Desacoplamiento HTTP:** Nunca invocar `fetch` o `axios` directamente dentro de los componentes visuales; utilizar los módulos en `src/api/`.
+2. **Autorización Centralizada:** Toda nueva vista protegida debe registrarse en `ROLE_ALLOWED_ROUTES` dentro de `src/utils/routePermissions.ts`.
+3. **Cero Emojis:** Mantener el estándar corporativo empleando componentes de `lucide-react`.
