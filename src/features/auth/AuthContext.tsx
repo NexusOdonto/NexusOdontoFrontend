@@ -39,14 +39,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Cargar sesión desde localStorage al montar
+    // 1. Cargar sesión local inmediatamente
     const savedUser = localStorage.getItem('auth_user');
+    const token = localStorage.getItem('auth_token');
+
     if (savedUser) {
       try {
         setUser(JSON.parse(savedUser));
       } catch (e) {
         console.error('Error parsing auth_user from localStorage', e);
       }
+    }
+
+    // 2. Si existe token real de API, verificar con GET /api/auth/me
+    if (token && token !== 'mock_dev_token') {
+      authService
+        .getProfile()
+        .then((profile) => {
+          if (profile) {
+            setUser((prev) => {
+              const updated: User = {
+                id: profile.id || prev?.id || '',
+                personId: profile.personId || prev?.personId || '',
+                name: profile.name || prev?.name || '',
+                email: profile.email || prev?.email || '',
+                roleIds: profile.roleIds || prev?.roleIds || [],
+                permissions: profile.permissions || prev?.permissions || [],
+                avatar: prev?.avatar || `https://api.dicebear.com/7.x/avatars/svg?seed=${encodeURIComponent(profile.name || 'User')}`,
+                nombre: prev?.nombre,
+                apellido: prev?.apellido,
+                telefono: prev?.telefono,
+                cedula: prev?.cedula,
+                rol: prev?.rol,
+                direccion: prev?.direccion,
+                sexo: prev?.sexo,
+                tipoDocumento: prev?.tipoDocumento,
+                fechaNacimiento: prev?.fechaNacimiento,
+              };
+              localStorage.setItem('auth_user', JSON.stringify(updated));
+              return updated;
+            });
+          }
+        })
+        .catch((err) => {
+          console.warn('Session verification from /api/auth/me failed or offline:', err);
+        });
     }
   }, []);
 
@@ -65,7 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cleanPassword = password.trim();
     
     try {
-      // 1. Intentar autenticación con el backend (envía { login, password })
+      // 1. Autenticación directa contra el endpoint REST del backend .NET (/api/auth/login)
       const response = await authService.login({
         login: cleanIdentifier,
         password: cleanPassword
@@ -94,19 +131,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: true };
       }
       
-      return { success: false, error: 'Error desconocido al iniciar sesión' };
+      return { success: false, error: 'Error al procesar la autenticación.' };
     } catch (error: any) {
-      console.warn('Backend login returned error, checking mock fallback for dual auth...', error);
+      console.warn('Backend login attempt returned error, verifying demo credentials...', error);
 
-      // 2. Fallback resiliente: Si el backend no tiene el usuario/cédula registrado en BD o está en desarrollo,
-      // verificar en la base de usuarios de prueba (soporta Cédula o Correo para todos los 4 roles)
+      // 2. Fallback de soporte para desarrollo con roles
       const mock = authenticateUser(cleanIdentifier, cleanPassword);
       if (mock) {
         const mockPermissions =
           mock.rol === "ADMINISTRADOR"
-            ? ["USERS:VIEW", "APPOINTMENTS:VIEW", "PATIENTS:VIEW", "PATIENTS:CREATE", "PEOPLE:VIEW", "CATALOGS:VIEW", "CLINICAL:VIEW", "ODONTOGRAM:VIEW", "ROLES:VIEW"]
+            ? ["USERS:VIEW", "APPOINTMENTS:VIEW", "PATIENTS:VIEW", "PATIENTS:CREATE", "PEOPLE:VIEW", "CATALOGS:VIEW", "CLINICAL:VIEW", "ODONTOGRAM:VIEW", "ROLES:VIEW", "PROFILE:VIEW"]
             : mock.rol === "ODONTOLOGO"
-            ? ["APPOINTMENTS:VIEW", "PATIENTS:VIEW", "CLINICAL:VIEW", "ODONTOGRAM:VIEW"]
+            ? ["APPOINTMENTS:VIEW", "PATIENTS:VIEW", "CLINICAL:VIEW", "ODONTOGRAM:VIEW", "PROFILE:VIEW"]
             : mock.rol === "RECEPCIONISTA"
             ? ["APPOINTMENTS:VIEW", "PATIENTS:VIEW", "PATIENTS:CREATE", "PEOPLE:VIEW", "CATALOGS:VIEW", "PROFILE:VIEW"]
             : ["APPOINTMENTS:VIEW", "PROFILE:VIEW"];
@@ -134,7 +170,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: true };
       }
 
-      // Si no coincide ni en backend ni en mocks
       const errorMessage =
         error.response?.data?.message === 'Invalid email or password.'
           ? 'Usuario o contraseña incorrectos. Verifica tu cédula o correo.'

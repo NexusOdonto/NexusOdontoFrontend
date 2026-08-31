@@ -8,6 +8,8 @@ import {
   PACIENTES_STORAGE_KEY,
   type Paciente,
 } from "../../../types/pacientes";
+import { personService } from "../../../api/personService";
+import { patientService } from "../../../api/patientService";
 
 const pacienteSchema = z.object({
   nombres: z
@@ -181,6 +183,30 @@ export function PacienteForm() {
       telefono: data.telefono.trim(),
       estado: "Activo",
     };
+
+    // Intentar persistir directamente en API /api/v1/Persons y /api/v1/Patients
+    try {
+      const createdPerson = await personService.create({
+        documentTypeId: "10000000-0000-0000-0000-000000000001",
+        documentNumber: documentoIngresado,
+        firstName: data.nombres.trim(),
+        lastName: data.apellidos.trim(),
+        email: data.correo?.trim() || `${documentoIngresado}@paciente.com`,
+        phone: data.telefono.trim(),
+        dateOfBirth: data.fechaNacimiento,
+        sexId: "11000000-0000-0000-0000-000000000001",
+      });
+
+      if (createdPerson?.id) {
+        await patientService.create({
+          personId: createdPerson.id,
+          emergencyContactName: tutorEnabled ? "Tutor Legal" : undefined,
+          emergencyContactPhone: tutorEnabled ? data.telefono.trim() : undefined,
+        });
+      }
+    } catch (apiErr) {
+      console.warn("Backend API sync failed, stored in local cache:", apiErr);
+    }
 
     const pacientesActualizados = [
       nuevoPaciente,

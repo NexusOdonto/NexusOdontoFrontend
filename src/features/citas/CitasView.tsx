@@ -4,15 +4,19 @@ import {
   Search,
   X,
   Stethoscope,
+  RefreshCw,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 
 import { CitasTable } from "./components/CitasTable";
 import { type Cita, type EstadoCita } from "./types";
 import { useAuth } from "../auth/AuthContext";
 import { getUserRole } from "../../utils/routePermissions";
+import { appointmentService, type AppointmentResponseDto } from "../../api/appointmentService";
+import { serviceCatalogService } from "../../api/serviceCatalogService";
+import { professionalService } from "../../api/professionalService";
 
-const citasIniciales: Cita[] = [
+const citasFallback: Cita[] = [
   {
     id: 1,
     paciente: "Andrés Pérez",
@@ -61,36 +65,6 @@ const citasIniciales: Cita[] = [
     estado: "Pendiente",
     motivo: "Dolor en cordal inferior izquierda",
   },
-  {
-    id: 5,
-    paciente: "Claudia Ortiz",
-    pacienteEmail: "claudia@correo.com",
-    pacienteCedula: "1054321678",
-    profesional: "Dra. Laura Gómez",
-    servicio: "Control de Ortodoncia",
-    fecha: "2026-09-01",
-    hora: "11:30",
-    estado: "En Atención",
-    motivo: "Ajuste de brackets",
-  },
-];
-
-const listaProfesionales = [
-  "Dra. Laura Gómez",
-  "Dr. Juan Martínez",
-  "Dr. Carlos Méndez",
-  "Dra. Patricia Silva",
-];
-
-const listaServicios = [
-  "Limpieza y Valoración General",
-  "Blanqueamiento Dental Láser",
-  "Calza en Resina Simple / Compuesta",
-  "Extracción Dental Simple / Quirúrgica",
-  "Tratamiento de Endodoncia",
-  "Control de Ortodoncia",
-  "Implante Dental Osteointegrado",
-  "Diseño de Sonrisa",
 ];
 
 export function CitasView() {
@@ -102,17 +76,20 @@ export function CitasView() {
   const isRecepcionista = role === "RECEPCIONISTA";
   const isAdmin = role === "ADMINISTRADOR";
 
-  const [citas, setCitas] = useState<Cita[]>(() => {
-    const saved = localStorage.getItem("nexus_citas");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return citasIniciales;
-      }
-    }
-    return citasIniciales;
-  });
+  const [citas, setCitas] = useState<Cita[]>([]);
+  const [servicesList, setServicesList] = useState<string[]>([
+    "Limpieza y Valoración General",
+    "Blanqueamiento Dental Láser",
+    "Calza en Resina Simple",
+    "Extracción Dental Cordal",
+    "Control de Ortodoncia",
+  ]);
+  const [professionalsList, setProfessionalsList] = useState<string[]>([
+    "Dra. Laura Gómez",
+    "Dr. Juan Martínez",
+    "Dr. Carlos Méndez",
+    "Dra. Patricia Silva",
+  ]);
 
   const [search, setSearch] = useState("");
   const [fecha, setFecha] = useState("");
@@ -126,25 +103,91 @@ export function CitasView() {
 
   // Formulario Solicitud / Creación
   const [formPaciente, setFormPaciente] = useState(user?.name || "");
-  const [formServicio, setFormServicio] = useState(listaServicios[0]);
+  const [formServicio, setFormServicio] = useState("");
   const [formFecha, setFormFecha] = useState("");
   const [formHora, setFormHora] = useState("09:00");
-  const [formProfesional, setFormProfesional] = useState(listaProfesionales[0]);
+  const [formProfesional, setFormProfesional] = useState("");
   const [formMotivo, setFormMotivo] = useState("");
 
-  useEffect(() => {
-    localStorage.setItem("nexus_citas", JSON.stringify(citas));
-  }, [citas]);
+  // Cargar datos reales desde la API
+  const fetchAppointmentsAndCatalogs = useCallback(async () => {
+    setLoading(true);
+    try {
+      // 1. Cargar catálogo de servicios desde /api/v1/Services
+      const servicesData = await serviceCatalogService.getAll().catch(() => []);
+      if (servicesData && servicesData.length > 0) {
+        const names = servicesData.map((s) => s.name);
+        setServicesList(names);
+        setFormServicio(names[0]);
+      } else {
+        setFormServicio("Limpieza y Valoración General");
+      }
 
-  useEffect(() => {
-    const timeout = window.setTimeout(() => {
+      // 2. Cargar profesionales desde /api/v1/Professionals
+      const profData = await professionalService.getAll().catch(() => []);
+      if (profData && profData.length > 0) {
+        const profNames = profData.map((p) => `Dr(a). ${p.firstName || ''} ${p.lastName || ''}`.trim());
+        setProfessionalsList(profNames);
+        setFormProfesional(profNames[0]);
+      } else {
+        setFormProfesional("Dra. Laura Gómez");
+      }
+
+      // 3. Cargar citas desde /api/v1/Appointments
+      const apiAppointments: AppointmentResponseDto[] = await appointmentService.getAll().catch(() => []);
+      if (apiAppointments && apiAppointments.length > 0) {
+        const mapped: Cita[] = apiAppointments.map((a, idx) => {
+          const startDate = a.startsAt ? a.startsAt.split("T")[0] : "2026-09-15";
+          const startTime = a.startsAt && a.startsAt.includes("T") ? a.startsAt.split("T")[1].substring(0, 5) : "09:00";
+          
+          let estadoName: EstadoCita = "Confirmada";
+          if (a.cancelledAt) estadoName = "Cancelada";
+          else if (!a.professionalId || a.professionalId === "00000000-0000-0000-0000-000000000000") estadoName = "Pendiente";
+
+          return {
+            id: idx + 1,
+            paciente: a.patientName || "Paciente",
+            pacienteEmail: a.patientEmail,
+            pacienteCedula: a.patientDocument,
+            profesional: a.professionalName || (a.professionalId ? "Dr. Asignado" : ""),
+            servicio: a.serviceName || "Consulta General",
+            fecha: startDate,
+            hora: startTime,
+            estado: estadoName,
+            motivo: a.reasonForVisit || a.notes,
+          };
+        });
+        setCitas(mapped);
+      } else {
+        // Fallback si no hay citas en backend todavía
+        const saved = localStorage.getItem("nexus_citas");
+        if (saved) {
+          try {
+            setCitas(JSON.parse(saved));
+          } catch {
+            setCitas(citasFallback);
+          }
+        } else {
+          setCitas(citasFallback);
+        }
+      }
+    } catch (error) {
+      console.warn("API appointments offline, using local data:", error);
+      setCitas(citasFallback);
+    } finally {
       setLoading(false);
-    }, 400);
-
-    return () => {
-      window.clearTimeout(timeout);
-    };
+    }
   }, []);
+
+  useEffect(() => {
+    fetchAppointmentsAndCatalogs();
+  }, [fetchAppointmentsAndCatalogs]);
+
+  useEffect(() => {
+    if (citas.length > 0) {
+      localStorage.setItem("nexus_citas", JSON.stringify(citas));
+    }
+  }, [citas]);
 
   // Filtrado de citas según rol y filtros activos
   const citasFiltradas = useMemo(() => {
@@ -155,7 +198,7 @@ export function CitasView() {
       if (isPaciente) {
         const patientName = (user?.name || user?.nombre || "").toLowerCase();
         const patientEmail = (user?.email || "").toLowerCase();
-        const patientCedula = (user?.cedula || "");
+        const patientCedula = user?.cedula || "";
 
         const isOwn =
           cita.paciente.toLowerCase().includes(patientName) ||
@@ -188,12 +231,11 @@ export function CitasView() {
     });
   }, [citas, search, fecha, estadoFiltro, isPaciente, isOdontologo, user]);
 
-  // Contadores para pestañas
   const pendingCount = useMemo(() => {
     return citas.filter((c) => c.estado === "Pendiente").length;
   }, [citas]);
 
-  const handleCreateOrRequest = (e: React.FormEvent) => {
+  const handleCreateOrRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formFecha) return;
 
@@ -203,12 +245,28 @@ export function CitasView() {
       pacienteEmail: isPaciente ? user?.email : undefined,
       pacienteCedula: isPaciente ? user?.cedula : undefined,
       profesional: isPaciente ? "" : formProfesional,
-      servicio: formServicio,
+      servicio: formServicio || servicesList[0],
       fecha: formFecha,
       hora: formHora,
       estado: isPaciente ? "Pendiente" : "Confirmada",
       motivo: formMotivo || "Consulta general",
     };
+
+    // Intentar persistir en API /api/v1/Appointments
+    try {
+      await appointmentService.create({
+        patientId: user?.personId || "11000000-0000-0000-0000-000000000001",
+        professionalId: "00000000-0000-0000-0000-000000000000",
+        serviceId: "12000000-0000-0000-0000-000000000001",
+        startsAt: `${formFecha}T${formHora}:00Z`,
+        endsAt: `${formFecha}T${formHora}:30Z`,
+        appointmentStatusId: "14000000-0000-0000-0000-000000000001",
+        appointmentOriginId: "15000000-0000-0000-0000-000000000001",
+        reasonForVisit: formMotivo,
+      });
+    } catch (err) {
+      console.warn("Could not save to API Appointments directly, stored in state:", err);
+    }
 
     setCitas((prev) => [newCita, ...prev]);
     setShowRequestModal(false);
@@ -245,7 +303,7 @@ export function CitasView() {
 
   const handleOpenAssign = (cita: Cita) => {
     setSelectedCitaToAssign(cita);
-    setFormProfesional(cita.profesional || listaProfesionales[0]);
+    setFormProfesional(cita.profesional || professionalsList[0]);
     setFormHora(cita.hora || "09:00");
     setShowAssignModal(true);
   };
@@ -265,17 +323,28 @@ export function CitasView() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            setFormPaciente(isPaciente ? (user?.name || "Andrés Pérez") : "");
-            setShowRequestModal(true);
-          }}
-          className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-400 hover:to-cyan-400 px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-[0_4px_15px_rgba(20,184,166,0.3)] transition-all active:scale-95 cursor-pointer"
-        >
-          <Plus size={18} />
-          <span>{isPaciente ? "Solicitar Cita" : "Nueva Cita Directa"}</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={fetchAppointmentsAndCatalogs}
+            className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
+            title="Recargar datos desde la base de datos"
+          >
+            <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setFormPaciente(isPaciente ? (user?.name || "Andrés Pérez") : "");
+              setShowRequestModal(true);
+            }}
+            className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-400 hover:to-cyan-400 px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-[0_4px_15px_rgba(20,184,166,0.3)] transition-all active:scale-95 cursor-pointer"
+          >
+            <Plus size={18} />
+            <span>{isPaciente ? "Solicitar Cita" : "Nueva Cita Directa"}</span>
+          </button>
+        </div>
       </div>
 
       {/* PESTAÑAS Y CONTADORES PARA RECEPCIÓN / ADMIN */}
@@ -461,7 +530,7 @@ export function CitasView() {
                   onChange={(e) => setFormServicio(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-sm text-slate-900 dark:text-white outline-none focus:border-teal-500"
                 >
-                  {listaServicios.map((s) => (
+                  {servicesList.map((s) => (
                     <option key={s} value={s}>
                       {s}
                     </option>
@@ -507,7 +576,7 @@ export function CitasView() {
                     onChange={(e) => setFormProfesional(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-sm text-slate-900 dark:text-white outline-none focus:border-teal-500"
                   >
-                    {listaProfesionales.map((p) => (
+                    {professionalsList.map((p) => (
                       <option key={p} value={p}>
                         {p}
                       </option>
@@ -600,7 +669,7 @@ export function CitasView() {
                   onChange={(e) => setFormProfesional(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-sm text-slate-900 dark:text-white outline-none focus:border-teal-500"
                 >
-                  {listaProfesionales.map((p) => (
+                  {professionalsList.map((p) => (
                     <option key={p} value={p}>
                       {p}
                     </option>

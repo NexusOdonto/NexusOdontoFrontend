@@ -1,5 +1,4 @@
 import { useState, type ChangeEvent } from "react";
-
 import {
   Camera,
   Pencil,
@@ -9,18 +8,17 @@ import {
   Mail,
   Phone,
   CreditCard,
-  Briefcase,
-  FileText,
-  Calendar,
   MapPin,
+  CheckCircle,
 } from "lucide-react";
 
 import { useAuth } from "../auth/AuthContext";
+import { personService } from "../../api/personService";
 
 export default function PerfilView() {
   const { user, updateUser } = useAuth();
-
   const [isEditing, setIsEditing] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   const [profileData, setProfileData] = useState({
     nombre: user?.nombre || user?.name || "",
@@ -49,6 +47,7 @@ export default function PerfilView() {
 
   const handleEdit = () => {
     setIsEditing(true);
+    setSaveSuccess(false);
   };
 
   const handleCancel = () => {
@@ -69,313 +68,218 @@ export default function PerfilView() {
     setIsEditing(false);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (updateUser) {
       updateUser(profileData);
     }
+
+    // Persistir en backend API si personId es válido
+    if (user?.personId && user.personId.length > 10) {
+      try {
+        await personService.update(user.personId, {
+          documentTypeId: "10000000-0000-0000-0000-000000000001",
+          documentNumber: profileData.cedula || user.cedula || "1076543210",
+          firstName: profileData.nombre,
+          lastName: profileData.apellido,
+          email: profileData.email,
+          phone: profileData.telefono,
+          dateOfBirth: profileData.fechaNacimiento,
+          sexId: "11000000-0000-0000-0000-000000000001",
+          address: profileData.direccion,
+        });
+      } catch (err) {
+        console.warn("Backend person update sync:", err);
+      }
+    }
+
     setIsEditing(false);
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 3000);
   };
 
-  const fullName = `${profileData.nombre} ${profileData.apellido}`.trim();
-
-  if (!user) {
-    return null;
-  }
+  const fullName = `${profileData.nombre} ${profileData.apellido}`.trim() || user?.name || "Usuario";
 
   return (
-    <div className="mx-auto w-full max-w-5xl">
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-6">
+      {/* Encabezado */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="mb-1 text-sm font-medium text-cyan-600 dark:text-cyan-400">
-            Mi cuenta
-          </p>
-
-          <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl dark:text-white">
-            Gestionar tu cuenta
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+            Mi Perfil de Usuario
           </h1>
-
-          <p className="mt-2 text-sm text-slate-600 sm:text-base dark:text-slate-400">
-            Consulta y actualiza la información de tu perfil.
+          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+            Información personal, datos de contacto y credenciales de acceso.
           </p>
         </div>
 
-        {!isEditing ? (
-          <button
-            type="button"
-            onClick={handleEdit}
-            className="flex items-center justify-center gap-2 rounded-xl bg-cyan-500 px-5 py-3 font-medium text-white transition-colors hover:bg-cyan-600"
-          >
-            <Pencil size={18} />
-            Editar perfil
-          </button>
-        ) : (
-          <div className="flex flex-col gap-3 sm:flex-row">
+        <div className="flex items-center gap-3">
+          {saveSuccess && (
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-500 bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/20 animate-fadeIn">
+              <CheckCircle size={14} />
+              Guardado con éxito
+            </span>
+          )}
+
+          {!isEditing ? (
             <button
               type="button"
-              onClick={handleCancel}
-              className="flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-3 font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+              onClick={handleEdit}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-600 text-slate-950 font-bold text-sm shadow-sm transition-all cursor-pointer"
             >
-              <X size={18} />
-              Cancelar
+              <Pencil size={16} />
+              <span>Editar Perfil</span>
             </button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleCancel}
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <X size={15} />
+                <span>Cancelar</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-600 text-slate-950 font-bold text-xs shadow-sm transition-all cursor-pointer"
+              >
+                <Save size={15} />
+                <span>Guardar Cambios</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
 
+      {/* Tarjeta de Identidad */}
+      <div className="p-6 md:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-center gap-6">
+        <div className="relative">
+          <img
+            src={profileData.avatar || `https://api.dicebear.com/7.x/avatars/svg?seed=${encodeURIComponent(fullName)}`}
+            alt={fullName}
+            className="w-24 h-24 rounded-2xl bg-teal-500/10 border-2 border-teal-500/30 object-cover shadow-inner"
+          />
+          {isEditing && (
             <button
               type="button"
-              onClick={handleSave}
-              className="flex items-center justify-center gap-2 rounded-xl bg-cyan-500 px-5 py-3 font-medium text-white transition-colors hover:bg-cyan-600"
+              className="absolute -bottom-2 -right-2 p-2 bg-teal-500 text-slate-950 rounded-xl shadow-lg hover:scale-105 transition-transform"
+              title="Cambiar avatar"
             >
-              <Save size={18} />
-              Guardar cambios
+              <Camera size={14} />
             </button>
-          </div>
-        )}
-      </div>
-
-      <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
-        <div className="border-b border-slate-200 bg-slate-50 px-5 py-6 dark:border-slate-800 dark:bg-slate-950/40 sm:px-6">
-          <div className="flex flex-col items-center gap-5 sm:flex-row">
-            <div className="relative">
-              {profileData.avatar ? (
-                <img
-                  src={profileData.avatar}
-                  alt={fullName}
-                  className="h-20 w-20 rounded-2xl object-cover ring-2 ring-cyan-500/20"
-                />
-              ) : (
-                <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-cyan-500 text-2xl font-bold text-white">
-                  {profileData.nombre.charAt(0) || "U"}
-                </div>
-              )}
-
-              {isEditing && (
-                <button
-                  type="button"
-                  className="absolute -bottom-2 -right-2 flex h-9 w-9 items-center justify-center rounded-full bg-cyan-500 text-white shadow-lg transition-colors hover:bg-cyan-600"
-                  aria-label="Cambiar foto"
-                >
-                  <Camera size={17} />
-                </button>
-              )}
-            </div>
-
-            <div className="text-center sm:text-left">
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-                {fullName}
-              </h2>
-
-              <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-                {profileData.email}
-              </p>
-
-              <div className="mt-3 inline-flex items-center gap-2 rounded-lg bg-cyan-500/10 px-3 py-1.5 text-sm font-medium text-cyan-600 dark:text-cyan-400">
-                <Briefcase size={16} />
-                {profileData.rol || "Sin cargo"}
-              </div>
-            </div>
-          </div>
+          )}
         </div>
 
-        <div className="p-5 sm:p-6">
-          <h3 className="mb-5 text-lg font-semibold text-slate-900 dark:text-white">
-            Información personal
-          </h3>
-
-          <div className="grid grid-cols-1 gap-x-5 gap-y-4 md:grid-cols-2">
-            <ProfileField
-              label="Nombre"
-              icon={<User size={18} />}
-            >
-              <input
-                type="text"
-                name="nombre"
-                value={profileData.nombre}
-                onChange={handleChange}
-                disabled={!isEditing}
-                className={inputClass}
-              />
-            </ProfileField>
-
-            <ProfileField
-              label="Apellido"
-              icon={<User size={18} />}
-            >
-              <input
-                type="text"
-                name="apellido"
-                value={profileData.apellido}
-                onChange={handleChange}
-                disabled={!isEditing}
-                className={inputClass}
-              />
-            </ProfileField>
-
-            <ProfileField
-              label="Correo electrónico"
-              icon={<Mail size={18} />}
-            >
-              <input
-                type="email"
-                name="email"
-                value={profileData.email}
-                onChange={handleChange}
-                disabled={!isEditing}
-                className={inputClass}
-              />
-            </ProfileField>
-
-            <ProfileField
-              label="Teléfono"
-              icon={<Phone size={18} />}
-            >
-              <input
-                type="tel"
-                name="telefono"
-                value={profileData.telefono}
-                onChange={handleChange}
-                disabled={!isEditing}
-                className={inputClass}
-              />
-            </ProfileField>
-
-            <ProfileField
-              label="Tipo de documento"
-              icon={<FileText size={18} />}
-            >
-              <select
-                name="tipoDocumento"
-                value={profileData.tipoDocumento}
-                onChange={handleChange}
-                disabled={!isEditing}
-                className={inputClass}
-              >
-                <option value="">No especificado</option>
-                <option value="CC">
-                  Cédula de Ciudadanía (CC)
-                </option>
-                <option value="TI">
-                  Tarjeta de Identidad (TI)
-                </option>
-                <option value="CE">
-                  Cédula de Extranjería (CE)
-                </option>
-                <option value="PASAPORTE">
-                  Pasaporte
-                </option>
-              </select>
-            </ProfileField>
-
-            <ProfileField
-              label="Número de documento"
-              icon={<CreditCard size={18} />}
-            >
-              <input
-                type="text"
-                name="cedula"
-                value={profileData.cedula}
-                onChange={handleChange}
-                disabled={!isEditing}
-                className={inputClass}
-              />
-            </ProfileField>
-
-            <ProfileField
-              label="Fecha de nacimiento"
-              icon={<Calendar size={18} />}
-            >
-              <input
-                type="date"
-                name="fechaNacimiento"
-                value={profileData.fechaNacimiento}
-                onChange={handleChange}
-                disabled={!isEditing}
-                className={inputClass}
-              />
-            </ProfileField>
-
-            <ProfileField
-              label="Sexo"
-              icon={<User size={18} />}
-            >
-              <select
-                name="sexo"
-                value={profileData.sexo}
-                onChange={handleChange}
-                disabled={!isEditing}
-                className={inputClass}
-              >
-                <option value="">No especificado</option>
-                <option value="Masculino">
-                  Masculino
-                </option>
-                <option value="Femenino">
-                  Femenino
-                </option>
-                <option value="Otro">
-                  Otro
-                </option>
-              </select>
-            </ProfileField>
-
-            <ProfileField
-              label="Dirección de residencia"
-              icon={<MapPin size={18} />}
-            >
-              <input
-                type="text"
-                name="direccion"
-                value={profileData.direccion}
-                onChange={handleChange}
-                disabled={!isEditing}
-                className={inputClass}
-              />
-            </ProfileField>
-
-            <ProfileField
-              label="Cargo / Rol"
-              icon={<Briefcase size={18} />}
-            >
-              <input
-                type="text"
-                name="rol"
-                value={profileData.rol}
-                onChange={handleChange}
-                disabled={!isEditing}
-                className={inputClass}
-              />
-            </ProfileField>
-          </div>
+        <div className="text-center md:text-left space-y-1">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+            {fullName}
+          </h2>
+          <p className="text-xs font-semibold text-teal-600 dark:text-teal-400 uppercase tracking-wider">
+            {user?.rol || (user?.roleIds && user.roleIds[0]) || "PACIENTE"}
+          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            {profileData.email}
+          </p>
         </div>
       </div>
-    </div>
-  );
-}
 
-const inputClass =
-  "h-11 w-full rounded-xl border border-slate-300 bg-white pl-11 pr-4 text-sm text-slate-900 outline-none transition-colors focus:border-cyan-500 disabled:cursor-default disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:disabled:bg-slate-950/50";
+      {/* Formulario de Datos */}
+      <div className="p-6 md:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-6">
+        <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <User size={18} className="text-teal-500" />
+          <span>Información Personal y Contacto</span>
+        </h3>
 
-interface ProfileFieldProps {
-  label: string;
-  icon: React.ReactNode;
-  children: React.ReactNode;
-}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
+              Nombres
+            </label>
+            <input
+              type="text"
+              name="nombre"
+              disabled={!isEditing}
+              value={profileData.nombre}
+              onChange={handleChange}
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-sm disabled:opacity-75 outline-none focus:border-teal-500"
+            />
+          </div>
 
-function ProfileField({
-  label,
-  icon,
-  children,
-}: ProfileFieldProps) {
-  return (
-    <div>
-      <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
-        {label}
-      </label>
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
+              Apellidos
+            </label>
+            <input
+              type="text"
+              name="apellido"
+              disabled={!isEditing}
+              value={profileData.apellido}
+              onChange={handleChange}
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-sm disabled:opacity-75 outline-none focus:border-teal-500"
+            />
+          </div>
 
-      <div className="relative">
-        <div className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-slate-400">
-          {icon}
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 flex items-center gap-1.5">
+              <Mail size={13} className="text-slate-400" />
+              <span>Correo Electrónico</span>
+            </label>
+            <input
+              type="email"
+              name="email"
+              disabled={!isEditing}
+              value={profileData.email}
+              onChange={handleChange}
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-sm disabled:opacity-75 outline-none focus:border-teal-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 flex items-center gap-1.5">
+              <Phone size={13} className="text-slate-400" />
+              <span>Teléfono / Móvil</span>
+            </label>
+            <input
+              type="text"
+              name="telefono"
+              disabled={!isEditing}
+              value={profileData.telefono}
+              onChange={handleChange}
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-sm disabled:opacity-75 outline-none focus:border-teal-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 flex items-center gap-1.5">
+              <CreditCard size={13} className="text-slate-400" />
+              <span>Cédula / Documento de Identidad</span>
+            </label>
+            <input
+              type="text"
+              name="cedula"
+              disabled={!isEditing}
+              value={profileData.cedula}
+              onChange={handleChange}
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-sm disabled:opacity-75 outline-none focus:border-teal-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 flex items-center gap-1.5">
+              <MapPin size={13} className="text-slate-400" />
+              <span>Dirección de Residencia</span>
+            </label>
+            <input
+              type="text"
+              name="direccion"
+              disabled={!isEditing}
+              value={profileData.direccion}
+              onChange={handleChange}
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-sm disabled:opacity-75 outline-none focus:border-teal-500"
+            />
+          </div>
         </div>
-
-        {children}
       </div>
     </div>
   );
