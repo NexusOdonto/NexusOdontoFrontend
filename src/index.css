@@ -2,44 +2,86 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+:root {
+  /* Paleta Corporativa Oficial NexusOdonto (Cian Médico, Turquesa y Menta Tech) */
+  --nexus-primary-50: #E6F7FA;
+  --nexus-primary-100: #B3ECF5;
+  --nexus-primary-300: #4DD5EB;
+  --nexus-primary-500: #00A8CC;
+  --nexus-primary-600: #0093B3;
+  --nexus-primary-700: #008B9B;
+  --nexus-primary-900: #00505B;
+
+  --nexus-secondary-100: #E2F8F0;
+  --nexus-secondary-300: #9CE7CF;
+  --nexus-secondary-500: #66D2B1;
+  --nexus-secondary-700: #3AA887;
+
+  /* Acentos de Especialidades Odontológicas */
+  --nexus-accent-cyan: #06B6D4;
+  --nexus-accent-teal: #14B8A6;
+  --nexus-accent-indigo: #6366F1;
+  --nexus-accent-purple: #A855F7;
+  --nexus-accent-sky: #0EA5E9;
+
+  /* Estados Clínicos y Alertas */
+  --nexus-success-bg: #ECFDF5;
+  --nexus-success-text: #059669;
+  --nexus-warning-bg: #FFFBEB;
+  --nexus-warning-text: #D97706;
+  --nexus-danger-bg: #FEF2F2;
+  --nexus-danger-text: #DC2626;
+  --nexus-info-bg: #EFF6FF;
+  --nexus-info-text: #2563EB;
+}
+
 @theme {
-  /* Base de Marca (Celeste Cian & Menta Tech) */
-  --color-primary-50: #E6F7FA;
-  --color-primary-100: #B3ECF5;
-  --color-primary-300: #4DD5EB;
-  --color-primary-500: #00A8CC; /* Primario Oficial */
-  --color-primary-700: #008B9B; /* Hover Oficial */
-  --color-primary-900: #00505B;
+  --color-primary-50: var(--nexus-primary-50);
+  --color-primary-100: var(--nexus-primary-100);
+  --color-primary-300: var(--nexus-primary-300);
+  --color-primary-500: var(--nexus-primary-500);
+  --color-primary-600: var(--nexus-primary-600);
+  --color-primary-700: var(--nexus-primary-700);
+  --color-primary-900: var(--nexus-primary-900);
 
-  --color-secondary-100: #E2F8F0;
-  --color-secondary-300: #9CE7CF;
-  --color-secondary-500: #66D2B1; /* Acento Menta Tech */
-  --color-secondary-700: #3AA887;
+  --color-secondary-100: var(--nexus-secondary-100);
+  --color-secondary-300: var(--nexus-secondary-300);
+  --color-secondary-500: var(--nexus-secondary-500);
+  --color-secondary-700: var(--nexus-secondary-700);
 
-  /* Colores Complementarios y Módulos de Odontología */
-  --color-accent-indigo: #6366F1;  /* Especialidades y Tratamientos Complejos */
-  --color-accent-purple: #A855F7;  /* Facturación y Promociones */
-  --color-accent-sky: #0EA5E9;     /* Agendamiento y Citas */
+  --color-accent-cyan: var(--nexus-accent-cyan);
+  --color-accent-teal: var(--nexus-accent-teal);
+  --color-accent-indigo: var(--nexus-accent-indigo);
+  --color-accent-purple: var(--nexus-accent-purple);
+  --color-accent-sky: var(--nexus-accent-sky);
 
-  /* Estados del Sistema (Alertas y Feedback) */
-  --color-success-bg: #ECFDF5;
-  --color-success-text: #059669;  /* Citas Confirmadas / Pagado */
-  --color-warning-bg: #FFFBEB;
-  --color-warning-text: #D97706;  /* En Espera / Pendiente */
-  --color-danger-bg: #FEF2F2;
-  --color-danger-text: #DC2626;   /* Cancelado / Urgencia Médica */
-  --color-info-bg: #EFF6FF;
-  --color-info-text: #2563EB;     /* Historial / Notas */
+  --color-success-bg: var(--nexus-success-bg);
+  --color-success-text: var(--nexus-success-text);
+  --color-warning-bg: var(--nexus-warning-bg);
+  --color-warning-text: var(--nexus-warning-text);
+  --color-danger-bg: var(--nexus-danger-bg);
+  --color-danger-text: var(--nexus-danger-text);
+  --color-info-bg: var(--nexus-info-bg);
+  --color-info-text: var(--nexus-info-text);
 }
 
-html,
-body,
-#root {
-  width: 100%;
-  height: 100%;
-  margin: 0;
-}
+@layer base {
+  html,
+  body,
+  #root {
+    width: 100%;
+    min-height: 100vh;
+    margin: 0;
+  }
 
-body {
-  min-height: 100vh;
+  body {
+    color: #0f172a;
+    background-color: #f8fafc;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  }
+
+  .dark body {
+    color: #f8fafc;
+    background-color: #020617;
+  }
 }

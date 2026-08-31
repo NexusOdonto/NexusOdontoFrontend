@@ -1,4 +1,5 @@
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { ShieldAlert, ArrowLeft, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '../features/auth/AuthContext';
 import { hasRouteAccess, ROUTE_PERMISSIONS } from '../utils/routePermissions';
 
@@ -26,8 +27,8 @@ export default function ProtectedRoute({ requiredRoles: _requiredRoles = [] }: P
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
         <div className="text-center p-8 max-w-md bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-4 animate-fadeIn">
-          <div className="mx-auto w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 flex items-center justify-center font-bold text-2xl">
-            ⛔
+          <div className="mx-auto w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 flex items-center justify-center font-bold">
+            <ShieldAlert size={28} className="text-red-500" />
           </div>
           
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
@@ -46,16 +47,18 @@ export default function ProtectedRoute({ requiredRoles: _requiredRoles = [] }: P
             <button
               type="button"
               onClick={() => navigate('/dashboard')}
-              className="px-5 py-2.5 bg-primary-500 text-white rounded-xl hover:bg-primary-600 transition-all font-medium text-sm cursor-pointer shadow-sm active:scale-95"
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-primary-500 text-white rounded-xl hover:bg-primary-600 transition-all font-medium text-sm cursor-pointer shadow-sm active:scale-95"
             >
-              Ir a mi Dashboard
+              <LayoutDashboard size={16} />
+              <span>Ir a mi Dashboard</span>
             </button>
             <button
               type="button"
               onClick={() => window.history.back()}
-              className="px-4 py-2.5 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors font-medium text-sm cursor-pointer"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors font-medium text-sm cursor-pointer"
             >
-              Volver
+              <ArrowLeft size={16} />
+              <span>Volver</span>
             </button>
           </div>
         </div>

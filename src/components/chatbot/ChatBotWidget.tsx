@@ -5,6 +5,20 @@ import {
   Send,
   RefreshCw,
   Zap,
+  Calendar,
+  Search,
+  FileText,
+  CreditCard,
+  Stethoscope,
+  Smile,
+  Users,
+  ShieldCheck,
+  Clock,
+  UserPlus,
+  Receipt,
+  PhoneCall,
+  Activity,
+  Settings,
 } from "lucide-react";
 import { useAuth } from "../../features/auth/AuthContext";
 import { getUserRole } from "../../utils/routePermissions";
@@ -21,6 +35,11 @@ interface Message {
   };
 }
 
+interface SuggestionItem {
+  text: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+}
+
 export default function ChatBotWidget() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -31,7 +50,7 @@ export default function ChatBotWidget() {
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Determine role config
+  // Configuración contextual del Asistente según el Rol Activo (Sin Emojis)
   const roleConfig = React.useMemo(() => {
     switch (role) {
       case "PACIENTE":
@@ -39,39 +58,39 @@ export default function ChatBotWidget() {
           title: "Asistente del Paciente",
           badge: "Paciente",
           color: "teal",
-          initialMessage: `¡Hola ${user?.nombre || "Andrés"}! 👋 Soy tu asistente NexusOdonto. ¿En qué puedo ayudarte hoy con tus citas, tratamientos o cuidados dentales?`,
+          initialMessage: `Bienvenido ${user?.nombre || "Andrés"}. Soy el Asistente Virtual de NexusOdonto. ¿En qué puedo orientarte hoy con respecto a tus citas, tratamientos odontológicos o cuidados preventivos?`,
           suggestions: [
-            "📅 ¿Cómo agendo una nueva cita?",
-            "🔍 Consultar el estado de mis citas",
-            "🦷 Consejos de cuidado tras una limpieza",
-            "💳 Métodos de pago y convenios",
-          ],
+            { text: "¿Cómo agendo una nueva cita?", icon: Calendar },
+            { text: "Consultar el estado de mis citas", icon: Search },
+            { text: "Consejos de cuidado tras una limpieza", icon: Smile },
+            { text: "Métodos de pago y convenios", icon: CreditCard },
+          ] as SuggestionItem[],
         };
       case "ODONTOLOGO":
         return {
           title: "Asistente Clínico",
           badge: "Odontólogo",
           color: "blue",
-          initialMessage: `¡Saludos, Dr(a). ${user?.apellido || user?.nombre || ""}! 🦷 Estoy listo para asistirte con tu agenda de pacientes, odontograma e historias clínicas.`,
+          initialMessage: `Saludos Dr(a). ${user?.apellido || user?.nombre || ""}. Asistente Clínico activo para apoyarte con tu agenda médica, odontograma e historias clínicas.`,
           suggestions: [
-            "📋 Resumen de pacientes del día",
-            "🦷 Guía para actualizar Odontograma",
-            "📝 Protocolo de evolución clínica",
-            "⏰ Consultar agenda de la semana",
-          ],
+            { text: "Resumen de pacientes del día", icon: Users },
+            { text: "Guía para actualizar Odontograma", icon: Smile },
+            { text: "Protocolo de evolución clínica", icon: FileText },
+            { text: "Consultar agenda de la semana", icon: Clock },
+          ] as SuggestionItem[],
         };
       case "RECEPCIONISTA":
         return {
           title: "Asistente de Recepción",
           badge: "Recepción",
           color: "purple",
-          initialMessage: `¡Hola ${user?.nombre || "María"}! 🏥 Asistente de recepción listo para consultar disponibilidad médica, servicios y soporte de citas.`,
+          initialMessage: `Hola ${user?.nombre || "María"}. Asistente de recepción disponible para consulta de disponibilidad médica, servicios y soporte de citas.`,
           suggestions: [
-            "👨‍⚕️ Disponibilidad de odontólogos",
-            "💰 Catálogo de servicios y precios",
-            "➕ ¿Cómo registrar un paciente nuevo?",
-            "📞 Protocolo de confirmación de citas",
-          ],
+            { text: "Disponibilidad de odontólogos", icon: Stethoscope },
+            { text: "Catálogo de servicios y precios", icon: Receipt },
+            { text: "¿Cómo registrar un paciente nuevo?", icon: UserPlus },
+            { text: "Protocolo de confirmación de citas", icon: PhoneCall },
+          ] as SuggestionItem[],
         };
       case "ADMINISTRADOR":
       default:
@@ -79,13 +98,13 @@ export default function ChatBotWidget() {
           title: "Asistente de Supervisión",
           badge: "Admin",
           color: "cyan",
-          initialMessage: `¡Hola Administrador ${user?.nombre || ""}! ⚡ Supervisión de NexusOdonto activa. ¿Qué métricas o configuraciones deseas consultar?`,
+          initialMessage: `Hola Administrador ${user?.nombre || ""}. Supervisión de NexusOdonto activa. ¿Qué métricas operativas o configuraciones deseas consultar?`,
           suggestions: [
-            "📊 Resumen de métricas del sistema",
-            "👥 Gestión de usuarios y roles",
-            "🛡️ Estado de seguridad y auditoría",
-            "⚙️ Configuración general",
-          ],
+            { text: "Resumen de métricas del sistema", icon: Activity },
+            { text: "Gestión de usuarios y roles", icon: Users },
+            { text: "Estado de seguridad y auditoría", icon: ShieldCheck },
+            { text: "Configuración general", icon: Settings },
+          ] as SuggestionItem[],
         };
     }
   }, [role, user]);
@@ -99,7 +118,7 @@ export default function ChatBotWidget() {
     },
   ]);
 
-  // Reset messages when role changes
+  // Actualizar mensaje inicial al cambiar el rol
   useEffect(() => {
     setMessages([
       {
@@ -111,106 +130,106 @@ export default function ChatBotWidget() {
     ]);
   }, [roleConfig]);
 
-  // Auto scroll to bottom
+  // Auto scroll al final de la conversación
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
-  // Generate intelligent response based on role and text
+  // Generador de respuestas sin emojis
   const generateBotResponse = (prompt: string): { text: string; actionLink?: { text: string; path: string } } => {
     const lower = prompt.toLowerCase();
 
     if (role === "PACIENTE") {
       if (lower.includes("agendar") || lower.includes("nueva cita") || lower.includes("cita")) {
         return {
-          text: "¡Con gusto! Puedes solicitar y agendar tu próxima cita odontológica seleccionando la fecha y tu odontólogo de preferencia en nuestra sección de citas.",
+          text: "Puedes solicitar tu próxima cita odontológica ingresando a la sección 'Mis Citas' y seleccionando el servicio, la fecha y el horario de tu preferencia.",
           actionLink: { text: "Ir a Mis Citas", path: "/citas" },
         };
       }
       if (lower.includes("estado") || lower.includes("mis citas") || lower.includes("consultar")) {
         return {
-          text: "Tienes 1 cita programada: 'Limpieza y Valoración General' con la Dra. Laura Gómez el 15 de Septiembre a las 10:00 AM. Puedes ver el detalle en tu perfil.",
+          text: "Tienes una cita programada para 'Limpieza y Valoración General' con la Dra. Laura Gómez el 15 de Septiembre a las 10:00 AM. Puedes revisar el detalle en tu perfil.",
           actionLink: { text: "Ver en Mi Perfil", path: "/perfil" },
         };
       }
       if (lower.includes("cuidado") || lower.includes("limpieza") || lower.includes("consejo") || lower.includes("cepillado")) {
         return {
-          text: "Recomendaciones post-tratamiento: 1) Cepilla tus dientes suavemente 3 veces al día con cerdas suaves. 2) Usa hilo dental a diario. 3) Evita alimentos extremadamente duros o con colorantes durante las primeras 24 horas.",
+          text: "Recomendaciones posteriores al tratamiento: 1) Cepillar suavemente 3 veces al día con cerdas suaves. 2) Utilizar seda dental diariamente. 3) Evitar alimentos pigmentados o excesivamente duros durante las primeras 24 horas.",
         };
       }
       if (lower.includes("pago") || lower.includes("precio") || lower.includes("tarifa") || lower.includes("convenio")) {
         return {
-          text: "Aceptamos pagos con tarjeta de crédito, débito, transferencias y convenios con las principales entidades de salud. Para cotizaciones detalladas, acércate a recepción.",
+          text: "Aceptamos pagos con tarjeta de crédito, débito, transferencias electrónicas y convenios institucionales. En recepción te brindarán asesoría sobre planes de financiamiento.",
         };
       }
       return {
-        text: "Entiendo tu consulta. Recuerda que ante cualquier urgencia o molestia dental puedes comunicarte de inmediato con nuestra línea de atención o visitarnos en la clínica.",
+        text: "Mensaje recibido. Si experimentas una urgencia o dolor dental agudo, te recomendamos acudir de inmediato a nuestras instalaciones para atención prioritaria.",
       };
     }
 
     if (role === "ODONTOLOGO") {
       if (lower.includes("paciente") || lower.includes("resumen") || lower.includes("dia") || lower.includes("hoy")) {
         return {
-          text: "Hoy tienes 4 pacientes citados: Andrés Pérez (10:00 AM - Limpieza), Claudia Ortiz (11:30 AM - Control Ortodoncia), Jorge Rivas (2:00 PM - Endodoncia) y Sofía Mora (4:00 PM - Valoración).",
+          text: "Pacientes programados para hoy: Andrés Pérez (10:00 AM - Limpieza), Claudia Ortiz (11:30 AM - Control Ortodoncia), Jorge Rivas (2:00 PM - Endodoncia) y Sofía Mora (4:00 PM - Valoración).",
           actionLink: { text: "Abrir Agenda Clínica", path: "/agenda" },
         };
       }
       if (lower.includes("odontograma") || lower.includes("diente") || lower.includes("grafico")) {
         return {
-          text: "El Odontograma interactivo permite registrar hallazgos (caries, obturaciones, coronas) tanto en dentición permanente como temporal, y exportar reportes en PDF.",
+          text: "El Odontograma interactivo permite registrar hallazgos patológicos y procedimientos (caries, obturaciones, coronas) en dentición permanente y temporal.",
           actionLink: { text: "Abrir Odontograma", path: "/odontograma" },
         };
       }
       if (lower.includes("historia") || lower.includes("evolucion") || lower.includes("nota")) {
         return {
-          text: "Para registrar evoluciones clínicas, diagnósticos CIE-10 y procedimientos, puedes acceder al expediente electrónico del paciente.",
+          text: "Para registrar evoluciones clínicas, diagnósticos CIE-10 y procedimientos efectuados, puedes ingresar directamente al expediente del paciente.",
           actionLink: { text: "Ir a Historia Clínica", path: "/historia-clinica" },
         };
       }
       return {
-        text: "Registrado. ¿Deseas que te asista con la búsqueda de antecedentes o el odontograma de algún paciente en particular?",
+        text: "Registro procesado. Puedes consultar los antecedentes y exámenes diagnósticos del paciente en el expediente clínico.",
       };
     }
 
     if (role === "RECEPCIONISTA") {
       if (lower.includes("disponibilidad") || lower.includes("doctor") || lower.includes("odontologo")) {
         return {
-          text: "La Dra. Laura Gómez tiene espacios libres hoy de 3:00 PM a 4:00 PM. El Dr. Carlos Méndez tiene disponibilidad mañana en la jornada de la mañana.",
+          text: "Disponibilidad médica: La Dra. Laura Gómez cuenta con espacio hoy de 3:00 PM a 4:00 PM. El Dr. Juan Martínez tiene disponibilidad en la jornada matutina de mañana.",
           actionLink: { text: "Ver Agenda Completa", path: "/agenda" },
         };
       }
       if (lower.includes("servicio") || lower.includes("precio") || lower.includes("tarifa") || lower.includes("catalogo")) {
         return {
-          text: "Nuestros servicios incluyen Profilaxis ($80.000), Resina Simple ($120.000), Blanqueamiento Láser ($450.000) e Implantes Dentales. Puedes consultar el catálogo completo.",
+          text: "Tarifas de referencia: Profilaxis ($80.000), Resina Simple ($120.000), Blanqueamiento Láser ($450.000) e Implantes Dentales. Puedes consultar el catálogo completo en Servicios.",
           actionLink: { text: "Ver Servicios", path: "/servicios" },
         };
       }
       if (lower.includes("nuevo paciente") || lower.includes("registrar") || lower.includes("crear")) {
         return {
-          text: "Para admitir un paciente nuevo, solicita documento de identidad, nombres, teléfono y correo electrónico para crear su ficha clínica.",
+          text: "Para registrar un paciente nuevo, solicita documento de identidad, nombres, apellidos, teléfono y correo electrónico para abrir su ficha médica.",
           actionLink: { text: "Registrar Paciente", path: "/pacientes/nuevo" },
         };
       }
       return {
-        text: "Información procesada. Puedes verificar el flujo de admisiones y agendamiento directamente en los módulos de Citas y Pacientes.",
+        text: "Solicitud registrada. Recuerda verificar las solicitudes de citas pendientes para su confirmación y asignación de consultorio.",
       };
     }
 
     // ADMINISTRADOR
     if (lower.includes("metrica") || lower.includes("resumen") || lower.includes("rendimiento") || lower.includes("dashboard")) {
       return {
-        text: "Estado del Sistema: 12 módulos operativos, 98.5% de cumplimiento en citas semanales, 4 roles activos y 0 incidencias críticas registradas en auditoría.",
+        text: "Métricas del Sistema: 12 módulos activos, 98.5% de cumplimiento en citas programadas, 4 roles RBAC y 0 incidencias críticas registradas en auditoría.",
         actionLink: { text: "Ir al Dashboard", path: "/dashboard" },
       };
     }
     if (lower.includes("usuario") || lower.includes("rol") || lower.includes("permiso")) {
       return {
-        text: "Puedes administrar altas de personal médico, roles con políticas RBAC y auditoría de accesos desde el panel de administración.",
+        text: "Puedes administrar el personal de la clínica, los permisos por rol y las directivas de seguridad en la sección de Usuarios.",
         actionLink: { text: "Gestión de Usuarios", path: "/usuarios" },
       };
     }
     return {
-      text: "Comando administrativo recibido. El sistema se encuentra sincronizado con todas las políticas de acceso y seguridad activas.",
+      text: "Comando administrativo verificado. El sistema se encuentra sincronizado y operando con normalidad.",
     };
   };
 
@@ -240,7 +259,7 @@ export default function ChatBotWidget() {
       };
       setMessages((prev) => [...prev, botMessage]);
       setIsTyping(false);
-    }, 600);
+    }, 500);
   };
 
   const handleClearChat = () => {
@@ -265,7 +284,7 @@ export default function ChatBotWidget() {
             className="group relative flex items-center justify-center h-14 w-14 rounded-full bg-gradient-to-r from-teal-500 via-cyan-500 to-blue-500 text-white shadow-[0_8px_30px_rgba(20,184,166,0.4)] hover:shadow-[0_12px_40px_rgba(6,182,212,0.6)] transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer"
             aria-label="Abrir Asistente Virtual"
           >
-            {/* Pulsing ring */}
+            {/* Anillo de pulso sutil */}
             <span className="absolute -inset-1 rounded-full bg-cyan-400 opacity-40 animate-ping pointer-events-none" />
             <Bot className="w-7 h-7 transition-transform group-hover:rotate-12" />
             <span className="absolute -top-1 -right-1 flex h-4 w-4">
@@ -294,7 +313,7 @@ export default function ChatBotWidget() {
                 </div>
                 <p className="text-xs text-teal-100 flex items-center gap-1.5 mt-0.5">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse" />
-                  Asistente Virtual Activo
+                  <span>Asistente Virtual Activo</span>
                 </p>
               </div>
             </div>
@@ -366,7 +385,7 @@ export default function ChatBotWidget() {
               </div>
             ))}
 
-            {/* TYPING INDICATOR */}
+            {/* INDICADOR DE ESCRITURA */}
             {isTyping && (
               <div className="flex gap-2.5 items-center text-slate-400 text-xs">
                 <div className="h-7 w-7 rounded-xl bg-teal-500/20 flex items-center justify-center text-teal-500 shrink-0">
@@ -383,21 +402,25 @@ export default function ChatBotWidget() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* SUGERENCIAS RÁPIDAS (CHIPS) */}
+          {/* SUGERENCIAS RÁPIDAS (CON ICONOS VECTORIALES LUCIDE) */}
           <div className="p-2.5 bg-slate-100/70 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 overflow-x-auto whitespace-nowrap scrollbar-none flex gap-1.5">
-            {roleConfig.suggestions.map((suggestion, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => handleSendMessage(suggestion)}
-                className="px-2.5 py-1 text-[11px] font-medium bg-white dark:bg-slate-800 hover:bg-teal-50 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-300 rounded-full border border-slate-200 dark:border-slate-700 transition-colors shrink-0 cursor-pointer active:scale-95"
-              >
-                {suggestion}
-              </button>
-            ))}
+            {roleConfig.suggestions.map((suggestion, idx) => {
+              const IconComponent = suggestion.icon;
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => handleSendMessage(suggestion.text)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 text-[11px] font-medium bg-white dark:bg-slate-800 hover:bg-teal-50 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-300 rounded-full border border-slate-200 dark:border-slate-700 transition-colors shrink-0 cursor-pointer active:scale-95"
+                >
+                  <IconComponent size={13} className="text-teal-500" />
+                  <span>{suggestion.text}</span>
+                </button>
+              );
+            })}
           </div>
 
-          {/* INPUT FORM */}
+          {/* FORMULARIO DE ENVÍO */}
           <form
             onSubmit={(e) => {
               e.preventDefault();

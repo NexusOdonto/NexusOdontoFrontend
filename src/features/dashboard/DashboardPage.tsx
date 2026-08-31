@@ -7,6 +7,13 @@ import {
   Smile,
   TrendingUp,
   Zap,
+  ArrowRight,
+  UserRound,
+  Stethoscope,
+  FileText,
+  UserPlus,
+  Receipt,
+  Sparkles,
 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { getUserRole } from "../../utils/routePermissions";
@@ -29,10 +36,11 @@ export default function DashboardPage() {
         <div className="relative z-10 max-w-2xl space-y-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-xs font-semibold uppercase tracking-wider text-teal-100">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            Panel {role}
+            <span>Panel {role}</span>
           </div>
-          <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight">
-            ¡Hola, {user?.nombre || user?.name || "Usuario"}! 👋
+          <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight flex items-center gap-2">
+            <span>¡Bienvenido, {user?.nombre || user?.name || "Usuario"}!</span>
+            <Sparkles size={26} className="text-teal-200" />
           </h1>
           <p className="text-sm md:text-base text-teal-100/90 leading-relaxed">
             {isPaciente && "Bienvenido a tu portal de salud dental. Consulta tus próximas citas y gestiona tus tratamientos."}
@@ -67,7 +75,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <p className="text-xs text-slate-500">Tratamiento Actual</p>
-                <p className="text-base font-bold text-slate-900 dark:text-white">Limpieza & Prevención</p>
+                <p className="text-base font-bold text-slate-900 dark:text-white">Limpieza y Prevención</p>
               </div>
             </div>
 
@@ -188,7 +196,7 @@ export default function DashboardPage() {
       <div className="p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-4">
         <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
           <Zap size={18} className="text-teal-500" />
-          Accesos Rápidos Recomendados
+          <span>Accesos Rápidos Recomendados</span>
         </h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
@@ -199,16 +207,22 @@ export default function DashboardPage() {
                 onClick={() => navigate("/citas")}
                 className="p-4 rounded-2xl bg-teal-500/10 hover:bg-teal-500/20 text-teal-700 dark:text-teal-300 font-semibold text-sm flex items-center justify-between transition-colors border border-teal-500/20 cursor-pointer"
               >
-                <span>📅 Solicitar Nueva Cita</span>
-                <span>→</span>
+                <span className="flex items-center gap-2">
+                  <CalendarDays size={18} className="text-teal-500" />
+                  <span>Solicitar Nueva Cita</span>
+                </span>
+                <ArrowRight size={16} />
               </button>
               <button
                 type="button"
                 onClick={() => navigate("/perfil")}
                 className="p-4 rounded-2xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 font-semibold text-sm flex items-center justify-between transition-colors border border-blue-500/20 cursor-pointer"
               >
-                <span>👤 Ver Mi Perfil y Citas</span>
-                <span>→</span>
+                <span className="flex items-center gap-2">
+                  <UserRound size={18} className="text-blue-500" />
+                  <span>Ver Mi Perfil y Citas</span>
+                </span>
+                <ArrowRight size={16} />
               </button>
             </>
           )}
@@ -220,24 +234,33 @@ export default function DashboardPage() {
                 onClick={() => navigate("/citas")}
                 className="p-4 rounded-2xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 font-semibold text-sm flex items-center justify-between transition-colors border border-blue-500/20 cursor-pointer"
               >
-                <span>🦷 Agenda de Pacientes de Hoy</span>
-                <span>→</span>
+                <span className="flex items-center gap-2">
+                  <Stethoscope size={18} className="text-blue-500" />
+                  <span>Agenda de Pacientes de Hoy</span>
+                </span>
+                <ArrowRight size={16} />
               </button>
               <button
                 type="button"
                 onClick={() => navigate("/odontograma")}
                 className="p-4 rounded-2xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 font-semibold text-sm flex items-center justify-between transition-colors border border-cyan-500/20 cursor-pointer"
               >
-                <span>😁 Abrir Odontograma</span>
-                <span>→</span>
+                <span className="flex items-center gap-2">
+                  <Smile size={18} className="text-cyan-500" />
+                  <span>Abrir Odontograma</span>
+                </span>
+                <ArrowRight size={16} />
               </button>
               <button
                 type="button"
                 onClick={() => navigate("/pacientes")}
                 className="p-4 rounded-2xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-700 dark:text-purple-300 font-semibold text-sm flex items-center justify-between transition-colors border border-purple-500/20 cursor-pointer"
               >
-                <span>📋 Historias Clínicas</span>
-                <span>→</span>
+                <span className="flex items-center gap-2">
+                  <FileText size={18} className="text-purple-500" />
+                  <span>Historias Clínicas</span>
+                </span>
+                <ArrowRight size={16} />
               </button>
             </>
           )}
@@ -249,24 +272,33 @@ export default function DashboardPage() {
                 onClick={() => navigate("/citas")}
                 className="p-4 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 font-semibold text-sm flex items-center justify-between transition-colors border border-amber-500/20 cursor-pointer"
               >
-                <span>⏳ Revisar Solicitudes Pendientes</span>
-                <span>→</span>
+                <span className="flex items-center gap-2">
+                  <AlertCircle size={18} className="text-amber-500" />
+                  <span>Revisar Solicitudes Pendientes</span>
+                </span>
+                <ArrowRight size={16} />
               </button>
               <button
                 type="button"
                 onClick={() => navigate("/pacientes/nuevo")}
                 className="p-4 rounded-2xl bg-teal-500/10 hover:bg-teal-500/20 text-teal-700 dark:text-teal-300 font-semibold text-sm flex items-center justify-between transition-colors border border-teal-500/20 cursor-pointer"
               >
-                <span>➕ Admitir Paciente Nuevo</span>
-                <span>→</span>
+                <span className="flex items-center gap-2">
+                  <UserPlus size={18} className="text-teal-500" />
+                  <span>Admitir Paciente Nuevo</span>
+                </span>
+                <ArrowRight size={16} />
               </button>
               <button
                 type="button"
                 onClick={() => navigate("/servicios")}
                 className="p-4 rounded-2xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 font-semibold text-sm flex items-center justify-between transition-colors border border-blue-500/20 cursor-pointer"
               >
-                <span>💰 Catálogo de Tarifas y Servicios</span>
-                <span>→</span>
+                <span className="flex items-center gap-2">
+                  <Receipt size={18} className="text-blue-500" />
+                  <span>Catálogo de Tarifas y Servicios</span>
+                </span>
+                <ArrowRight size={16} />
               </button>
             </>
           )}
