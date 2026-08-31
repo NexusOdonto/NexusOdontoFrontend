@@ -108,8 +108,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             : mock.rol === "ODONTOLOGO"
             ? ["APPOINTMENTS:VIEW", "PATIENTS:VIEW", "CLINICAL:VIEW", "ODONTOGRAM:VIEW"]
             : mock.rol === "RECEPCIONISTA"
-            ? ["APPOINTMENTS:VIEW", "PATIENTS:VIEW", "PATIENTS:CREATE", "PEOPLE:VIEW", "CATALOGS:VIEW"]
-            : ["APPOINTMENTS:VIEW", "PATIENTS:VIEW"];
+            ? ["APPOINTMENTS:VIEW", "PATIENTS:VIEW", "PATIENTS:CREATE", "PEOPLE:VIEW", "CATALOGS:VIEW", "PROFILE:VIEW"]
+            : ["APPOINTMENTS:VIEW", "PROFILE:VIEW"];
 
         const userData: User = {
           id: String(mock.id),

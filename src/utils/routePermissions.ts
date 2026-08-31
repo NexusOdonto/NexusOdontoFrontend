@@ -88,7 +88,7 @@ export function getUserRole(user: { roleIds?: string[]; rol?: string } | null): 
 }
 
 /**
- * Valida de forma estricta si un usuario tiene acceso a una ruta específica.
+ * Valida de forma estricta si un usuario tiene acceso a una ruta específica según su rol.
  * El dashboard y perfil siempre son accesibles para todo usuario autenticado.
  */
 export function hasRouteAccess(
@@ -97,7 +97,7 @@ export function hasRouteAccess(
 ): boolean {
   if (!user) return false;
 
-  // Normalizar ruta
+  // Normalizar ruta para evitar discrepancias
   const cleanPath = path.split("?")[0].replace(/\/$/, "") || "/";
 
   // /dashboard, /perfil y / siempre son accesibles para cualquier usuario autenticado
@@ -107,7 +107,7 @@ export function hasRouteAccess(
 
   const role = getUserRole(user);
 
-  // Si es ADMINISTRADOR, acceso total
+  // Si es ADMINISTRADOR o cuenta con permiso global de usuario, acceso total
   if (role === "ADMINISTRADOR") {
     return true;
   }
