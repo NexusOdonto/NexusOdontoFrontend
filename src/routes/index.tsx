@@ -63,6 +63,14 @@ const UsuariosView = lazy(() =>
   ),
 );
 
+const OdontogramaUI = lazy(() =>
+  import("../features/odontograma/OdontogramaUI").then(
+    (module) => ({
+      default: module.default,
+    }),
+  ),
+);
+
 function DashboardPage() {
   return (
     <div className="p-6">
@@ -151,6 +159,15 @@ export default function AppRoutes() {
             element={
               <DashboardLayout>
                 <UsuariosView />
+              </DashboardLayout>
+            }
+          />
+
+          <Route
+            path="/odontograma"
+            element={
+              <DashboardLayout>
+                <OdontogramaUI />
               </DashboardLayout>
             }
           />
