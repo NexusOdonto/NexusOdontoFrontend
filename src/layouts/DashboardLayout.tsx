@@ -21,7 +21,9 @@ export function DashboardLayout({
   const { theme } = useTheme();
   const { user } = useAuth();
 
-  const backgroundImage = theme === "dark" ? fondoDark : fondoLight;
+  const backgroundImage =
+    theme === "dark" ? fondoDark : fondoLight;
+
   const userName = user?.name || "Usuario";
 
   return (
@@ -41,12 +43,12 @@ export function DashboardLayout({
         />
 
         <main
-          className="min-w-0 flex-1 overflow-x-hidden bg-cover bg-center bg-no-repeat p-3 transition-all duration-300 sm:p-4 md:p-6"
+          className="flex min-w-0 flex-1 justify-center overflow-x-hidden bg-cover bg-center bg-no-repeat p-4 transition-all duration-300 sm:p-6 md:p-8"
           style={{
             backgroundImage: `url(${backgroundImage})`,
           }}
         >
-          <div className="box-border min-w-0 max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition-colors duration-300 sm:p-4 md:p-6 dark:border-slate-800 dark:bg-slate-900">
+          <div className="h-fit w-full max-w-5xl rounded-3xl border border-white/20 bg-slate-950/75 p-5 shadow-2xl backdrop-blur-xl transition-all duration-300 sm:p-8 md:p-10 dark:border-cyan-400/20 dark:bg-slate-950/75">
             {children}
           </div>
         </main>
