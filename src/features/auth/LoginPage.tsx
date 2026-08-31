@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Key, X } from 'lucide-react';
 import { LoginInput } from './components/LoginInput';
 import { LoginButton } from './components/LoginButton';
 import { useTheme } from '../../context/ThemeContext';
@@ -12,7 +11,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const [showCredentials, setShowCredentials] = useState(false);
   const { theme } = useTheme();
   const { login, isLoading } = useAuth();
 
@@ -20,10 +18,10 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     
-    const success = await login(email, password);
+    const result = await login(email, password);
     
-    if (!success) {
-      setError('Credenciales incorrectas. Por favor intenta nuevamente.');
+    if (!result.success) {
+      setError(result.error || 'Credenciales incorrectas. Por favor intenta nuevamente.');
     }
   };
 
@@ -106,54 +104,7 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* Credentials Toggle Button */}
-          <button
-            type="button"
-            onClick={() => setShowCredentials(!showCredentials)}
-            className="mt-4 text-xs text-slate-400 hover:text-teal-300 transition-colors flex items-center justify-center gap-2 bg-transparent border-none w-full"
-          >
-            <Key size={14} />
-            {showCredentials ? 'Ocultar credenciales de prueba' : 'Mostrar credenciales de prueba'}
-          </button>
 
-          {/* Credentials Panel */}
-          {showCredentials && (
-            <div className="mt-4 p-4 bg-slate-900/60 backdrop-blur-sm rounded-xl border border-slate-700/50">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-teal-300">Credenciales de Prueba</h3>
-                <button
-                  type="button"
-                  onClick={() => setShowCredentials(false)}
-                  className="text-slate-400 hover:text-white transition-colors bg-transparent border-none"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-              
-              <div className="space-y-3 text-xs">
-                <div className="p-2 bg-slate-800/50 rounded-lg">
-                  <div className="text-slate-300 font-medium">🔐 ADMINISTRADOR</div>
-                  <div className="text-slate-400 mt-1">Email: admin@nexusodonto.com</div>
-                  <div className="text-slate-400">Cédula: 123456789</div>
-                  <div className="text-slate-400">Contraseña: admin123</div>
-                </div>
-                
-                <div className="p-2 bg-slate-800/50 rounded-lg">
-                  <div className="text-slate-300 font-medium">👨‍⚕️ ODONTÓLOGO</div>
-                  <div className="text-slate-400 mt-1">Email: doctor@nexusodonto.com</div>
-                  <div className="text-slate-400">Cédula: 987654321</div>
-                  <div className="text-slate-400">Contraseña: doctor123</div>
-                </div>
-                
-                <div className="p-2 bg-slate-800/50 rounded-lg">
-                  <div className="text-slate-300 font-medium">👩‍💼 RECEPCIONISTA</div>
-                  <div className="text-slate-400 mt-1">Email: recepcion@nexusodonto.com</div>
-                  <div className="text-slate-400">Cédula: 456789123</div>
-                  <div className="text-slate-400">Contraseña: recepcion123</div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

@@ -1,11 +1,21 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { type User, authenticateUser } from './mocks/users.mock';
+import axiosClient from '../../api/axiosClient';
+
+interface User {
+  id: string;
+  personId: string;
+  name: string;
+  email: string;
+  roleIds: string[];
+  permissions: string[];
+  avatar?: string;
+}
 
 interface AuthContextType {
   user: User | null;
-  login: (identifier: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  login: (identifier: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
   isLoading: boolean;
 }
@@ -25,33 +35,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  const login = async (identifier: string, password: string): Promise<boolean> => {
+  const login = async (identifier: string, password: string): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
     
     try {
-      const authenticatedUser = authenticateUser(identifier, password);
+      const response = await axiosClient.post('/auth/login', {
+        login: identifier,
+        password: password
+      });
       
-      if (authenticatedUser) {
-        setUser(authenticatedUser);
-        localStorage.setItem('auth_user', JSON.stringify(authenticatedUser));
-        localStorage.setItem('auth_token', 'fake-jwt-token-' + Date.now());
+      if (response.data) {
+        const { token, refreshToken, user, permissions } = response.data;
+        
+        const userData: User = {
+          id: user.id,
+          personId: user.personId,
+          name: user.name,
+          email: user.email,
+          roleIds: user.roleIds,
+          permissions: permissions
+        };
+        
+        setUser(userData);
+        localStorage.setItem('auth_user', JSON.stringify(userData));
+        localStorage.setItem('auth_token', token);
+        localStorage.setItem('refresh_token', refreshToken);
         navigate('/dashboard');
-        return true;
+        return { success: true };
       }
       
-      return false;
-    } catch (error) {
+      return { success: false, error: 'Error desconocido al iniciar sesión' };
+    } catch (error: any) {
       console.error('Login error:', error);
-      return false;
+      const errorMessage = error.response?.data?.message || 'Error al conectar con el servidor';
+      return { success: false, error: errorMessage };
     } finally {
       setIsLoading(false);
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    const refreshToken = localStorage.getItem('refresh_token');
+    
+    if (refreshToken) {
+      try {
+        await axiosClient.post('/auth/logout', { refreshToken });
+      } catch (error) {
+        console.error('Logout error:', error);
+      }
+    }
+    
     setUser(null);
     localStorage.removeItem('auth_user');
     localStorage.removeItem('auth_token');
+    localStorage.removeItem('refresh_token');
     navigate('/login');
   };
 

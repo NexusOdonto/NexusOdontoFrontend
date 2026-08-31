@@ -29,7 +29,7 @@ export function PageHeader({
   const { theme, toggleTheme } = useTheme();
   const { user } = useAuth();
 
-  const displayName = user ? `${user.nombre} ${user.apellido}` : userName;
+  const displayName = user?.name || userName;
   const displayImage = user?.avatar || userImage;
 
   return (

@@ -23,7 +23,7 @@ export function RoleSwitcher() {
             type="button"
             onClick={() => handleSwitchRole(mockUser.email, mockUser.password)}
             className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
-              user.id === mockUser.id
+              user.id === String(mockUser.id)
                 ? 'bg-primary-500 text-white'
                 : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
             }`}

@@ -16,7 +16,6 @@ import {
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../features/auth/AuthContext";
-import { ROLE_PERMISSIONS, type Role } from "../../features/auth/mocks/users.mock";
 import logo from "../../assets/nexus-odonto-logo.webp";
 
 interface SidebarProps {
@@ -83,11 +82,37 @@ export function Sidebar({
       icon: ShieldCheck,
       path: "/roles-permisos",
     },
+    {
+      label: "Configuración",
+      icon: Settings,
+      path: "/configuracion",
+    },
   ];
 
-  // Filter menu items based on user's role permissions
+  // Mapeo de rutas a permisos requeridos para el menú
+  const ROUTE_PERMISSIONS: Record<string, string> = {
+    '/dashboard': 'USERS:VIEW',
+    '/citas': 'APPOINTMENTS:VIEW',
+    '/agenda': 'APPOINTMENTS:VIEW',
+    '/pacientes': 'PATIENTS:VIEW',
+    '/profesionales': 'PEOPLE:VIEW',
+    '/servicios': 'CATALOGS:VIEW',
+    '/historia-clinica': 'CLINICAL:VIEW',
+    '/odontograma': 'ODONTOGRAM:VIEW',
+    '/usuarios': 'USERS:VIEW',
+    '/roles-permisos': 'ROLES:VIEW',
+    '/configuracion': 'CATALOGS:VIEW',
+  };
+
+  // Filter menu items based on user's permissions
   const filteredMenuItems = user 
-    ? menuItems.filter(item => ROLE_PERMISSIONS[user.rol as Role].includes(item.path))
+    ? menuItems.filter(item => {
+        const requiredPermission = ROUTE_PERMISSIONS[item.path];
+        // Si no hay permiso específico definido, mostrar el item
+        if (!requiredPermission) return true;
+        // Verificar si el usuario tiene el permiso requerido
+        return user.permissions.includes(requiredPermission);
+      })
     : [];
 
   const handleNavigation = (path: string) => {
@@ -95,8 +120,8 @@ export function Sidebar({
     onMobileClose();
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     onMobileClose();
   };
 
@@ -179,28 +204,6 @@ export function Sidebar({
 
         {/* Footer */}
         <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex flex-col gap-1">
-          <button
-            type="button"
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white transition-colors relative group ${
-              isCollapsed ? "justify-center" : ""
-            }`}
-            onClick={() =>
-              handleNavigation("/configuracion")
-            }
-          >
-            <Settings size={19} strokeWidth={1.8} className="flex-shrink-0" />
-            {!isCollapsed && (
-              <span className="whitespace-nowrap">
-                Configuración
-              </span>
-            )}
-            {isCollapsed && (
-              <div className="absolute left-full ml-2 px-2 py-1 bg-slate-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
-                Configuración
-              </div>
-            )}
-          </button>
-
           <button
             type="button"
             className={`flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white transition-colors relative group ${

@@ -1,16 +1,24 @@
 export type RolUsuario =
-  | "Odontólogo"
-  | "Recepcionista"
-  | "Admin";
-
-export type EstadoUsuario =
-  | "Activo"
-  | "Inactivo";
+  | "ADMINISTRADOR"
+  | "ODONTOLOGO"
+  | "RECEPCIONISTA"
+  | "ASISTENTE"
+  | "PACIENTE";
 
 export interface Usuario {
-  id: number;
-  nombre: string;
-  correo: string;
-  rol: RolUsuario;
-  estado: EstadoUsuario;
+  id: string;
+  personId: string;
+  name: string;
+  email: string;
+  roleIds: string[];
+  permissions: string[];
+  isActive: boolean;
+}
+
+export interface Role {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  isActive: boolean;
 }
