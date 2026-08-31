@@ -10,7 +10,7 @@ export interface DocumentType {
 
 export const documentTypeService = {
   getAll: async (): Promise<DocumentType[]> => {
-    const response = await axiosClient.get('/api/v1/document-types');
+    const response = await axiosClient.get('/v1/DocumentTypes');
     return response.data;
   }
 };

@@ -28,26 +28,26 @@ export interface CreatePersonRequest {
 
 export const personService = {
   getAll: async (): Promise<Person[]> => {
-    const response = await axiosClient.get('/api/v1/persons');
+    const response = await axiosClient.get('/v1/Persons');
     return response.data;
   },
   
   getById: async (id: string): Promise<Person> => {
-    const response = await axiosClient.get(`/api/v1/persons/${id}`);
+    const response = await axiosClient.get(`/v1/Persons/${id}`);
     return response.data;
   },
   
   create: async (data: CreatePersonRequest): Promise<Person> => {
-    const response = await axiosClient.post('/api/v1/persons', data);
+    const response = await axiosClient.post('/v1/Persons', data);
     return response.data;
   },
   
   update: async (id: string, data: Partial<Person>): Promise<Person> => {
-    const response = await axiosClient.put(`/api/v1/persons/${id}`, data);
+    const response = await axiosClient.put(`/v1/Persons/${id}`, data);
     return response.data;
   },
   
   delete: async (id: string): Promise<void> => {
-    await axiosClient.delete(`/api/v1/persons/${id}`);
+    await axiosClient.delete(`/v1/Persons/${id}`);
   }
 };

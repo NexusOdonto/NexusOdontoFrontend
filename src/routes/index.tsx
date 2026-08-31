@@ -9,6 +9,14 @@ const LoginPage = lazy(() =>
   })),
 );
 
+const RegisterPage = lazy(() =>
+  import("../features/auth/RegisterPage").then(
+    (module) => ({
+      default: module.default,
+    }),
+  ),
+);
+
 const DashboardLayout = lazy(() =>
   import("../layouts/DashboardLayout").then((module) => ({
     default: module.DashboardLayout,
@@ -90,6 +98,11 @@ export default function AppRoutes() {
         <Route
           path="/login"
           element={<LoginPage />}
+        />
+
+        <Route
+          path="/register"
+          element={<RegisterPage />}
         />
 
         <Route element={<ProtectedRoute />}>

@@ -185,7 +185,7 @@ export function UsuariosView() {
     
     // Reset campos de usuario
     setNuevoPassword("");
-    setNuevoRol(roles[0]?.id || "");
+    setNuevoRol(roles.find(r => r.code !== "ASISTENTE")?.id || "");
     
     setErrorForm("");
     setShowModal(true);

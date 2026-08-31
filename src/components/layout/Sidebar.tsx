@@ -16,6 +16,7 @@ import {
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../features/auth/AuthContext";
+import { hasRouteAccess } from "../../utils/routePermissions";
 import logo from "../../assets/nexus-odonto-logo.webp";
 
 interface SidebarProps {
@@ -89,30 +90,9 @@ export function Sidebar({
     },
   ];
 
-  // Mapeo de rutas a permisos requeridos para el menú
-  const ROUTE_PERMISSIONS: Record<string, string> = {
-    '/dashboard': 'USERS:VIEW',
-    '/citas': 'APPOINTMENTS:VIEW',
-    '/agenda': 'APPOINTMENTS:VIEW',
-    '/pacientes': 'PATIENTS:VIEW',
-    '/profesionales': 'PEOPLE:VIEW',
-    '/servicios': 'CATALOGS:VIEW',
-    '/historia-clinica': 'CLINICAL:VIEW',
-    '/odontograma': 'ODONTOGRAM:VIEW',
-    '/usuarios': 'USERS:VIEW',
-    '/roles-permisos': 'ROLES:VIEW',
-    '/configuracion': 'CATALOGS:VIEW',
-  };
-
-  // Filter menu items based on user's permissions
+  // Filtrar elementos del menú según los permisos y rol del usuario
   const filteredMenuItems = user 
-    ? menuItems.filter(item => {
-        const requiredPermission = ROUTE_PERMISSIONS[item.path];
-        // Si no hay permiso específico definido, mostrar el item
-        if (!requiredPermission) return true;
-        // Verificar si el usuario tiene el permiso requerido
-        return user.permissions.includes(requiredPermission);
-      })
+    ? menuItems.filter(item => hasRouteAccess(user, item.path))
     : [];
 
   const handleNavigation = (path: string) => {

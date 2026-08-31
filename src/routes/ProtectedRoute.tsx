@@ -1,25 +1,10 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthContext';
+import { hasRouteAccess, ROUTE_PERMISSIONS } from '../utils/routePermissions';
 
 interface ProtectedRouteProps {
   requiredRoles?: string[];
 }
-
-// Mapeo de rutas a permisos requeridos
-const ROUTE_PERMISSIONS: Record<string, string> = {
-  '/dashboard': 'USERS:VIEW',
-  '/citas': 'APPOINTMENTS:VIEW',
-  '/agenda': 'APPOINTMENTS:VIEW',
-  '/pacientes': 'PATIENTS:VIEW',
-  '/pacientes/nuevo': 'PATIENTS:CREATE',
-  '/profesionales': 'PEOPLE:VIEW',
-  '/servicios': 'CATALOGS:VIEW',
-  '/historia-clinica': 'CLINICAL:VIEW',
-  '/usuarios': 'USERS:VIEW',
-  '/odontograma': 'ODONTOGRAM:VIEW',
-  '/roles-permisos': 'ROLES:VIEW',
-  '/configuracion': 'CATALOGS:VIEW',
-};
 
 export default function ProtectedRoute({ requiredRoles: _requiredRoles = [] }: ProtectedRouteProps) {
   const { user, isAuthenticated } = useAuth();
@@ -29,34 +14,32 @@ export default function ProtectedRoute({ requiredRoles: _requiredRoles = [] }: P
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 
-  // Obtener el permiso requerido para la ruta actual
-  const requiredPermission = ROUTE_PERMISSIONS[location.pathname];
-
-  // Si la ruta no tiene permiso espec�fico definido, permitir acceso
-  if (!requiredPermission) {
+  // El dashboard siempre es accesible para cualquier usuario autenticado
+  if (location.pathname === '/dashboard') {
     return <Outlet />;
   }
 
-  // Verificar si el usuario tiene el permiso requerido
-  if (user && !user.permissions.includes(requiredPermission)) {
+  // Verificar si el usuario tiene acceso a la ruta por rol o permiso
+  if (!hasRouteAccess(user, location.pathname)) {
+    const requiredPermission = ROUTE_PERMISSIONS[location.pathname] || 'Permiso restringido';
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
-        <div className="text-center p-8">
+        <div className="text-center p-8 max-w-md">
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-4">
             Acceso Denegado
           </h1>
-          <p className="text-slate-600 dark:text-slate-400 mb-6">
-            No tienes los permisos necesarios para acceder a esta p�gina.
+          <p className="text-slate-600 dark:text-slate-400 mb-4">
+            Tu rol no cuenta con los permisos requeridos para acceder a esta sección.
           </p>
-          <p className="text-sm text-slate-500 dark:text-slate-500 mb-6">
-            Permiso requerido: {requiredPermission}
+          <p className="text-xs text-slate-400 dark:text-slate-500 mb-6 bg-slate-100 dark:bg-slate-900 py-1.5 px-3 rounded-lg border border-slate-200 dark:border-slate-800">
+            Módulo: {requiredPermission}
           </p>
           <button
             type="button"
             onClick={() => window.history.back()}
-            className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
+            className="px-5 py-2.5 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors font-medium cursor-pointer"
           >
-            Volver
+            Volver a la página anterior
           </button>
         </div>
       </div>

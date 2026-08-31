@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-
 import {
   CircleHelp,
   Menu,
@@ -14,13 +13,9 @@ import UserProfileDropdown from "./UserProfileDropdown";
 
 interface PageHeaderProps {
   userName?: string;
-
   userImage?: string;
-
   onMenuClick?: () => void;
-
   mobileOpen?: boolean;
-
   children?: ReactNode;
 }
 
@@ -29,10 +24,6 @@ export function PageHeader({
   mobileOpen = false,
 }: PageHeaderProps) {
   const { theme, toggleTheme } = useTheme();
-  const { user } = useAuth();
-
-  const displayName = user?.name || userName;
-  const displayImage = user?.avatar || userImage;
 
   return (
     <header className="h-16 bg-white/80 dark:bg-slate-950/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30">
@@ -57,7 +48,7 @@ export function PageHeader({
         {/* TEMA */}
         <button
           type="button"
-          className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-600 dark:text-slate-400"
+          className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-600 dark:text-slate-400 cursor-pointer"
           onClick={toggleTheme}
           aria-label="Cambiar tema"
         >
@@ -71,7 +62,7 @@ export function PageHeader({
         {/* AYUDA */}
         <button
           type="button"
-          className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-600 dark:text-slate-400"
+          className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-600 dark:text-slate-400 cursor-pointer"
           aria-label="Ayuda"
         >
           <CircleHelp size={19} />
@@ -80,11 +71,10 @@ export function PageHeader({
         {/* NOTIFICACIONES */}
         <button
           type="button"
-          className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-600 dark:text-slate-400 relative"
+          className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-600 dark:text-slate-400 relative cursor-pointer"
           aria-label="Notificaciones"
         >
           <Bell size={19} />
-
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
         </button>
 
