@@ -55,6 +55,10 @@ cypress/videos/
 cypress/screenshots/
 playwright-report/
 test-results/
+.unlighthouse/
+.lighthouseci/
+lighthouse-report.json
+lighthouse-report.html
 
 
 # Windows

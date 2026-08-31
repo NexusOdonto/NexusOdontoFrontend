@@ -237,7 +237,8 @@ export default function RegisterPage() {
   const backgroundImage = theme === "dark" ? fondoLoginDark : fondoLoginLight;
 
   return (
-    <div
+    <main
+      role="main"
       className="relative min-h-screen w-full flex items-center justify-center bg-cover bg-center bg-no-repeat py-8 px-4 overflow-y-auto"
       style={{ backgroundImage: `url(${backgroundImage})` }}
     >
@@ -587,6 +588,6 @@ export default function RegisterPage() {
           )}
         </div>
       </div>
-    </div>
+    </main>
   );
 }
