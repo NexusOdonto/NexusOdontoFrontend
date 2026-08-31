@@ -21,7 +21,8 @@ export const MOCK_USERS: User[] = [
     nombre: "Carlos",
     apellido: "Administrador",
     rol: "ADMIN",
-    avatar: "https://api.dicebear.com/7.x/avatars/svg?seed=Carlos&backgroundColor=b6e3f4",
+    avatar:
+      "https://api.dicebear.com/7.x/avatars/svg?seed=Carlos&backgroundColor=b6e3f4",
     telefono: "+57 300 123 4567",
   },
   {
@@ -32,7 +33,8 @@ export const MOCK_USERS: User[] = [
     nombre: "Laura",
     apellido: "Gómez",
     rol: "ODONTOLOGO",
-    avatar: "https://api.dicebear.com/7.x/avatars/svg?seed=Laura&backgroundColor=ffdfbf",
+    avatar:
+      "https://api.dicebear.com/7.x/avatars/svg?seed=Laura&backgroundColor=ffdfbf",
     telefono: "+57 300 234 5678",
   },
   {
@@ -43,24 +45,56 @@ export const MOCK_USERS: User[] = [
     nombre: "María",
     apellido: "Rodríguez",
     rol: "RECEPCIONISTA",
-    avatar: "https://api.dicebear.com/7.x/avatars/svg?seed=Maria&backgroundColor=c0aede",
+    avatar:
+      "https://api.dicebear.com/7.x/avatars/svg?seed=Maria&backgroundColor=c0aede",
     telefono: "+57 300 345 6789",
   },
 ];
 
 export const ROLE_PERMISSIONS: Record<Role, string[]> = {
-  ADMIN: ["/dashboard", "/citas", "/pacientes", "/servicios", "/usuarios", "/odontograma", "/agenda", "/configuracion"],
-  ODONTOLOGO: ["/dashboard", "/citas", "/pacientes", "/odontograma", "/agenda"],
-  RECEPCIONISTA: ["/dashboard", "/citas", "/pacientes", "/agenda"],
+  ADMIN: [
+    "/dashboard",
+    "/citas",
+    "/pacientes",
+    "/servicios",
+    "/usuarios",
+    "/odontograma",
+    "/agenda",
+    "/configuracion",
+    "/perfil",
+  ],
+
+  ODONTOLOGO: [
+    "/dashboard",
+    "/citas",
+    "/pacientes",
+    "/odontograma",
+    "/agenda",
+    "/perfil",
+  ],
+
+  RECEPCIONISTA: [
+    "/dashboard",
+    "/citas",
+    "/pacientes",
+    "/agenda",
+    "/perfil",
+  ],
 };
 
 export function hasPermission(role: Role, path: string): boolean {
   return ROLE_PERMISSIONS[role].includes(path);
 }
 
-export function authenticateUser(identifier: string, password: string): User | null {
+export function authenticateUser(
+  identifier: string,
+  password: string,
+): User | null {
   const user = MOCK_USERS.find(
-    (u) => (u.email === identifier || u.cedula === identifier) && u.password === password
+    (u) =>
+      (u.email === identifier || u.cedula === identifier) &&
+      u.password === password,
   );
+
   return user || null;
 }
