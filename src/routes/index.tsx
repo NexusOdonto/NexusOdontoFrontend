@@ -15,6 +15,12 @@ const RegisterPage = lazy(() =>
   })),
 );
 
+const AuthCallback = lazy(() =>
+  import("../features/auth/AuthCallback").then((module) => ({
+    default: module.default,
+  })),
+);
+
 const DashboardLayout = lazy(() =>
   import("../layouts/DashboardLayout").then((module) => ({
     default: module.DashboardLayout,
@@ -89,6 +95,7 @@ export default function AppRoutes() {
         {/* Rutas Públicas */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
 
         {/* Rutas Protegidas por RBAC */}
         <Route element={<ProtectedRoute />}>

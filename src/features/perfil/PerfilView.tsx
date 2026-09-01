@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent } from "react";
+import { useState, useRef, useEffect, type ChangeEvent } from "react";
 import {
   Camera,
   Pencil,
@@ -10,19 +10,29 @@ import {
   CreditCard,
   MapPin,
   CheckCircle,
+  AlertCircle,
+  Sparkles,
 } from "lucide-react";
 
 import { useAuth } from "../auth/AuthContext";
+import { authService } from "../../api/authService";
 import { personService } from "../../api/personService";
+import { UserAvatar } from "../../components/common/UserAvatar";
+import { formatRoleName } from "../../utils/roleUtils";
 
 export default function PerfilView() {
   const { user, updateUser } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [isEditing, setIsEditing] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+
+  const userId = user?.id || user?.email || "default_user";
 
   const [profileData, setProfileData] = useState({
-    nombre: user?.nombre || user?.name || "",
-    apellido: user?.apellido || "",
+    nombre: user?.nombre || user?.name?.split(" ")[0] || "",
+    apellido: user?.apellido || user?.name?.split(" ").slice(1).join(" ") || "",
     email: user?.email || "",
     telefono: user?.telefono || "",
     tipoDocumento: user?.tipoDocumento || "",
@@ -30,9 +40,70 @@ export default function PerfilView() {
     fechaNacimiento: user?.fechaNacimiento || "",
     sexo: user?.sexo || "",
     direccion: user?.direccion || "",
-    rol: user?.rol || "",
-    avatar: user?.avatar || "",
+    rol: user?.rol || (user?.roleIds && user.roleIds[0]) || "PACIENTE",
+    avatar: user?.avatar || user?.avatarUrl || "",
   });
+
+  // Sincronización robusta del perfil desde AuthContext y la API
+  useEffect(() => {
+    let isMounted = true;
+
+    const syncProfile = async () => {
+      const savedAvatar = localStorage.getItem(`user_avatar_${userId}`);
+      const activeAvatar = user?.avatar || user?.avatarUrl || savedAvatar || "";
+
+      if (user) {
+        setProfileData((prev) => ({
+          ...prev,
+          nombre: user.nombre || user.name?.split(" ")[0] || prev.nombre,
+          apellido: user.apellido || user.name?.split(" ").slice(1).join(" ") || prev.apellido,
+          email: user.email || prev.email,
+          telefono: user.telefono || prev.telefono,
+          tipoDocumento: user.tipoDocumento || prev.tipoDocumento,
+          cedula: user.cedula || prev.cedula,
+          fechaNacimiento: user.fechaNacimiento || prev.fechaNacimiento,
+          sexo: user.sexo || prev.sexo,
+          direccion: user.direccion || prev.direccion,
+          rol: user.rol || (user.roleIds && user.roleIds[0]) || prev.rol,
+          avatar: activeAvatar,
+        }));
+      }
+
+      try {
+        const profile = await authService.getProfile();
+        if (profile && isMounted) {
+          const userObj = profile.user || profile;
+          const uId = userObj.id || userObj.email || userId;
+          const freshSavedAvatar = uId ? localStorage.getItem(`user_avatar_${uId}`) : null;
+
+          const firstName = userObj.firstName || userObj.nombre || (userObj.name ? userObj.name.split(" ")[0] : "");
+          const lastName = userObj.lastName || userObj.apellido || (userObj.name ? userObj.name.split(" ").slice(1).join(" ") : "");
+
+          setProfileData({
+            nombre: firstName,
+            apellido: lastName,
+            email: userObj.email || "",
+            telefono: userObj.phone || userObj.telefono || "",
+            tipoDocumento: userObj.documentTypeId || userObj.tipoDocumento || "",
+            cedula: userObj.documentNumber || userObj.cedula || "",
+            fechaNacimiento: userObj.dateOfBirth || userObj.fechaNacimiento || "",
+            sexo: userObj.sexId || userObj.sexo || "",
+            direccion: userObj.address || userObj.direccion || "",
+            rol: user?.rol || (userObj.roleIds && userObj.roleIds[0]) || "PACIENTE",
+            avatar: userObj.avatar || userObj.avatarUrl || freshSavedAvatar || activeAvatar,
+          });
+        }
+      } catch (err) {
+        console.warn("Silent profile sync in PerfilView:", err);
+      }
+    };
+
+    syncProfile();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user, userId]);
 
   const handleChange = (
     event: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
@@ -45,15 +116,52 @@ export default function PerfilView() {
     }));
   };
 
+  // Previsualización de nueva foto solo en modo edición
+  const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setUploadError("");
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validación de formato
+    const validTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
+    if (!validTypes.includes(file.type)) {
+      setUploadError("Formato no soportado. Por favor selecciona una imagen PNG, JPG o WebP.");
+      return;
+    }
+
+    // Validación de tamaño (Máx 2MB)
+    const maxSizeInBytes = 2 * 1024 * 1024;
+    if (file.size > maxSizeInBytes) {
+      setUploadError("La imagen no debe superar los 2 MB de tamaño.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+
+      // Actualizar únicamente el estado de previsualización local (no persiste hasta guardar)
+      setProfileData((prev) => ({
+        ...prev,
+        avatar: base64String,
+      }));
+    };
+
+    reader.readAsDataURL(file);
+  };
+
   const handleEdit = () => {
     setIsEditing(true);
     setSaveSuccess(false);
+    setUploadError("");
   };
 
   const handleCancel = () => {
+    // Revertir a la versión guardada previamente
+    const savedAvatar = localStorage.getItem(`user_avatar_${userId}`) || user?.avatar || user?.avatarUrl || "";
     setProfileData({
-      nombre: user?.nombre || user?.name || "",
-      apellido: user?.apellido || "",
+      nombre: user?.nombre || user?.name?.split(" ")[0] || "",
+      apellido: user?.apellido || user?.name?.split(" ").slice(1).join(" ") || "",
       email: user?.email || "",
       telefono: user?.telefono || "",
       tipoDocumento: user?.tipoDocumento || "",
@@ -61,35 +169,50 @@ export default function PerfilView() {
       fechaNacimiento: user?.fechaNacimiento || "",
       sexo: user?.sexo || "",
       direccion: user?.direccion || "",
-      rol: user?.rol || "",
-      avatar: user?.avatar || "",
+      rol: user?.rol || (user?.roleIds && user.roleIds[0]) || "PACIENTE",
+      avatar: savedAvatar,
     });
 
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+
     setIsEditing(false);
+    setUploadError("");
   };
 
   const handleSave = async () => {
+    // 1. Persistir foto en localStorage si fue modificada
+    if (profileData.avatar) {
+      localStorage.setItem(`user_avatar_${userId}`, profileData.avatar);
+    }
+
+    // 2. Actualizar contexto de sesión global
     if (updateUser) {
       updateUser(profileData);
     }
 
-    // Persistir en backend API si personId es válido
+    // 3. Persistir en backend API si personId es válido
     if (user?.personId && user.personId.length > 10) {
       try {
         await personService.update(user.personId, {
-          documentTypeId: "10000000-0000-0000-0000-000000000001",
+          documentTypeId: profileData.tipoDocumento || "10000000-0000-0000-0000-000000000001",
           documentNumber: profileData.cedula || user.cedula || "1076543210",
           firstName: profileData.nombre,
           lastName: profileData.apellido,
           email: profileData.email,
           phone: profileData.telefono,
           dateOfBirth: profileData.fechaNacimiento,
-          sexId: "11000000-0000-0000-0000-000000000001",
+          sexId: profileData.sexo || "11000000-0000-0000-0000-000000000001",
           address: profileData.direccion,
         });
       } catch (err) {
         console.warn("Backend person update sync:", err);
       }
+    }
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
 
     setIsEditing(false);
@@ -101,6 +224,15 @@ export default function PerfilView() {
 
   return (
     <div className="space-y-6">
+      {/* Input de archivo oculto */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/png, image/jpeg, image/jpg, image/webp"
+        className="hidden"
+        onChange={handleImageChange}
+      />
+
       {/* Encabezado */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -108,7 +240,7 @@ export default function PerfilView() {
             Mi Perfil de Usuario
           </h1>
           <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-            Información personal, datos de contacto y credenciales de acceso.
+            Información personal, foto de perfil y credenciales de acceso clínico.
           </p>
         </div>
 
@@ -134,7 +266,7 @@ export default function PerfilView() {
               <button
                 type="button"
                 onClick={handleCancel}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 <X size={15} />
                 <span>Cancelar</span>
@@ -152,35 +284,81 @@ export default function PerfilView() {
         </div>
       </div>
 
+      {/* Alertas de Validación */}
+      {uploadError && (
+        <div className="p-3.5 bg-red-500/15 border border-red-500/30 rounded-2xl text-red-400 text-xs flex items-center gap-2 animate-fadeIn">
+          <AlertCircle size={16} className="flex-shrink-0" />
+          <span>{uploadError}</span>
+        </div>
+      )}
+
       {/* Tarjeta de Identidad */}
       <div className="p-6 md:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-center gap-6">
-        <div className="relative">
-          <img
-            src={profileData.avatar || `https://api.dicebear.com/7.x/avatars/svg?seed=${encodeURIComponent(fullName)}`}
-            alt={fullName}
-            className="w-24 h-24 rounded-2xl bg-teal-500/10 border-2 border-teal-500/30 object-cover shadow-inner"
-          />
+        <div className="relative group">
+          <div
+            onClick={() => {
+              if (isEditing) {
+                fileInputRef.current?.click();
+              }
+            }}
+            className={`relative overflow-hidden rounded-2xl ring-4 transition-all duration-300 ${
+              isEditing
+                ? "cursor-pointer ring-teal-500/40 hover:ring-teal-500/70"
+                : "cursor-default ring-teal-500/15"
+            }`}
+            title={isEditing ? "Haz clic para seleccionar una nueva foto" : undefined}
+          >
+            <UserAvatar
+              avatar={profileData.avatar}
+              name={fullName}
+              size="xl"
+              className={`w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-teal-500/10 object-cover transition-transform duration-300 ${
+                isEditing ? "group-hover:scale-105" : ""
+              }`}
+              fallbackClassName="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl flex items-center justify-center font-extrabold text-2xl text-teal-700 dark:text-teal-300 bg-teal-500/20 border border-teal-500/30"
+            />
+
+            {/* Overlay interactivo SOLO visible en modo edición */}
+            {isEditing && (
+              <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center text-white text-[10px] font-semibold gap-1">
+                <Camera size={18} className="text-teal-300" />
+                <span>Cambiar foto</span>
+              </div>
+            )}
+          </div>
+
+          {/* Botón de Cámara SOLO visible en modo edición */}
           {isEditing && (
             <button
               type="button"
-              className="absolute -bottom-2 -right-2 p-2 bg-teal-500 text-slate-950 rounded-xl shadow-lg hover:scale-105 transition-transform"
-              title="Cambiar avatar"
+              onClick={() => fileInputRef.current?.click()}
+              className="absolute -bottom-2 -right-2 p-2.5 bg-gradient-to-r from-teal-500 to-cyan-400 text-slate-950 rounded-xl shadow-lg hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer border border-white/20 animate-fadeIn"
+              title="Seleccionar foto de perfil"
+              aria-label="Seleccionar foto de perfil"
             >
-              <Camera size={14} />
+              <Camera size={15} />
             </button>
           )}
         </div>
 
-        <div className="text-center md:text-left space-y-1">
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-            {fullName}
-          </h2>
-          <p className="text-xs font-semibold text-teal-600 dark:text-teal-400 uppercase tracking-wider">
-            {user?.rol || (user?.roleIds && user.roleIds[0]) || "PACIENTE"}
-          </p>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+        <div className="text-center md:text-left space-y-1.5">
+          <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
+              {fullName}
+            </h2>
+            <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-teal-950/60 text-teal-400 border border-teal-500/30 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+              <Sparkles size={11} />
+              {formatRoleName(profileData.rol || user?.rol)}
+            </span>
+          </div>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
             {profileData.email}
           </p>
+          {isEditing && (
+            <p className="text-[11px] text-teal-600 dark:text-teal-400 font-medium animate-fadeIn">
+              Haz clic en la foto para cambiarla (Máx. 2 MB)
+            </p>
+          )}
         </div>
       </div>
 

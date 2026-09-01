@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../../api/authService';
 import { authenticateUser } from './mocks/users.mock';
@@ -11,6 +11,7 @@ export interface User {
   roleIds: string[];
   permissions: string[];
   avatar?: string;
+  avatarUrl?: string;
   nombre?: string;
   apellido?: string;
   telefono?: string;
@@ -34,8 +35,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Inicialización síncrona desde localStorage para evitar pérdida de sesión o parpadeos en F5
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(() => {
     try {
       const savedUser = localStorage.getItem('auth_user');
@@ -53,6 +53,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const navigate = useNavigate();
 
+  const parseProfileToUser = (profile: any, fallbackPrev?: User | null): User => {
+    const userObj = profile.user || profile;
+    const perms = profile.permissions || userObj.permissions || fallbackPrev?.permissions || [];
+    const uId = userObj.id || userObj.email || fallbackPrev?.id || '';
+    const savedAvatar = uId ? localStorage.getItem(`user_avatar_${uId}`) : null;
+
+    const firstName = userObj.firstName || userObj.nombre || fallbackPrev?.nombre || (userObj.name ? userObj.name.split(' ')[0] : '');
+    const lastName = userObj.lastName || userObj.apellido || fallbackPrev?.apellido || (userObj.name ? userObj.name.split(' ').slice(1).join(' ') : '');
+    const fullName = userObj.name || `${firstName} ${lastName}`.trim() || userObj.email || fallbackPrev?.name || 'Usuario';
+
+    return {
+      id: userObj.id || fallbackPrev?.id || '',
+      personId: userObj.personId || fallbackPrev?.personId || '',
+      name: fullName,
+      nombre: firstName,
+      apellido: lastName,
+      email: userObj.email || fallbackPrev?.email || '',
+      cedula: userObj.documentNumber || userObj.cedula || fallbackPrev?.cedula || '',
+      telefono: userObj.phone || userObj.telefono || fallbackPrev?.telefono || '',
+      direccion: userObj.address || userObj.direccion || fallbackPrev?.direccion || '',
+      sexo: userObj.sexId || userObj.sexo || fallbackPrev?.sexo || '',
+      tipoDocumento: userObj.documentTypeId || userObj.tipoDocumento || fallbackPrev?.tipoDocumento || '',
+      fechaNacimiento: userObj.dateOfBirth || userObj.fechaNacimiento || fallbackPrev?.fechaNacimiento || '',
+      roleIds: userObj.roleIds || fallbackPrev?.roleIds || [],
+      permissions: perms,
+      avatar: userObj.avatar || userObj.avatarUrl || savedAvatar || fallbackPrev?.avatar || '',
+      avatarUrl: userObj.avatar || userObj.avatarUrl || savedAvatar || fallbackPrev?.avatar || '',
+      rol: fallbackPrev?.rol || (userObj.roleIds && userObj.roleIds.length > 0 ? userObj.roleIds[0] : 'PACIENTE'),
+    };
+  };
+
   const loginWithGoogleCallback = async (token: string, refreshToken?: string): Promise<boolean> => {
     setIsLoading(true);
     try {
@@ -62,15 +93,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       const profile = await authService.getProfile();
       if (profile) {
-        const userData: User = {
-          id: profile.id,
-          personId: profile.personId,
-          name: profile.name,
-          email: profile.email,
-          roleIds: profile.roleIds || [],
-          permissions: profile.permissions || [],
-          avatar: `https://api.dicebear.com/7.x/avatars/svg?seed=${encodeURIComponent(profile.name || 'User')}`,
-        };
+        const userData = parseProfileToUser(profile);
         setUser(userData);
         localStorage.setItem('auth_user', JSON.stringify(userData));
         navigate('/dashboard');
@@ -106,24 +129,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .then((profile) => {
           if (profile) {
             setUser((prev) => {
-              const updated: User = {
-                id: profile.id || prev?.id || '',
-                personId: profile.personId || prev?.personId || '',
-                name: profile.name || prev?.name || '',
-                email: profile.email || prev?.email || '',
-                roleIds: profile.roleIds || prev?.roleIds || [],
-                permissions: profile.permissions || prev?.permissions || [],
-                avatar: prev?.avatar || `https://api.dicebear.com/7.x/avatars/svg?seed=${encodeURIComponent(profile.name || 'User')}`,
-                nombre: prev?.nombre || profile.name?.split(' ')[0],
-                apellido: prev?.apellido || profile.name?.split(' ').slice(1).join(' '),
-                telefono: prev?.telefono,
-                cedula: prev?.cedula,
-                rol: prev?.rol,
-                direccion: prev?.direccion,
-                sexo: prev?.sexo,
-                tipoDocumento: prev?.tipoDocumento,
-                fechaNacimiento: prev?.fechaNacimiento,
-              };
+              const updated = parseProfileToUser(profile, prev);
               localStorage.setItem('auth_user', JSON.stringify(updated));
               return updated;
             });
@@ -145,6 +151,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!prev) return null;
       const updated = { ...prev, ...updatedData };
       localStorage.setItem('auth_user', JSON.stringify(updated));
+      const uId = prev.id || prev.email;
+      if (updatedData.avatar && uId) {
+        localStorage.setItem(`user_avatar_${uId}`, updatedData.avatar);
+      }
       return updated;
     });
   };
@@ -163,23 +173,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (response && response.token) {
         const { token, refreshToken, user: backendUser, permissions } = response;
-        
-        const userData: User = {
-          id: backendUser.id,
-          personId: backendUser.personId,
-          name: backendUser.name,
-          email: backendUser.email,
-          roleIds: backendUser.roleIds || [],
-          permissions: permissions || [],
-          avatar: `https://api.dicebear.com/7.x/avatars/svg?seed=${encodeURIComponent(backendUser.name || 'User')}`,
-        };
-        
-        setUser(userData);
-        localStorage.setItem('auth_user', JSON.stringify(userData));
         localStorage.setItem('auth_token', token);
         if (refreshToken) {
           localStorage.setItem('refresh_token', refreshToken);
         }
+
+        // Obtener perfil completo con datos de persona
+        let userData: User;
+        try {
+          const profile = await authService.getProfile();
+          userData = parseProfileToUser(profile || { user: backendUser, permissions });
+        } catch {
+          userData = parseProfileToUser({ user: backendUser, permissions });
+        }
+        
+        setUser(userData);
+        localStorage.setItem('auth_user', JSON.stringify(userData));
         navigate('/dashboard');
         return { success: true };
       }
@@ -193,9 +202,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (mock) {
         const mockPermissions =
           mock.rol === "ADMINISTRADOR"
-            ? ["USERS:VIEW", "APPOINTMENTS:VIEW", "PATIENTS:VIEW", "PATIENTS:CREATE", "PEOPLE:VIEW", "CATALOGS:VIEW", "CLINICAL:VIEW", "ODONTOGRAM:VIEW", "ROLES:VIEW", "PROFILE:VIEW"]
+            ? [
+                "APPOINTMENTS:VIEW", "APPOINTMENTS:CREATE", "APPOINTMENTS:CANCEL", "APPOINTMENTS:ATTEND", "APPOINTMENTS:REASSIGN",
+                "PATIENTS:VIEW", "PATIENTS:CREATE", "PATIENTS:UPDATE", "PATIENTS:DELETE",
+                "EMPLOYEES:VIEW", "EMPLOYEES:CREATE", "EMPLOYEES:UPDATE", "EMPLOYEES:DELETE",
+                "USERS:VIEW", "USERS:CREATE", "USERS:UPDATE", "USERS:DELETE", "USERS:RESET_PASSWORD",
+                "SERVICES:VIEW", "SERVICES:CREATE", "SERVICES:UPDATE", "SERVICES:DELETE",
+                "PEOPLE:VIEW", "PEOPLE:CREATE", "PEOPLE:UPDATE", "PEOPLE:DELETE",
+                "ROLES:VIEW", "ROLES:UPDATE", "CATALOGS:VIEW", "AUDIT:VIEW", "CLINICAL_RECORDS:VIEW", "ODONTOGRAM:VIEW",
+                "REPORTS:VIEW", "PROFILE:VIEW"
+              ]
             : mock.rol === "ODONTOLOGO"
-            ? ["APPOINTMENTS:VIEW", "PATIENTS:VIEW", "CLINICAL:VIEW", "ODONTOGRAM:VIEW", "PROFILE:VIEW"]
+            ? ["APPOINTMENTS:VIEW", "APPOINTMENTS:ATTEND", "PATIENTS:VIEW", "PEOPLE:VIEW", "CATALOGS:VIEW", "CLINICAL_RECORDS:VIEW", "ODONTOGRAM:VIEW", "PROFILE:VIEW"]
             : mock.rol === "RECEPCIONISTA"
             ? ["APPOINTMENTS:VIEW", "PATIENTS:VIEW", "PATIENTS:CREATE", "PEOPLE:VIEW", "CATALOGS:VIEW", "PROFILE:VIEW"]
             : ["APPOINTMENTS:VIEW", "PROFILE:VIEW"];
