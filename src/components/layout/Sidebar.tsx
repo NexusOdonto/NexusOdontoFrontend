@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 
 import { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { useAuth } from "../../features/auth/AuthContext";
 import { hasRouteAccess, getUserRole } from "../../utils/routePermissions";
 import logo from "../../assets/nexus-odonto-logo.webp";
@@ -28,8 +28,6 @@ export function Sidebar({
   mobileOpen,
   onMobileClose,
 }: SidebarProps) {
-  const navigate = useNavigate();
-  const location = useLocation();
   const { user } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(true);
 
@@ -104,11 +102,6 @@ export function Sidebar({
     ? menuItems.filter(item => hasRouteAccess(user, item.path))
     : [];
 
-  const handleNavigation = (path: string) => {
-    navigate(path);
-    onMobileClose();
-  };
-
   const toggleCollapse = () => {
     setIsCollapsed(!isCollapsed);
   };
@@ -159,28 +152,33 @@ export function Sidebar({
           </button>
         </div>
 
-        {/* Navigation Section */}
+        {/* Navigation Section con NavLink de react-router-dom para navegación 100% SPA */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {filteredMenuItems.map((item) => {
             const Icon = item.icon;
-            const isActive = location.pathname === item.path;
             return (
-              <button
+              <NavLink
                 key={item.path}
-                type="button"
-                onClick={() => handleNavigation(item.path)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-left font-medium cursor-pointer ${
-                  isActive
-                    ? "bg-primary-500/10 text-primary-600 dark:text-primary-400 font-semibold"
-                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200"
-                } ${isCollapsed ? "justify-center" : ""}`}
+                to={item.path}
+                onClick={onMobileClose}
+                className={({ isActive }) =>
+                  `w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-left font-medium cursor-pointer ${
+                    isActive
+                      ? "bg-primary-500/10 text-primary-600 dark:text-primary-400 font-semibold"
+                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200"
+                  } ${isCollapsed ? "justify-center" : ""}`
+                }
                 title={isCollapsed ? item.label : undefined}
               >
-                <Icon size={20} className={isActive ? "text-primary-500" : "flex-shrink-0"} />
-                {!isCollapsed && (
-                  <span className="truncate text-sm">{item.label}</span>
+                {({ isActive }) => (
+                  <>
+                    <Icon size={20} className={isActive ? "text-primary-500" : "flex-shrink-0"} />
+                    {!isCollapsed && (
+                      <span className="truncate text-sm">{item.label}</span>
+                    )}
+                  </>
                 )}
-              </button>
+              </NavLink>
             );
           })}
         </nav>

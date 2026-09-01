@@ -8,20 +8,35 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ requiredRoles: _requiredRoles = [] }: ProtectedRouteProps) {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
+  // 1. Mostrar pantalla de carga suave mientras se valida la sesión inicial
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
+        <div className="text-center">
+          <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-primary-500 border-t-transparent" />
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            Verificando sesión...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Si terminó de cargar y no está autenticado, redirigir a /login
   if (!isAuthenticated) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 
-  // El dashboard y el perfil siempre son accesibles para cualquier usuario autenticado
+  // 3. El dashboard y el perfil siempre son accesibles para cualquier usuario autenticado
   if (location.pathname === '/dashboard' || location.pathname === '/perfil') {
     return <Outlet />;
   }
 
-  // Verificar si el usuario tiene acceso a la ruta según su rol
+  // 4. Verificar si el usuario tiene acceso a la ruta según su rol RBAC
   if (!hasRouteAccess(user, location.pathname)) {
     const requiredPermission = ROUTE_PERMISSIONS[location.pathname] || 'Módulo clínico/administrativo';
     return (

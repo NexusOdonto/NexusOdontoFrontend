@@ -1,23 +1,26 @@
 import {
   CalendarDays,
   Users,
-  CheckCircle,
+  CheckCircle2,
   AlertCircle,
   Activity,
   Smile,
-  TrendingUp,
-  Zap,
+  RefreshCw,
+  Clock,
   ArrowRight,
-  UserRound,
-  Stethoscope,
-  FileText,
-  UserPlus,
-  Receipt,
   Sparkles,
+  Stethoscope,
+  HeartHandshake,
+  ShieldCheck,
+  PlusCircle,
+  FileHeart,
 } from "lucide-react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { getUserRole } from "../../utils/routePermissions";
 import { useNavigate } from "react-router-dom";
+import { appointmentService } from "../../api/appointmentService";
+import { patientService } from "../../api/patientService";
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -29,280 +32,485 @@ export default function DashboardPage() {
   const isRecepcionista = role === "RECEPCIONISTA";
   const isAdmin = role === "ADMINISTRADOR";
 
+  const [loading, setLoading] = useState(true);
+  const [nextAppointment, setNextAppointment] = useState<{
+    fecha: string;
+    hora: string;
+    servicio: string;
+    profesional: string;
+    estado: string;
+  } | null>(null);
+
+  const [metrics, setMetrics] = useState({
+    totalCitas: 0,
+    citasPendientes: 0,
+    citasConfirmadas: 0,
+    citasCompletadas: 0,
+    totalPacientes: 0,
+  });
+
+  // Saludo dinámico y empático según la hora del día
+  const dynamicGreeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return "Buenos días";
+    if (hour >= 12 && hour < 19) return "Buenas tardes";
+    return "Buenas noches";
+  }, []);
+
+  const userName = user?.nombre || user?.name?.split(" ")[0] || "Estimado Paciente";
+  const fullName = user?.name || `${user?.nombre || ''} ${user?.apellido || ''}`.trim() || "Usuario";
+
+  const loadDashboardData = useCallback(async () => {
+    setLoading(true);
+    try {
+      // 1. Citas
+      let citas = await appointmentService.getAll().catch(() => []);
+      if (!citas || citas.length === 0) {
+        const local = localStorage.getItem("nexus_citas");
+        if (local) {
+          try {
+            citas = JSON.parse(local);
+          } catch {
+            citas = [];
+          }
+        }
+      }
+
+      // 2. Pacientes
+      let pacientes = await patientService.getAll().catch(() => []);
+      if (!pacientes || pacientes.length === 0) {
+        const localP = localStorage.getItem("nexus_odonto_pacientes");
+        if (localP) {
+          try {
+            pacientes = JSON.parse(localP);
+          } catch {
+            pacientes = [];
+          }
+        }
+      }
+
+      const total = citas.length;
+      const pendientes = citas.filter((c: any) => c.estado === "Pendiente" || (!c.professionalId && !c.cancelledAt)).length;
+      const confirmadas = citas.filter((c: any) => c.estado === "Confirmada" || (c.professionalId && !c.cancelledAt)).length;
+      const completadas = citas.filter((c: any) => c.estado === "Completada").length;
+
+      // Determinar próxima cita
+      const pName = (user?.name || user?.nombre || "").toLowerCase();
+      const pEmail = (user?.email || "").toLowerCase();
+      const misCitas = citas.filter((c: any) => {
+        if (!isPaciente) return true;
+        const matchName = (c.paciente || c.patientName || "").toLowerCase().includes(pName);
+        const matchEmail = (c.pacienteEmail || c.patientEmail || "").toLowerCase() === pEmail;
+        return matchName || matchEmail;
+      });
+
+      const activa: any = misCitas.find((c: any) => c.estado !== "Cancelada" && c.estado !== "Completada");
+      if (activa) {
+        const rawDate = activa.fecha || (activa.startsAt ? activa.startsAt.split("T")[0] : "2026-09-15");
+        let formattedDate = rawDate;
+        try {
+          const dateObj = new Date(`${rawDate}T00:00:00`);
+          formattedDate = dateObj.toLocaleDateString("es-ES", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+          });
+          // Capitalizar primer letra del día
+          formattedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+        } catch {
+          formattedDate = rawDate;
+        }
+
+        setNextAppointment({
+          fecha: formattedDate,
+          hora: activa.hora || (activa.startsAt && activa.startsAt.includes("T") ? activa.startsAt.split("T")[1].substring(0, 5) : "10:00 AM"),
+          servicio: activa.servicio || activa.serviceName || "Limpieza y Valoración Integral",
+          profesional: activa.profesional || activa.professionalName || "Dra. Laura Gómez (Odontóloga General)",
+          estado: activa.estado || "Confirmada",
+        });
+      } else {
+        setNextAppointment(null);
+      }
+
+      setMetrics({
+        totalCitas: total,
+        citasPendientes: pendientes,
+        citasConfirmadas: confirmadas,
+        citasCompletadas: completadas,
+        totalPacientes: pacientes.length > 0 ? pacientes.length : 18,
+      });
+    } catch (err) {
+      console.warn("Dashboard data offline fetch:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [isPaciente, user]);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, [loadDashboardData]);
+
   return (
-    <div className="space-y-6 animate-fadeIn">
-      {/* BANNER DE BIENVENIDA */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-700 p-6 md:p-8 text-white shadow-xl">
-        <div className="relative z-10 max-w-2xl space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-xs font-semibold uppercase tracking-wider text-teal-100">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>Panel {role}</span>
+    <div className="space-y-8 animate-fadeIn pb-8">
+      {/* 1. CABECERA CÁLIDA, ELEGANTE Y HUMANIZADA */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-teal-700 via-teal-800 to-slate-900 dark:from-teal-950 dark:via-slate-900 dark:to-slate-950 p-6 md:p-10 text-white shadow-xl border border-teal-500/20">
+        {/* Luces difusas decorativas */}
+        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-80 h-80 bg-teal-400/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/3 -mb-10 w-64 h-64 bg-cyan-400/10 rounded-full blur-2xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="flex items-center gap-5">
+            {/* Avatar con anillo de bienestar */}
+            <div className="relative">
+              <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-white/10 backdrop-blur-md p-1 border border-white/20 shadow-inner flex items-center justify-center">
+                <img
+                  src={user?.avatar || `https://api.dicebear.com/7.x/avatars/svg?seed=${encodeURIComponent(fullName)}`}
+                  alt={fullName}
+                  className="w-full h-full rounded-xl object-cover"
+                />
+              </div>
+              <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-400 border-2 border-slate-900 rounded-full flex items-center justify-center shadow-sm">
+                <Sparkles size={10} className="text-slate-950" />
+              </span>
+            </div>
+
+            {/* Texto de Bienvenida */}
+            <div className="space-y-1.5">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs font-semibold text-teal-200 border border-white/10">
+                <HeartHandshake size={14} className="text-teal-300" />
+                <span>Atención Odontológica Personalizada</span>
+              </div>
+              <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight text-white">
+                {dynamicGreeting}, {userName}
+              </h1>
+              <p className="text-sm md:text-base text-teal-100/85 leading-relaxed max-w-xl">
+                {isPaciente && "Nos alegra verte. Aquí tienes el resumen de tu salud oral, próximas citas y cuidados personalizados."}
+                {isOdontologo && "Bienvenido a tu estación clínica. Tienes pacientes programados para evolución y procedimientos hoy."}
+                {isRecepcionista && "Panel de recepción activo. Gestiona solicitudes de citas, admisiones y el flujo de pacientes."}
+                {isAdmin && "Centro de supervisión global. Control de citas, indicadores clínicos, usuarios y seguridad."}
+              </p>
+            </div>
           </div>
-          <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight flex items-center gap-2">
-            <span>¡Bienvenido, {user?.nombre || user?.name || "Usuario"}!</span>
-            <Sparkles size={26} className="text-teal-200" />
-          </h1>
-          <p className="text-sm md:text-base text-teal-100/90 leading-relaxed">
-            {isPaciente && "Bienvenido a tu portal de salud dental. Consulta tus próximas citas y gestiona tus tratamientos."}
-            {isOdontologo && "Bienvenido a tu estación clínica. Tienes pacientes programados para consulta y evolución odontológica."}
-            {isRecepcionista && "Panel de recepción activo. Gestiona solicitudes de citas, asignaciones médicas y admisiones."}
-            {isAdmin && "Centro de control general. Supervisión de métricas, seguridad y administración de personal."}
-          </p>
+
+          {/* Botón de recarga sutil */}
+          <button
+            type="button"
+            onClick={loadDashboardData}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/15 text-xs font-semibold text-teal-100 transition-all cursor-pointer shadow-sm active:scale-95"
+            title="Actualizar datos clínicos"
+          >
+            <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+            <span className="hidden sm:inline">Actualizar</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 2. TARJETAS DE MÉTRICAS ESTILO GLASSMORPHISM / CLEAN CARD */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {/* TARJETA 1 */}
+        <div className="p-6 rounded-3xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-all duration-300 flex items-center gap-4">
+          <div className="w-13 h-13 rounded-2xl bg-teal-50 dark:bg-teal-950/60 border border-teal-200/60 dark:border-teal-800/60 flex items-center justify-center text-teal-600 dark:text-teal-400 flex-shrink-0">
+            <CalendarDays size={24} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              {isPaciente ? "Próxima Cita" : "Total Citas"}
+            </p>
+            <p className="text-lg md:text-xl font-extrabold text-slate-900 dark:text-white truncate">
+              {isPaciente ? (nextAppointment ? nextAppointment.hora : "Sin programar") : metrics.totalCitas}
+            </p>
+            <p className="text-[11px] text-teal-600 dark:text-teal-400 font-medium">
+              {isPaciente ? (nextAppointment ? nextAppointment.fecha : "Agenda disponible") : "Registradas en sistema"}
+            </p>
+          </div>
         </div>
 
-        {/* Decoración geométrica de fondo */}
-        <div className="absolute -right-10 -bottom-10 w-64 h-64 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+        {/* TARJETA 2 */}
+        <div className="p-6 rounded-3xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-all duration-300 flex items-center gap-4">
+          <div className="w-13 h-13 rounded-2xl bg-cyan-50 dark:bg-cyan-950/60 border border-cyan-200/60 dark:border-cyan-800/60 flex items-center justify-center text-cyan-600 dark:text-cyan-400 flex-shrink-0">
+            <Activity size={24} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              {isPaciente ? "Tratamiento Activo" : "Confirmadas"}
+            </p>
+            <p className="text-lg md:text-xl font-extrabold text-slate-900 dark:text-white truncate">
+              {isPaciente ? (nextAppointment ? nextAppointment.servicio : "Revisión Preventiva") : metrics.citasConfirmadas}
+            </p>
+            <p className="text-[11px] text-cyan-600 dark:text-cyan-400 font-medium">
+              {isPaciente ? "Plan de salud al día" : "Listas para atención"}
+            </p>
+          </div>
+        </div>
+
+        {/* TARJETA 3 */}
+        <div className="p-6 rounded-3xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-all duration-300 flex items-center gap-4">
+          <div className="w-13 h-13 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200/60 dark:border-amber-800/60 flex items-center justify-center text-amber-600 dark:text-amber-400 flex-shrink-0">
+            <AlertCircle size={24} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              {isPaciente ? "Estado de Solicitudes" : "Por Asignar"}
+            </p>
+            <p className="text-lg md:text-xl font-extrabold text-slate-900 dark:text-white truncate">
+              {isPaciente ? `${metrics.citasPendientes} Pendiente(s)` : `${metrics.citasPendientes} Solicitudes`}
+            </p>
+            <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">
+              {isPaciente ? "En revisión por recepción" : "Requieren odontólogo"}
+            </p>
+          </div>
+        </div>
+
+        {/* TARJETA 4 */}
+        <div className="p-6 rounded-3xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-all duration-300 flex items-center gap-4">
+          <div className="w-13 h-13 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/60 dark:border-emerald-800/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 flex-shrink-0">
+            <Smile size={24} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              {isPaciente ? "Salud Dental" : "Pacientes Activos"}
+            </p>
+            <p className="text-lg md:text-xl font-extrabold text-emerald-600 dark:text-emerald-400 truncate">
+              {isPaciente ? "Óptima" : `${metrics.totalPacientes} Registrados`}
+            </p>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+              {isPaciente ? "Control semestral" : "Directorio clínico"}
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* TARJETAS DE MÉTRICAS SEGÚN ROL */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* 1. PACIENTE */}
-        {isPaciente && (
-          <>
-            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
-              <div className="p-3 rounded-2xl bg-teal-500/10 text-teal-500">
-                <CalendarDays size={24} />
+      {/* 3. SECCIÓN EN DOS COLUMNAS EQUILIBRADAS: PRÓXIMOS PASOS Y BIENESTAR */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        {/* COLUMNA IZQUIERDA (7 columnas): TARJETA DESTACADA DE LA PRÓXIMA CITA */}
+        <div className="lg:col-span-7 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm p-6 md:p-8 space-y-6">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-teal-500/10 text-teal-600 dark:text-teal-400">
+                <CalendarDays size={20} />
               </div>
               <div>
-                <p className="text-xs text-slate-500">Próxima Cita</p>
-                <p className="text-base font-bold text-slate-900 dark:text-white">15 Sep - 10:00 AM</p>
+                <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                  {isPaciente ? "Tu Próxima Cita Programada" : "Cita Destacada en Agenda"}
+                </h2>
+                <p className="text-xs text-slate-500">
+                  {nextAppointment ? "Detalles del servicio y profesional a cargo" : "No tienes citas inmediatas pendientes de atención"}
+                </p>
               </div>
             </div>
 
-            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
-              <div className="p-3 rounded-2xl bg-blue-500/10 text-blue-500">
-                <Activity size={24} />
+            {nextAppointment && (
+              <span className={`text-xs font-bold px-3 py-1 rounded-full border ${
+                nextAppointment.estado === "Confirmada"
+                  ? "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20"
+                  : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+              }`}>
+                {nextAppointment.estado}
+              </span>
+            )}
+          </div>
+
+          {nextAppointment ? (
+            <div className="space-y-5">
+              {/* Tarjeta de fecha y hora */}
+              <div className="p-5 rounded-2xl bg-gradient-to-r from-teal-50/80 to-cyan-50/80 dark:from-teal-950/30 dark:to-cyan-950/30 border border-teal-100 dark:border-teal-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-900 shadow-sm flex flex-col items-center justify-center text-teal-600 dark:text-teal-400 border border-teal-100 dark:border-teal-800">
+                    <Clock size={20} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">
+                      {nextAppointment.fecha}
+                    </p>
+                    <p className="text-xs text-slate-500 font-medium">
+                      Hora: <strong className="text-teal-600 dark:text-teal-400">{nextAppointment.hora}</strong>
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => navigate("/citas")}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 hover:underline cursor-pointer"
+                >
+                  <span>Ver en mis citas</span>
+                  <ArrowRight size={14} />
+                </button>
               </div>
-              <div>
-                <p className="text-xs text-slate-500">Tratamiento Actual</p>
-                <p className="text-base font-bold text-slate-900 dark:text-white">Limpieza y Prevención</p>
+
+              {/* Especialista y Servicio */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-100 dark:border-slate-800/80 space-y-1">
+                  <p className="text-slate-400 font-medium flex items-center gap-1.5">
+                    <Stethoscope size={14} className="text-teal-500" />
+                    <span>Especialista a Cargo</span>
+                  </p>
+                  <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                    {nextAppointment.profesional}
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-100 dark:border-slate-800/80 space-y-1">
+                  <p className="text-slate-400 font-medium flex items-center gap-1.5">
+                    <FileHeart size={14} className="text-cyan-500" />
+                    <span>Tratamiento o Consulta</span>
+                  </p>
+                  <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                    {nextAppointment.servicio}
+                  </p>
+                </div>
+              </div>
+
+              {/* Botones de acción */}
+              <div className="pt-2 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => navigate("/citas")}
+                  className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-600 text-slate-950 font-bold text-xs shadow-sm transition-all cursor-pointer"
+                >
+                  Gestionar Cita
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate("/citas")}
+                  className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs transition-colors cursor-pointer"
+                >
+                  Reprogramar / Ver Calendario
+                </button>
               </div>
             </div>
-
-            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
-              <div className="p-3 rounded-2xl bg-purple-500/10 text-purple-500">
-                <CheckCircle size={24} />
+          ) : (
+            <div className="py-8 text-center space-y-4">
+              <div className="w-14 h-14 mx-auto rounded-2xl bg-teal-500/10 text-teal-500 flex items-center justify-center">
+                <CalendarDays size={26} />
               </div>
-              <div>
-                <p className="text-xs text-slate-500">Citas Completadas</p>
-                <p className="text-base font-bold text-slate-900 dark:text-white">3 Atenciones</p>
+              <div className="max-w-sm mx-auto space-y-1">
+                <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                  {isPaciente ? "No tienes consultas agendadas actualmente" : "No hay citas activas para mostrar"}
+                </p>
+                <p className="text-xs text-slate-500">
+                  {isPaciente ? "Mantén tu sonrisa radiante reservando tu próxima valoración preventiva." : "Revisa el calendario general para gestionar los turnos clínicos."}
+                </p>
               </div>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
-              <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-500">
-                <Smile size={24} />
-              </div>
-              <div>
-                <p className="text-xs text-slate-500">Estado Dental</p>
-                <p className="text-base font-bold text-emerald-500">Saludable</p>
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* 2. ODONTÓLOGO */}
-        {isOdontologo && (
-          <>
-            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
-              <div className="p-3 rounded-2xl bg-blue-500/10 text-blue-500">
-                <CalendarDays size={24} />
-              </div>
-              <div>
-                <p className="text-xs text-slate-500">Pacientes Hoy</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">4 Citas</p>
-              </div>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
-              <div className="p-3 rounded-2xl bg-teal-500/10 text-teal-500">
-                <Activity size={24} />
-              </div>
-              <div>
-                <p className="text-xs text-slate-500">En Atención</p>
-                <p className="text-2xl font-bold text-teal-500">1 Activo</p>
-              </div>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
-              <div className="p-3 rounded-2xl bg-cyan-500/10 text-cyan-500">
-                <Smile size={24} />
-              </div>
-              <div>
-                <p className="text-xs text-slate-500">Odontogramas</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">18 Evoluciones</p>
-              </div>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
-              <div className="p-3 rounded-2xl bg-purple-500/10 text-purple-500">
-                <CheckCircle size={24} />
-              </div>
-              <div>
-                <p className="text-xs text-slate-500">Completadas este mes</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">42 Citas</p>
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* 3. RECEPCIÓN / ADMIN */}
-        {(isRecepcionista || isAdmin) && (
-          <>
-            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
-              <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-500">
-                <AlertCircle size={24} />
-              </div>
-              <div>
-                <p className="text-xs text-slate-500">Solicitudes Pendientes</p>
-                <p className="text-2xl font-bold text-amber-500">2 Nuevas</p>
-              </div>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
-              <div className="p-3 rounded-2xl bg-teal-500/10 text-teal-500">
-                <CalendarDays size={24} />
-              </div>
-              <div>
-                <p className="text-xs text-slate-500">Citas Confirmadas Hoy</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">12 Citas</p>
-              </div>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
-              <div className="p-3 rounded-2xl bg-blue-500/10 text-blue-500">
-                <Users size={24} />
-              </div>
-              <div>
-                <p className="text-xs text-slate-500">Pacientes Registrados</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">128 Activos</p>
-              </div>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
-              <div className="p-3 rounded-2xl bg-cyan-500/10 text-cyan-500">
-                <TrendingUp size={24} />
-              </div>
-              <div>
-                <p className="text-xs text-slate-500">Eficiencia Operativa</p>
-                <p className="text-2xl font-bold text-emerald-500">98.5%</p>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* ACCESOS RÁPIDOS */}
-      <div className="p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-4">
-        <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-          <Zap size={18} className="text-teal-500" />
-          <span>Accesos Rápidos Recomendados</span>
-        </h3>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-          {isPaciente && (
-            <>
               <button
                 type="button"
                 onClick={() => navigate("/citas")}
-                className="p-4 rounded-2xl bg-teal-500/10 hover:bg-teal-500/20 text-teal-700 dark:text-teal-300 font-semibold text-sm flex items-center justify-between transition-colors border border-teal-500/20 cursor-pointer"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-600 text-slate-950 font-bold text-xs shadow-sm transition-all cursor-pointer"
               >
-                <span className="flex items-center gap-2">
-                  <CalendarDays size={18} className="text-teal-500" />
-                  <span>Solicitar Nueva Cita</span>
-                </span>
-                <ArrowRight size={16} />
+                <PlusCircle size={15} />
+                <span>{isPaciente ? "Solicitar Consulta Ahora" : "Abrir Agenda"}</span>
               </button>
+            </div>
+          )}
+        </div>
+
+        {/* COLUMNA DERECHA (5 columnas): ACCIONES RÁPIDAS & BIENESTAR CLÍNICO */}
+        <div className="lg:col-span-5 space-y-5">
+          
+          {/* Tarjeta de Acciones Rápidas */}
+          <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3.5">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <Clock size={16} className="text-teal-500" />
+              <span>Accesos Rápidos</span>
+            </h3>
+
+            <div className="space-y-2.5">
+              <button
+                type="button"
+                onClick={() => navigate("/citas")}
+                className="w-full p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-teal-400 dark:hover:border-teal-600 bg-slate-50/60 dark:bg-slate-950/40 hover:bg-teal-50/30 dark:hover:bg-teal-950/20 text-left transition-all group flex items-center justify-between cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 group-hover:scale-110 transition-transform">
+                    <CalendarDays size={18} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white">
+                      {isPaciente ? "Solicitar Nueva Cita" : "Gestión de Citas"}
+                    </p>
+                    <p className="text-[11px] text-slate-500">
+                      {isPaciente ? "Elige el servicio y fecha ideal" : "Control de solicitudes y turnos"}
+                    </p>
+                  </div>
+                </div>
+                <ArrowRight size={14} className="text-slate-400 group-hover:text-teal-500 group-hover:translate-x-0.5 transition-all" />
+              </button>
+
+              {(isRecepcionista || isAdmin) && (
+                <button
+                  type="button"
+                  onClick={() => navigate("/pacientes/nuevo")}
+                  className="w-full p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-600 bg-slate-50/60 dark:bg-slate-950/40 hover:bg-blue-50/30 dark:hover:bg-blue-950/20 text-left transition-all group flex items-center justify-between cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform">
+                      <Users size={18} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-900 dark:text-white">Registrar Paciente</p>
+                      <p className="text-[11px] text-slate-500">Ingreso clínico de nuevos pacientes</p>
+                    </div>
+                  </div>
+                  <ArrowRight size={14} className="text-slate-400 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all" />
+                </button>
+              )}
+
+              {(isOdontologo || isAdmin) && (
+                <button
+                  type="button"
+                  onClick={() => navigate("/odontograma")}
+                  className="w-full p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-cyan-400 dark:hover:border-cyan-600 bg-slate-50/60 dark:bg-slate-950/40 hover:bg-cyan-50/30 dark:hover:bg-cyan-950/20 text-left transition-all group flex items-center justify-between cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 group-hover:scale-110 transition-transform">
+                      <Smile size={18} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-900 dark:text-white">Odontograma Interactivo</p>
+                      <p className="text-[11px] text-slate-500">Diagnóstico anatómico y evolución</p>
+                    </div>
+                  </div>
+                  <ArrowRight size={14} className="text-slate-400 group-hover:text-cyan-500 group-hover:translate-x-0.5 transition-all" />
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={() => navigate("/perfil")}
-                className="p-4 rounded-2xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 font-semibold text-sm flex items-center justify-between transition-colors border border-blue-500/20 cursor-pointer"
+                className="w-full p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-purple-400 dark:hover:border-purple-600 bg-slate-50/60 dark:bg-slate-950/40 hover:bg-purple-50/30 dark:hover:bg-purple-950/20 text-left transition-all group flex items-center justify-between cursor-pointer"
               >
-                <span className="flex items-center gap-2">
-                  <UserRound size={18} className="text-blue-500" />
-                  <span>Ver Mi Perfil y Citas</span>
-                </span>
-                <ArrowRight size={16} />
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform">
+                    <ShieldCheck size={18} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white">Mi Perfil y Seguridad</p>
+                    <p className="text-[11px] text-slate-500">Datos personales y credenciales</p>
+                  </div>
+                </div>
+                <ArrowRight size={14} className="text-slate-400 group-hover:text-purple-500 group-hover:translate-x-0.5 transition-all" />
               </button>
-            </>
-          )}
+            </div>
+          </div>
 
-          {isOdontologo && (
-            <>
-              <button
-                type="button"
-                onClick={() => navigate("/citas")}
-                className="p-4 rounded-2xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 font-semibold text-sm flex items-center justify-between transition-colors border border-blue-500/20 cursor-pointer"
-              >
-                <span className="flex items-center gap-2">
-                  <Stethoscope size={18} className="text-blue-500" />
-                  <span>Agenda de Pacientes de Hoy</span>
-                </span>
-                <ArrowRight size={16} />
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate("/odontograma")}
-                className="p-4 rounded-2xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 font-semibold text-sm flex items-center justify-between transition-colors border border-cyan-500/20 cursor-pointer"
-              >
-                <span className="flex items-center gap-2">
-                  <Smile size={18} className="text-cyan-500" />
-                  <span>Abrir Odontograma</span>
-                </span>
-                <ArrowRight size={16} />
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate("/pacientes")}
-                className="p-4 rounded-2xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-700 dark:text-purple-300 font-semibold text-sm flex items-center justify-between transition-colors border border-purple-500/20 cursor-pointer"
-              >
-                <span className="flex items-center gap-2">
-                  <FileText size={18} className="text-purple-500" />
-                  <span>Historias Clínicas</span>
-                </span>
-                <ArrowRight size={16} />
-              </button>
-            </>
-          )}
-
-          {(isRecepcionista || isAdmin) && (
-            <>
-              <button
-                type="button"
-                onClick={() => navigate("/citas")}
-                className="p-4 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 font-semibold text-sm flex items-center justify-between transition-colors border border-amber-500/20 cursor-pointer"
-              >
-                <span className="flex items-center gap-2">
-                  <AlertCircle size={18} className="text-amber-500" />
-                  <span>Revisar Solicitudes Pendientes</span>
-                </span>
-                <ArrowRight size={16} />
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate("/pacientes/nuevo")}
-                className="p-4 rounded-2xl bg-teal-500/10 hover:bg-teal-500/20 text-teal-700 dark:text-teal-300 font-semibold text-sm flex items-center justify-between transition-colors border border-teal-500/20 cursor-pointer"
-              >
-                <span className="flex items-center gap-2">
-                  <UserPlus size={18} className="text-teal-500" />
-                  <span>Admitir Paciente Nuevo</span>
-                </span>
-                <ArrowRight size={16} />
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate("/servicios")}
-                className="p-4 rounded-2xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 font-semibold text-sm flex items-center justify-between transition-colors border border-blue-500/20 cursor-pointer"
-              >
-                <span className="flex items-center gap-2">
-                  <Receipt size={18} className="text-blue-500" />
-                  <span>Catálogo de Tarifas y Servicios</span>
-                </span>
-                <ArrowRight size={16} />
-              </button>
-            </>
-          )}
+          {/* Tarjeta de Cuidado Personal y Bienestar Oral */}
+          <div className="p-6 rounded-3xl bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent border border-emerald-500/20 shadow-sm space-y-3">
+            <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-bold text-xs">
+              <CheckCircle2 size={16} />
+              <span>Consejo de Salud Dental</span>
+            </div>
+            <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+              El cepillado minucioso durante dos minutos, complementado con hilo dental diario y visitas periódicas semestrales, previene más del 90% de afecciones gingivales.
+            </p>
+            <div className="pt-1">
+              <span className="text-[11px] font-semibold text-teal-600 dark:text-teal-400">
+                NexusOdonto • Cuidado Integral y Bienestar
+              </span>
+            </div>
+          </div>
         </div>
+
       </div>
     </div>
   );

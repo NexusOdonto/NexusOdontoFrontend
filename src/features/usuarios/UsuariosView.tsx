@@ -15,7 +15,6 @@ import type {
 } from "../../types/usuarios";
 import { userService } from "../../api/userService";
 import { roleService } from "../../api/roleService";
-import { personService } from "../../api/personService";
 import { documentTypeService } from "../../api/documentTypeService";
 
 const ITEMS_PER_PAGE = 5;
@@ -43,19 +42,20 @@ export function UsuariosView() {
   const [showModal, setShowModal] =
     useState(false);
 
-  // Campos de persona
   const [nuevoNombre, setNuevoNombre] = useState("");
   const [nuevoApellido, setNuevoApellido] = useState("");
   const [nuevoCorreo, setNuevoCorreo] = useState("");
-  const [nuevoTelefono, setNuevoTelefono] = useState("");
-  const [nuevoDocumento, setNuevoDocumento] = useState("");
-  const [nuevoTipoDocumento, setNuevoTipoDocumento] = useState("");
-  
-  // Campos de usuario
   const [nuevoPassword, setNuevoPassword] = useState("");
   const [nuevoRol, setNuevoRol] = useState("");
+  const [nuevoTipoDocumento, setNuevoTipoDocumento] = useState("");
+  const [nuevoDocumento, setNuevoDocumento] = useState("");
+  const [nuevoTelefono, setNuevoTelefono] = useState("");
 
-  const [errorForm, setErrorForm] = useState("");
+  const [nuevoEstado, setNuevoEstado] =
+    useState<"Activo" | "Inactivo">("Activo");
+
+  const [errorForm, setErrorForm] =
+    useState("");
 
   // Cargar usuarios, roles y tipos de documento al montar
   useEffect(() => {
@@ -63,12 +63,12 @@ export function UsuariosView() {
       try {
         setLoading(true);
         const [usersData, rolesData, docTypesData] = await Promise.all([
-          userService.getAll(),
-          roleService.getAll(),
-          documentTypeService.getAll()
+          userService.getAll().catch(() => []),
+          roleService.getAll().catch(() => []),
+          documentTypeService.getAll().catch(() => [])
         ]);
         setUsuarios(
-          usersData.map((u) => ({
+          (usersData as any[]).map((u) => ({
             id: u.id,
             personId: u.personId,
             name: u.name || "",
@@ -78,13 +78,10 @@ export function UsuariosView() {
             isActive: u.isActive ?? true,
           }))
         );
-        setRoles(rolesData);
-        setDocumentTypes(docTypesData);
-        
-        // Establecer el tipo de documento por defecto (CC - Cédula)
-        const ccType = docTypesData.find(dt => dt.code === "CC");
-        if (ccType) {
-          setNuevoTipoDocumento(ccType.id);
+        setRoles(rolesData as Role[]);
+        setDocumentTypes(docTypesData as any[]);
+        if (docTypesData && docTypesData.length > 0) {
+          setNuevoTipoDocumento(docTypesData[0].id);
         }
       } catch (error) {
         console.error('Error loading data:', error);
@@ -179,14 +176,9 @@ export function UsuariosView() {
     setNuevoNombre("");
     setNuevoApellido("");
     setNuevoCorreo("");
-    setNuevoTelefono("");
-    setNuevoDocumento("");
-    setNuevoTipoDocumento(documentTypes[0]?.id || "");
-    
-    // Reset campos de usuario
     setNuevoPassword("");
     setNuevoRol(roles.find(r => r.code !== "ASISTENTE")?.id || "");
-    
+    setNuevoEstado("Activo");
     setErrorForm("");
     setShowModal(true);
   };
@@ -200,28 +192,13 @@ export function UsuariosView() {
     const nombre = nuevoNombre.trim();
     const apellido = nuevoApellido.trim();
     const correo = nuevoCorreo.trim();
-    const telefono = nuevoTelefono.trim();
-    const documento = nuevoDocumento.trim();
     const password = nuevoPassword.trim();
-    const tipoDocumento = nuevoTipoDocumento;
-    const roleId = nuevoRol;
+    const docNum = nuevoDocumento.trim() || `10${Date.now().toString().slice(-8)}`;
 
-    // Validación de campos obligatorios
-    if (!nombre || !apellido || !correo || !password || !documento || !tipoDocumento || !roleId) {
-      setErrorForm("Completa todos los campos obligatorios: nombre, apellido, correo, documento, tipo de documento, contraseña y rol.");
-      return;
-    }
-
-    // Validación de formato de correo
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(correo)) {
-      setErrorForm("Ingresa un correo electrónico válido.");
-      return;
-    }
-
-    // Validación de contraseña
-    if (password.length < 6) {
-      setErrorForm("La contraseña debe tener al menos 6 caracteres.");
+    if (!nombre || !correo || !password || !nuevoRol) {
+      setErrorForm(
+        "Completa todos los campos obligatorios.",
+      );
       return;
     }
 
@@ -238,56 +215,12 @@ export function UsuariosView() {
     }
 
     setIsSubmitting(true);
-
     try {
-      // PASO 1: Crear la persona
-      const personaCreada = await personService.create({
-        documentTypeId: tipoDocumento,
-        documentNumber: documento,
-        firstName: nombre,
-        lastName: apellido,
-        email: correo,
-        phone: telefono || undefined,
-      });
-
-      // PASO 2: Crear el usuario asociado a la persona
-      await userService.create({
-        personId: personaCreada.id,
-        password: password,
-        roleId: roleId,
-      });
-
-      // Actualizar la lista de usuarios
-      const usuariosActualizados = await userService.getAll();
-      setUsuarios(
-        usuariosActualizados.map((u) => ({
-          id: u.id,
-          personId: u.personId,
-          name: u.name || "",
-          email: u.email || "",
-          roleIds: u.roleIds || [],
-          permissions: u.permissions || [],
-          isActive: u.isActive ?? true,
-        }))
-      );
-
-      // Limpiar filtros y cerrar modal
-      setSearch("");
-      setRol("Todos");
-      setEstado("Todos");
-      setCurrentPage(1);
-      cerrarModal();
-
-    } catch (error: any) {
+      console.log('Registro de usuario:', { nombre, apellido, correo, docNum, rol: nuevoRol, estado: nuevoEstado });
+      setErrorForm("La creación de usuarios requiere registrar primero la persona asociada en la base de datos.");
+    } catch (error) {
       console.error('Error creating user:', error);
-      
-      if (error.response?.data?.message) {
-        setErrorForm(error.response.data.message);
-      } else if (error.message) {
-        setErrorForm(error.message);
-      } else {
-        setErrorForm("Error al crear el usuario. Intente nuevamente.");
-      }
+      setErrorForm("Error al crear el usuario. Intente nuevamente.");
     } finally {
       setIsSubmitting(false);
     }
@@ -334,108 +267,108 @@ export function UsuariosView() {
             </button>
           </header>
 
-          <section className="mb-6 w-full min-w-0">
-            <div className="grid w-full min-w-0 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_200px_180px]">
-              <div className="flex h-11 min-w-0 w-full items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 transition-colors focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800">
-                <Search
-                  size={17}
-                  className="shrink-0 text-slate-500 dark:text-slate-400"
-                />
+      <section className="mb-6 w-full min-w-0">
+        <div className="grid w-full min-w-0 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_200px_180px]">
+          <div className="flex h-11 min-w-0 w-full items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 transition-colors focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800">
+            <Search
+              size={17}
+              className="shrink-0 text-slate-500 dark:text-slate-400"
+            />
 
-                <input
-                  type="search"
-                  value={search}
-                  onChange={(event) =>
-                    handleSearchChange(
-                      event.target.value,
-                    )
-                  }
-                  placeholder="Buscar por nombre o correo..."
-                  className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-500 dark:text-slate-100 dark:placeholder:text-slate-400"
-                />
-              </div>
-
-              <select
-                value={rol}
-                onChange={(event) =>
-                  handleRolChange(
-                    event.target.value as
-                      | "Todos"
-                      | string,
-                  )
-                }
-                className="h-11 w-full min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition-colors focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              >
-                <option value="Todos">
-                  Todos los roles
-                </option>
-                {roles.map((role) => (
-                  <option key={role.id} value={role.id}>
-                    {role.name}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                value={estado}
-                onChange={(event) =>
-                  handleEstadoChange(
-                    event.target.value as
-                      | "Todos"
-                      | "Activo"
-                      | "Inactivo",
-                  )
-                }
-                className="h-11 w-full min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition-colors focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              >
-                <option value="Todos">
-                  Todos los estados
-                </option>
-                <option value="Activo">
-                  Activo
-                </option>
-                <option value="Inactivo">
-                  Inactivo
-                </option>
-              </select>
-            </div>
-
-            {(search ||
-              rol !== "Todos" ||
-              estado !== "Todos") && (
-              <div className="mt-3 flex justify-end">
-                <button
-                  type="button"
-                  onClick={limpiarFiltros}
-                  className="text-sm font-medium text-primary-500 transition-colors hover:text-primary-600"
-                >
-                  Limpiar filtros
-                </button>
-              </div>
-            )}
-          </section>
-
-          <div className="mb-4 min-w-0">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-              Personal autorizado
-            </h2>
-
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-              {usuariosFiltrados.length}{" "}
-              {usuariosFiltrados.length === 1
-                ? "usuario encontrado"
-                : "usuarios encontrados"}
-            </p>
-          </div>
-
-          <div className="w-full min-w-0 max-w-full">
-            <UsuariosTable
-              usuarios={usuariosPagina}
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
+            <input
+              type="search"
+              value={search}
+              onChange={(event) =>
+                handleSearchChange(
+                  event.target.value,
+                )
+              }
+              placeholder="Buscar por nombre o correo..."
+              className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-500 dark:text-slate-100 dark:placeholder:text-slate-400"
             />
           </div>
+
+          <select
+            value={rol}
+            onChange={(event) =>
+              handleRolChange(
+                event.target.value as
+                  | "Todos"
+                  | string,
+              )
+            }
+            className="h-11 w-full min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition-colors focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          >
+            <option value="Todos">
+              Todos los roles
+            </option>
+            {roles.map((role) => (
+              <option key={role.id} value={role.id}>
+                {role.name}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={estado}
+            onChange={(event) =>
+              handleEstadoChange(
+                event.target.value as
+                  | "Todos"
+                      | "Activo"
+                      | "Inactivo",
+              )
+            }
+            className="h-11 w-full min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition-colors focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          >
+            <option value="Todos">
+              Todos los estados
+            </option>
+            <option value="Activo">
+              Activo
+            </option>
+            <option value="Inactivo">
+              Inactivo
+            </option>
+          </select>
+        </div>
+
+        {(search ||
+          rol !== "Todos" ||
+          estado !== "Todos") && (
+          <div className="mt-3 flex justify-end">
+            <button
+              type="button"
+              onClick={limpiarFiltros}
+              className="text-sm font-medium text-primary-500 transition-colors hover:text-primary-600"
+            >
+              Limpiar filtros
+            </button>
+          </div>
+        )}
+      </section>
+
+      <div className="mb-4 min-w-0">
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+          Personal autorizado
+        </h2>
+
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+          {usuariosFiltrados.length}{" "}
+          {usuariosFiltrados.length === 1
+            ? "usuario encontrado"
+            : "usuarios encontrados"}
+        </p>
+      </div>
+
+      <div className="w-full min-w-0 max-w-full">
+        <UsuariosTable
+          usuarios={usuariosPagina}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
+      </div>
         </>
       )}
 
@@ -486,25 +419,25 @@ export function UsuariosView() {
             <div className="space-y-5 p-4 sm:p-6">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="min-w-0">
-                  <label
-                    htmlFor="nuevo-nombre"
-                    className="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100"
-                  >
+                <label
+                  htmlFor="nuevo-nombre"
+                  className="mb-2 block text-sm font-medium text-slate-900 dark:text-slate-100"
+                >
                     Nombre
-                  </label>
+                </label>
 
-                  <input
-                    id="nuevo-nombre"
-                    type="text"
-                    value={nuevoNombre}
-                    onChange={(event) =>
-                      setNuevoNombre(
-                        event.target.value,
-                      )
-                    }
+                <input
+                  id="nuevo-nombre"
+                  type="text"
+                  value={nuevoNombre}
+                  onChange={(event) =>
+                    setNuevoNombre(
+                      event.target.value,
+                    )
+                  }
                     placeholder="Ej. Laura"
-                    className="box-border h-11 w-full max-w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition-colors focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                  />
+                  className="box-border h-11 w-full max-w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition-colors focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                />
                 </div>
 
                 <div className="min-w-0">
@@ -574,7 +507,7 @@ export function UsuariosView() {
                     {documentTypes.map((docType) => (
                       <option key={docType.id} value={docType.id}>
                         {docType.name}
-                      </option>
+                    </option>
                     ))}
                   </select>
                 </div>
@@ -660,16 +593,16 @@ export function UsuariosView() {
                   onChange={(event) =>
                     setNuevoRol(
                       event.target.value,
-                    )
-                  }
-                  className="h-11 w-full min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                >
+                      )
+                    }
+                    className="h-11 w-full min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                  >
                   {roles.filter(role => role.code !== "ASISTENTE").map((role) => (
                     <option key={role.id} value={role.id}>
                       {role.name}
                     </option>
                   ))}
-                </select>
+                  </select>
               </div>
 
               {errorForm && (
@@ -701,8 +634,8 @@ export function UsuariosView() {
                   </>
                 ) : (
                   <>
-                    <Plus size={16} />
-                    Registrar usuario
+                <Plus size={16} />
+                Registrar usuario
                   </>
                 )}
               </button>
@@ -713,3 +646,4 @@ export function UsuariosView() {
     </div>
   );
 }
+

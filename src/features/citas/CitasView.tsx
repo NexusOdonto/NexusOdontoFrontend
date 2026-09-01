@@ -5,8 +5,10 @@ import {
   X,
   Stethoscope,
   RefreshCw,
+  CheckCircle2,
 } from "lucide-react";
 import { useEffect, useMemo, useState, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import { CitasTable } from "./components/CitasTable";
 import { type Cita, type EstadoCita } from "./types";
@@ -15,6 +17,7 @@ import { getUserRole } from "../../utils/routePermissions";
 import { appointmentService, type AppointmentResponseDto } from "../../api/appointmentService";
 import { serviceCatalogService } from "../../api/serviceCatalogService";
 import { professionalService } from "../../api/professionalService";
+import { useNotifications } from "../../context/NotificationContext";
 
 const citasFallback: Cita[] = [
   {
@@ -34,7 +37,7 @@ const citasFallback: Cita[] = [
     paciente: "Carlos Andrés Pérez",
     pacienteEmail: "carlos.perez@correo.com",
     pacienteCedula: "1098761234",
-    profesional: "Dr. Juan Martínez",
+    profesional: "",
     servicio: "Blanqueamiento Dental Láser",
     fecha: "2026-09-02",
     hora: "09:30",
@@ -58,7 +61,7 @@ const citasFallback: Cita[] = [
     paciente: "Andrés Pérez",
     pacienteEmail: "paciente@nexusodonto.com",
     pacienteCedula: "1076543210",
-    profesional: "Dr. Juan Martínez",
+    profesional: "",
     servicio: "Extracción Dental Cordal",
     fecha: "2026-09-22",
     hora: "14:00",
@@ -69,6 +72,8 @@ const citasFallback: Cita[] = [
 
 export function CitasView() {
   const { user } = useAuth();
+  const { refreshNotifications } = useNotifications();
+  const [searchParams] = useSearchParams();
   const role = getUserRole(user);
 
   const isPaciente = role === "PACIENTE";
@@ -95,6 +100,7 @@ export function CitasView() {
   const [fecha, setFecha] = useState("");
   const [estadoFiltro, setEstadoFiltro] = useState<"Todos" | EstadoCita>("Todos");
   const [loading, setLoading] = useState(true);
+  const [successToast, setSuccessToast] = useState<string | null>(null);
 
   // Modales
   const [showRequestModal, setShowRequestModal] = useState(false);
@@ -108,6 +114,14 @@ export function CitasView() {
   const [formHora, setFormHora] = useState("09:00");
   const [formProfesional, setFormProfesional] = useState("");
   const [formMotivo, setFormMotivo] = useState("");
+
+  // Sincronizar filtro desde query params (ej. ?filtro=Pendiente)
+  useEffect(() => {
+    const filtroParam = searchParams.get("filtro");
+    if (filtroParam === "Pendiente") {
+      setEstadoFiltro("Pendiente");
+    }
+  }, [searchParams]);
 
   // Cargar datos reales desde la API
   const fetchAppointmentsAndCatalogs = useCallback(async () => {
@@ -123,14 +137,16 @@ export function CitasView() {
         setFormServicio("Limpieza y Valoración General");
       }
 
-      // 2. Cargar profesionales desde /api/v1/Professionals
-      const profData = await professionalService.getAll().catch(() => []);
-      if (profData && profData.length > 0) {
-        const profNames = profData.map((p) => `Dr(a). ${p.firstName || ''} ${p.lastName || ''}`.trim());
-        setProfessionalsList(profNames);
-        setFormProfesional(profNames[0]);
-      } else {
-        setFormProfesional("Dra. Laura Gómez");
+      // 2. Cargar profesionales desde /api/v1/Professionals (solo roles con permiso)
+      if (!isPaciente) {
+        const profData = await professionalService.getAll().catch(() => []);
+        if (profData && profData.length > 0) {
+          const profNames = profData.map((p) => `Dr(a). ${p.firstName || ''} ${p.lastName || ''}`.trim());
+          setProfessionalsList(profNames);
+          setFormProfesional(profNames[0]);
+        } else {
+          setFormProfesional("Dra. Laura Gómez");
+        }
       }
 
       // 3. Cargar citas desde /api/v1/Appointments
@@ -159,7 +175,6 @@ export function CitasView() {
         });
         setCitas(mapped);
       } else {
-        // Fallback si no hay citas en backend todavía
         const saved = localStorage.getItem("nexus_citas");
         if (saved) {
           try {
@@ -177,7 +192,7 @@ export function CitasView() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isPaciente]);
 
   useEffect(() => {
     fetchAppointmentsAndCatalogs();
@@ -256,49 +271,65 @@ export function CitasView() {
     try {
       await appointmentService.create({
         patientId: user?.personId || "11000000-0000-0000-0000-000000000001",
-        professionalId: "00000000-0000-0000-0000-000000000000",
+        professionalId: isPaciente ? "00000000-0000-0000-0000-000000000000" : "12000000-0000-0000-0000-000000000001",
         serviceId: "12000000-0000-0000-0000-000000000001",
         startsAt: `${formFecha}T${formHora}:00Z`,
         endsAt: `${formFecha}T${formHora}:30Z`,
-        appointmentStatusId: "14000000-0000-0000-0000-000000000001",
-        appointmentOriginId: "15000000-0000-0000-0000-000000000001",
+        appointmentStatusId: isPaciente ? "14000000-0000-0000-0000-000000000001" : "14000000-0000-0000-0000-000000000002",
+        appointmentOriginId: isPaciente ? "15000000-0000-0000-0000-000000000002" : "15000000-0000-0000-0000-000000000001",
         reasonForVisit: formMotivo,
       });
     } catch (err) {
       console.warn("Could not save to API Appointments directly, stored in state:", err);
     }
 
-    setCitas((prev) => [newCita, ...prev]);
+    const updatedCitas = [newCita, ...citas];
+    setCitas(updatedCitas);
+    localStorage.setItem("nexus_citas", JSON.stringify(updatedCitas));
+    
+    // Actualizar notificaciones para recepción
+    refreshNotifications();
+
     setShowRequestModal(false);
     setFormMotivo("");
     setFormFecha("");
+    setSuccessToast(isPaciente ? "¡Tu cita ha sido solicitada con éxito! Queda en estado Pendiente para revisión de Recepción." : "¡Cita agendada y confirmada con éxito!");
+    setTimeout(() => setSuccessToast(null), 4000);
   };
 
   const handleUpdateStatus = (citaId: number, nuevoEstado: EstadoCita) => {
-    setCitas((prev) =>
-      prev.map((c) => (c.id === citaId ? { ...c, estado: nuevoEstado } : c))
-    );
+    setCitas((prev) => {
+      const updated = prev.map((c) => (c.id === citaId ? { ...c, estado: nuevoEstado } : c));
+      localStorage.setItem("nexus_citas", JSON.stringify(updated));
+      return updated;
+    });
+    refreshNotifications();
   };
 
   const handleAssignDoctor = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCitaToAssign) return;
 
-    setCitas((prev) =>
-      prev.map((c) =>
+    setCitas((prev) => {
+      const updated: Cita[] = prev.map((c) =>
         c.id === selectedCitaToAssign.id
           ? {
               ...c,
               profesional: formProfesional,
               hora: formHora || c.hora,
-              estado: "Confirmada",
+              estado: "Confirmada" as EstadoCita,
             }
           : c
-      )
-    );
+      );
+      localStorage.setItem("nexus_citas", JSON.stringify(updated));
+      return updated;
+    });
 
     setShowAssignModal(false);
     setSelectedCitaToAssign(null);
+    refreshNotifications();
+    setSuccessToast("¡Cita aprobada y odontólogo asignado con éxito!");
+    setTimeout(() => setSuccessToast(null), 3500);
   };
 
   const handleOpenAssign = (cita: Cita) => {
@@ -310,6 +341,14 @@ export function CitasView() {
 
   return (
     <div className="space-y-6">
+      {/* TOAST DE CONFIRMACIÓN */}
+      {successToast && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 px-5 py-3 rounded-2xl shadow-2xl border border-teal-500/30 animate-scaleIn">
+          <CheckCircle2 size={18} className="text-teal-400 dark:text-teal-600 flex-shrink-0" />
+          <span className="text-xs font-semibold">{successToast}</span>
+        </div>
+      )}
+
       {/* ENCABEZADO Y ACCIÓN PRINCIPAL */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -490,7 +529,7 @@ export function CitasView() {
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
                     {isPaciente
-                      ? "Tu solicitud será revisada y confirmada por recepción."
+                      ? "Tu solicitud será enviada a recepción para asignación y confirmación."
                       : "Ingresa los datos para confirmar la cita de inmediato."}
                   </p>
                 </div>
@@ -610,7 +649,7 @@ export function CitasView() {
                   type="submit"
                   className="px-5 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-600 text-slate-950 font-bold text-xs transition-colors shadow-sm cursor-pointer"
                 >
-                  {isPaciente ? "Enviar Solicitud" : "Confirmar Cita"}
+                  {isPaciente ? "Enviar Solicitud a Recepción" : "Confirmar Cita"}
                 </button>
               </div>
             </form>

@@ -25,6 +25,7 @@ export interface User {
 interface AuthContextType {
   user: User | null;
   login: (identifier: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  loginWithGoogleCallback: (token: string, refreshToken?: string) => Promise<boolean>;
   logout: () => Promise<void>;
   updateUser: (updatedData: Partial<User>) => void;
   isAuthenticated: boolean;
@@ -34,24 +35,71 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  // Inicialización síncrona desde localStorage para evitar pérdida de sesión o parpadeos en F5
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const savedUser = localStorage.getItem('auth_user');
+      return savedUser ? JSON.parse(savedUser) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [isLoading, setIsLoading] = useState<boolean>(() => {
+    const token = localStorage.getItem('auth_token');
+    const savedUser = localStorage.getItem('auth_user');
+    return Boolean(token && !savedUser);
+  });
+
   const navigate = useNavigate();
 
-  useEffect(() => {
-    // 1. Cargar sesión local inmediatamente
-    const savedUser = localStorage.getItem('auth_user');
-    const token = localStorage.getItem('auth_token');
-
-    if (savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch (e) {
-        console.error('Error parsing auth_user from localStorage', e);
+  const loginWithGoogleCallback = async (token: string, refreshToken?: string): Promise<boolean> => {
+    setIsLoading(true);
+    try {
+      localStorage.setItem('auth_token', token);
+      if (refreshToken) {
+        localStorage.setItem('refresh_token', refreshToken);
       }
+      const profile = await authService.getProfile();
+      if (profile) {
+        const userData: User = {
+          id: profile.id,
+          personId: profile.personId,
+          name: profile.name,
+          email: profile.email,
+          roleIds: profile.roleIds || [],
+          permissions: profile.permissions || [],
+          avatar: `https://api.dicebear.com/7.x/avatars/svg?seed=${encodeURIComponent(profile.name || 'User')}`,
+        };
+        setUser(userData);
+        localStorage.setItem('auth_user', JSON.stringify(userData));
+        navigate('/dashboard');
+        return true;
+      }
+      return false;
+    } catch (e) {
+      console.error('Error logging in with Google token:', e);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // 1. Detectar tokens provenientes del callback de Google en URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const googleToken = urlParams.get('token');
+    const googleRefreshToken = urlParams.get('refreshToken');
+
+    if (googleToken) {
+      // Limpiar URL sin recargar para no exponer el token en la barra de direcciones
+      window.history.replaceState({}, document.title, window.location.pathname);
+      loginWithGoogleCallback(googleToken, googleRefreshToken || undefined);
+      return;
     }
 
-    // 2. Si existe token real de API, verificar con GET /api/auth/me
+    // 2. Si hay token guardado previamente, sincronizar sesión silenciosamente
+    const token = localStorage.getItem('auth_token');
     if (token && token !== 'mock_dev_token') {
       authService
         .getProfile()
@@ -66,8 +114,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 roleIds: profile.roleIds || prev?.roleIds || [],
                 permissions: profile.permissions || prev?.permissions || [],
                 avatar: prev?.avatar || `https://api.dicebear.com/7.x/avatars/svg?seed=${encodeURIComponent(profile.name || 'User')}`,
-                nombre: prev?.nombre,
-                apellido: prev?.apellido,
+                nombre: prev?.nombre || profile.name?.split(' ')[0],
+                apellido: prev?.apellido || profile.name?.split(' ').slice(1).join(' '),
                 telefono: prev?.telefono,
                 cedula: prev?.cedula,
                 rol: prev?.rol,
@@ -82,8 +130,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         })
         .catch((err) => {
-          console.warn('Session verification from /api/auth/me failed or offline:', err);
+          console.warn('Silent session validation in background:', err?.message || err);
+        })
+        .finally(() => {
+          setIsLoading(false);
         });
+    } else {
+      setIsLoading(false);
     }
   }, []);
 
@@ -204,6 +257,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         user,
         login,
+        loginWithGoogleCallback,
         logout,
         updateUser,
         isAuthenticated: !!user,

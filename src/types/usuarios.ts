@@ -5,6 +5,10 @@ export type RolUsuario =
   | "ASISTENTE"
   | "PACIENTE";
 
+export type EstadoUsuario =
+  | "Activo"
+  | "Inactivo";
+
 export interface Usuario {
   id: string;
   personId: string;

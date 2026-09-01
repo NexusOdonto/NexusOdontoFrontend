@@ -19,6 +19,26 @@ export interface RegisterRequest {
   roleId?: string;
 }
 
+export interface GoogleRegisterRequest {
+  documentTypeId: string;
+  documentNumber: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  dateOfBirth?: string;
+  sexId?: string;
+  address?: string;
+  googleSub: string;
+  password?: string;
+}
+
+export interface GoogleLinkRequestDto {
+  linkToken: string;
+  documentNumber: string;
+  password: string;
+}
+
 export interface AuthResponse {
   token: string;
   refreshToken?: string;
@@ -40,8 +60,12 @@ export const authService = {
   },
 
   register: async (data: RegisterRequest): Promise<any> => {
-    // Petición al endpoint público de autenticación
     const response = await axiosClient.post('/auth/register', data);
+    return response.data;
+  },
+
+  registerGoogle: async (data: GoogleRegisterRequest): Promise<AuthResponse> => {
+    const response = await axiosClient.post('/auth/register-google', data);
     return response.data;
   },
 
@@ -53,6 +77,29 @@ export const authService = {
 
   getProfile: async (): Promise<any> => {
     const response = await axiosClient.get('/auth/me');
+    return response.data;
+  },
+
+  /**
+   * Inicia el flujo OAuth 2.0 redirigiendo al backend .NET con el origen dinámico del frontend
+   */
+  initiateGoogleLogin: () => {
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5170/api';
+    const origin = window.location.origin;
+    window.location.href = `${baseUrl}/auth/google/login?frontendOrigin=${encodeURIComponent(origin)}`;
+  },
+
+  googleLogin: () => {
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5170/api';
+    const origin = window.location.origin;
+    window.location.href = `${baseUrl}/auth/google/login?frontendOrigin=${encodeURIComponent(origin)}`;
+  },
+
+  /**
+   * Vincula una cuenta Google usando el linkToken devuelto por el callback
+   */
+  linkGoogleAccount: async (data: GoogleLinkRequestDto): Promise<AuthResponse> => {
+    const response = await axiosClient.post('/auth/google/link', data);
     return response.data;
   },
 };

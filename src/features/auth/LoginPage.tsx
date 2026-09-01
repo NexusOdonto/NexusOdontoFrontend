@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { LoginInput } from './components/LoginInput';
 import { LoginButton } from './components/LoginButton';
+import { GoogleAuthButton } from './components/GoogleAuthButton';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from './AuthContext';
 import fondoLoginLight from '../../assets/fondo-Login-ligh.webp';
@@ -9,12 +10,20 @@ import fondoLoginDark from '../../assets/fondoLogin.webp';
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const { theme } = useTheme();
   const { login, isLoading } = useAuth();
+
+  useEffect(() => {
+    const errorParam = searchParams.get('error');
+    if (errorParam) {
+      setError(decodeURIComponent(errorParam));
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,7 +70,7 @@ export default function LoginPage() {
           </h1>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-xl text-red-300 text-sm text-center animate-fadeIn" role="alert">
                 {error}
@@ -92,7 +101,7 @@ export default function LoginPage() {
             <div className="text-right">
               <button 
                 type="button"
-                className="text-xs text-slate-300 hover:text-teal-300 transition-colors py-2 px-1 inline-block bg-transparent border-none cursor-pointer"
+                className="text-xs text-slate-300 hover:text-teal-300 transition-colors py-1 px-1 inline-block bg-transparent border-none cursor-pointer"
               >
                 ¿Olvidaste tu contraseña?
               </button>
@@ -104,14 +113,29 @@ export default function LoginPage() {
             </LoginButton>
           </form>
 
+          {/* Separador Visual */}
+          <div className="relative flex items-center justify-center my-1">
+            <div className="border-t border-slate-700/80 w-full" />
+            <span className="bg-slate-950/80 px-3 text-xs text-slate-400 font-medium uppercase tracking-wider whitespace-nowrap">
+              O continúa con
+            </span>
+            <div className="border-t border-slate-700/80 w-full" />
+          </div>
+
+          {/* Botón de Google OAuth */}
+          <GoogleAuthButton 
+            text="Continuar con Google" 
+            onError={(msg) => setError(msg)} 
+          />
+
           {/* Sign up link */}
-          <div className="text-center pt-2">
+          <div className="text-center pt-1">
             <p className="text-sm text-slate-300">
               ¿No tienes cuenta?{' '}
               <button 
                 type="button"
                 onClick={() => navigate('/register')}
-                className="text-teal-300 hover:underline font-medium transition-colors py-2 px-1 bg-transparent border-none cursor-pointer inline-block"
+                className="text-teal-300 hover:underline font-medium transition-colors py-1 px-1 bg-transparent border-none cursor-pointer inline-block"
               >
                 Regístrate aquí
               </button>
