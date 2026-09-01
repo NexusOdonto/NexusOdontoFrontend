@@ -16,7 +16,22 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const { theme } = useTheme();
-  const { login, isLoading } = useAuth();
+  const { login, isLoading, isAuthenticated } = useAuth();
+
+  const storedToken =
+    localStorage.getItem('auth_token') ||
+    localStorage.getItem('token') ||
+    localStorage.getItem('accessToken');
+  const isAlreadyAuth = Boolean(
+    isAuthenticated || (storedToken && storedToken.length > 10)
+  );
+
+  // Redirección inmediata si ya hay sesión activa
+  useEffect(() => {
+    if (isAlreadyAuth) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAlreadyAuth, navigate]);
 
   useEffect(() => {
     const errorParam = searchParams.get('error');
@@ -24,6 +39,11 @@ export default function LoginPage() {
       setError(decodeURIComponent(errorParam));
     }
   }, [searchParams]);
+
+  // Si ya tiene sesión, no renderizar nada para anular cualquier parpadeo
+  if (isAlreadyAuth) {
+    return null;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +59,9 @@ export default function LoginPage() {
     
     const result = await login(cleanIdentifier, cleanPassword);
     
-    if (!result.success) {
+    if (result.success) {
+      navigate('/dashboard', { replace: true });
+    } else {
       setError(result.error || 'Credenciales incorrectas. Por favor intenta nuevamente.');
     }
   };

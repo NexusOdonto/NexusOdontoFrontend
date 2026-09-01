@@ -2,6 +2,7 @@ import { Suspense, lazy } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import ProtectedRoute from "./ProtectedRoute";
+import PublicOnlyRoute from "./PublicOnlyRoute";
 
 const LoginPage = lazy(() =>
   import("../features/auth/LoginPage").then((module) => ({
@@ -92,10 +93,14 @@ export default function AppRoutes() {
   return (
     <Suspense fallback={<LoadingFallback />}>
       <Routes>
-        {/* Rutas Públicas */}
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
+        {/* Callback OAuth público */}
         <Route path="/auth/callback" element={<AuthCallback />} />
+
+        {/* Rutas Públicas Exclusivas (si ya tiene sesión activa, redirige a /dashboard) */}
+        <Route element={<PublicOnlyRoute />}>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+        </Route>
 
         {/* Rutas Protegidas por RBAC */}
         <Route element={<ProtectedRoute />}>

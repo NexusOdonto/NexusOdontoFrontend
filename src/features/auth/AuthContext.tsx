@@ -96,7 +96,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const userData = parseProfileToUser(profile);
         setUser(userData);
         localStorage.setItem('auth_user', JSON.stringify(userData));
-        navigate('/dashboard');
+        navigate('/dashboard', { replace: true });
         return true;
       }
       return false;
@@ -189,7 +189,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         setUser(userData);
         localStorage.setItem('auth_user', JSON.stringify(userData));
-        navigate('/dashboard');
+        navigate('/dashboard', { replace: true });
         return { success: true };
       }
       
@@ -237,7 +237,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUser(userData);
         localStorage.setItem('auth_user', JSON.stringify(userData));
         localStorage.setItem('auth_token', 'mock_dev_token');
-        navigate('/dashboard');
+        navigate('/dashboard', { replace: true });
         return { success: true };
       }
 
@@ -267,7 +267,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     localStorage.removeItem('auth_user');
     localStorage.removeItem('refresh_token');
     setUser(null);
-    navigate('/login');
+    navigate('/login', { replace: true });
   };
 
   return (

@@ -14,6 +14,9 @@ export default function AuthCallback() {
     const refreshToken = searchParams.get("refreshToken");
     const errorParam = searchParams.get("error");
 
+    // Limpiar inmediatamente query params de la URL y reemplazar la entrada externa de Google
+    window.history.replaceState({}, document.title, window.location.pathname);
+
     if (errorParam) {
       navigate(`/login?error=${encodeURIComponent(errorParam)}`, { replace: true });
       return;
