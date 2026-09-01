@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import { Sidebar } from "../components/layout/Sidebar.tsx";
 import { PageHeader } from "../components/layout/PageHeader.tsx";
@@ -20,7 +20,23 @@ export function DashboardLayout({
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const { theme } = useTheme();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
+
+  // Bloqueo de retroceso fuera del Dashboard (Google Accounts / Login)
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    window.history.pushState(null, '', window.location.href);
+
+    const handlePopState = () => {
+      window.history.pushState(null, '', window.location.href);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [isAuthenticated]);
 
   const backgroundImage =
     theme === "dark" ? fondoDark : fondoLight;

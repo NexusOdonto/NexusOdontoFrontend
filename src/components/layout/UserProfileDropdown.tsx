@@ -3,11 +3,12 @@ import {
   ChevronDown,
   LogOut,
   Settings,
-  UserCircle,
 } from "lucide-react";
 
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../features/auth/AuthContext";
+import { UserAvatar } from "../common/UserAvatar";
+import { formatRoleName } from "../../utils/roleUtils";
 
 export default function UserProfileDropdown() {
   const [isOpen, setIsOpen] = useState(false);
@@ -81,37 +82,35 @@ export default function UserProfileDropdown() {
         className="
           flex
           items-center
-          gap-3
-          rounded-xl
+          gap-2.5
+          rounded-2xl
           px-2
-          py-1
-          transition-colors
+          py-1.5
+          transition-all
           hover:bg-slate-100
-          dark:hover:bg-slate-800
+          dark:hover:bg-slate-800/80
           cursor-pointer
         "
         aria-label="Abrir menú de usuario"
         aria-expanded={isOpen}
       >
-        {user.avatar ? (
-          <img
-            src={user.avatar}
-            alt={fullName}
-            className="h-8 w-8 rounded-full object-cover border border-slate-200 dark:border-slate-700"
+        <div className="h-8 w-8 rounded-xl overflow-hidden flex-shrink-0 shadow-sm ring-1 ring-slate-200 dark:ring-slate-750">
+          <UserAvatar
+            avatar={user.avatar || user.avatarUrl}
+            name={fullName}
+            size="sm"
+            className="w-full h-full object-cover rounded-xl"
+            fallbackClassName="w-full h-full flex items-center justify-center font-bold text-[11px] text-teal-700 dark:text-teal-300 bg-teal-500/20"
           />
-        ) : (
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
-            <UserCircle size={22} />
-          </div>
-        )}
+        </div>
 
-        <span className="hidden text-sm font-medium text-slate-800 dark:text-slate-100 sm:block max-w-[150px] truncate">
+        <span className="hidden text-xs font-semibold text-slate-800 dark:text-slate-100 sm:block max-w-[150px] truncate">
           {fullName}
         </span>
 
         <ChevronDown
-          size={18}
-          className={`text-slate-500 transition-transform ${
+          size={16}
+          className={`text-slate-400 transition-transform duration-200 ${
             isOpen ? "rotate-180" : ""
           }`}
         />
@@ -119,23 +118,21 @@ export default function UserProfileDropdown() {
 
       {/* VIÑETA / DROPDOWN */}
       {isOpen && (
-        <div className="absolute right-0 top-full z-50 mt-3 w-72 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900 animate-fadeIn">
+        <div className="absolute right-0 top-full z-50 mt-3 w-72 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900 animate-fadeIn">
           {/* INFORMACIÓN DEL USUARIO */}
-          <div className="flex items-center gap-3 border-b border-slate-200 p-5 dark:border-slate-700">
-            {user.avatar ? (
-              <img
-                src={user.avatar}
-                alt={fullName}
-                className="h-14 w-14 rounded-full object-cover border-2 border-cyan-500"
+          <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 p-4">
+            <div className="h-12 w-12 rounded-2xl overflow-hidden flex-shrink-0 shadow-inner ring-2 ring-teal-500/30">
+              <UserAvatar
+                avatar={user.avatar || user.avatarUrl}
+                name={fullName}
+                size="md"
+                className="w-full h-full object-cover rounded-2xl"
+                fallbackClassName="w-full h-full flex items-center justify-center font-bold text-sm text-teal-700 dark:text-teal-300 bg-teal-500/20"
               />
-            ) : (
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
-                <UserCircle size={30} />
-              </div>
-            )}
+            </div>
 
             <div className="min-w-0 flex-1">
-              <h3 className="truncate font-semibold text-slate-900 dark:text-white text-sm">
+              <h3 className="truncate font-bold text-slate-900 dark:text-white text-sm">
                 {fullName}
               </h3>
 
@@ -143,8 +140,8 @@ export default function UserProfileDropdown() {
                 {user.email}
               </p>
 
-              <span className="mt-1.5 inline-block rounded-full bg-cyan-500/10 px-2.5 py-0.5 text-xs font-semibold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider">
-                {userRole}
+              <span className="mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-teal-950/60 text-teal-400 border border-teal-500/30 uppercase tracking-wider">
+                {formatRoleName(userRole)}
               </span>
             </div>
           </div>
@@ -154,18 +151,18 @@ export default function UserProfileDropdown() {
             <button
               type="button"
               onClick={handleAccount}
-              className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left text-sm text-slate-700 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer"
+              className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-2 text-left text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer"
             >
-              <Settings size={18} className="text-cyan-500" />
+              <Settings size={16} className="text-teal-500" />
               <span>Mi Perfil</span>
             </button>
 
             <button
               type="button"
               onClick={handleLogout}
-              className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-left text-sm text-red-500 transition-colors hover:bg-red-500/10 cursor-pointer"
+              className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-2 text-left text-xs font-semibold text-red-500 transition-colors hover:bg-red-500/10 cursor-pointer"
             >
-              <LogOut size={18} />
+              <LogOut size={16} />
               <span>Cerrar sesión</span>
             </button>
           </div>

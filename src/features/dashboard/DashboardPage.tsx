@@ -21,26 +21,14 @@ import { getUserRole } from "../../utils/routePermissions";
 import { useNavigate } from "react-router-dom";
 import { appointmentService } from "../../api/appointmentService";
 import { patientService } from "../../api/patientService";
+import { UserAvatar } from "../../components/common/UserAvatar";
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const role = getUserRole(user);
+  const currentRole = getUserRole(user);
 
-  const isPaciente = role === "PACIENTE";
-  const isOdontologo = role === "ODONTOLOGO";
-  const isRecepcionista = role === "RECEPCIONISTA";
-  const isAdmin = role === "ADMINISTRADOR";
-
-  const [loading, setLoading] = useState(true);
-  const [nextAppointment, setNextAppointment] = useState<{
-    fecha: string;
-    hora: string;
-    servicio: string;
-    profesional: string;
-    estado: string;
-  } | null>(null);
-
+  const [loading, setLoading] = useState(false);
   const [metrics, setMetrics] = useState({
     totalCitas: 0,
     citasPendientes: 0,
@@ -49,54 +37,52 @@ export default function DashboardPage() {
     totalPacientes: 0,
   });
 
-  // Saludo dinámico y empático según la hora del día
+  const [nextAppointment, setNextAppointment] = useState<{
+    fecha: string;
+    hora: string;
+    servicio: string;
+    profesional: string;
+    estado: string;
+  } | null>(null);
+
+  // Rol descriptivo
+  const isPaciente = currentRole === "PACIENTE";
+  const isOdontologo = currentRole === "ODONTOLOGO";
+  const isRecepcionista = currentRole === "RECEPCIONISTA";
+  const isAdmin = currentRole === "ADMINISTRADOR";
+
+  // Saludo dinámico y empático
   const dynamicGreeting = useMemo(() => {
     const hour = new Date().getHours();
     if (hour >= 5 && hour < 12) return "Buenos días";
-    if (hour >= 12 && hour < 19) return "Buenas tardes";
+    if (hour >= 12 && hour < 18) return "Buenas tardes";
     return "Buenas noches";
   }, []);
 
-  const userName = user?.nombre || user?.name?.split(" ")[0] || "Estimado Paciente";
-  const fullName = user?.name || `${user?.nombre || ''} ${user?.apellido || ''}`.trim() || "Usuario";
+  const userName = user?.nombre || (user?.name ? user.name.split(" ")[0] : "Usuario");
+  const fullName = user?.name || `${user?.nombre || ""} ${user?.apellido || ""}`.trim() || user?.email || "Usuario";
 
+  // Carga reactiva de datos reales
   const loadDashboardData = useCallback(async () => {
-    setLoading(true);
     try {
-      // 1. Citas
-      let citas = await appointmentService.getAll().catch(() => []);
-      if (!citas || citas.length === 0) {
-        const local = localStorage.getItem("nexus_citas");
-        if (local) {
-          try {
-            citas = JSON.parse(local);
-          } catch {
-            citas = [];
-          }
-        }
-      }
+      setLoading(true);
+      const [citasRes, pacientesRes] = await Promise.allSettled([
+        appointmentService.getAll(),
+        patientService.getAll(),
+      ]);
 
-      // 2. Pacientes
-      let pacientes = await patientService.getAll().catch(() => []);
-      if (!pacientes || pacientes.length === 0) {
-        const localP = localStorage.getItem("nexus_odonto_pacientes");
-        if (localP) {
-          try {
-            pacientes = JSON.parse(localP);
-          } catch {
-            pacientes = [];
-          }
-        }
-      }
+      const citas = citasRes.status === "fulfilled" ? citasRes.value : [];
+      const pacientes = pacientesRes.status === "fulfilled" ? pacientesRes.value : [];
 
       const total = citas.length;
-      const pendientes = citas.filter((c: any) => c.estado === "Pendiente" || (!c.professionalId && !c.cancelledAt)).length;
-      const confirmadas = citas.filter((c: any) => c.estado === "Confirmada" || (c.professionalId && !c.cancelledAt)).length;
-      const completadas = citas.filter((c: any) => c.estado === "Completada").length;
+      const pendientes = citas.filter((c: any) => c.estado === "Pendiente" || c.status === "PENDING" || c.status === "Pending").length;
+      const confirmadas = citas.filter((c: any) => c.estado === "Confirmada" || c.status === "CONFIRMED" || c.status === "Confirmed").length;
+      const completadas = citas.filter((c: any) => c.estado === "Completada" || c.status === "COMPLETED" || c.status === "Completed").length;
 
-      // Determinar próxima cita
-      const pName = (user?.name || user?.nombre || "").toLowerCase();
+      // Buscar próxima cita activa para el paciente
+      const pName = (user?.nombre || user?.name || "").toLowerCase();
       const pEmail = (user?.email || "").toLowerCase();
+
       const misCitas = citas.filter((c: any) => {
         if (!isPaciente) return true;
         const matchName = (c.paciente || c.patientName || "").toLowerCase().includes(pName);
@@ -115,7 +101,6 @@ export default function DashboardPage() {
             day: "numeric",
             month: "long",
           });
-          // Capitalizar primer letra del día
           formattedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
         } catch {
           formattedDate = rawDate;
@@ -162,11 +147,13 @@ export default function DashboardPage() {
           <div className="flex items-center gap-5">
             {/* Avatar con anillo de bienestar */}
             <div className="relative">
-              <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-white/10 backdrop-blur-md p-1 border border-white/20 shadow-inner flex items-center justify-center">
-                <img
-                  src={user?.avatar || `https://api.dicebear.com/7.x/avatars/svg?seed=${encodeURIComponent(fullName)}`}
-                  alt={fullName}
+              <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-white/10 backdrop-blur-md p-1 border border-white/20 shadow-inner flex items-center justify-center overflow-hidden">
+                <UserAvatar
+                  avatar={user?.avatar || user?.avatarUrl}
+                  name={fullName}
+                  size="xl"
                   className="w-full h-full rounded-xl object-cover"
+                  fallbackClassName="w-full h-full flex items-center justify-center font-extrabold text-lg text-teal-200 bg-teal-500/20"
                 />
               </div>
               <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-400 border-2 border-slate-900 rounded-full flex items-center justify-center shadow-sm">
