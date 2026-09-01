@@ -60,12 +60,13 @@ export function DashboardLayout({
         />
 
         <main
-          className="flex min-w-0 flex-1 justify-center overflow-x-hidden bg-cover bg-center bg-no-repeat p-4 transition-all duration-300 sm:p-6 md:p-8"
+          className="flex min-w-0 flex-1 flex-col overflow-y-auto bg-cover bg-center bg-no-repeat transition-all duration-300 relative"
           style={{
             backgroundImage: `url(${backgroundImage})`,
           }}
         >
-          <div className="h-fit w-full max-w-5xl rounded-3xl border border-white/20 bg-slate-950/75 p-5 shadow-2xl backdrop-blur-xl transition-all duration-300 sm:p-8 md:p-10 dark:border-cyan-400/20 dark:bg-slate-950/75">
+          {/* Contenido principal fluido sin capas de opacamiento sobre el fondo */}
+          <div className="relative z-10 w-full max-w-7xl mx-auto p-6 sm:p-8 md:p-10">
             {children}
           </div>
         </main>

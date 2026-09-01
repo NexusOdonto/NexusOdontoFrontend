@@ -116,7 +116,7 @@ export function Sidebar({
       )}
 
       <aside
-        className={`fixed lg:static z-50 h-screen bg-white/80 dark:bg-slate-950/90 backdrop-blur-md border-r border-slate-200 dark:border-slate-800 flex flex-col transition-all duration-300 ease-in-out overflow-x-hidden ${
+        className={`fixed lg:static z-50 h-screen bg-white/60 dark:bg-slate-950/40 backdrop-blur-xl border-r border-slate-200/80 dark:border-white/10 flex flex-col transition-all duration-300 ease-in-out overflow-x-hidden ${
           isCollapsed ? "w-16 lg:w-20" : "w-64"
         } ${
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
