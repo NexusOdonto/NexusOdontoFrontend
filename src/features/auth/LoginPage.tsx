@@ -18,13 +18,7 @@ export default function LoginPage() {
   const { theme } = useTheme();
   const { login, isLoading, isAuthenticated } = useAuth();
 
-  const storedToken =
-    localStorage.getItem('auth_token') ||
-    localStorage.getItem('token') ||
-    localStorage.getItem('accessToken');
-  const isAlreadyAuth = Boolean(
-    isAuthenticated || (storedToken && storedToken.length > 10)
-  );
+  const isAlreadyAuth = Boolean(isAuthenticated && !isLoading);
 
   // Redirección inmediata si ya hay sesión activa
   useEffect(() => {
@@ -40,7 +34,7 @@ export default function LoginPage() {
     }
   }, [searchParams]);
 
-  // Si ya tiene sesión, no renderizar nada para anular cualquier parpadeo
+  // Si ya tiene sesión activa validada, no renderizar el formulario
   if (isAlreadyAuth) {
     return null;
   }
