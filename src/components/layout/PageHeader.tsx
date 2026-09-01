@@ -4,8 +4,6 @@ import {
   Menu,
   Bell,
   X,
-  Moon,
-  Sun,
   CalendarDays,
   CheckCheck,
 } from "lucide-react";
@@ -68,14 +66,62 @@ export function PageHeader({
 
       {/* ACCIONES */}
       <div className="flex items-center gap-2">
-        {/* TEMA */}
+        {/* TEMA (BOTÓN TOGGLE DIENTE SANO / DIENTE CON CARIES LIMPIDO) */}
         <button
           type="button"
-          className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-600 dark:text-slate-400 cursor-pointer"
           onClick={toggleTheme}
+          className={`relative inline-flex h-8 w-16 items-center rounded-full p-1 transition-all duration-300 cursor-pointer overflow-hidden border shadow-inner ${
+            theme === "dark"
+              ? "bg-slate-950 border-rose-900/60 shadow-rose-950/30"
+              : "bg-emerald-100/90 border-teal-300 shadow-teal-500/15"
+          }`}
           aria-label="Cambiar tema"
+          title={theme === "dark" ? "Modo Oscuro (Diente con Caries) -> Cambiar a Modo Claro (Diente Sano)" : "Modo Claro (Diente Sano) -> Cambiar a Modo Oscuro (Diente con Caries)"}
         >
-          {theme === "dark" ? <Sun size={19} /> : <Moon size={19} />}
+          {/* ICONO LADO IZQUIERDO: DIENTE CON CARIES (VISIBLE SOLO EN MODO OSCURO) */}
+          <div
+            className={`absolute left-2 z-10 flex items-center justify-center transition-all duration-300 ${
+              theme === "dark" ? "opacity-100 scale-100" : "opacity-0 scale-75 pointer-events-none"
+            }`}
+          >
+            <svg className="w-4 h-4 drop-shadow" viewBox="0 0 24 24">
+              {/* Silueta Diente */}
+              <path
+                d="M7 2C4.8 2 3 3.8 3 6c0 3.2 1.2 7.5 2.5 11.5.7 2.1 2.2 2.5 3 1 .6-1.2 1.2-3 1.5-4.2.3 1.2.9 3 1.5 4.2.8 1.5 2.3 1.1 3-1C15.8 13.5 17 9.2 17 6c0-2.2-1.8-4-4-4-1.2 0-2.2.5-3 1.3C9.2 2.5 8.2 2 7 2z"
+                fill="#cbd5e1"
+                transform="translate(2, 1)"
+              />
+              {/* Mancha Caries roja/oscura */}
+              <circle cx="10" cy="7" r="2.2" fill="#ef4444" />
+              <circle cx="10" cy="7" r="1.2" fill="#7f1d1d" />
+            </svg>
+          </div>
+
+          {/* ICONO LADO DERECHO: DIENTE SANO BRILANTE (VISIBLE SOLO EN MODO CLARO) */}
+          <div
+            className={`absolute right-2 z-10 flex items-center justify-center transition-all duration-300 ${
+              theme === "dark" ? "opacity-0 scale-75 pointer-events-none" : "opacity-100 scale-100"
+            }`}
+          >
+            <svg className="w-4 h-4 text-teal-600 drop-shadow-sm" viewBox="0 0 24 24" fill="currentColor">
+              {/* Silueta Diente Sano */}
+              <path
+                d="M7 2C4.8 2 3 3.8 3 6c0 3.2 1.2 7.5 2.5 11.5.7 2.1 2.2 2.5 3 1 .6-1.2 1.2-3 1.5-4.2.3 1.2.9 3 1.5 4.2.8 1.5 2.3 1.1 3-1C15.8 13.5 17 9.2 17 6c0-2.2-1.8-4-4-4-1.2 0-2.2.5-3 1.3C9.2 2.5 8.2 2 7 2z"
+                transform="translate(2, 1)"
+              />
+              {/* Destello Cyan */}
+              <circle cx="15.5" cy="5" r="1.1" fill="#06b6d4" />
+            </svg>
+          </div>
+
+          {/* PERILLA DESLIZANTE ELEGANTE */}
+          <span
+            className={`relative z-20 inline-block h-6 w-6 transform rounded-full shadow-md transition-transform duration-300 ease-in-out ${
+              theme === "dark"
+                ? "translate-x-8 bg-slate-900 border border-rose-900/80 shadow-rose-950"
+                : "translate-x-0 bg-white border border-teal-200 shadow-teal-500/20"
+            }`}
+          />
         </button>
 
         {/* AYUDA */}

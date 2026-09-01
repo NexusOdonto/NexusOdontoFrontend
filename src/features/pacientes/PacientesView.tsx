@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { PacientesTable } from "./components/PacientesTable";
+import { PacientesGrid } from "./components/PacientesGrid";
+import { PacienteDetailModal } from "./components/PacienteDetailModal";
 import {
   PACIENTES_STORAGE_KEY,
   type Paciente,
 } from "../../types/pacientes";
 import { patientService } from "../../api/patientService";
 import { personService } from "../../api/personService";
-import { Plus, Search, RefreshCw } from "lucide-react";
+import { Plus, RefreshCw, LayoutGrid, List, Download } from "lucide-react";
 
 const pacientesFallback: Paciente[] = [
   {
@@ -16,6 +18,9 @@ const pacientesFallback: Paciente[] = [
     documento: "1098765432",
     telefono: "3001234567",
     estado: "Activo",
+    correo: "ana.rodriguez@email.com",
+    proximaCita: "Mañana a las 09:00 AM",
+    alergias: "Alérgica a Penicilina",
   },
   {
     id: 2,
@@ -23,6 +28,8 @@ const pacientesFallback: Paciente[] = [
     documento: "1023456789",
     telefono: "3012345678",
     estado: "Activo",
+    correo: "carlos.perez@email.com",
+    proximaCita: "Viernes a las 03:00 PM",
   },
   {
     id: 3,
@@ -30,6 +37,8 @@ const pacientesFallback: Paciente[] = [
     documento: "1009876543",
     telefono: "3023456789",
     estado: "Activo",
+    correo: "maria.lopez@email.com",
+    proximaCita: "Próximo Lunes 11:00 AM",
   },
   {
     id: 4,
@@ -37,6 +46,7 @@ const pacientesFallback: Paciente[] = [
     documento: "1091234567",
     telefono: "3034567890",
     estado: "Activo",
+    correo: "juan.gomez@email.com",
   },
   {
     id: 5,
@@ -44,10 +54,11 @@ const pacientesFallback: Paciente[] = [
     documento: "1012345678",
     telefono: "3045678901",
     estado: "Activo",
+    correo: "laura.torres@email.com",
   },
 ];
 
-const ITEMS_PER_PAGE = 5;
+const ITEMS_PER_PAGE = 6;
 
 export function PacientesView() {
   const navigate = useNavigate();
@@ -56,11 +67,13 @@ export function PacientesView() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
+  const [activeTab, setActiveTab] = useState<"todos" | "activos" | "citas">("todos");
+  const [selectedPaciente, setSelectedPaciente] = useState<Paciente | null>(null);
 
   const fetchPacientes = useCallback(async () => {
     setLoading(true);
     try {
-      // 1. Consultar pacientes reales desde API /api/v1/Patients
       const patientsData = await patientService.getAll().catch(() => []);
       const personsData = await personService.getAll().catch(() => []);
 
@@ -77,6 +90,7 @@ export function PacientesView() {
             documento: doc,
             telefono: tel,
             estado: "Activo",
+            correo: person?.email,
           };
         });
         setPacientes(mapped);
@@ -87,6 +101,7 @@ export function PacientesView() {
           documento: person.documentNumber,
           telefono: person.phone || "3001234567",
           estado: "Activo",
+          correo: person.email,
         }));
         setPacientes(mapped);
       } else {
@@ -123,16 +138,25 @@ export function PacientesView() {
   }, [search]);
 
   const pacientesFiltrados = useMemo(() => {
-    const query = debouncedSearch.toLowerCase().trim();
-    if (!query) return pacientes;
+    let result = pacientes;
 
-    return pacientes.filter(
+    // Filtro por tab activo
+    if (activeTab === "activos") {
+      result = result.filter((p) => p.estado?.toLowerCase() === "activo");
+    } else if (activeTab === "citas") {
+      result = result.filter((p) => Boolean(p.proximaCita));
+    }
+
+    const query = debouncedSearch.toLowerCase().trim();
+    if (!query) return result;
+
+    return result.filter(
       (paciente) =>
         paciente.nombre.toLowerCase().includes(query) ||
         paciente.documento.includes(query) ||
         paciente.telefono.includes(query)
     );
-  }, [pacientes, debouncedSearch]);
+  }, [pacientes, debouncedSearch, activeTab]);
 
   const totalPages = Math.max(1, Math.ceil(pacientesFiltrados.length / ITEMS_PER_PAGE));
 
@@ -147,25 +171,48 @@ export function PacientesView() {
     }
   };
 
+  const handleExportCSV = () => {
+    const headers = ["Nombre", "Documento", "Telefono", "Estado"];
+    const rows = pacientes.map((p) => [p.nombre, p.documento, p.telefono, p.estado]);
+    const content = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const encodedUri = encodeURI(content);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "directorio_pacientes_nexusodonto.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
-    <div className="space-y-6">
-      {/* Encabezado */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-6 text-slate-900 dark:text-slate-100">
+      {/* Encabezado Principal */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between animate-slideDown">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-slate-900 dark:text-white drop-shadow-sm dark:drop-shadow-md">
             Directorio de Pacientes
           </h1>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-            Gestión y registro de pacientes clínicos del consultorio.
+          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mt-1 font-medium">
+            Gestión integral de expediente clínico y catálogo de pacientes.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          <button
+            type="button"
+            onClick={handleExportCSV}
+            className="inline-flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/30 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-md active:scale-95 text-xs font-semibold shadow-sm"
+            title="Exportar CSV"
+          >
+            <Download size={15} className="text-cyan-600 dark:text-cyan-400" />
+            <span className="hidden sm:inline">Exportar CSV</span>
+          </button>
+
           <button
             type="button"
             onClick={fetchPacientes}
-            className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
-            title="Recargar desde la base de datos"
+            className="p-2.5 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/30 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-md active:scale-95 shadow-sm"
+            title="Recargar datos"
           >
             <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
           </button>
@@ -173,7 +220,7 @@ export function PacientesView() {
           <button
             type="button"
             onClick={() => navigate("/pacientes/nuevo")}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-400 hover:to-cyan-400 px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-[0_4px_15px_rgba(20,184,166,0.3)] transition-all active:scale-95 cursor-pointer"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 px-5 py-2.5 text-sm font-semibold text-white dark:text-slate-950 shadow-md dark:shadow-[0_0_25px_rgba(34,211,238,0.3)] transition-all active:scale-95 cursor-pointer"
           >
             <Plus size={18} />
             <span>Nuevo Paciente</span>
@@ -181,29 +228,130 @@ export function PacientesView() {
         </div>
       </div>
 
-      {/* Buscador */}
-      <div className="relative max-w-md">
-        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input
-          type="text"
-          placeholder="Buscar por nombre, documento o teléfono..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:border-teal-500 transition-colors"
-        />
+      {/* BARRA DE BÚSQUEDA + FILTROS RÁPIDOS + CONMUTADOR DE VISTA */}
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 pt-2 animate-slideUp animate-stagger-1">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
+          <div className="relative w-full sm:max-w-xs">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              height="20px"
+              viewBox="0 -960 960 960"
+              width="20px"
+              fill="currentColor"
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-400 pointer-events-none"
+            >
+              <path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z"/>
+            </svg>
+            <input
+              type="text"
+              placeholder="Buscar paciente..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-white/90 dark:bg-slate-950/65 border border-slate-200 dark:border-white/20 rounded-2xl text-sm text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-400 outline-none focus:border-cyan-500 dark:focus:border-cyan-400/60 focus:ring-1 focus:ring-cyan-500/30 dark:focus:ring-cyan-400/40 transition-all backdrop-blur-xl shadow-md"
+            />
+          </div>
+
+          {/* Pestañas de filtrado rápido */}
+          <div className="flex items-center rounded-2xl bg-white/90 dark:bg-slate-950/65 p-1 border border-slate-200 dark:border-white/20 backdrop-blur-xl shadow-md overflow-x-auto">
+            <button
+              type="button"
+              onClick={() => { setActiveTab("todos"); setCurrentPage(1); }}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === "todos"
+                  ? "bg-cyan-500/15 dark:bg-cyan-500/30 text-cyan-800 dark:text-cyan-200 border border-cyan-500/30 dark:border-cyan-400/40 shadow-sm"
+                  : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              Todos ({pacientes.length})
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { setActiveTab("activos"); setCurrentPage(1); }}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === "activos"
+                  ? "bg-cyan-500/15 dark:bg-cyan-500/30 text-cyan-800 dark:text-cyan-200 border border-cyan-500/30 dark:border-cyan-400/40 shadow-sm"
+                  : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              Activos
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { setActiveTab("citas"); setCurrentPage(1); }}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === "citas"
+                  ? "bg-cyan-500/15 dark:bg-cyan-500/30 text-cyan-800 dark:text-cyan-200 border border-cyan-500/30 dark:border-cyan-400/40 shadow-sm"
+                  : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              Con Citas
+            </button>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 self-end md:self-auto">
+          <span className="text-xs font-medium text-slate-700 dark:text-slate-300 mr-1 hidden sm:inline">Vista:</span>
+          <div className="flex rounded-xl bg-white/90 dark:bg-slate-950/65 p-1 border border-slate-200 dark:border-white/20 backdrop-blur-xl shadow-md">
+            <button
+              type="button"
+              onClick={() => setViewMode("grid")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                viewMode === "grid"
+                  ? "bg-cyan-500/15 dark:bg-cyan-500/30 text-cyan-800 dark:text-cyan-200 border border-cyan-500/30 dark:border-cyan-400/40 shadow-sm"
+                  : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              <LayoutGrid size={14} />
+              <span>Tarjetas</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setViewMode("table")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                viewMode === "table"
+                  ? "bg-cyan-500/15 dark:bg-cyan-500/30 text-cyan-800 dark:text-cyan-200 border border-cyan-500/30 dark:border-cyan-400/40 shadow-sm"
+                  : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              <List size={14} />
+              <span>Lista</span>
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Tabla */}
-      <div className="rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
-        <PacientesTable
-          pacientes={paginatedPacientes}
-          loading={loading}
-          totalItems={pacientesFiltrados.length}
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={handlePageChange}
-        />
+      {/* RENDERIZADO SEGÚN VISTA SELECCIONADA */}
+      <div className="pt-2 animate-slideUp animate-stagger-2">
+        {viewMode === "grid" ? (
+          <PacientesGrid
+            pacientes={paginatedPacientes}
+            loading={loading}
+            onSelectPaciente={(p) => setSelectedPaciente(p)}
+          />
+        ) : (
+          <PacientesTable
+            pacientes={paginatedPacientes}
+            loading={loading}
+            totalItems={pacientesFiltrados.length}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+            onSelectPaciente={(p) => setSelectedPaciente(p)}
+          />
+        )}
       </div>
+
+      {/* MODAL FICHA CLÍNICA DEL PACIENTE */}
+      {selectedPaciente && (
+        <PacienteDetailModal
+          paciente={selectedPaciente}
+          onClose={() => setSelectedPaciente(null)}
+        />
+      )}
     </div>
   );
 }
+

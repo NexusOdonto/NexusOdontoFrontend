@@ -1,8 +1,20 @@
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "react-router-dom";
+import {
+  User,
+  Users,
+  FileCheck,
+  AlertCircle,
+  CheckCircle2,
+  XCircle,
+  Calendar,
+  CreditCard,
+  Phone,
+  Mail,
+} from "lucide-react";
 
 import {
   PACIENTES_STORAGE_KEY,
@@ -16,102 +28,130 @@ const pacienteSchema = z.object({
     .string()
     .trim()
     .min(1, "Los nombres son obligatorios.")
-    .max(
-      100,
-      "Los nombres no pueden superar los 100 caracteres.",
-    ),
+    .max(100, "Los nombres no pueden superar los 100 caracteres."),
 
   apellidos: z
     .string()
     .trim()
     .min(1, "Los apellidos son obligatorios.")
-    .max(
-      100,
-      "Los apellidos no pueden superar los 100 caracteres.",
-    ),
+    .max(100, "Los apellidos no pueden superar los 100 caracteres."),
+
+  tipoDocumento: z.string(),
 
   numeroDocumento: z
     .string()
     .trim()
-    .min(
-      1,
-      "El número de documento es obligatorio.",
-    ),
+    .min(1, "El número de documento es obligatorio."),
 
   fechaNacimiento: z
     .string()
-    .min(
-      1,
-      "La fecha de nacimiento es obligatoria.",
-    )
+    .min(1, "La fecha de nacimiento es obligatoria.")
     .refine(
       (fecha) => {
-        const fechaIngresada = new Date(
-          `${fecha}T00:00:00`,
-        );
-
+        const fechaIngresada = new Date(`${fecha}T00:00:00`);
         const hoy = new Date();
-
         hoy.setHours(0, 0, 0, 0);
-
         return fechaIngresada <= hoy;
       },
       {
-        message:
-          "La fecha de nacimiento no puede ser futura.",
+        message: "La fecha de nacimiento no puede ser futura.",
       },
     ),
 
-  genero: z
-    .string()
-    .min(1, "Debes seleccionar un género."),
+  genero: z.string().min(1, "Debes seleccionar un género."),
 
   correo: z
     .string()
     .trim()
     .refine(
-      (value) =>
-        value === "" ||
-        /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value),
+      (value) => value === "" || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value),
       {
-        message:
-          "Ingresa un correo electrónico válido.",
+        message: "Ingresa un correo electrónico válido.",
       },
     ),
 
   telefono: z
     .string()
     .trim()
-    .min(
-      1,
-      "El teléfono celular es obligatorio.",
-    ),
+    .min(1, "El teléfono celular es obligatorio."),
 });
 
 type PacienteFormData = z.infer<typeof pacienteSchema>;
 
+function ToothCheckbox({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: (val: boolean) => void;
+  label: string;
+}) {
+  return (
+    <div
+      onClick={() => onChange(!checked)}
+      className={`flex items-center gap-3 p-3 rounded-2xl border transition-all cursor-pointer select-none ${
+        checked
+          ? "bg-cyan-500/15 dark:bg-cyan-500/25 border-cyan-500/50 text-cyan-950 dark:text-cyan-100 shadow-md scale-[1.01]"
+          : "bg-slate-50/80 dark:bg-slate-900/50 border-slate-200/80 dark:border-white/10 text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900/80"
+      }`}
+    >
+      <div
+        className={`flex h-6 w-6 items-center justify-center rounded-lg border transition-all duration-300 ${
+          checked
+            ? "bg-gradient-to-br from-teal-400 to-cyan-500 border-cyan-400 text-white shadow-[0_0_12px_rgba(34,211,238,0.5)] scale-110"
+            : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-400"
+        }`}
+      >
+        {checked ? (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            className="w-4 h-4 text-white animate-scaleIn"
+          >
+            <path d="M17.5 2C15.6 2 14.1 3.2 13 4.5 11.9 3.2 10.4 2 8.5 2 4.9 2 2 4.9 2 8.5c0 3.8 2.2 7.7 4 10.5 1.1 1.7 2.1 3 3.5 3 1.2 0 1.9-.9 2.5-1.9.6 1 1.3 1.9 2.5 1.9 1.4 0 2.4-1.3 3.5-3 1.8-2.8 4-6.7 4-10.5C22 4.9 19.1 2 17.5 2z" />
+          </svg>
+        ) : (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="w-3.5 h-3.5 opacity-60"
+          >
+            <path d="M17.5 2C15.6 2 14.1 3.2 13 4.5 11.9 3.2 10.4 2 8.5 2 4.9 2 2 4.9 2 8.5c0 3.8 2.2 7.7 4 10.5 1.1 1.7 2.1 3 3.5 3 1.2 0 1.9-.9 2.5-1.9.6 1 1.3 1.9 2.5 1.9 1.4 0 2.4-1.3 3.5-3 1.8-2.8 4-6.7 4-10.5C22 4.9 19.1 2 17.5 2z" />
+          </svg>
+        )}
+      </div>
+
+      <span className="text-xs font-semibold">{label}</span>
+    </div>
+  );
+}
+
 export function PacienteForm() {
   const navigate = useNavigate();
-
-  const [tutorEnabled, setTutorEnabled] =
-    useState(false);
-
-  const [submitError, setSubmitError] =
-    useState("");
+  const [tutorEnabled, setTutorEnabled] = useState(false);
+  const [alergico, setAlergico] = useState(false);
+  const [medicacionCronica, setMedicacionCronica] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const {
     register,
     handleSubmit,
-    formState: {
-      errors,
-      isSubmitting,
-    },
+    control,
+    formState: { errors, isSubmitting },
   } = useForm<PacienteFormData>({
     resolver: zodResolver(pacienteSchema),
     mode: "onChange",
     defaultValues: {
       nombres: "",
       apellidos: "",
+      tipoDocumento: "CC",
       numeroDocumento: "",
       fechaNacimiento: "",
       genero: "",
@@ -120,28 +160,45 @@ export function PacienteForm() {
     },
   });
 
-  const onSubmit = async (
-    data: PacienteFormData,
-  ) => {
+  const watchNombres = useWatch({ control, name: "nombres" });
+  const watchApellidos = useWatch({ control, name: "apellidos" });
+  const watchFechaNacimiento = useWatch({ control, name: "fechaNacimiento" });
+
+  // Cálculo automático de edad
+  const calculateAge = (dateStr?: string) => {
+    if (!dateStr) return null;
+    const birth = new Date(`${dateStr}T00:00:00`);
+    if (isNaN(birth.getTime())) return null;
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age >= 0 ? age : null;
+  };
+
+  const calculatedAge = calculateAge(watchFechaNacimiento);
+
+  // Iniciales para el avatar preview
+  const getInitials = () => {
+    const n = (watchNombres || "").trim();
+    const a = (watchApellidos || "").trim();
+    if (n && a) return `${n[0]}${a[0]}`.toUpperCase();
+    if (n) return n.substring(0, 2).toUpperCase();
+    return "PX";
+  };
+
+  const onSubmit = async (data: PacienteFormData) => {
     setSubmitError("");
+    await new Promise((resolve) => setTimeout(resolve, 500));
 
-    await new Promise((resolve) =>
-      setTimeout(resolve, 700),
-    );
-
-    const pacientesGuardados =
-      localStorage.getItem(
-        PACIENTES_STORAGE_KEY,
-      );
-
+    const pacientesGuardados = localStorage.getItem(PACIENTES_STORAGE_KEY);
     let pacientes: Paciente[] = [];
 
     if (pacientesGuardados) {
       try {
-        const parsed = JSON.parse(
-          pacientesGuardados,
-        );
-
+        const parsed = JSON.parse(pacientesGuardados);
         if (Array.isArray(parsed)) {
           pacientes = parsed;
         }
@@ -150,30 +207,21 @@ export function PacienteForm() {
       }
     }
 
-    const documentoIngresado =
-      data.numeroDocumento.trim();
-
+    const documentoIngresado = data.numeroDocumento.trim();
     const pacienteDuplicado = pacientes.some(
-      (paciente) =>
-        paciente.documento.trim() ===
-        documentoIngresado,
+      (paciente) => paciente.documento.trim() === documentoIngresado,
     );
 
     if (pacienteDuplicado) {
       setSubmitError(
         "Ya existe un paciente registrado con este número de documento.",
       );
-
       return;
     }
 
     const nuevoId =
       pacientes.length > 0
-        ? Math.max(
-            ...pacientes.map(
-              (paciente) => paciente.id,
-            ),
-          ) + 1
+        ? Math.max(...pacientes.map((paciente) => paciente.id)) + 1
         : 1;
 
     const nuevoPaciente: Paciente = {
@@ -184,7 +232,6 @@ export function PacienteForm() {
       estado: "Activo",
     };
 
-    // Intentar persistir directamente en API /api/v1/Persons y /api/v1/Patients
     try {
       const createdPerson = await personService.create({
         documentTypeId: "10000000-0000-0000-0000-000000000001",
@@ -208,18 +255,13 @@ export function PacienteForm() {
       console.warn("Backend API sync failed, stored in local cache:", apiErr);
     }
 
-    const pacientesActualizados = [
-      nuevoPaciente,
-      ...pacientes,
-    ];
-
+    const pacientesActualizados = [nuevoPaciente, ...pacientes];
     localStorage.setItem(
       PACIENTES_STORAGE_KEY,
       JSON.stringify(pacientesActualizados),
     );
 
     setTutorEnabled(false);
-
     navigate("/pacientes");
   };
 
@@ -230,295 +272,322 @@ export function PacienteForm() {
       noValidate
     >
       {submitError && (
-        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm">
-          {submitError}
+        <div className="p-4 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 rounded-2xl text-rose-700 dark:text-rose-300 text-sm font-semibold flex items-center gap-3 backdrop-blur-md shadow-md animate-fadeIn">
+          <AlertCircle size={20} className="text-rose-500 flex-shrink-0" />
+          <span>{submitError}</span>
         </div>
       )}
 
-      <section className="space-y-4">
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-          Datos personales
-        </h2>
+      {/* ESTRUCTURA COMPACTA DE 2 COLUMNAS */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        {/* COLUMNA IZQUIERDA (7 COLS): INFORMACIÓN PERSONAL */}
+        <div className="lg:col-span-7 space-y-6">
+          <section className="rounded-3xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 p-6 sm:p-7 backdrop-blur-xl shadow-xl space-y-5 animate-slideUp animate-stagger-1">
+            {/* AVATAR PREVIEW + TITULO */}
+            <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500/20 via-cyan-500/20 to-blue-500/20 text-cyan-700 dark:text-cyan-300 font-black text-base border border-cyan-500/40 shadow-sm">
+                  {getInitials()}
+                  <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-950" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                    Información Personal
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Expediente e identificación oficial
+                  </p>
+                </div>
+              </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <label htmlFor="nombres" className="block text-sm font-medium text-slate-900 dark:text-slate-100">
-              Nombres *
-            </label>
+              {calculatedAge !== null && (
+                <span className="px-3 py-1 rounded-xl bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 text-xs font-bold flex items-center gap-1 shadow-sm">
+                  <Calendar size={13} />
+                  {calculatedAge} años
+                </span>
+              )}
+            </div>
 
-            <input
-              id="nombres"
-              type="text"
-              placeholder="Ej. Juan"
-              {...register("nombres")}
-              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Nombres */}
+              <div className="space-y-1.5">
+                <label htmlFor="nombres" className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  Nombres *
+                </label>
+                <div className="relative">
+                  <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    id="nombres"
+                    type="text"
+                    {...register("nombres")}
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50/70 dark:bg-slate-900/80 border border-slate-300 dark:border-white/15 rounded-xl text-sm text-slate-900 dark:text-white outline-none focus:border-cyan-500 dark:focus:border-cyan-400 focus:bg-white dark:focus:bg-slate-900 focus:ring-1 focus:ring-cyan-500/30 transition-all shadow-sm"
+                  />
+                </div>
+                {errors.nombres && (
+                  <span className="text-xs font-semibold text-rose-500 dark:text-rose-400 block pt-0.5">
+                    {errors.nombres.message}
+                  </span>
+                )}
+              </div>
 
-            {errors.nombres && (
-              <span className="text-sm text-red-500 dark:text-red-400">
-                {errors.nombres.message}
-              </span>
-            )}
-          </div>
+              {/* Apellidos */}
+              <div className="space-y-1.5">
+                <label htmlFor="apellidos" className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  Apellidos *
+                </label>
+                <input
+                  id="apellidos"
+                  type="text"
+                  {...register("apellidos")}
+                  className="w-full px-4 py-2.5 bg-slate-50/70 dark:bg-slate-900/80 border border-slate-300 dark:border-white/15 rounded-xl text-sm text-slate-900 dark:text-white outline-none focus:border-cyan-500 dark:focus:border-cyan-400 focus:bg-white dark:focus:bg-slate-900 focus:ring-1 focus:ring-cyan-500/30 transition-all shadow-sm"
+                />
+                {errors.apellidos && (
+                  <span className="text-xs font-semibold text-rose-500 dark:text-rose-400 block pt-0.5">
+                    {errors.apellidos.message}
+                  </span>
+                )}
+              </div>
 
-          <div className="space-y-2">
-            <label htmlFor="apellidos" className="block text-sm font-medium text-slate-900 dark:text-slate-100">
-              Apellidos *
-            </label>
+              {/* Tipo + Número Documento */}
+              <div className="space-y-1.5 sm:col-span-2">
+                <label htmlFor="numeroDocumento" className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  Documento de Identidad *
+                </label>
+                <div className="flex gap-2">
+                  <select
+                    {...register("tipoDocumento")}
+                    className="w-28 px-3 py-2.5 bg-slate-50/70 dark:bg-slate-900/80 border border-slate-300 dark:border-white/15 rounded-xl text-sm font-semibold text-slate-900 dark:text-white outline-none focus:border-cyan-500 dark:focus:border-cyan-400 shadow-sm"
+                  >
+                    <option value="CC" className="bg-white dark:bg-slate-900">CC</option>
+                    <option value="TI" className="bg-white dark:bg-slate-900">TI</option>
+                    <option value="CE" className="bg-white dark:bg-slate-900">CE</option>
+                    <option value="PAS" className="bg-white dark:bg-slate-900">Pasaporte</option>
+                  </select>
 
-            <input
-              id="apellidos"
-              type="text"
-              placeholder="Ej. Pérez"
-              {...register("apellidos")}
-              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-            />
+                  <div className="relative flex-1">
+                    <CreditCard size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      id="numeroDocumento"
+                      type="text"
+                      {...register("numeroDocumento")}
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50/70 dark:bg-slate-900/80 border border-slate-300 dark:border-white/15 rounded-xl text-sm font-mono text-slate-900 dark:text-white outline-none focus:border-cyan-500 dark:focus:border-cyan-400 focus:bg-white dark:focus:bg-slate-900 focus:ring-1 focus:ring-cyan-500/30 transition-all shadow-sm"
+                    />
+                  </div>
+                </div>
+                {errors.numeroDocumento && (
+                  <span className="text-xs font-semibold text-rose-500 dark:text-rose-400 block pt-0.5">
+                    {errors.numeroDocumento.message}
+                  </span>
+                )}
+              </div>
 
-            {errors.apellidos && (
-              <span className="text-sm text-red-500 dark:text-red-400">
-                {errors.apellidos.message}
-              </span>
-            )}
-          </div>
+              {/* Fecha Nacimiento */}
+              <div className="space-y-1.5">
+                <label htmlFor="fechaNacimiento" className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  Fecha de nacimiento *
+                </label>
+                <input
+                  id="fechaNacimiento"
+                  type="date"
+                  {...register("fechaNacimiento")}
+                  className="w-full px-4 py-2.5 bg-slate-50/70 dark:bg-slate-900/80 border border-slate-300 dark:border-white/15 rounded-xl text-sm text-slate-900 dark:text-white outline-none focus:border-cyan-500 dark:focus:border-cyan-400 focus:bg-white dark:focus:bg-slate-900 focus:ring-1 focus:ring-cyan-500/30 transition-all shadow-sm"
+                />
+                {errors.fechaNacimiento && (
+                  <span className="text-xs font-semibold text-rose-500 dark:text-rose-400 block pt-0.5">
+                    {errors.fechaNacimiento.message}
+                  </span>
+                )}
+              </div>
 
-          <div className="space-y-2">
-            <label htmlFor="numeroDocumento" className="block text-sm font-medium text-slate-900 dark:text-slate-100">
-              Número de documento *
-            </label>
+              {/* Género */}
+              <div className="space-y-1.5">
+                <label htmlFor="genero" className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  Género *
+                </label>
+                <select
+                  id="genero"
+                  defaultValue=""
+                  {...register("genero")}
+                  className="w-full px-4 py-2.5 bg-slate-50/70 dark:bg-slate-900/80 border border-slate-300 dark:border-white/15 rounded-xl text-sm text-slate-900 dark:text-white outline-none focus:border-cyan-500 dark:focus:border-cyan-400 focus:bg-white dark:focus:bg-slate-900 focus:ring-1 focus:ring-cyan-500/30 transition-all shadow-sm"
+                >
+                  <option value="" disabled className="bg-white dark:bg-slate-900 text-slate-400">
+                    Seleccione opción...
+                  </option>
+                  <option value="femenino" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Femenino</option>
+                  <option value="masculino" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Masculino</option>
+                  <option value="otro" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Otro</option>
+                </select>
+                {errors.genero && (
+                  <span className="text-xs font-semibold text-rose-500 dark:text-rose-400 block pt-0.5">
+                    {errors.genero.message}
+                  </span>
+                )}
+              </div>
 
-            <input
-              id="numeroDocumento"
-              type="text"
-              placeholder="Ej. 12345678"
-              {...register("numeroDocumento")}
-              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-            />
+              {/* Teléfono */}
+              <div className="space-y-1.5">
+                <label htmlFor="telefono" className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  Teléfono celular *
+                </label>
+                <div className="relative">
+                  <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    id="telefono"
+                    type="tel"
+                    {...register("telefono")}
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50/70 dark:bg-slate-900/80 border border-slate-300 dark:border-white/15 rounded-xl text-sm text-slate-900 dark:text-white outline-none focus:border-cyan-500 dark:focus:border-cyan-400 focus:bg-white dark:focus:bg-slate-900 focus:ring-1 focus:ring-cyan-500/30 transition-all shadow-sm"
+                  />
+                </div>
+                {errors.telefono && (
+                  <span className="text-xs font-semibold text-rose-500 dark:text-rose-400 block pt-0.5">
+                    {errors.telefono.message}
+                  </span>
+                )}
+              </div>
 
-            {errors.numeroDocumento && (
-              <span className="text-sm text-red-500 dark:text-red-400">
-                {errors.numeroDocumento.message}
-              </span>
-            )}
-          </div>
+              {/* Correo */}
+              <div className="space-y-1.5 sm:col-span-2">
+                <label htmlFor="correo" className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  Correo electrónico
+                </label>
+                <div className="relative">
+                  <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    id="correo"
+                    type="email"
+                    {...register("correo")}
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50/70 dark:bg-slate-900/80 border border-slate-300 dark:border-white/15 rounded-xl text-sm text-slate-900 dark:text-white outline-none focus:border-cyan-500 dark:focus:border-cyan-400 focus:bg-white dark:focus:bg-slate-900 focus:ring-1 focus:ring-cyan-500/30 transition-all shadow-sm"
+                  />
+                </div>
+                {errors.correo && (
+                  <span className="text-xs font-semibold text-rose-500 dark:text-rose-400 block pt-0.5">
+                    {errors.correo.message}
+                  </span>
+                )}
+              </div>
+            </div>
+          </section>
+        </div>
 
-          <div className="space-y-2">
-            <label htmlFor="fechaNacimiento" className="block text-sm font-medium text-slate-900 dark:text-slate-100">
-              Fecha de nacimiento *
-            </label>
+        {/* COLUMNA DERECHA (5 COLS): TUTOR LEGAL + ANTECEDENTES + BOTONES DE ACCIÓN */}
+        <div className="lg:col-span-5 space-y-6">
+          
+          {/* SECCIÓN TUTOR LEGAL */}
+          <section className="rounded-3xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 p-6 backdrop-blur-xl shadow-xl space-y-4 animate-slideUp animate-stagger-2">
+            <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-teal-500/15 text-teal-600 dark:text-teal-400 border border-teal-500/30">
+                  <Users size={16} />
+                </div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Tutor / Responsable
+                </h3>
+              </div>
 
-            <input
-              id="fechaNacimiento"
-              type="date"
-              {...register("fechaNacimiento")}
-              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-            />
+              <label className="flex items-center gap-2 cursor-pointer bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-white/15 px-2.5 py-1 rounded-xl shadow-sm">
+                <input
+                  type="checkbox"
+                  checked={tutorEnabled}
+                  onChange={(event) => setTutorEnabled(event.target.checked)}
+                  className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-600 text-cyan-500 focus:ring-cyan-500"
+                />
+                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Habilitar</span>
+              </label>
+            </div>
 
-            {errors.fechaNacimiento && (
-              <span className="text-sm text-red-500 dark:text-red-400">
-                {errors.fechaNacimiento.message}
-              </span>
-            )}
-          </div>
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label htmlFor="tutor" className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  Nombre del tutor
+                </label>
+                <input
+                  id="tutor"
+                  type="text"
+                  disabled={!tutorEnabled}
+                  className="w-full px-3.5 py-2 bg-slate-50/70 dark:bg-slate-900/80 border border-slate-300 dark:border-white/15 rounded-xl text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
+                />
+              </div>
 
-          <div className="space-y-2">
-            <label htmlFor="genero" className="block text-sm font-medium text-slate-900 dark:text-slate-100">
-              Género *
-            </label>
+              <div className="space-y-1">
+                <label htmlFor="vinculo" className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  Vínculo familiar
+                </label>
+                <select
+                  id="vinculo"
+                  defaultValue=""
+                  disabled={!tutorEnabled}
+                  className="w-full px-3.5 py-2 bg-slate-50/70 dark:bg-slate-900/80 border border-slate-300 dark:border-white/15 rounded-xl text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
+                >
+                  <option value="" disabled className="bg-white dark:bg-slate-900 text-slate-400">Seleccione vínculo...</option>
+                  <option value="madre" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Madre</option>
+                  <option value="padre" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Padre</option>
+                  <option value="acudiente" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Acudiente / Apoderado</option>
+                </select>
+              </div>
+            </div>
+          </section>
 
-            <select
-              id="genero"
-              defaultValue=""
-              {...register("genero")}
-              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+          {/* SECCIÓN ANTECEDENTES */}
+          <section className="rounded-3xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 p-6 backdrop-blur-xl shadow-xl space-y-4 animate-slideUp animate-stagger-3">
+            <div className="flex items-center gap-2.5 border-b border-slate-200/80 dark:border-white/10 pb-3">
+              <div className="p-2 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30">
+                <FileCheck size={16} />
+              </div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                Antecedentes Clínicos
+              </h3>
+            </div>
+
+            <div className="space-y-2.5">
+              <ToothCheckbox
+                checked={alergico}
+                onChange={setAlergico}
+                label="¿Es alérgico a algún medicamento?"
+              />
+
+              <ToothCheckbox
+                checked={medicacionCronica}
+                onChange={setMedicacionCronica}
+                label="¿Toma medicación de forma crónica?"
+              />
+
+              <div className="space-y-1 pt-1">
+                <label htmlFor="observaciones" className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  Observaciones preliminares
+                </label>
+                <textarea
+                  id="observaciones"
+                  rows={2}
+                  className="w-full px-3.5 py-2 bg-slate-50/70 dark:bg-slate-900/80 border border-slate-300 dark:border-white/15 rounded-xl text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 resize-none transition-all shadow-sm"
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* BOTONES DE ACCIÓN */}
+          <div className="flex items-center justify-end gap-3 pt-1 animate-slideUp animate-stagger-4">
+            <button
+              type="button"
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 dark:border-white/15 bg-white/90 dark:bg-slate-900/80 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold text-xs transition-all cursor-pointer backdrop-blur-md active:scale-95 shadow-sm"
+              onClick={() => navigate("/pacientes")}
+              disabled={isSubmitting}
             >
-              <option value="">
-                Seleccione...
-              </option>
+              <XCircle size={15} />
+              <span>Cancelar</span>
+            </button>
 
-              <option value="femenino">
-                Femenino
-              </option>
-
-              <option value="masculino">
-                Masculino
-              </option>
-
-              <option value="otro">
-                Otro
-              </option>
-            </select>
-
-            {errors.genero && (
-              <span className="text-sm text-red-500 dark:text-red-400">
-                {errors.genero.message}
-              </span>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <label htmlFor="telefono" className="block text-sm font-medium text-slate-900 dark:text-slate-100">
-              Teléfono celular *
-            </label>
-
-            <input
-              id="telefono"
-              type="tel"
-              placeholder="300 123 4567"
-              {...register("telefono")}
-              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-            />
-
-            {errors.telefono && (
-              <span className="text-sm text-red-500 dark:text-red-400">
-                {errors.telefono.message}
-              </span>
-            )}
-          </div>
-
-          <div className="space-y-2 md:col-span-2">
-            <label htmlFor="correo" className="block text-sm font-medium text-slate-900 dark:text-slate-100">
-              Correo electrónico
-            </label>
-
-            <input
-              id="correo"
-              type="email"
-              placeholder="ejemplo@correo.com"
-              {...register("correo")}
-              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-            />
-
-            {errors.correo && (
-              <span className="text-sm text-red-500 dark:text-red-400">
-                {errors.correo.message}
-              </span>
-            )}
-          </div>
-        </div>
-      </section>
-
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-            Tutor legal
-          </h2>
-
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={tutorEnabled}
-              onChange={(event) =>
-                setTutorEnabled(
-                  event.target.checked,
-                )
-              }
-              className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-primary-500 focus:ring-primary-500"
-            />
-
-            <span className="text-sm text-slate-600 dark:text-slate-400">Habilitar</span>
-          </label>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <label htmlFor="tutor" className="block text-sm font-medium text-slate-900 dark:text-slate-100">
-              Nombre del tutor
-            </label>
-
-            <input
-              id="tutor"
-              type="text"
-              placeholder="Nombre completo"
-              disabled={!tutorEnabled}
-              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label htmlFor="vinculo" className="block text-sm font-medium text-slate-900 dark:text-slate-100">
-              Vínculo
-            </label>
-
-            <select
-              id="vinculo"
-              defaultValue=""
-              disabled={!tutorEnabled}
-              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            <button
+              type="submit"
+              className="inline-flex items-center justify-center gap-2 px-7 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 text-white dark:text-slate-950 font-bold text-xs shadow-lg dark:shadow-[0_0_25px_rgba(34,211,238,0.3)] transition-all active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isSubmitting}
             >
-              <option value="">
-                Seleccione...
-              </option>
-
-              <option value="madre">
-                Madre
-              </option>
-
-              <option value="padre">
-                Padre
-              </option>
-
-              <option value="acudiente">
-                Acudiente
-              </option>
-            </select>
+              <CheckCircle2 size={16} />
+              <span>{isSubmitting ? "Procesando..." : "Guardar Expediente"}</span>
+            </button>
           </div>
+
         </div>
-      </section>
-
-      <section className="space-y-4">
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-          Antecedentes básicos
-        </h2>
-
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-primary-500 focus:ring-primary-500" />
-
-          <span className="text-sm text-slate-600 dark:text-slate-400">
-            ¿Es alérgico a algún medicamento?
-          </span>
-        </label>
-
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-primary-500 focus:ring-primary-500" />
-
-          <span className="text-sm text-slate-600 dark:text-slate-400">
-            ¿Toma medicación de forma crónica?
-          </span>
-        </label>
-
-        <div className="space-y-2">
-          <label htmlFor="observaciones" className="block text-sm font-medium text-slate-900 dark:text-slate-100">
-            Observaciones clínicas previas
-          </label>
-
-          <textarea
-            id="observaciones"
-            rows={4}
-            placeholder="Breve nota sobre el estado inicial del paciente..."
-            className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all resize-none"
-          />
-        </div>
-      </section>
-
-      <div className="flex items-center gap-4 pt-4">
-        <button
-          type="button"
-          className="px-6 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-medium rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          onClick={() => navigate("/pacientes")}
-          disabled={isSubmitting}
-        >
-          Cancelar
-        </button>
-
-        <button
-          type="submit"
-          className="px-6 py-2.5 bg-gradient-to-r from-primary-500 to-primary-700 text-white font-medium rounded-lg hover:from-primary-600 hover:to-primary-800 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={isSubmitting}
-        >
-          {isSubmitting
-            ? "Procesando..."
-            : "Registrar paciente"}
-        </button>
       </div>
     </form>
   );
