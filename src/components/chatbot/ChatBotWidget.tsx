@@ -23,6 +23,7 @@ import {
 import { useAuth } from "../../features/auth/AuthContext";
 import { getUserRole } from "../../utils/routePermissions";
 import { useNavigate } from "react-router-dom";
+import { chatbotService } from "../../api/chatbotService";
 
 interface Message {
   id: string;
@@ -233,7 +234,7 @@ export default function ChatBotWidget() {
     };
   };
 
-  const handleSendMessage = (textToSend?: string) => {
+  const handleSendMessage = async (textToSend?: string) => {
     const text = (textToSend || inputText).trim();
     if (!text) return;
 
@@ -248,7 +249,39 @@ export default function ChatBotWidget() {
     if (!textToSend) setInputText("");
     setIsTyping(true);
 
-    setTimeout(() => {
+    try {
+      const token = localStorage.getItem("auth_token") || undefined;
+      const aiResponse = await chatbotService.sendMessage(
+        {
+          message: text,
+          userId: user?.id,
+          role: role,
+          context: "nexus_odonto",
+        },
+        token
+      );
+
+      if (aiResponse.status === "success" && aiResponse.reply) {
+        const botMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          sender: "bot",
+          text: aiResponse.reply,
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          actionLink: aiResponse.actionLink,
+        };
+        setMessages((prev) => [...prev, botMessage]);
+      } else {
+        const response = generateBotResponse(text);
+        const botMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          sender: "bot",
+          text: response.text,
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          actionLink: response.actionLink,
+        };
+        setMessages((prev) => [...prev, botMessage]);
+      }
+    } catch {
       const response = generateBotResponse(text);
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -258,8 +291,9 @@ export default function ChatBotWidget() {
         actionLink: response.actionLink,
       };
       setMessages((prev) => [...prev, botMessage]);
+    } finally {
       setIsTyping(false);
-    }, 500);
+    }
   };
 
   const handleClearChat = () => {

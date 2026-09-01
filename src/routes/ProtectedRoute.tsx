@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { ShieldAlert, ArrowLeft, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '../features/auth/AuthContext';
@@ -11,6 +12,24 @@ export default function ProtectedRoute({ requiredRoles: _requiredRoles = [] }: P
   const { user, isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Bloqueo estricto del botón 'Atrás' para no salir de la app ni volver al login
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    // Anclar la entrada actual en el historial del navegador
+    window.history.pushState(null, '', window.location.href);
+
+    const handlePopState = () => {
+      // Si el navegador intenta retroceder fuera de la app o al login, retener en la misma página
+      window.history.pushState(null, '', window.location.href);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [isAuthenticated, location.pathname]);
 
   // 1. Mostrar pantalla de carga suave mientras se valida la sesión inicial
   if (isLoading) {
