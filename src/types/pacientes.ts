@@ -9,6 +9,7 @@ export interface Paciente {
   proximaCita?: string;
   alergias?: string;
   genero?: string;
+  fotoUrl?: string;
 }
 
 export const PACIENTES_STORAGE_KEY = "nexusodontopacientes";

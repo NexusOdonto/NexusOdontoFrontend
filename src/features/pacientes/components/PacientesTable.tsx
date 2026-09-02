@@ -28,14 +28,14 @@ export function PacientesTable({
   };
 
   return (
-    <section className="min-w-0 max-w-full">
+    <section className="min-w-0 max-w-full rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl shadow-md dark:shadow-2xl p-5 sm:p-6 transition-all duration-300">
       {/* HEADER DE LA LISTA */}
-      <div className="mb-4 flex items-center justify-between border-b border-slate-200/80 dark:border-white/5 pb-3">
+      <div className="mb-4 flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 pb-3">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+          <span className="text-sm font-bold text-slate-900 dark:text-white">
             Pacientes
           </span>
-          <span className="rounded-full bg-cyan-500/15 dark:bg-cyan-500/10 px-2.5 py-0.5 text-xs font-semibold text-cyan-800 dark:text-cyan-400 border border-cyan-500/30 dark:border-cyan-500/20">
+          <span className="rounded-full bg-cyan-500/15 dark:bg-cyan-500/20 px-2.5 py-0.5 text-xs font-semibold text-cyan-800 dark:text-cyan-300 border border-cyan-500/30 dark:border-cyan-400/40">
             {totalItems} {totalItems === 1 ? "paciente" : "pacientes"}
           </span>
         </div>
@@ -53,13 +53,13 @@ export function PacientesTable({
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-slate-200/60 dark:divide-white/5">
+          <tbody className="divide-y divide-slate-200/60 dark:divide-white/10">
             {loading ? (
               Array.from({ length: 5 }).map((_, index) => (
                 <tr key={`skeleton-${index}`}>
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 animate-pulse rounded-full bg-slate-200 dark:bg-white/10" />
+                      <div className="h-9 w-9 animate-pulse rounded-2xl bg-slate-200 dark:bg-white/10" />
                       <div className="h-4 w-36 animate-pulse rounded bg-slate-200 dark:bg-white/10" />
                     </div>
                   </td>
@@ -79,24 +79,24 @@ export function PacientesTable({
                 <tr
                   key={paciente.id}
                   onClick={() => onSelectPaciente?.(paciente)}
-                  className={`group cursor-pointer transition-colors hover:bg-slate-100/70 dark:hover:bg-white/[0.05] animate-fadeIn animate-stagger-${(idx % 6) + 1}`}
+                  className={`group cursor-pointer transition-colors hover:bg-slate-100/90 dark:hover:bg-white/10 animate-fadeIn animate-stagger-${(idx % 6) + 1}`}
                 >
                   <td className="px-4 py-3.5">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-teal-500/20 to-cyan-500/20 border border-cyan-500/30 text-cyan-800 dark:text-cyan-300 font-bold text-xs shadow-inner">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500/20 via-cyan-500/20 to-blue-500/20 dark:from-teal-400/30 dark:via-cyan-400/30 dark:to-blue-500/30 border border-cyan-500/40 dark:border-cyan-400/50 text-cyan-800 dark:text-cyan-200 font-extrabold text-xs shadow-sm group-hover:scale-105 transition-transform duration-200">
                         {getInitials(paciente.nombre)}
                       </div>
-                      <span className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors">
+                      <span className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors">
                         {paciente.nombre}
                       </span>
                     </div>
                   </td>
 
-                  <td className="px-4 py-3.5 text-sm font-mono text-slate-700 dark:text-slate-300">
+                  <td className="px-4 py-3.5 text-sm font-mono font-semibold text-slate-900 dark:text-slate-200">
                     {paciente.documento}
                   </td>
 
-                  <td className="px-4 py-3.5 text-sm text-slate-700 dark:text-slate-300">
+                  <td className="px-4 py-3.5 text-sm font-medium text-slate-700 dark:text-slate-300">
                     {paciente.telefono || "No registrado"}
                   </td>
 
@@ -104,7 +104,7 @@ export function PacientesTable({
                     <span
                       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold backdrop-blur-sm border ${
                         paciente.estado?.toLowerCase() === "activo"
-                          ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-400 border-emerald-500/30 dark:border-emerald-500/20"
+                          ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-500/30 dark:border-emerald-400/30"
                           : "bg-slate-500/15 text-slate-700 dark:text-slate-400 border-slate-500/30 dark:border-slate-500/20"
                       }`}
                     >
@@ -143,7 +143,7 @@ export function PacientesTable({
 
       {/* PAGINACIÓN MINIMALISTA */}
       {!loading && pacientes.length > 0 && totalPages > 1 && (
-        <div className="mt-6 flex items-center justify-between border-t border-slate-200/80 dark:border-white/5 pt-4">
+        <div className="mt-6 flex items-center justify-between border-t border-slate-200/80 dark:border-white/10 pt-4">
           <span className="text-xs text-slate-600 dark:text-slate-400">
             Página <strong className="text-slate-900 dark:text-white">{currentPage}</strong> de{" "}
             <strong className="text-slate-900 dark:text-white">{totalPages}</strong>
@@ -154,7 +154,7 @@ export function PacientesTable({
               type="button"
               disabled={currentPage === 1}
               onClick={() => onPageChange(currentPage - 1)}
-              className="rounded-xl border border-slate-200 dark:border-white/10 bg-white/80 dark:bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer shadow-sm"
+              className="rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-900/60 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer shadow-sm"
             >
               Anterior
             </button>
@@ -163,7 +163,7 @@ export function PacientesTable({
               type="button"
               disabled={currentPage === totalPages}
               onClick={() => onPageChange(currentPage + 1)}
-              className="rounded-xl border border-slate-200 dark:border-white/10 bg-white/80 dark:bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer shadow-sm"
+              className="rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-900/60 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer shadow-sm"
             >
               Siguiente
             </button>

@@ -51,7 +51,7 @@ export function PageHeader({
   };
 
   return (
-    <header className="h-16 bg-white/80 dark:bg-slate-950/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30">
+    <header className="h-16 bg-white/80 dark:bg-slate-950/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-20 shrink-0">
       {/* MENÚ MÓVIL */}
       <div className="flex items-center gap-4">
         <button
