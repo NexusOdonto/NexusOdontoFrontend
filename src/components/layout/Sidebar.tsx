@@ -6,11 +6,11 @@ import {
   Stethoscope,
   FileText,
   ShieldCheck,
-  Settings,
   Smile,
   ChevronLeft,
   ChevronRight,
   UserCircle,
+  Sparkles,
 } from "lucide-react";
 
 import { useState } from "react";
@@ -61,8 +61,8 @@ export function Sidebar({
       path: "/profesionales",
     },
     {
-      label: "Servicios",
-      icon: FileText,
+      label: "Catálogo de servicios",
+      icon: Sparkles,
       path: "/servicios",
     },
     {
@@ -86,11 +86,6 @@ export function Sidebar({
       path: "/roles-permisos",
     },
     {
-      label: "Configuración",
-      icon: Settings,
-      path: "/configuracion",
-    },
-    {
       label: "Mi Perfil",
       icon: UserCircle,
       path: "/perfil",
@@ -110,30 +105,30 @@ export function Sidebar({
     <>
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
           onClick={onMobileClose}
         />
       )}
 
       <aside
-        className={`fixed lg:static z-50 h-screen bg-white/60 dark:bg-slate-950/40 backdrop-blur-xl border-r border-slate-200/80 dark:border-white/10 flex flex-col transition-all duration-300 ease-in-out overflow-x-hidden ${
+        className={`fixed lg:sticky lg:top-0 z-30 h-screen bg-white/90 dark:bg-slate-950/95 backdrop-blur-2xl border-r border-slate-200/80 dark:border-white/10 flex flex-col transition-all duration-300 ease-in-out overflow-x-hidden ${
           isCollapsed ? "w-16 lg:w-20" : "w-64"
         } ${
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         } lg:translate-x-0`}
       >
-        {/* Logo Section */}
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="bg-white p-1 rounded-lg w-8 h-8 flex items-center justify-center shadow-sm flex-shrink-0">
+        {/* Logo Section Refinado (Compatible Modo Claro y Oscuro) */}
+        <div className="p-3.5 border-b border-slate-200/80 dark:border-white/10 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1 rounded-lg w-7 h-7 flex items-center justify-center flex-shrink-0 bg-slate-100 dark:bg-slate-900 border border-slate-200/80 dark:border-white/10">
               <img
                 src={logo}
                 alt="NexusOdonto"
-                className="w-6 h-6"
+                className="w-5 h-5 opacity-90"
               />
             </div>
             {!isCollapsed && (
-              <span className="font-bold text-lg text-slate-800 dark:text-slate-100 whitespace-nowrap">
+              <span className="font-bold text-sm tracking-tight text-slate-900 dark:text-white whitespace-nowrap">
                 NexusOdonto
               </span>
             )}
@@ -141,19 +136,19 @@ export function Sidebar({
           <button
             type="button"
             onClick={toggleCollapse}
-            className="hidden lg:flex p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 transition-colors cursor-pointer"
+            className="hidden lg:flex p-1 rounded-md hover:bg-slate-100 dark:hover:bg-white/10 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
             aria-label={isCollapsed ? "Expandir menú" : "Colapsar menú"}
           >
             {isCollapsed ? (
-              <ChevronRight size={18} />
+              <ChevronRight size={16} strokeWidth={1.25} />
             ) : (
-              <ChevronLeft size={18} />
+              <ChevronLeft size={16} strokeWidth={1.25} />
             )}
           </button>
         </div>
 
-        {/* Navigation Section con NavLink de react-router-dom para navegación 100% SPA */}
-        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+        {/* Navigation Section con acento lateral en la ruta activa */}
+        <nav className="flex-1 p-2.5 space-y-0.5 overflow-y-auto">
           {filteredMenuItems.map((item) => {
             const Icon = item.icon;
             return (
@@ -162,19 +157,23 @@ export function Sidebar({
                 to={item.path}
                 onClick={onMobileClose}
                 className={({ isActive }) =>
-                  `w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-left font-medium cursor-pointer ${
+                  `w-full flex items-center gap-3 px-3 py-2 text-xs font-medium transition-all duration-150 text-left cursor-pointer ${
                     isActive
-                      ? "bg-primary-500/10 text-primary-600 dark:text-primary-400 font-semibold"
-                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200"
+                      ? "border-l-2 border-cyan-600 dark:border-cyan-400 text-cyan-900 dark:text-cyan-200 font-bold bg-cyan-500/15 dark:bg-cyan-400/10 -ml-[1px]"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100/80 dark:hover:bg-white/5"
                   } ${isCollapsed ? "justify-center" : ""}`
                 }
                 title={isCollapsed ? item.label : undefined}
               >
                 {({ isActive }) => (
                   <>
-                    <Icon size={20} className={isActive ? "text-primary-500" : "flex-shrink-0"} />
+                    <Icon
+                      size={17}
+                      strokeWidth={1.25}
+                      className={isActive ? "text-cyan-600 dark:text-cyan-400 flex-shrink-0" : "text-slate-500 dark:text-slate-400 flex-shrink-0"}
+                    />
                     {!isCollapsed && (
-                      <span className="truncate text-sm">{item.label}</span>
+                      <span className="truncate tracking-wide">{item.label}</span>
                     )}
                   </>
                 )}

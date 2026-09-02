@@ -1,0 +1,309 @@
+import { formatCurrency } from "../../../utils/currency";
+import type { Servicio } from "../../../types/servicios";
+import {
+  Clock,
+  Edit2,
+  Trash2,
+  XCircle,
+  Tag,
+  Sparkles,
+  ShieldCheck,
+  Scissors,
+  Smile,
+  Activity,
+  Stethoscope,
+} from "lucide-react";
+
+interface ServiciosTableProps {
+  servicios: Servicio[];
+  onEditar: (servicio: Servicio) => void;
+  onEliminar: (id: number | string) => void;
+  onToggleActivo: (servicio: Servicio) => void;
+}
+
+function getServiceDetails(servicio: Servicio) {
+  const n = servicio.nombre.toLowerCase();
+  const code = servicio.codigo || `SRV-${String(servicio.id).padStart(3, "0")}`;
+
+  if (servicio.categoria) {
+    const cat = servicio.categoria.toLowerCase();
+    if (cat.includes("estética")) {
+      return {
+        code,
+        categoria: servicio.categoria,
+        badgeClass: "bg-purple-500/15 text-purple-300 border-purple-500/30",
+        Icon: Sparkles,
+        iconColor: "text-purple-400",
+        iconBg: "bg-purple-500/20 border-purple-500/30",
+      };
+    }
+    if (cat.includes("operatoria") || cat.includes("resina")) {
+      return {
+        code,
+        categoria: servicio.categoria,
+        badgeClass: "bg-sky-500/15 text-sky-300 border-sky-500/30",
+        Icon: ShieldCheck,
+        iconColor: "text-sky-400",
+        iconBg: "bg-sky-500/20 border-sky-500/30",
+      };
+    }
+    if (cat.includes("cirugía")) {
+      return {
+        code,
+        categoria: servicio.categoria,
+        badgeClass: "bg-amber-500/15 text-amber-300 border-amber-500/30",
+        Icon: Scissors,
+        iconColor: "text-amber-400",
+        iconBg: "bg-amber-500/20 border-amber-500/30",
+      };
+    }
+    if (cat.includes("higiene") || cat.includes("prevención")) {
+      return {
+        code,
+        categoria: servicio.categoria,
+        badgeClass: "bg-teal-500/15 text-teal-300 border-teal-500/30",
+        Icon: Smile,
+        iconColor: "text-teal-400",
+        iconBg: "bg-teal-500/20 border-teal-500/30",
+      };
+    }
+    if (cat.includes("endodoncia")) {
+      return {
+        code,
+        categoria: servicio.categoria,
+        badgeClass: "bg-rose-500/15 text-rose-300 border-rose-500/30",
+        Icon: Activity,
+        iconColor: "text-rose-400",
+        iconBg: "bg-rose-500/20 border-rose-500/30",
+      };
+    }
+  }
+
+  // Fallback por nombre
+  if (n.includes("blanqueamiento")) {
+    return {
+      code,
+      categoria: "Estética Dental",
+      badgeClass: "bg-purple-500/15 text-purple-300 border-purple-500/30",
+      Icon: Sparkles,
+      iconColor: "text-purple-400",
+      iconBg: "bg-purple-500/20 border-purple-500/30",
+    };
+  }
+  if (n.includes("resina") || n.includes("calza") || n.includes("restauracion")) {
+    return {
+      code,
+      categoria: "Operatoria Dental",
+      badgeClass: "bg-sky-500/15 text-sky-300 border-sky-500/30",
+      Icon: ShieldCheck,
+      iconColor: "text-sky-400",
+      iconBg: "bg-sky-500/20 border-sky-500/30",
+    };
+  }
+  if (n.includes("extracción") || n.includes("extraccion") || n.includes("cirugía") || n.includes("cirugia")) {
+    return {
+      code,
+      categoria: "Cirugía Oral",
+      badgeClass: "bg-amber-500/15 text-amber-300 border-amber-500/30",
+      Icon: Scissors,
+      iconColor: "text-amber-400",
+      iconBg: "bg-amber-500/20 border-amber-500/30",
+    };
+  }
+  if (n.includes("profilaxis") || n.includes("limpieza") || n.includes("detartraje")) {
+    return {
+      code,
+      categoria: "Higiene y Prevención",
+      badgeClass: "bg-teal-500/15 text-teal-300 border-teal-500/30",
+      Icon: Smile,
+      iconColor: "text-teal-400",
+      iconBg: "bg-teal-500/20 border-teal-500/30",
+    };
+  }
+  if (n.includes("endodoncia") || n.includes("conducto")) {
+    return {
+      code,
+      categoria: "Endodoncia",
+      badgeClass: "bg-rose-500/15 text-rose-300 border-rose-500/30",
+      Icon: Activity,
+      iconColor: "text-rose-400",
+      iconBg: "bg-rose-500/20 border-rose-500/30",
+    };
+  }
+  return {
+    code,
+    categoria: "Odontología General",
+    badgeClass: "bg-cyan-500/15 text-cyan-300 border-cyan-500/30",
+    Icon: Stethoscope,
+    iconColor: "text-cyan-400",
+    iconBg: "bg-cyan-500/20 border-cyan-500/30",
+  };
+}
+
+export function ServiciosTable({
+  servicios,
+  onEditar,
+  onEliminar,
+  onToggleActivo,
+}: ServiciosTableProps) {
+  if (servicios.length === 0) {
+    return (
+      <div className="flex min-h-60 w-full flex-col items-center justify-center py-16 text-center rounded-3xl border border-white/15 bg-slate-950/80 backdrop-blur-2xl shadow-xl">
+        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-800/80 border border-white/10 text-slate-400">
+          <Tag size={24} />
+        </div>
+        <h3 className="text-base sm:text-lg font-bold text-white">
+          No se encontraron servicios
+        </h3>
+        <p className="mt-1 max-w-sm text-xs sm:text-sm text-slate-400">
+          Intenta ajustar los criterios de búsqueda o filtros seleccionados.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-3xl border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-slate-900/70 backdrop-blur-2xl shadow-lg shadow-slate-900/5 dark:shadow-[0_12px_36px_rgba(0,0,0,0.5)] overflow-hidden animate-fadeIn">
+      <div className="overflow-x-auto">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="border-b border-slate-200/80 dark:border-white/10 bg-slate-50/80 dark:bg-white/[0.04] text-[11px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300">
+              <th className="py-4 px-5">Código</th>
+              <th className="py-4 px-5">Procedimiento Odontológico</th>
+              <th className="py-4 px-5">Especialidad</th>
+              <th className="py-4 px-5">Duración</th>
+              <th className="py-4 px-5">Tarifa Oficial</th>
+              <th className="py-4 px-5">Estado</th>
+              <th className="py-4 px-5 text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-200/80 dark:divide-white/10 text-xs sm:text-sm">
+            {servicios.map((servicio) => {
+              const details = getServiceDetails(servicio);
+              const { Icon } = details;
+
+              return (
+                <tr
+                  key={servicio.id}
+                  className={`hover:bg-slate-50/60 dark:hover:bg-white/[0.05] transition-colors ${
+                    !servicio.activo ? "opacity-60" : ""
+                  }`}
+                >
+                  {/* Código */}
+                  <td className="py-4 px-5 font-mono text-xs text-cyan-700 dark:text-cyan-300 font-black whitespace-nowrap tracking-wider">
+                    {details.code}
+                  </td>
+
+                  {/* Procedimiento */}
+                  <td className="py-4 px-5">
+                    <div className="flex items-center gap-3.5">
+                      <div
+                        className={`h-10 w-10 rounded-2xl flex items-center justify-center flex-shrink-0 border shadow-sm ${details.iconBg}`}
+                      >
+                        <Icon size={19} className={details.iconColor} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-black text-slate-900 dark:text-white line-clamp-1">
+                          {servicio.nombre}
+                        </p>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-1 max-w-md font-medium">
+                          {servicio.descripcion}
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+
+                  {/* Especialidad */}
+                  <td className="py-4 px-5 whitespace-nowrap">
+                    <span
+                      className={`inline-block text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-md border ${details.badgeClass}`}
+                    >
+                      {details.categoria}
+                    </span>
+                  </td>
+
+                  {/* Duración */}
+                  <td className="py-4 px-5 whitespace-nowrap">
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 font-mono text-xs font-bold">
+                      <Clock size={13} className="text-cyan-600 dark:text-cyan-400" />
+                      <span>{servicio.duracion} min</span>
+                    </div>
+                  </td>
+
+                  {/* Tarifa */}
+                  <td className="py-4 px-5 whitespace-nowrap">
+                    <span className="font-mono font-black text-base text-teal-700 dark:text-emerald-300">
+                      {formatCurrency(servicio.precio)}
+                    </span>
+                  </td>
+
+                  {/* Estado con Toggle interactivo y Radar Pulse */}
+                  <td className="py-4 px-5 whitespace-nowrap">
+                    <button
+                      type="button"
+                      onClick={() => onToggleActivo(servicio)}
+                      className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-black border transition-all cursor-pointer shadow-sm ${
+                        servicio.activo
+                          ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 border-emerald-500/30 hover:bg-emerald-500/25"
+                          : "bg-slate-100 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-700"
+                      }`}
+                      title={servicio.activo ? "Clic para desactivar" : "Clic para activar"}
+                    >
+                      {servicio.activo ? (
+                        <>
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                          </span>
+                          <span>Activo</span>
+                        </>
+                      ) : (
+                        <>
+                          <XCircle size={13} className="text-slate-400" />
+                          <span>Inactivo</span>
+                        </>
+                      )}
+                    </button>
+                  </td>
+
+                  {/* Acciones */}
+                  <td className="py-4 px-5 text-right whitespace-nowrap">
+                    <div className="inline-flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => onEditar(servicio)}
+                        className="p-2 rounded-xl bg-slate-100 hover:bg-cyan-50 dark:bg-white/5 dark:hover:bg-cyan-500/20 text-slate-600 hover:text-cyan-700 dark:text-slate-300 dark:hover:text-cyan-200 transition-all border border-slate-200 dark:border-white/10 cursor-pointer shadow-sm"
+                        title="Editar servicio"
+                        aria-label="Editar"
+                      >
+                        <Edit2 size={13} strokeWidth={2.2} />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `¿Seguro que deseas eliminar el procedimiento "${servicio.nombre}"?`
+                            )
+                          ) {
+                            onEliminar(servicio.id);
+                          }
+                        }}
+                        className="p-2 rounded-xl bg-slate-100 hover:bg-rose-50 dark:bg-white/5 dark:hover:bg-rose-500/20 text-slate-600 hover:text-rose-700 dark:text-slate-300 dark:hover:text-rose-200 transition-all border border-slate-200 dark:border-white/10 cursor-pointer shadow-sm"
+                        title="Eliminar servicio"
+                        aria-label="Eliminar"
+                      >
+                        <Trash2 size={13} strokeWidth={2.2} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}

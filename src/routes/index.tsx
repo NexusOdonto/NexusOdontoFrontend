@@ -71,7 +71,7 @@ const ServiciosView = lazy(() =>
 );
 
 const HistoriaClinicaView = lazy(() =>
-  import("../features/historiaClinica/HistoriaClinicaView").then((module) => ({
+  import("../features/historia-clinica/HistoriaClinicaView").then((module) => ({
     default: module.HistoriaClinicaView,
   })),
 );
@@ -236,15 +236,8 @@ export default function AppRoutes() {
             }
           />
 
-          {/* Configuración y Perfil */}
-          <Route
-            path="/configuracion"
-            element={
-              <DashboardLayout>
-                <ServiciosView />
-              </DashboardLayout>
-            }
-          />
+          {/* Redirección de configuración hacia dashboard */}
+          <Route path="/configuracion" element={<Navigate to="/dashboard" replace />} />
 
           <Route
             path="/perfil"

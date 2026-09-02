@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import {
   ChevronDown,
   LogOut,
-  Settings,
   User,
   Smile,
   ShieldCheck,
@@ -81,7 +80,7 @@ export default function UserProfileDropdown() {
 
   return (
     <div ref={dropdownRef} className="relative">
-      {/* BOTÓN DEL USUARIO (TIPO GITHUB HEADER) */}
+      {/* BOTÓN DEL USUARIO (TIPO GITHUB HEADER CON ESTADO EN VERDE) */}
       <button
         type="button"
         onClick={() => setIsOpen((previous) => !previous)}
@@ -89,18 +88,22 @@ export default function UserProfileDropdown() {
         aria-label="Abrir menú de usuario"
         aria-expanded={isOpen}
       >
-        {user.avatar && !imageError ? (
-          <img
-            src={user.avatar}
-            alt={fullName}
-            onError={() => setImageError(true)}
-            className="h-8 w-8 rounded-full object-cover border border-slate-200 dark:border-slate-700 shadow-sm"
-          />
-        ) : (
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-teal-500 text-white font-bold text-xs shadow-sm">
-            {getInitials(fullName)}
-          </div>
-        )}
+        <div className="relative shrink-0">
+          {user.avatar && !imageError ? (
+            <img
+              src={user.avatar}
+              alt={fullName}
+              onError={() => setImageError(true)}
+              className="h-8 w-8 rounded-full object-cover border border-slate-200 dark:border-slate-700 shadow-sm"
+            />
+          ) : (
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-teal-500 text-white font-bold text-xs shadow-sm">
+              {getInitials(fullName)}
+            </div>
+          )}
+          {/* Indicador de estado activo en verde */}
+          <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-950 shadow-sm" />
+        </div>
 
         <span className="hidden text-sm font-semibold text-slate-800 dark:text-slate-100 sm:block max-w-[140px] truncate">
           {fullName}
@@ -196,15 +199,6 @@ export default function UserProfileDropdown() {
             >
               <Calendar size={16} className="text-slate-400 group-hover:text-cyan-500 transition-colors" />
               <span>Mis Citas</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleNavigation("/configuracion")}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/70 transition-colors cursor-pointer group"
-            >
-              <Settings size={16} className="text-slate-400 group-hover:text-cyan-500 transition-colors" />
-              <span>Configuración</span>
             </button>
           </div>
 

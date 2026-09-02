@@ -21,6 +21,7 @@ export function DashboardLayout({
 
   const { theme } = useTheme();
   const { user, isAuthenticated } = useAuth();
+  const userName = user?.name || "Usuario";
 
   // Bloqueo de retroceso fuera del Dashboard (Google Accounts / Login)
   useEffect(() => {
@@ -41,8 +42,6 @@ export function DashboardLayout({
   const backgroundImage =
     theme === "dark" ? fondoDark : fondoLight;
 
-  const userName = user?.name || "Usuario";
-
   return (
     <div className="flex min-h-screen min-w-0 max-w-full overflow-x-hidden text-slate-900 dark:text-slate-100 relative">
       <Sidebar
@@ -50,7 +49,7 @@ export function DashboardLayout({
         onMobileClose={() => setMobileOpen(false)}
       />
 
-      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+      <div className="flex h-screen min-w-0 flex-1 flex-col overflow-y-auto">
         <PageHeader
           userName={userName}
           mobileOpen={mobileOpen}
@@ -60,13 +59,13 @@ export function DashboardLayout({
         />
 
         <main
-          className="flex min-w-0 flex-1 flex-col overflow-y-auto bg-cover bg-center bg-no-repeat transition-all duration-300 relative"
+          className="flex min-w-0 flex-1 flex-col bg-cover bg-center bg-no-repeat transition-all duration-300 relative"
           style={{
             backgroundImage: `url(${backgroundImage})`,
           }}
         >
-          {/* Contenido principal fluido sin capas de opacamiento sobre el fondo */}
-          <div className="relative z-10 w-full max-w-7xl mx-auto p-6 sm:p-8 md:p-10">
+          {/* Contenido principal fluido con ancho máximo de 1440px */}
+          <div className="relative z-10 w-full max-w-[1440px] mx-auto p-4 sm:p-6 md:p-8">
             {children}
           </div>
         </main>

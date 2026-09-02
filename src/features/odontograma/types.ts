@@ -88,7 +88,7 @@ export const createDefaultToothState = (toothNumber: number): ToothState => ({
 
 // Diagnosis color mapping for clinical visualization
 export const DIAGNOSIS_COLORS: Record<Diagnosis, string> = {
-  none: 'fill-white hover:fill-slate-100',
+  none: 'fill-slate-100/90 dark:fill-white/90 hover:fill-white dark:hover:fill-slate-100',
   caries: 'fill-red-500',
   restoration: 'fill-blue-500',
   sealant: 'fill-amber-500',
@@ -98,7 +98,7 @@ export const DIAGNOSIS_COLORS: Record<Diagnosis, string> = {
   implant: 'fill-teal-500',
   extraction: 'fill-slate-800',
   fracture: 'fill-orange-500',
-  mobility: 'fill-yellow-500',
+  mobility: 'fill-yellow-400',
 };
 
 // Surface labels for clinical documentation
@@ -110,16 +110,118 @@ export const SURFACE_LABELS: Record<Surface, string> = {
   oclusal: 'O',
 };
 
+// Clinical Diagnosis definition with visual halo styling
+export interface DiagnosisLegendItem {
+  diagnosis: Diagnosis;
+  label: string;
+  color: string;
+  hex: string;
+  glow: string;
+  ring: string;
+  badgeBg: string;
+  badgeBorder: string;
+}
+
 // Diagnosis legend for UI
-export const DIAGNOSIS_LEGEND: { diagnosis: Diagnosis; label: string; color: string }[] = [
-  { diagnosis: 'caries', label: 'Caries', color: 'bg-red-500' },
-  { diagnosis: 'restoration', label: 'Obturación', color: 'bg-blue-500' },
-  { diagnosis: 'sealant', label: 'Sellante', color: 'bg-amber-500' },
-  { diagnosis: 'endodontic', label: 'Endodoncia', color: 'bg-purple-500' },
-  { diagnosis: 'crown', label: 'Corona', color: 'bg-emerald-500' },
-  { diagnosis: 'bridge', label: 'Puente', color: 'bg-cyan-500' },
-  { diagnosis: 'implant', label: 'Implante', color: 'bg-teal-500' },
-  { diagnosis: 'extraction', label: 'Extracción', color: 'bg-slate-800' },
-  { diagnosis: 'fracture', label: 'Fractura', color: 'bg-orange-500' },
-  { diagnosis: 'mobility', label: 'Movilidad', color: 'bg-yellow-500' },
+export const DIAGNOSIS_LEGEND: DiagnosisLegendItem[] = [
+  {
+    diagnosis: 'caries',
+    label: 'Caries',
+    color: 'bg-red-500',
+    hex: '#EF4444',
+    glow: 'shadow-[0_0_16px_rgba(239,68,68,0.45)]',
+    ring: 'ring-red-400',
+    badgeBg: 'bg-red-500/20 text-red-700 dark:text-red-200',
+    badgeBorder: 'border-red-500/40',
+  },
+  {
+    diagnosis: 'restoration',
+    label: 'Obturación',
+    color: 'bg-blue-500',
+    hex: '#3B82F6',
+    glow: 'shadow-[0_0_16px_rgba(59,130,246,0.45)]',
+    ring: 'ring-blue-400',
+    badgeBg: 'bg-blue-500/20 text-blue-700 dark:text-blue-200',
+    badgeBorder: 'border-blue-500/40',
+  },
+  {
+    diagnosis: 'sealant',
+    label: 'Sellante',
+    color: 'bg-amber-500',
+    hex: '#F59E0B',
+    glow: 'shadow-[0_0_16px_rgba(245,158,11,0.45)]',
+    ring: 'ring-amber-400',
+    badgeBg: 'bg-amber-500/20 text-amber-700 dark:text-amber-200',
+    badgeBorder: 'border-amber-500/40',
+  },
+  {
+    diagnosis: 'endodontic',
+    label: 'Endodoncia',
+    color: 'bg-purple-500',
+    hex: '#A855F7',
+    glow: 'shadow-[0_0_16px_rgba(168,85,247,0.45)]',
+    ring: 'ring-purple-400',
+    badgeBg: 'bg-purple-500/20 text-purple-700 dark:text-purple-200',
+    badgeBorder: 'border-purple-500/40',
+  },
+  {
+    diagnosis: 'crown',
+    label: 'Corona',
+    color: 'bg-emerald-500',
+    hex: '#10B981',
+    glow: 'shadow-[0_0_16px_rgba(16,185,129,0.45)]',
+    ring: 'ring-emerald-400',
+    badgeBg: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-200',
+    badgeBorder: 'border-emerald-500/40',
+  },
+  {
+    diagnosis: 'bridge',
+    label: 'Puente',
+    color: 'bg-cyan-500',
+    hex: '#06B6D4',
+    glow: 'shadow-[0_0_16px_rgba(6,182,212,0.45)]',
+    ring: 'ring-cyan-400',
+    badgeBg: 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-200',
+    badgeBorder: 'border-cyan-500/40',
+  },
+  {
+    diagnosis: 'implant',
+    label: 'Implante',
+    color: 'bg-teal-500',
+    hex: '#14B8A6',
+    glow: 'shadow-[0_0_16px_rgba(20,184,166,0.45)]',
+    ring: 'ring-teal-400',
+    badgeBg: 'bg-teal-500/20 text-teal-700 dark:text-teal-200',
+    badgeBorder: 'border-teal-500/40',
+  },
+  {
+    diagnosis: 'extraction',
+    label: 'Extracción',
+    color: 'bg-slate-700',
+    hex: '#475569',
+    glow: 'shadow-[0_0_16px_rgba(71,85,105,0.45)]',
+    ring: 'ring-slate-400',
+    badgeBg: 'bg-slate-500/20 text-slate-700 dark:text-slate-200',
+    badgeBorder: 'border-slate-500/40',
+  },
+  {
+    diagnosis: 'fracture',
+    label: 'Fractura',
+    color: 'bg-orange-500',
+    hex: '#F97316',
+    glow: 'shadow-[0_0_16px_rgba(249,115,22,0.45)]',
+    ring: 'ring-orange-400',
+    badgeBg: 'bg-orange-500/20 text-orange-700 dark:text-orange-200',
+    badgeBorder: 'border-orange-500/40',
+  },
+  {
+    diagnosis: 'mobility',
+    label: 'Movilidad',
+    color: 'bg-yellow-400',
+    hex: '#FACC15',
+    glow: 'shadow-[0_0_16px_rgba(250,204,21,0.45)]',
+    ring: 'ring-yellow-300',
+    badgeBg: 'bg-yellow-400/20 text-yellow-800 dark:text-yellow-200',
+    badgeBorder: 'border-yellow-400/40',
+  },
 ];
