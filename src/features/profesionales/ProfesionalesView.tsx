@@ -1,11 +1,4 @@
-import {
-  useState,
-  useEffect,
-  useCallback,
-  useMemo,
-  type ReactNode,
-  type FormEvent,
-} from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Stethoscope,
   Plus,
@@ -25,7 +18,6 @@ import {
   ChevronsLeft,
   ChevronsRight,
   MapPin,
-  Upload,
   List,
   Grid2X2,
   MoreVertical,
@@ -188,8 +180,6 @@ export function ProfesionalesView() {
     useState<ProfessionalFull[]>(fallbackProfessionals);
 
   const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false);
-
   const [search, setSearch] = useState("");
   const [especialidadFilter, setEspecialidadFilter] =
     useState("Todas las especialidades");
@@ -197,10 +187,7 @@ export function ProfesionalesView() {
     useState("Todos los estados");
   const [disponibilidadFilter, setDisponibilidadFilter] =
     useState("Cualquier disponibilidad");
-
-  const [vista, setVista] =
-    useState<"lista" | "tarjeta">("lista");
-
+  const [vista, setVista] = useState<"lista" | "tarjeta">("lista");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(3);
 
@@ -208,9 +195,7 @@ export function ProfesionalesView() {
     useState<ProfessionalFull | null>(null);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
-
-  const [successToast, setSuccessToast] =
-    useState<string | null>(null);
+  const [successToast, setSuccessToast] = useState<string | null>(null);
 
   const [formNombre, setFormNombre] = useState("");
   const [formEspecialidad, setFormEspecialidad] =
@@ -220,14 +205,6 @@ export function ProfesionalesView() {
   const [formTelefono, setFormTelefono] = useState("");
   const [formBio, setFormBio] = useState("");
 
-  const showToast = useCallback((message: string) => {
-    setSuccessToast(message);
-
-    window.setTimeout(() => {
-      setSuccessToast(null);
-    }, 3000);
-  }, []);
-
   const fetchProfessionals = useCallback(async () => {
     setLoading(true);
 
@@ -235,18 +212,15 @@ export function ProfesionalesView() {
       const data = await professionalService.getAll();
 
       if (data && data.length > 0) {
-        const mapped: ProfessionalFull[] = data.map((p, index) => {
+        const mapped: ProfessionalFull[] = data.map((p, idx) => {
           const fallback =
             fallbackProfessionals[
-              index % fallbackProfessionals.length
+              idx % fallbackProfessionals.length
             ];
 
-          const firstName = p.firstName?.trim() || "";
-          const lastName = p.lastName?.trim() || "";
-
           const fullName =
-            firstName || lastName
-              ? `Dr(a). ${firstName} ${lastName}`.trim()
+            p.firstName && p.lastName
+              ? `Dr(a). ${p.firstName} ${p.lastName}`
               : fallback.nombreCompleto;
 
           return {
@@ -262,24 +236,11 @@ export function ProfesionalesView() {
           };
         });
 
-        const uniqueProfessionals = mapped.filter(
-          (professional, index, array) =>
-            array.findIndex(
-              (item) =>
-                item.id === professional.id,
-            ) === index,
-        );
-
-        setProfesionales(uniqueProfessionals);
+        setProfesionales(mapped);
       } else {
         setProfesionales(fallbackProfessionals);
       }
-    } catch (error) {
-      console.warn(
-        "API Professionals unavailable, using fallback:",
-        error,
-      );
-
+    } catch {
       setProfesionales(fallbackProfessionals);
     } finally {
       setLoading(false);
@@ -290,117 +251,31 @@ export function ProfesionalesView() {
     fetchProfessionals();
   }, [fetchProfessionals]);
 
-  useEffect(() => {
-    if (currentPage > 1) {
-      setCurrentPage(1);
-    }
-  }, [
-    search,
-    especialidadFilter,
-    estadoFilter,
-    disponibilidadFilter,
-    itemsPerPage,
-  ]);
-
-  const resetForm = () => {
-    setFormNombre("");
-    setFormEspecialidad("Odontología General");
-    setFormRegistro("");
-    setFormEmail("");
-    setFormTelefono("");
-    setFormBio("");
-  };
-
-  const handleCloseCreateModal = () => {
-    if (creating) return;
-
-    setShowCreateModal(false);
-    resetForm();
-  };
-
   const handleCreateProfessional = async (
-    e: FormEvent<HTMLFormElement>,
+    e: React.FormEvent,
   ) => {
     e.preventDefault();
 
-    if (creating) return;
-
-    const nombre = formNombre.trim();
-    const registro = formRegistro.trim();
-
-    if (!nombre || !registro) {
-      showToast(
-        "Completa los campos obligatorios",
-      );
+    if (!formNombre.trim() || !formRegistro.trim()) {
       return;
     }
-
-    const normalizedName = nombre
-      .toLowerCase()
-      .replace(/\s+/g, " ")
-      .trim();
-
-    const normalizedLicense = registro
-      .toLowerCase()
-      .replace(/\s+/g, "")
-      .trim();
-
-    const alreadyExists = profesionales.some(
-      (professional) => {
-        const existingName = professional.nombreCompleto
-          .replace(/dr\(a\)\.|dra\.|dr\./gi, "")
-          .toLowerCase()
-          .replace(/\s+/g, " ")
-          .trim();
-
-        const existingLicense = professional.licenseNumber
-          .toLowerCase()
-          .replace(/\s+/g, "")
-          .trim();
-
-        return (
-          existingName === normalizedName ||
-          existingLicense === normalizedLicense
-        );
-      },
-    );
-
-    if (alreadyExists) {
-      showToast(
-        "Este profesional ya se encuentra registrado",
-      );
-      return;
-    }
-
-    setCreating(true);
-
-    const timestamp = Date.now();
-
-    const nameParts = nombre
-      .replace(/dr\(a\)\.|dra\.|dr\./gi, "")
-      .trim()
-      .split(/\s+/);
-
-    const firstName = nameParts[0] || "";
-    const lastName =
-      nameParts.slice(1).join(" ") || "";
 
     const newProf: ProfessionalFull = {
-      id: `prof-${timestamp}`,
-      personId: `person-${timestamp}`,
+      id: `prof-${Date.now()}`,
+      personId: `person-${Date.now()}`,
       specialtyId: "esp-gen",
-      licenseNumber: registro,
+      licenseNumber: formRegistro.trim(),
       bio:
         formBio.trim() ||
         "Profesional odontológico en NexusOdonto.",
       isActive: true,
       createdAt: new Date().toISOString(),
-      firstName,
-      lastName,
-      nombreCompleto:
-        /^dr|^dra/i.test(nombre)
-          ? nombre
-          : `Dr(a). ${nombre}`,
+      firstName: formNombre.trim().split(" ")[0],
+      lastName:
+        formNombre.trim().split(" ").slice(1).join(" ") || "",
+      nombreCompleto: formNombre.startsWith("Dr")
+        ? formNombre.trim()
+        : `Dr(a). ${formNombre.trim()}`,
       especialidad: formEspecialidad,
       email:
         formEmail.trim() ||
@@ -411,67 +286,40 @@ export function ProfesionalesView() {
       turnos: defaultTurnos,
     };
 
-    let createdInApi = false;
-
-    try {
-      await professionalService.create({
-        personId: newProf.personId,
-        specialtyId:
-          "12000000-0000-0000-0000-000000000001",
-        licenseNumber: newProf.licenseNumber,
-        bio: newProf.bio,
-        isActive: true,
-      });
-
-      createdInApi = true;
-    } catch (error) {
-      console.warn(
-        "Could not save professional directly:",
-        error,
-      );
-    }
-
     setProfesionales((prev) => {
-      const exists = prev.some(
-        (professional) =>
-          professional.id === newProf.id ||
-          professional.licenseNumber
-            .toLowerCase()
-            .replace(/\s+/g, "") ===
-            newProf.licenseNumber
-              .toLowerCase()
-              .replace(/\s+/g, ""),
+      const alreadyExists = prev.some(
+        (prof) =>
+          prof.licenseNumber.toLowerCase() ===
+          newProf.licenseNumber.toLowerCase(),
       );
 
-      if (exists) {
+      if (alreadyExists) {
         return prev;
       }
 
       return [newProf, ...prev];
     });
 
-    setCurrentPage(1);
     setShowCreateModal(false);
-    resetForm();
+    setFormNombre("");
+    setFormEspecialidad("Odontología General");
+    setFormRegistro("");
+    setFormEmail("");
+    setFormTelefono("");
+    setFormBio("");
 
-    showToast(
-      createdInApi
-        ? "¡Odontólogo registrado exitosamente!"
-        : "Profesional agregado correctamente",
-    );
+    setSuccessToast("¡Odontólogo registrado exitosamente!");
 
-    setCreating(false);
+    setTimeout(() => {
+      setSuccessToast(null);
+    }, 3500);
   };
 
   const especialidades = useMemo(() => {
     return [
       "Todas las especialidades",
       ...Array.from(
-        new Set(
-          profesionales
-            .map((p) => p.especialidad)
-            .filter(Boolean),
-        ),
+        new Set(profesionales.map((p) => p.especialidad)),
       ),
     ];
   }, [profesionales]);
@@ -482,44 +330,26 @@ export function ProfesionalesView() {
     return profesionales.filter((p) => {
       const matchesSearch =
         !query ||
-        p.nombreCompleto
-          .toLowerCase()
-          .includes(query) ||
-        p.especialidad
-          .toLowerCase()
-          .includes(query) ||
-        p.licenseNumber
-          .toLowerCase()
-          .includes(query) ||
-        (p.email || "")
-          .toLowerCase()
-          .includes(query) ||
-        (p.phone || "")
-          .toLowerCase()
-          .includes(query);
+        p.nombreCompleto.toLowerCase().includes(query) ||
+        p.especialidad.toLowerCase().includes(query) ||
+        p.licenseNumber.toLowerCase().includes(query) ||
+        (p.email || "").toLowerCase().includes(query);
 
       const matchesSpecialty =
-        especialidadFilter ===
-          "Todas las especialidades" ||
+        especialidadFilter === "Todas las especialidades" ||
         p.especialidad === especialidadFilter;
 
       const matchesStatus =
         estadoFilter === "Todos los estados" ||
-        (estadoFilter === "Activos" &&
-          p.isActive) ||
-        (estadoFilter === "Inactivos" &&
-          !p.isActive);
+        (estadoFilter === "Activos" && p.isActive) ||
+        (estadoFilter === "Inactivos" && !p.isActive);
 
       const activeDays =
-        p.turnos?.filter(
-          (turno) => turno.activo,
-        ).length || 0;
+        p.turnos?.filter((t) => t.activo).length || 0;
 
       const matchesAvailability =
-        disponibilidadFilter ===
-          "Cualquier disponibilidad" ||
-        (disponibilidadFilter ===
-          "Disponible hoy" &&
+        disponibilidadFilter === "Cualquier disponibilidad" ||
+        (disponibilidadFilter === "Disponible hoy" &&
           activeDays > 0);
 
       return (
@@ -537,12 +367,19 @@ export function ProfesionalesView() {
     disponibilidadFilter,
   ]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    search,
+    especialidadFilter,
+    estadoFilter,
+    disponibilidadFilter,
+    itemsPerPage,
+  ]);
+
   const totalPages = Math.max(
     1,
-    Math.ceil(
-      profesionalesFiltrados.length /
-        itemsPerPage,
-    ),
+    Math.ceil(profesionalesFiltrados.length / itemsPerPage),
   );
 
   useEffect(() => {
@@ -551,115 +388,70 @@ export function ProfesionalesView() {
     }
   }, [currentPage, totalPages]);
 
-  const currentProfessionals = useMemo(() => {
-    const start =
-      (currentPage - 1) * itemsPerPage;
-
-    return profesionalesFiltrados.slice(
-      start,
-      start + itemsPerPage,
-    );
-  }, [
-    profesionalesFiltrados,
-    currentPage,
-    itemsPerPage,
-  ]);
+  const currentProfessionals = profesionalesFiltrados.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage,
+  );
 
   const goToPage = (page: number) => {
     setCurrentPage(
-      Math.max(
-        1,
-        Math.min(page, totalPages),
-      ),
+      Math.max(1, Math.min(page, totalPages)),
     );
   };
 
   const clearFilters = () => {
     setSearch("");
-    setEspecialidadFilter(
-      "Todas las especialidades",
-    );
+    setEspecialidadFilter("Todas las especialidades");
     setEstadoFilter("Todos los estados");
-    setDisponibilidadFilter(
-      "Cualquier disponibilidad",
-    );
+    setDisponibilidadFilter("Cualquier disponibilidad");
   };
 
   const getInitials = (nombre: string) => {
     return nombre
-      .replace(/Dr\(a\)\.|Dra\.|Dr\./gi, "")
+      .replace("Dra.", "")
+      .replace("Dr.", "")
+      .replace("Dr(a).", "")
       .trim()
       .split(" ")
-      .filter(Boolean)
       .slice(0, 2)
-      .map((word) =>
-        word.charAt(0).toUpperCase(),
-      )
+      .map((word) => word.charAt(0).toUpperCase())
       .join("");
   };
 
-  const getSpecialtyShortName = (
-    specialty: string,
-  ) => {
-    const normalized =
-      specialty.toLowerCase();
-
-    if (
-      normalized.includes("ortodoncia")
-    ) {
+  const getSpecialtyShortName = (specialty: string) => {
+    if (specialty.toLowerCase().includes("ortodoncia")) {
       return "Ortodoncia";
     }
 
-    if (
-      normalized.includes("cirugía") ||
-      normalized.includes("implantología")
-    ) {
+    if (specialty.toLowerCase().includes("cirugía")) {
       return "Implantología";
     }
 
-    if (
-      normalized.includes("endodoncia")
-    ) {
+    if (specialty.toLowerCase().includes("endodoncia")) {
       return "Endodoncia";
-    }
-
-    if (
-      normalized.includes("odontología general")
-    ) {
-      return "Odontología General";
     }
 
     return specialty;
   };
 
-  const getExperience = (
-    professional: ProfessionalFull,
-  ) => {
-    const created =
-      new Date(
-        professional.createdAt,
-      ).getFullYear();
+  const getExperience = (professional: ProfessionalFull) => {
+    const created = new Date(
+      professional.createdAt,
+    ).getFullYear();
 
-    const current =
-      new Date().getFullYear();
+    const current = new Date().getFullYear();
 
-    const years = Math.max(
-      1,
-      current - created,
-    );
+    const years = Math.max(1, current - created);
 
-    return `Más de ${
-      years + 5
-    } años de experiencia`;
+    return `Más de ${years + 5} años de experiencia`;
   };
 
   const getNextAvailability = (
     professional: ProfessionalFull,
   ) => {
-    const activeTurn =
-      professional.turnos?.find(
-        (turno) => turno.activo,
-      );
+    const activeTurn = professional.turnos?.find(
+      (turno) => turno.activo,
+    );
 
     return {
       date:
@@ -668,31 +460,29 @@ export function ProfesionalesView() {
           : professional.firstName === "Juan"
             ? "Hoy, 3:30 PM"
             : "Hoy, 2:00 PM",
-      room:
-        activeTurn?.sillon ||
-        "Consultorio 1",
+      room: activeTurn?.sillon || "Consultorio 1",
     };
   };
 
-  const activeProfessionals =
-    profesionales.filter(
-      (p) => p.isActive,
-    ).length;
+  const activeProfessionals = profesionales.filter(
+    (p) => p.isActive,
+  ).length;
 
-  const activeSpecialties =
-    new Set(
-      profesionales.map(
-        (p) => p.especialidad,
-      ),
-    ).size;
+  const activeSpecialties = new Set(
+    profesionales.map((p) => p.especialidad),
+  ).size;
+
+  const generalActiveDays = defaultTurnos.filter(
+    (turno) => turno.activo,
+  ).length;
 
   return (
-    <div className="relative h-[calc(100vh-70px)] w-full overflow-hidden bg-transparent px-3 py-3 text-slate-900 dark:text-slate-100 lg:px-5 lg:py-5">
+    <div className="relative h-[calc(100vh-70px)] w-full overflow-hidden px-3 py-3 text-slate-100 lg:px-5 lg:py-5">
       {successToast && (
-        <div className="fixed bottom-6 right-6 z-[100] flex items-center gap-3 rounded-2xl border border-cyan-500/20 bg-white px-5 py-3 text-slate-900 shadow-2xl dark:bg-slate-950 dark:text-white">
+        <div className="fixed bottom-6 right-6 z-[100] flex items-center gap-3 rounded-2xl border border-cyan-400/20 bg-slate-950 px-5 py-3 shadow-2xl">
           <CheckCircle2
             size={18}
-            className="text-cyan-500"
+            className="text-cyan-400"
           />
 
           <span className="text-sm font-semibold">
@@ -701,22 +491,22 @@ export function ProfesionalesView() {
         </div>
       )}
 
-      <div className="mx-auto flex h-full w-full max-w-[1600px] min-w-0 flex-col gap-3 overflow-hidden">
+      <div className="mx-auto flex h-full w-full max-w-[1500px] flex-col gap-3 overflow-hidden">
         <div className="flex shrink-0 items-center justify-between gap-4">
-          <div className="flex min-w-0 items-center gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-cyan-500/30 bg-cyan-500/10">
+          <div className="flex items-center gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-cyan-400/30 bg-cyan-500/10">
               <Users
                 size={27}
-                className="text-cyan-500 dark:text-cyan-400"
+                className="text-cyan-400"
               />
             </div>
 
-            <div className="min-w-0">
-              <h1 className="truncate text-2xl font-bold tracking-tight text-slate-900 dark:text-white lg:text-3xl">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-white lg:text-3xl">
                 Profesionales y Disponibilidad
               </h1>
 
-              <p className="mt-1 hidden text-xs text-slate-500 dark:text-slate-400 sm:block lg:text-sm">
+              <p className="mt-1 text-xs text-slate-400 lg:text-sm">
                 Gestiona tu equipo de odontólogos,
                 especialidades médicas y horarios de
                 atención.
@@ -724,41 +514,22 @@ export function ProfesionalesView() {
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2 lg:gap-3">
-            <button
-              type="button"
-              onClick={() =>
-                showToast(
-                  "Función de importación próximamente disponible",
-                )
-              }
-              className="hidden items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs font-semibold text-slate-600 transition hover:border-cyan-500/30 hover:bg-cyan-500/5 dark:border-slate-700 dark:bg-slate-950/50 dark:text-slate-300 md:flex"
-            >
-              <Upload size={16} />
-              Importar profesionales
-            </button>
+          <button
+            type="button"
+            onClick={() => setShowCreateModal(true)}
+            className="flex shrink-0 items-center gap-2 rounded-xl bg-cyan-500 px-5 py-3 text-xs font-bold text-slate-950 shadow-lg shadow-cyan-500/10 transition hover:bg-cyan-400 active:scale-95"
+          >
+            <Plus size={17} />
 
-            <button
-              type="button"
-              onClick={() =>
-                setShowCreateModal(true)
-              }
-              className="flex items-center gap-2 rounded-xl bg-cyan-500 px-4 py-3 text-xs font-bold text-slate-950 shadow-lg shadow-cyan-500/10 transition hover:bg-cyan-400 active:scale-95 lg:px-5"
-            >
-              <Plus size={17} />
-
-              <span className="hidden sm:inline">
-                Nuevo profesional
-              </span>
-            </button>
-          </div>
+            <span className="hidden sm:inline">
+              Nuevo profesional
+            </span>
+          </button>
         </div>
 
         <div className="grid shrink-0 grid-cols-2 gap-3 lg:grid-cols-5">
           <StatCard
-            icon={
-              <UserRoundCheck size={23} />
-            }
+            icon={<UserRoundCheck size={23} />}
             title="Profesionales activos"
             value={activeProfessionals}
             description="En servicio actualmente"
@@ -769,9 +540,7 @@ export function ProfesionalesView() {
             title="Disponibles hoy"
             value={
               profesionales.filter((p) =>
-                p.turnos?.some(
-                  (t) => t.activo,
-                ),
+                p.turnos?.some((t) => t.activo),
               ).length
             }
             description="Con disponibilidad"
@@ -799,13 +568,13 @@ export function ProfesionalesView() {
           />
         </div>
 
-        <div className="grid min-h-0 flex-1 grid-cols-[230px_minmax(0,1fr)] gap-3 overflow-hidden">
+        <div className="grid min-h-0 flex-1 grid-cols-[245px_minmax(0,1fr)] gap-3">
           <aside className="flex min-h-0 flex-col gap-3 overflow-hidden">
-            <div className="rounded-2xl border border-slate-200 bg-white/90 p-3 shadow-xl dark:border-slate-700/70 dark:bg-slate-950/70">
+            <div className="rounded-2xl border border-slate-700/70 bg-slate-950/70 p-3 shadow-xl backdrop-blur-xl">
               <div className="relative">
                 <Search
                   size={16}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
                 />
 
                 <input
@@ -815,11 +584,11 @@ export function ProfesionalesView() {
                     setSearch(e.target.value)
                   }
                   placeholder="Buscar profesional"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-xs text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500"
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950 py-2.5 pl-9 pr-3 text-xs text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-500"
                 />
               </div>
 
-              <div className="my-3 border-t border-slate-200 dark:border-slate-800" />
+              <div className="my-3 border-t border-slate-800" />
 
               <div className="mb-3 flex items-center justify-between">
                 <span className="text-sm font-bold">
@@ -829,7 +598,7 @@ export function ProfesionalesView() {
                 <button
                   type="button"
                   onClick={clearFilters}
-                  className="text-xs font-semibold text-cyan-600 hover:text-cyan-500 dark:text-cyan-400 dark:hover:text-cyan-300"
+                  className="text-xs font-semibold text-cyan-400 hover:text-cyan-300"
                 >
                   Limpiar
                 </button>
@@ -839,9 +608,7 @@ export function ProfesionalesView() {
                 <FilterSelect
                   label="Especialidad"
                   value={especialidadFilter}
-                  onChange={
-                    setEspecialidadFilter
-                  }
+                  onChange={setEspecialidadFilter}
                   options={especialidades}
                 />
 
@@ -858,12 +625,8 @@ export function ProfesionalesView() {
 
                 <FilterSelect
                   label="Disponibilidad"
-                  value={
-                    disponibilidadFilter
-                  }
-                  onChange={
-                    setDisponibilidadFilter
-                  }
+                  value={disponibilidadFilter}
+                  onChange={setDisponibilidadFilter}
                   options={[
                     "Cualquier disponibilidad",
                     "Disponible hoy",
@@ -872,20 +635,18 @@ export function ProfesionalesView() {
               </div>
 
               <div className="mt-4">
-                <span className="mb-2 block text-xs font-semibold text-slate-500 dark:text-slate-400">
+                <span className="mb-2 block text-xs font-semibold text-slate-400">
                   Vista
                 </span>
 
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={() =>
-                      setVista("lista")
-                    }
+                    onClick={() => setVista("lista")}
                     className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold transition ${
                       vista === "lista"
-                        ? "border border-cyan-500/20 bg-cyan-500/10 text-cyan-600 dark:bg-cyan-500/15 dark:text-cyan-300"
-                        : "border border-slate-200 bg-slate-50 text-slate-500 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400 dark:hover:text-white"
+                        ? "border border-cyan-400/20 bg-cyan-500/15 text-cyan-300"
+                        : "border border-slate-700 bg-slate-950 text-slate-400 hover:text-white"
                     }`}
                   >
                     <List size={15} />
@@ -894,13 +655,11 @@ export function ProfesionalesView() {
 
                   <button
                     type="button"
-                    onClick={() =>
-                      setVista("tarjeta")
-                    }
+                    onClick={() => setVista("tarjeta")}
                     className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold transition ${
                       vista === "tarjeta"
-                        ? "border border-cyan-500/20 bg-cyan-500/10 text-cyan-600 dark:bg-cyan-500/15 dark:text-cyan-300"
-                        : "border border-slate-200 bg-slate-50 text-slate-500 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400 dark:hover:text-white"
+                        ? "border border-cyan-400/20 bg-cyan-500/15 text-cyan-300"
+                        : "border border-slate-700 bg-slate-950 text-slate-400 hover:text-white"
                     }`}
                   >
                     <Grid2X2 size={15} />
@@ -910,48 +669,72 @@ export function ProfesionalesView() {
               </div>
             </div>
 
-            <div className="shrink-0 rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-xl dark:border-slate-700/70 dark:bg-slate-950/70">
-              <div className="flex items-center gap-3">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-700/70 bg-slate-950/70 shadow-xl">
+              <div className="flex items-center gap-3 border-b border-slate-800 p-4">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-cyan-500/10">
                   <Clock
                     size={19}
-                    className="text-cyan-500 dark:text-cyan-400"
+                    className="text-cyan-400"
                   />
                 </div>
 
-                <div>
+                <div className="min-w-0">
                   <h3 className="text-sm font-bold">
                     Horario general
                   </h3>
 
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    Lunes - Viernes
-                  </p>
-
-                  <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
-                    8:00 AM - 6:00 PM
+                  <p className="mt-1 text-xs text-slate-400">
+                    Horarios de atención
                   </p>
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() =>
-                  showToast(
-                    "Visualización de horarios próximamente disponible",
-                  )
-                }
-                className="mt-4 w-full text-center text-xs font-semibold text-cyan-600 hover:text-cyan-500 dark:text-cyan-400 dark:hover:text-cyan-300"
-              >
-                Ver horarios detallados →
-              </button>
+              <div className="flex flex-1 flex-col justify-between p-4">
+                <div className="space-y-3">
+                  <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                      Jornada
+                    </p>
+
+                    <p className="mt-1 text-sm font-bold text-white">
+                      8:00 AM - 6:00 PM
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-cyan-400/10 bg-cyan-500/[0.04] p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                      Disponibilidad
+                    </p>
+
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-cyan-400" />
+
+                      <p className="text-xs font-semibold text-cyan-300">
+                        {generalActiveDays} días activos esta semana
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSuccessToast(
+                      "Visualización de horarios próximamente disponible",
+                    )
+                  }
+                  className="mt-4 w-full rounded-xl border border-cyan-400/20 bg-cyan-500/5 px-3 py-3 text-center text-xs font-semibold text-cyan-400 transition hover:bg-cyan-500/10 hover:text-cyan-300"
+                >
+                  Ver horarios detallados →
+                </button>
+              </div>
             </div>
           </aside>
 
-          <main className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white/90 shadow-2xl dark:border-slate-700/70 dark:bg-slate-950/70">
+          <main className="min-w-0 overflow-hidden rounded-2xl border border-slate-700/70 bg-slate-950/70 shadow-2xl backdrop-blur-xl">
             {vista === "lista" ? (
               <div className="flex h-full min-h-0 flex-col overflow-hidden">
-                <div className="grid shrink-0 grid-cols-[minmax(190px,1.2fr)_minmax(160px,1fr)_100px_minmax(150px,0.75fr)_35px] gap-4 border-b border-slate-200 px-4 py-4 text-[10px] font-bold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                <div className="grid shrink-0 grid-cols-[1.15fr_1fr_0.7fr_0.8fr_40px] gap-4 border-b border-slate-800 px-4 py-4 text-[10px] font-bold uppercase tracking-wide text-slate-400">
                   <span>Profesional</span>
                   <span>Especialidad</span>
                   <span>Estado</span>
@@ -959,41 +742,38 @@ export function ProfesionalesView() {
                   <span>Acciones</span>
                 </div>
 
-                <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+                <div className="min-h-0 flex-1 overflow-hidden">
                   {loading ? (
                     <div className="flex h-full items-center justify-center">
                       <RefreshCw
                         size={26}
-                        className="animate-spin text-cyan-500 dark:text-cyan-400"
+                        className="animate-spin text-cyan-400"
                       />
                     </div>
-                  ) : currentProfessionals.length ===
-                    0 ? (
+                  ) : currentProfessionals.length === 0 ? (
                     <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
                       <Users
                         size={35}
-                        className="text-slate-400 dark:text-slate-600"
+                        className="text-slate-600"
                       />
 
-                      <p className="text-sm text-slate-500 dark:text-slate-400">
+                      <p className="text-sm text-slate-400">
                         No se encontraron profesionales
                       </p>
                     </div>
                   ) : (
-                    currentProfessionals.map(
-                      (prof) => {
+                    <div className="flex h-full flex-col">
+                      {currentProfessionals.map((prof) => {
                         const availability =
-                          getNextAvailability(
-                            prof,
-                          );
+                          getNextAvailability(prof);
 
                         return (
                           <div
                             key={prof.id}
-                            className="grid min-h-[145px] grid-cols-[minmax(190px,1.2fr)_minmax(160px,1fr)_100px_minmax(150px,0.75fr)_35px] items-center gap-4 border-b border-slate-200 px-4 py-3 transition hover:bg-slate-900/[0.02] dark:border-slate-800 dark:hover:bg-white/[0.025]"
+                            className="grid min-h-0 flex-1 grid-cols-[1.15fr_1fr_0.7fr_0.8fr_40px] items-center gap-4 border-b border-slate-800 px-4 py-3 last:border-b-0 transition hover:bg-white/[0.025]"
                           >
                             <div className="flex min-w-0 items-center gap-3">
-                              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-cyan-500/10 bg-cyan-500/10 text-sm font-bold text-cyan-700 dark:text-cyan-200">
+                              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-cyan-400/10 bg-cyan-500/10 text-sm font-bold text-cyan-200">
                                 {getInitials(
                                   prof.nombreCompleto,
                                 )}
@@ -1001,81 +781,60 @@ export function ProfesionalesView() {
 
                               <div className="min-w-0">
                                 <div className="flex items-center gap-1.5">
-                                  <h3 className="truncate text-sm font-bold text-slate-900 dark:text-white">
-                                    {
-                                      prof.nombreCompleto
-                                    }
+                                  <h3 className="truncate text-sm font-bold text-white">
+                                    {prof.nombreCompleto}
                                   </h3>
 
                                   <CheckCircle2
                                     size={13}
-                                    className="shrink-0 text-cyan-500 dark:text-cyan-400"
+                                    className="shrink-0 text-cyan-400"
                                   />
                                 </div>
 
-                                <p className="mt-1 truncate text-xs font-semibold text-cyan-600 dark:text-cyan-400">
-                                  {
-                                    prof.especialidad
-                                  }
+                                <p className="mt-1 truncate text-xs font-semibold text-cyan-400">
+                                  {prof.especialidad}
                                 </p>
 
                                 <p className="mt-2 text-[10px] text-slate-500">
-                                  REG:{" "}
-                                  {
-                                    prof.licenseNumber
-                                  }
+                                  REG: {prof.licenseNumber}
                                 </p>
 
                                 {prof.email && (
                                   <div className="mt-1 flex items-center gap-1 text-[10px] text-slate-500">
-                                    <Mail
-                                      size={10}
-                                    />
+                                    <Mail size={10} />
 
                                     <span className="truncate">
-                                      {
-                                        prof.email
-                                      }
+                                      {prof.email}
                                     </span>
                                   </div>
                                 )}
 
                                 {prof.phone && (
                                   <div className="mt-1 flex items-center gap-1 text-[10px] text-slate-500">
-                                    <Phone
-                                      size={10}
-                                    />
+                                    <Phone size={10} />
 
-                                    <span className="truncate">
-                                      {
-                                        prof.phone
-                                      }
-                                    </span>
+                                    <span>{prof.phone}</span>
                                   </div>
                                 )}
                               </div>
                             </div>
 
                             <div className="min-w-0">
-                              <span className="inline-flex max-w-full truncate rounded-full border border-cyan-500/30 bg-cyan-500/5 px-3 py-1.5 text-xs font-medium text-cyan-700 dark:text-cyan-200">
+                              <span className="inline-flex rounded-full border border-cyan-400/30 bg-cyan-500/5 px-3 py-1.5 text-xs font-medium text-cyan-200">
                                 {getSpecialtyShortName(
                                   prof.especialidad,
                                 )}
                               </span>
 
-                              <p className="mt-3 line-clamp-3 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                              <p className="mt-3 line-clamp-3 text-xs leading-5 text-slate-400">
                                 {prof.bio}
                               </p>
 
-                              <div className="mt-3 flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400">
-                                <Calendar
-                                  size={12}
-                                />
+                              <div className="mt-3 flex items-center gap-1.5 text-[10px] text-slate-400">
+                                <Calendar size={12} />
 
                                 <span>
-                                  {getExperience(
-                                    prof,
-                                  )}
+                                  {getExperience(prof)}
                                 </span>
                               </div>
                             </div>
@@ -1084,15 +843,15 @@ export function ProfesionalesView() {
                               <span
                                 className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold ${
                                   prof.isActive
-                                    ? "border-cyan-500/30 bg-cyan-500/10 text-cyan-600 dark:text-cyan-300"
-                                    : "border-slate-300 bg-slate-100 text-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                                    ? "border-cyan-400/30 bg-cyan-500/10 text-cyan-300"
+                                    : "border-slate-600 bg-slate-800 text-slate-400"
                                 }`}
                               >
                                 <span
                                   className={`h-1.5 w-1.5 rounded-full ${
                                     prof.isActive
-                                      ? "bg-cyan-500 dark:bg-cyan-400"
-                                      : "bg-slate-400 dark:bg-slate-500"
+                                      ? "bg-cyan-400"
+                                      : "bg-slate-500"
                                   }`}
                                 />
 
@@ -1105,34 +864,26 @@ export function ProfesionalesView() {
                             <button
                               type="button"
                               onClick={() =>
-                                setSelectedProfForSchedule(
-                                  prof,
-                                )
+                                setSelectedProfForSchedule(prof)
                               }
-                              className="min-w-0 rounded-xl p-2 text-left transition hover:bg-cyan-500/5"
+                              className="min-w-0 text-left"
                             >
-                              <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-200">
+                              <div className="flex items-center gap-2 text-xs font-bold text-slate-200">
                                 <Calendar
                                   size={15}
                                   className="text-slate-400"
                                 />
 
-                                <span className="truncate">
-                                  {
-                                    availability.date
-                                  }
+                                <span>
+                                  {availability.date}
                                 </span>
                               </div>
 
-                              <div className="mt-2 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                                <MapPin
-                                  size={14}
-                                />
+                              <div className="mt-2 flex items-center gap-2 text-xs text-slate-400">
+                                <MapPin size={14} />
 
-                                <span className="truncate">
-                                  {
-                                    availability.room
-                                  }
+                                <span>
+                                  {availability.room}
                                 </span>
                               </div>
                             </button>
@@ -1140,95 +891,68 @@ export function ProfesionalesView() {
                             <button
                               type="button"
                               onClick={() =>
-                                setSelectedProfForSchedule(
-                                  prof,
-                                )
+                                setSelectedProfForSchedule(prof)
                               }
-                              className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-cyan-500/10 hover:text-cyan-600 dark:hover:text-cyan-300"
+                              className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-cyan-500/10 hover:text-cyan-300"
                             >
-                              <MoreVertical
-                                size={18}
-                              />
+                              <MoreVertical size={18} />
                             </button>
                           </div>
                         );
-                      },
-                    )
+                      })}
+                    </div>
                   )}
                 </div>
 
-                <div className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-200 px-4 py-3 dark:border-slate-800">
+                <div className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-800 px-4 py-3">
                   <p className="hidden text-xs text-slate-500 sm:block">
                     Mostrando{" "}
-                    {profesionalesFiltrados.length ===
-                    0
+                    {profesionalesFiltrados.length === 0
                       ? 0
                       : (currentPage - 1) *
                           itemsPerPage +
                         1}{" "}
                     a{" "}
                     {Math.min(
-                      currentPage *
-                        itemsPerPage,
+                      currentPage * itemsPerPage,
                       profesionalesFiltrados.length,
                     )}{" "}
-                    de{" "}
-                    {
-                      profesionalesFiltrados.length
-                    }{" "}
-                    profesionales
+                    de {profesionalesFiltrados.length} profesionales
                   </p>
 
                   <div className="flex items-center gap-1">
                     <PaginationButton
-                      onClick={() =>
-                        goToPage(1)
-                      }
-                      disabled={
-                        currentPage === 1
-                      }
+                      onClick={() => goToPage(1)}
+                      disabled={currentPage === 1}
                     >
-                      <ChevronsLeft
-                        size={15}
-                      />
+                      <ChevronsLeft size={15} />
                     </PaginationButton>
 
                     <PaginationButton
                       onClick={() =>
-                        goToPage(
-                          currentPage - 1,
-                        )
+                        goToPage(currentPage - 1)
                       }
-                      disabled={
-                        currentPage === 1
-                      }
+                      disabled={currentPage === 1}
                     >
                       <ChevronLeft size={15} />
                     </PaginationButton>
 
                     {Array.from(
                       {
-                        length: Math.min(
-                          totalPages,
-                          5,
-                        ),
+                        length: Math.min(totalPages, 5),
                       },
                       (_, index) => {
-                        const page =
-                          index + 1;
+                        const page = index + 1;
 
                         return (
                           <button
                             key={page}
                             type="button"
-                            onClick={() =>
-                              goToPage(page)
-                            }
+                            onClick={() => goToPage(page)}
                             className={`flex h-8 min-w-8 items-center justify-center rounded-lg px-2 text-xs font-semibold transition ${
-                              currentPage ===
-                              page
+                              currentPage === page
                                 ? "bg-cyan-500 text-slate-950"
-                                : "border border-slate-200 text-slate-500 hover:border-cyan-500/30 hover:text-cyan-600 dark:border-slate-800 dark:text-slate-400 dark:hover:text-cyan-300"
+                                : "border border-slate-800 text-slate-400 hover:border-cyan-400/30 hover:text-cyan-300"
                             }`}
                           >
                             {page}
@@ -1239,34 +963,18 @@ export function ProfesionalesView() {
 
                     <PaginationButton
                       onClick={() =>
-                        goToPage(
-                          currentPage + 1,
-                        )
+                        goToPage(currentPage + 1)
                       }
-                      disabled={
-                        currentPage ===
-                        totalPages
-                      }
+                      disabled={currentPage === totalPages}
                     >
-                      <ChevronRight
-                        size={15}
-                      />
+                      <ChevronRight size={15} />
                     </PaginationButton>
 
                     <PaginationButton
-                      onClick={() =>
-                        goToPage(
-                          totalPages,
-                        )
-                      }
-                      disabled={
-                        currentPage ===
-                        totalPages
-                      }
+                      onClick={() => goToPage(totalPages)}
+                      disabled={currentPage === totalPages}
                     >
-                      <ChevronsRight
-                        size={15}
-                      />
+                      <ChevronsRight size={15} />
                     </PaginationButton>
                   </div>
 
@@ -1279,12 +987,10 @@ export function ProfesionalesView() {
                       value={itemsPerPage}
                       onChange={(e) =>
                         setItemsPerPage(
-                          Number(
-                            e.target.value,
-                          ),
+                          Number(e.target.value),
                         )
                       }
-                      className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300"
+                      className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-300 outline-none focus:border-cyan-500"
                     >
                       <option value={3}>
                         3 por página
@@ -1302,96 +1008,64 @@ export function ProfesionalesView() {
                 </div>
               </div>
             ) : (
-              <div className="h-full min-h-0 overflow-y-auto overflow-x-hidden p-4">
-                {loading ? (
-                  <div className="flex h-full items-center justify-center">
-                    <RefreshCw
-                      size={26}
-                      className="animate-spin text-cyan-500 dark:text-cyan-400"
-                    />
-                  </div>
-                ) : currentProfessionals.length ===
-                  0 ? (
-                  <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-                    <Users
-                      size={35}
-                      className="text-slate-400 dark:text-slate-600"
-                    />
-
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
-                      No se encontraron profesionales
-                    </p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                    {currentProfessionals.map(
-                      (prof) => (
-                        <div
-                          key={prof.id}
-                          className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5 dark:border-slate-700 dark:bg-slate-950/50"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex min-w-0 items-center gap-3">
-                              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-cyan-500/10 font-bold text-cyan-700 dark:text-cyan-300">
-                                {getInitials(
-                                  prof.nombreCompleto,
-                                )}
-                              </div>
-
-                              <div className="min-w-0">
-                                <h3 className="truncate font-bold">
-                                  {
-                                    prof.nombreCompleto
-                                  }
-                                </h3>
-
-                                <p className="mt-1 truncate text-xs text-cyan-600 dark:text-cyan-400">
-                                  {
-                                    prof.especialidad
-                                  }
-                                </p>
-                              </div>
-                            </div>
-
-                            <span
-                              className={`shrink-0 rounded-full px-3 py-1 text-xs ${
-                                prof.isActive
-                                  ? "bg-cyan-500/10 text-cyan-600 dark:text-cyan-300"
-                                  : "bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
-                              }`}
-                            >
-                              {prof.isActive
-                                ? "Activo"
-                                : "Inactivo"}
-                            </span>
+              <div className="h-full overflow-y-auto p-4">
+                <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                  {currentProfessionals.map((prof) => (
+                    <div
+                      key={prof.id}
+                      className="rounded-2xl border border-slate-700 bg-slate-950/50 p-5"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-cyan-500/10 font-bold text-cyan-300">
+                            {getInitials(
+                              prof.nombreCompleto,
+                            )}
                           </div>
 
-                          <p className="mt-5 line-clamp-3 text-sm leading-6 text-slate-500 dark:text-slate-400">
-                            {prof.bio}
-                          </p>
+                          <div>
+                            <h3 className="font-bold">
+                              {prof.nombreCompleto}
+                            </h3>
 
-                          <div className="mt-5 border-t border-slate-200 pt-4 dark:border-slate-800">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setSelectedProfForSchedule(
-                                  prof,
-                                )
-                              }
-                              className="flex w-full items-center justify-center gap-2 rounded-xl border border-cyan-500/30 bg-cyan-500/5 py-2.5 text-xs font-bold text-cyan-600 transition hover:bg-cyan-500/10 dark:text-cyan-300"
-                            >
-                              <Calendar
-                                size={15}
-                              />
-
-                              Ver agenda
-                            </button>
+                            <p className="mt-1 text-xs text-cyan-400">
+                              {prof.especialidad}
+                            </p>
                           </div>
                         </div>
-                      ),
-                    )}
-                  </div>
-                )}
+
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs ${
+                            prof.isActive
+                              ? "bg-cyan-500/10 text-cyan-300"
+                              : "bg-slate-800 text-slate-400"
+                          }`}
+                        >
+                          {prof.isActive
+                            ? "Activo"
+                            : "Inactivo"}
+                        </span>
+                      </div>
+
+                      <p className="mt-5 text-sm leading-6 text-slate-400">
+                        {prof.bio}
+                      </p>
+
+                      <div className="mt-5 border-t border-slate-800 pt-4">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSelectedProfForSchedule(prof)
+                          }
+                          className="flex w-full items-center justify-center gap-2 rounded-xl border border-cyan-400/30 bg-cyan-500/5 py-2.5 text-xs font-bold text-cyan-300 transition hover:bg-cyan-500/10"
+                        >
+                          <Calendar size={15} />
+                          Ver agenda
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </main>
@@ -1399,14 +1073,14 @@ export function ProfesionalesView() {
       </div>
 
       {selectedProfForSchedule && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-md">
-          <div className="w-full max-w-lg overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-950">
-            <div className="flex items-center justify-between border-b border-slate-200 p-6 dark:border-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md">
+          <div className="w-full max-w-lg overflow-hidden rounded-3xl border border-slate-700 bg-slate-950 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 p-6">
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-500/10">
                   <Calendar
                     size={21}
-                    className="text-cyan-500 dark:text-cyan-400"
+                    className="text-cyan-400"
                   />
                 </div>
 
@@ -1415,10 +1089,8 @@ export function ProfesionalesView() {
                     Agenda profesional
                   </h3>
 
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    {
-                      selectedProfForSchedule.nombreCompleto
-                    }
+                  <p className="mt-1 text-xs text-slate-400">
+                    {selectedProfForSchedule.nombreCompleto}
                   </p>
                 </div>
               </div>
@@ -1426,11 +1098,9 @@ export function ProfesionalesView() {
               <button
                 type="button"
                 onClick={() =>
-                  setSelectedProfForSchedule(
-                    null,
-                  )
+                  setSelectedProfForSchedule(null)
                 }
-                className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-white/5 dark:hover:text-white"
+                className="rounded-lg p-2 text-slate-400 hover:bg-white/5 hover:text-white"
               >
                 <X size={19} />
               </button>
@@ -1440,11 +1110,11 @@ export function ProfesionalesView() {
               {selectedProfForSchedule.turnos?.map(
                 (turno) => (
                   <div
-                    key={`${turno.dia}-${turno.horaInicio}`}
+                    key={turno.dia}
                     className={`flex items-center justify-between rounded-xl border p-4 ${
                       turno.activo
-                        ? "border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900"
-                        : "border-slate-200 bg-slate-100 opacity-50 dark:border-slate-800 dark:bg-slate-950"
+                        ? "border-slate-700 bg-slate-900"
+                        : "border-slate-800 bg-slate-950 opacity-50"
                     }`}
                   >
                     <div>
@@ -1452,29 +1122,29 @@ export function ProfesionalesView() {
                         {turno.dia}
                       </p>
 
-                      <p className="mt-1 text-xs text-cyan-600 dark:text-cyan-400">
+                      <p className="mt-1 text-xs text-cyan-400">
                         {turno.horaInicio} -{" "}
                         {turno.horaFin}
                       </p>
                     </div>
 
                     <div className="text-right">
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                      <p className="text-xs text-slate-400">
                         {turno.sillon}
                       </p>
 
                       <span
                         className={`mt-2 inline-flex items-center gap-1 text-xs ${
                           turno.activo
-                            ? "text-cyan-600 dark:text-cyan-400"
-                            : "text-slate-400 dark:text-slate-500"
+                            ? "text-cyan-400"
+                            : "text-slate-500"
                         }`}
                       >
                         <span
                           className={`h-2 w-2 rounded-full ${
                             turno.activo
-                              ? "bg-cyan-500 dark:bg-cyan-400"
-                              : "bg-slate-400 dark:bg-slate-600"
+                              ? "bg-cyan-400"
+                              : "bg-slate-600"
                           }`}
                         />
 
@@ -1488,15 +1158,13 @@ export function ProfesionalesView() {
               )}
             </div>
 
-            <div className="border-t border-slate-200 p-5 dark:border-slate-800">
+            <div className="border-t border-slate-800 p-5">
               <button
                 type="button"
                 onClick={() =>
-                  setSelectedProfForSchedule(
-                    null,
-                  )
+                  setSelectedProfForSchedule(null)
                 }
-                className="w-full rounded-xl bg-cyan-500 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-400"
+                className="w-full rounded-xl bg-cyan-500 py-3 text-sm font-bold text-slate-950 hover:bg-cyan-400"
               >
                 Cerrar
               </button>
@@ -1506,34 +1174,32 @@ export function ProfesionalesView() {
       )}
 
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-md">
-          <div className="w-full max-w-lg overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-950">
-            <div className="flex items-center justify-between border-b border-slate-200 p-6 dark:border-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md">
+          <div className="w-full max-w-lg overflow-hidden rounded-3xl border border-slate-700 bg-slate-950 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 p-6">
               <div>
                 <h3 className="text-lg font-bold">
                   Nuevo profesional
                 </h3>
 
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  Registra un nuevo integrante del
-                  equipo.
+                <p className="mt-1 text-xs text-slate-400">
+                  Registra un nuevo integrante del equipo.
                 </p>
               </div>
 
               <button
                 type="button"
-                onClick={handleCloseCreateModal}
-                disabled={creating}
-                className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 disabled:opacity-50 dark:hover:bg-white/5"
+                onClick={() =>
+                  setShowCreateModal(false)
+                }
+                className="rounded-lg p-2 text-slate-400 hover:bg-white/5"
               >
                 <X size={19} />
               </button>
             </div>
 
             <form
-              onSubmit={
-                handleCreateProfessional
-              }
+              onSubmit={handleCreateProfessional}
               className="space-y-4 p-6"
             >
               <FormInput
@@ -1545,19 +1211,16 @@ export function ProfesionalesView() {
               />
 
               <div>
-                <label className="mb-2 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+                <label className="mb-2 block text-xs font-semibold text-slate-300">
                   Especialidad
                 </label>
 
                 <select
                   value={formEspecialidad}
                   onChange={(e) =>
-                    setFormEspecialidad(
-                      e.target.value,
-                    )
+                    setFormEspecialidad(e.target.value)
                   }
-                  disabled={creating}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-cyan-500 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                  className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm outline-none focus:border-cyan-500"
                 >
                   <option>
                     Odontología General
@@ -1575,13 +1238,9 @@ export function ProfesionalesView() {
                     Endodoncia Microscópica
                   </option>
 
-                  <option>
-                    Periodoncia
-                  </option>
+                  <option>Periodoncia</option>
 
-                  <option>
-                    Odontopediatría
-                  </option>
+                  <option>Odontopediatría</option>
                 </select>
               </div>
 
@@ -1593,7 +1252,7 @@ export function ProfesionalesView() {
                 required
               />
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-2 gap-4">
                 <FormInput
                   label="Correo"
                   value={formEmail}
@@ -1610,49 +1269,37 @@ export function ProfesionalesView() {
               </div>
 
               <div>
-                <label className="mb-2 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+                <label className="mb-2 block text-xs font-semibold text-slate-300">
                   Biografía
                 </label>
 
                 <textarea
                   value={formBio}
                   onChange={(e) =>
-                    setFormBio(
-                      e.target.value,
-                    )
+                    setFormBio(e.target.value)
                   }
-                  disabled={creating}
                   rows={3}
                   placeholder="Experiencia y descripción profesional..."
-                  className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-cyan-500 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:placeholder:text-slate-600"
+                  className="w-full resize-none rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm outline-none focus:border-cyan-500"
                 />
               </div>
 
               <div className="flex justify-end gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={handleCloseCreateModal}
-                  disabled={creating}
-                  className="rounded-xl border border-slate-200 px-5 py-3 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-white/5"
+                  onClick={() =>
+                    setShowCreateModal(false)
+                  }
+                  className="rounded-xl border border-slate-700 px-5 py-3 text-xs font-semibold text-slate-300"
                 >
                   Cancelar
                 </button>
 
                 <button
                   type="submit"
-                  disabled={creating}
-                  className="flex items-center justify-center gap-2 rounded-xl bg-cyan-500 px-5 py-3 text-xs font-bold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-xl bg-cyan-500 px-5 py-3 text-xs font-bold text-slate-950 hover:bg-cyan-400"
                 >
-                  {creating && (
-                    <RefreshCw
-                      size={14}
-                      className="animate-spin"
-                    />
-                  )}
-
-                  {creating
-                    ? "Registrando..."
-                    : "Registrar profesional"}
+                  Registrar profesional
                 </button>
               </div>
             </form>
@@ -1664,7 +1311,7 @@ export function ProfesionalesView() {
 }
 
 interface StatCardProps {
-  icon: ReactNode;
+  icon: React.ReactNode;
   title: string;
   value: number;
   description: string;
@@ -1677,21 +1324,21 @@ function StatCard({
   description,
 }: StatCardProps) {
   return (
-    <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-200 bg-white/90 px-4 py-4 shadow-lg dark:border-slate-700/70 dark:bg-slate-950/70">
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-cyan-500/10 text-cyan-500 dark:text-cyan-400">
+    <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-700/70 bg-slate-950/70 px-4 py-4 shadow-lg backdrop-blur-xl">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-cyan-500/10 text-cyan-400">
         {icon}
       </div>
 
       <div className="min-w-0">
-        <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">
+        <p className="truncate text-[11px] text-slate-400">
           {title}
         </p>
 
-        <p className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">
+        <p className="mt-1 text-2xl font-bold text-white">
           {value}
         </p>
 
-        <p className="truncate text-[10px] text-slate-400 dark:text-slate-500">
+        <p className="truncate text-[10px] text-slate-500">
           {description}
         </p>
       </div>
@@ -1714,7 +1361,7 @@ function FilterSelect({
 }: FilterSelectProps) {
   return (
     <div>
-      <label className="mb-2 block text-[11px] text-slate-500 dark:text-slate-400">
+      <label className="mb-2 block text-[11px] text-slate-400">
         {label}
       </label>
 
@@ -1723,7 +1370,7 @@ function FilterSelect({
         onChange={(e) =>
           onChange(e.target.value)
         }
-        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-700 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300"
+        className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-xs text-slate-300 outline-none focus:border-cyan-500"
       >
         {options.map((option) => (
           <option
@@ -1739,7 +1386,7 @@ function FilterSelect({
 }
 
 interface PaginationButtonProps {
-  children: ReactNode;
+  children: React.ReactNode;
   disabled?: boolean;
   onClick: () => void;
 }
@@ -1754,7 +1401,7 @@ function PaginationButton({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:border-cyan-500/30 hover:text-cyan-600 disabled:cursor-not-allowed disabled:opacity-30 dark:border-slate-800 dark:text-slate-400 dark:hover:text-cyan-300"
+      className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-800 text-slate-400 transition hover:border-cyan-400/30 hover:text-cyan-300 disabled:cursor-not-allowed disabled:opacity-30"
     >
       {children}
     </button>
@@ -1778,7 +1425,7 @@ function FormInput({
 }: FormInputProps) {
   return (
     <div>
-      <label className="mb-2 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+      <label className="mb-2 block text-xs font-semibold text-slate-300">
         {label}
         {required && " *"}
       </label>
@@ -1791,7 +1438,7 @@ function FormInput({
         onChange={(e) =>
           onChange(e.target.value)
         }
-        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:placeholder:text-slate-600"
+        className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-cyan-500"
       />
     </div>
   );
