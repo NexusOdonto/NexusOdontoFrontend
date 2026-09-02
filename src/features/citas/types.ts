@@ -7,6 +7,9 @@ export type EstadoCita =
 
 export interface Cita {
   id: number;
+  appointmentId?: string;
+  patientId?: string;
+  personId?: string;
   paciente: string;
   pacienteEmail?: string;
   pacienteCedula?: string;

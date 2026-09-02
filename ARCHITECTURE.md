@@ -1,266 +1,331 @@
-# Arquitectura del Sistema Frontend — NexusOdonto
+# 🏛️ Arquitectura del Sistema Frontend — NexusOdonto
 
-> **Versión del Documento:** 2.1.0  
-> **Estado:** Referencia Técnica Oficial del Frontend  
-> **Tecnologías:** React 19, TypeScript, Vite 8, Tailwind CSS v4, React Router v7, Lucide React  
-> **Última Actualización:** 2026-08-31
+> **Versión del Documento:** 3.0.0  
+> **Estado:** Documentación Oficial de Referencia y Guía de Sustentación Técnica  
+> **Tecnologías:** React 19, TypeScript (Strict Mode), Vite 8, Tailwind CSS v4, React Router, Lucide React, Axios  
+> **Última Actualización:** Septiembre 2026  
 
 ---
 
-## 1. Visión General del Ecosistema
+## 1. 🏗️ Visión General y Stack Tecnológico
 
-NexusOdonto Frontend es una **Single Page Application (SPA)** moderna, reactiva y desacoplada, orientada a la gestión integral de consultorios y clínicas odontológicas. Se comunica con el backend .NET mediante una API RESTful protegida con JSON Web Tokens (JWT) y políticas de control de acceso basadas en roles (RBAC).
+NexusOdonto Frontend es una **Single Page Application (SPA)** de grado empresarial diseñada bajo principios de alta cohesión, bajo acoplamiento y arquitectura orientada a características (**Feature-Driven Architecture**). Proporciona una interfaz clínica y administrativa reactiva, rápida y accesible para odontólogos, recepcionistas, administradores y pacientes.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────┐
 │                      NEXUSODONTO FRONTEND (Arquitectura SPA)                     │
-│  React 19 + TypeScript + Vite 8.x + Tailwind CSS v4 + Lucide React              │
-│  • Context API: AuthContext (Sesión y Roles) / ThemeContext (Dark/Light)         │
-│  • Interceptores Axios: Inyección Bearer JWT + Gestión Resiliente 401           │
-│  • Sistema de Enrutamiento Seguro: React Router v7 + ProtectedRoute RBAC         │
-│  • Componente Flotante de Asistencia: ChatBotWidget contextual por Rol          │
-└────────────────────────────────────────┬─────────────────────────────────────────┘
-                                         │ HTTPS / REST JSON API
-                                         ▼
-┌──────────────────────────────────────────────────────────────────────────────────┐
-│                   BACKEND (.NET Clean Architecture - REST API)                   │
-│  Controllers RESTful, DTOs con FluentValidation, Identity JWT, SQL Server EF Core│
-└──────────────────────────────────────────────────────────────────────────────────┘
+│  React 19 + TypeScript (Strict) + Vite 8.x + Tailwind CSS v4 + Lucide React     │
+│  • Context API: AuthContext (RBAC y Tokens) / ThemeContext / NotificationContext │
+│  • Interceptores Axios: Inyección Bearer JWT + Renovación Silenciosa             │
+│  • Sistema de Enrutamiento: ProtectedRoute (RBAC) + PublicOnlyRoute              │
+│  • Historial Blindado: Control de popstate y { replace: true }                   │
+│  • Asistente Clínico Flotante: ChatBotWidget conectado a Microservicio AI        │
+└───────────────────────┬──────────────────────────────────┬───────────────────────┘
+                        │ HTTP / REST JSON (JWT)           │ HTTP POST /chat
+                        ▼                                  ▼
+┌──────────────────────────────────────┐ ┌─────────────────────────────────────────┐
+│     BACKEND API PRINCIPAL (.NET)     │ │        MICROSERVICIO CHATBOT AI         │
+│  Controllers RESTful, Clean Arch,    │ │  FastAPI, LangGraph, OpenAI (GPT-4o),   │
+│  JWT Bearer Auth, Oracle EF Core     │ │  Qdrant Vector DB, PostgreSQL Memory    │
+│  Puerto: 5170                        │ │  Puerto: 8000                           │
+└──────────────────────────────────────┘ └─────────────────────────────────────────┘
 ```
+
+### 1.1 Decisiones del Stack Tecnológico
+
+| Herramienta / Librería | Versión | Justificación Arquitectónica |
+| :--- | :---: | :--- |
+| **React** | `19.x` | Renderizado eficiente mediante Virtual DOM, Server Components ready, concurrencia nativa y arquitectura declarativa orientada a componentes. |
+| **TypeScript** | `5.x` | Tipado estricto en tiempo de compilación. Elimina errores de runtime en contratos DTO, interfaces de usuario y firmas de métodos. |
+| **Vite** | `8.x` | Bundler y servidor de desarrollo basado en ESM nativo y Rollup. Tiempos de compilación ultrarrápidos (<1.5s en build de producción). |
+| **Tailwind CSS** | `v4` | Sistema de diseño atómico basado en tokens CSS centralizados (`:root` / `@theme`). Cero sobrecarga de CSS no utilizado y diseño responsive nativo. |
+| **React Router** | `v6 / v7` | Enrutamiento del lado del cliente (Client-Side Routing) con soporte de rutas anidadas, carga perezosa (`React.lazy`) y guards de seguridad. |
+| **Context API** | Nativo | Gestión de estado global ligero para autenticación, tema y notificaciones. Evita el *boilerplate* excesivo y sobrepeso de librerías como Redux. |
+| **Axios** | `1.7+` | Cliente HTTP modular con interceptores de petición y respuesta, configuración centralizada de timeouts y tipado genérico en DTOs. |
+| **Lucide React** | `0.4+` | Iconografía vectorial SVG escalable y consistente. Estándar institucional de **cero emojis** en interfaces clínicas. |
 
 ---
 
-## 2. Estructura Real del Árbol de Carpetas (`src/`)
+## 2. 📂 Estructura de Directorios y Arquitectura de Carpetas
 
-El código fuente sigue una estructura **Feature-Driven (Feature-First)** organizada por dominios funcionales:
+El proyecto adopta un enfoque **Feature-First / Domain-Driven**, organizando el código por módulos de negocio funcionales en lugar de agrupar todos los archivos por tipo:
 
 ```
 NexusOdontoFrontend/
-├── informacion.md              # Documento maestro integral de negocio y contratos
-├── ARCHITECTURE.md             # Esta guía arquitectónica oficial
-├── package.json                # Dependencias (React 19, Lucide, Tailwind v4, Axios)
-├── tsconfig.json               # Configuración estricta de TypeScript
-├── vite.config.ts              # Configuración de compilación con Vite 8
+├── ARCHITECTURE.md                  # Este documento maestro de arquitectura
+├── index.html                       # HTML base de entrada de la SPA
+├── package.json                     # Dependencias y scripts de construcción
+├── tsconfig.json                    # Reglas estrictas del compilador TypeScript
+├── vite.config.ts                   # Configuración del bundler Vite
 └── src/
-    ├── api/                    # Servicios de comunicación HTTP desacoplados
-    │   ├── axiosClient.ts      # Cliente Axios centralizado con interceptores
-    │   ├── authService.ts      # Endpoints públicos de login, register y perfil
-    │   ├── personService.ts    # Gestión de personas físicas (/v1/Persons)
-    │   ├── userService.ts      # Gestión de usuarios del sistema (/v1/Users)
-    │   ├── roleService.ts      # Catálogo de roles del sistema (/v1/Roles)
-    │   ├── documentTypeService.ts # Catálogo de tipos de documento
-    │   └── sexService.ts       # Catálogo de sexos/géneros
-    ├── assets/                 # Recursos estáticos (Logotipos e imágenes WebP)
-    │   ├── fondo-Login-ligh.webp
-    │   ├── fondoLogin.webp
-    │   ├── fondo-ligh.webp
-    │   ├── fondo-darck.webp
-    │   └── nexus-odonto-logo.webp
-    ├── components/             # Componentes transversales
-    │   ├── layout/
-    │   │   ├── PageHeader.tsx  # Barra superior, selector de tema y avatar
-    │   │   ├── Sidebar.tsx     # Menú lateral reactivo con aislamiento RBAC
-    │   │   └── UserProfileDropdown.tsx # Menú flotante de perfil y logout
-    │   └── chatbot/
-    │       └── ChatBotWidget.tsx # Widget flotante del asistente virtual
-    ├── context/                # Estados globales transversales
-    │   └── ThemeContext.tsx    # Manejo de tema Claro / Oscuro
-    ├── features/               # Módulos de negocio (Feature-First)
-    │   ├── auth/               # Autenticación, registro público y contexto
-    │   │   ├── LoginPage.tsx
-    │   │   ├── RegisterPage.tsx
-    │   │   ├── AuthContext.tsx # Proveedor de identidad, token y permisos
-    │   │   ├── components/     # Componentes de entrada y botones de login
-    │   │   └── mocks/          # Usuarios de prueba y validación dual
-    │   ├── dashboard/          # Métricas inteligentes por rol
+    ├── api/                         # Capa de Abstracción de Red (API Services)
+    │   ├── axiosClient.ts           # Instancia central de Axios con interceptores JWT
+    │   ├── authService.ts           # Servicios de Login, Register, Google OAuth y Perfil
+    │   ├── chatbotService.ts        # Cliente de integración con el microservicio AI
+    │   ├── patientService.ts        # Directorio y admisión de pacientes (/v1/Patients)
+    │   ├── personService.ts         # Datos de identidad humana (/v1/Persons)
+    │   ├── roleService.ts           # Catálogo de roles (/v1/Roles)
+    │   ├── documentTypeService.ts   # Catálogo de tipos de documento de identidad
+    │   └── sexService.ts            # Catálogo de géneros/sexos
+    │
+    ├── assets/                      # Recursos multimedia estáticos optimizados (WebP)
+    │   ├── nexus-odonto-logo.webp   # Isotipo oficial de la clínica
+    │   ├── fondoLogin.webp          # Fondo visual modo oscuro para autenticación
+    │   ├── fondo-Login-ligh.webp    # Fondo visual modo claro para autenticación
+    │   ├── fondo-darck.webp         # Fondo para el Dashboard en modo oscuro
+    │   └── fondo-ligh.webp          # Fondo para el Dashboard en modo claro
+    │
+    ├── components/                  # Componentes de UI Reutilizables y Transversales
+    │   ├── common/                  # Componentes base
+    │   │   ├── UserAvatar.tsx       # Avatar resiliente con iniciales automáticas
+    │   │   ├── ThemeToggle.tsx      # Selector de tema Dark / Light
+    │   │   └── Modal.tsx            # Contenedor modal accesible con animación
+    │   ├── layout/                  # Estructura del cascarón de la aplicación
+    │   │   ├── PageHeader.tsx       # Barra superior con avatar, tema y bienvenida
+    │   │   ├── Sidebar.tsx          # Menú de navegación lateral filtrado por RBAC
+    │   │   └── UserProfileDropdown.tsx # Dropdown de usuario con opción de logout
+    │   └── chatbot/                 # Módulo del Asistente Virtual
+    │       └── ChatBotWidget.tsx    # FAB flotante y ventana modal interactiva
+    │
+    ├── context/                     # Proveedores de Estado Global (Context API)
+    │   ├── ThemeContext.tsx         # Gestión del tema visual (Claro / Oscuro)
+    │   └── NotificationContext.tsx  # Sistema de notificaciones toast flotantes
+    │
+    ├── features/                    # Dominios de Negocio (Módulos Funcionales)
+    │   ├── auth/                    # Autenticación, Registro y Callback OAuth
+    │   │   ├── AuthCallback.tsx     # Receptor y sanitizador de tokens de Google
+    │   │   ├── AuthContext.tsx      # Proveedor de sesión, usuario activo y tokens
+    │   │   ├── LoginPage.tsx        # Pantalla de bienvenida e inicio de sesión
+    │   │   ├── RegisterPage.tsx     # Pantalla de registro de nuevos pacientes
+    │   │   ├── components/          # Inputs, botones y componentes específicos de Auth
+    │   │   └── mocks/users.mock.ts  # Fallback de autenticación offline para desarrollo
+    │   ├── dashboard/               # Métricas y accesos rápidos según el rol
     │   │   └── DashboardPage.tsx
-    │   ├── citas/              # Ciclo de vida y agendamiento de citas
-    │   │   ├── CitasView.tsx   # Vista principal con modales y pestañas
-    │   │   ├── types.ts        # Tipos y estados (Pendiente, Confirmada, etc.)
-    │   │   └── components/
-    │   │       └── CitasTable.tsx # Tabla reactiva con acciones por rol
-    │   ├── pacientes/          # Directorio y admisión de pacientes
+    │   ├── citas/                   # Agendamiento y ciclo de vida de citas médicas
+    │   │   ├── CitasView.tsx        # Vista principal con pestañas y modales
+    │   │   └── components/CitasTable.tsx
+    │   ├── pacientes/               # Directorio clínico y registro de pacientes
     │   │   ├── PacientesView.tsx
-    │   │   ├── PacienteRegistroView.tsx
-    │   │   └── components/
-    │   ├── odontograma/        # Odontograma clínico interactivo
-    │   │   ├── OdontogramaUI.tsx
-    │   │   ├── types.ts
-    │   │   └── components/     # Dientes, cuadrantes y convenciones
-    │   ├── servicios/          # Catálogo de servicios y tarifas
-    │   │   ├── ServiciosView.tsx
-    │   │   └── ServicioRegistroView.tsx
-    │   ├── usuarios/           # Gestión de personal médico y administrativo
+    │   │   └── PacienteRegistroView.tsx
+    │   ├── odontograma/             # Odontograma clínico interactivo
+    │   │   └── OdontogramaUI.tsx    # Piezas dentales, caras y patologías
+    │   ├── servicios/               # Tarifas y catálogo de procedimientos
+    │   │   └── ServiciosView.tsx
+    │   ├── usuarios/                # Gestión de personal médico y administrativo
     │   │   └── UsuariosView.tsx
-    │   └── perfil/             # Gestión de cuenta de usuario
+    │   └── perfil/                  # Configuración de cuenta y subida de avatar
     │       └── PerfilView.tsx
-    ├── layouts/                # Envoltorios de vistas
-    │   └── DashboardLayout.tsx # Layout privado con Sidebar, Header y Chatbot
-    ├── routes/                 # Enrutamiento de la aplicación
-    │   ├── index.tsx           # AppRoutes con carga perezosa (lazy loading)
-    │   └── ProtectedRoute.tsx  # Guard de protección de rutas y permisos RBAC
-    ├── utils/                  # Funciones de soporte
-    │   └── routePermissions.ts # Reglas de acceso a rutas por rol
-    ├── index.css               # Estilos globales y tokens de diseño Tailwind v4
-    └── main.tsx                # Punto de entrada de la aplicación React
+    │
+    ├── layouts/                     # Plantillas estructurales de vistas
+    │   └── DashboardLayout.tsx      # Layout con Sidebar, Header, Chatbot y bloqueo popstate
+    │
+    ├── routes/                      # Definición y Guardias de Enrutamiento
+    │   ├── index.tsx                # Tabla de rutas con carga perezosa (React.lazy)
+    │   ├── ProtectedRoute.tsx       # Guard de autorización RBAC y bloqueo de no autenticados
+    │   └── PublicOnlyRoute.tsx      # Guard para impedir acceso a Login si ya hay sesión activa
+    │
+    ├── utils/                       # Utilidades, formateadores y reglas transversales
+    │   ├── roleUtils.ts             # Traductor de GUIDs de roles a etiquetas amigables
+    │   └── routePermissions.ts      # Matriz de permisos RBAC por ruta y helpers de rol
+    │
+    ├── index.css                    # Tokens de diseño, estilos globales y Tailwind CSS v4
+    └── main.tsx                     # Punto de entrada de inicialización de la SPA React
 ```
 
 ---
 
-## 3. Matriz de Control de Acceso Basada en Roles (RBAC)
+## 3. 🔐 Mecanismo de Autenticación, Tokens y Seguridad en el Enrutamiento
 
-### 3.1 Identificadores Canónicos de Roles
-El sistema opera con 4 roles humanos fundamentales:
+### 3.1 Flujo de Autenticación Híbrido (Credenciales + Google OAuth)
 
-| Rol | GUID Oficial en Base de Datos | Responsabilidad Principal |
-| :--- | :--- | :--- |
-| **`ADMINISTRADOR`** | `13000000-0000-0000-0000-000000000001` | Control administrativo y asistencial total. Configuración, usuarios y roles. |
-| **`ODONTOLOGO`** | `13000000-0000-0000-0000-000000000002` | Atención clínica, evolución de pacientes, odontograma e historias clínicas. |
-| **`RECEPCIONISTA`** | `13000000-0000-0000-0000-000000000003` | Admisión de pacientes, asignación y aprobación de citas, catálogo de tarifas. |
-| **`PACIENTE`** | `13000000-0000-0000-0000-000000000005` | Auto-registro, solicitud de citas propias, consulta de historial y perfil. |
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Usuario
+    participant Frontend as NexusOdontoFrontend
+    participant Callback as /auth/callback
+    participant Google as Google Identity
+    participant Backend as NexusOdonto Backend (.NET)
+
+    alt Login con Cédula / Correo
+        Usuario->>Frontend: Ingresa credenciales en /login
+        Frontend->>Backend: POST /api/auth/login
+        Backend-->>Frontend: 200 OK (accessToken, refreshToken, user, roles)
+        Frontend->>Frontend: Guarda auth_token y auth_user en localStorage
+        Frontend->>Frontend: navigate('/dashboard', { replace: true })
+    else Login con Google OAuth
+        Usuario->>Frontend: Clic en "Continuar con Google"
+        Frontend->>Backend: Redirige a /api/auth/google/login
+        Backend->>Google: Desafío OAuth2
+        Google-->>Backend: Callback con perfil verificado
+        Backend->>Backend: Sincroniza PersonEntity + UserEntity y emite JWTs
+        Backend->>Callback: Redirige a /auth/callback?token=...&refreshToken=...
+        Callback->>Callback: window.history.replaceState() (Limpia URL)
+        Callback->>Frontend: loginWithGoogleCallback(token, refreshToken)
+        Frontend->>Backend: GET /api/auth/me (Carga perfil y foto)
+        Frontend->>Frontend: navigate('/dashboard', { replace: true })
+    end
+```
+
+### 3.2 Guardias de Enrutamiento (Route Guards)
+
+La protección de rutas se implementa mediante dos componentes de orden superior basados en `<Outlet />`:
+
+#### A. `ProtectedRoute.tsx` (Acceso Restringido a Usuarios Autenticados con RBAC)
+1. **Validación de Carga (`isLoading`):** Si la aplicación está verificando la validez del token en `localStorage`, renderiza un estado de carga suave para evitar parpadeos visuales.
+2. **Validación de Identidad:** Si `!isAuthenticated`, redirige inmediatamente a `/login` con `state={{ from: location.pathname }}` y `{ replace: true }`.
+3. **Validación RBAC (`hasRouteAccess`):** Si el usuario no posee el rol o los permisos requeridos para la ruta específica (ej. un paciente intentando entrar a `/usuarios`), bloquea el acceso y renderiza la pantalla de **Acceso Restringido** con botón de retorno seguro a su `/dashboard`.
+
+#### B. `PublicOnlyRoute.tsx` (Exclusivo para No Autenticados)
+* Si un usuario con sesión activa intenta escribir manualmente en el navegador `http://localhost:5174/login` o `/register`, este guard intercepta la petición y redirige automáticamente a `/dashboard` con `replace: true`, impidiendo reingresar a los formularios de acceso.
+
+### 3.3 Blindaje contra el Botón "Atrás" del Navegador (`popstate` y `{ replace: true }`)
+
+Para resolver el problema común en las SPAs donde el usuario presiona la flecha "Atrás" en el navegador y es devuelto a la pantalla de Login o a la pantalla de selección de cuentas de Google:
+
+1. **Reemplazo de Entrada en el Historial (`{ replace: true }`):**
+   Tanto en `LoginPage.tsx`, `AuthCallback.tsx` como en el cierre de sesión (`logout`), las navegaciones utilizan `{ replace: true }`, sobrescribiendo la URL actual en la pila de navegación en lugar de apilar una nueva.
+2. **Captura del Evento `popstate`:**
+   En `DashboardLayout.tsx` y `ProtectedRoute.tsx` se registra un listener de ventana:
+   ```typescript
+   useEffect(() => {
+     if (!isAuthenticated) return;
+     window.history.pushState(null, '', window.location.href);
+
+     const handlePopState = () => {
+       // Si el usuario intenta retroceder con el navegador, anclarlo en la vista actual
+       window.history.pushState(null, '', window.location.href);
+     };
+
+     window.addEventListener('popstate', handlePopState);
+     return () => window.removeEventListener('popstate', handlePopState);
+   }, [isAuthenticated]);
+   ```
+3. **Resultado:** La única forma posible de abandonar el área privada y regresar a `/login` es mediante la acción explícita del botón **"Cerrar Sesión"**.
 
 ---
 
-### 3.2 Mapeo de Rutas Permitidas y Aislamiento de Seguridad
+## 4. 🔄 Flujo de Datos, Sincronización y Persistencia (Caso Avatar / Perfil)
 
-| Ruta del Frontend | PACIENTE | RECEPCIONISTA | ODONTÓLOGO | ADMINISTRADOR |
-| :--- | :---: | :---: | :---: | :---: |
-| `/dashboard` | Resumen Personal | Operativo General | Agenda del Día | Métricas Totales |
-| `/citas` | Mis Citas (Solicitar) | Bandeja de Citas | Citas Asignadas | Control Total |
-| `/agenda` | Bloqueado | Agenda Global | Agenda Clínica | Control Total |
-| `/pacientes` | Bloqueado | Directorio Pacientes | Pacientes Asignados | Control Total |
-| `/pacientes/nuevo` | Bloqueado | Admisión Paciente | Admisión Paciente | Control Total |
-| `/profesionales` | Bloqueado | Directorio Médico | Bloqueado | Control Total |
-| `/servicios` | Bloqueado | Tarifas y Servicios | Bloqueado | Control Total |
-| `/historia-clinica` | Bloqueado | Bloqueado | Evolución Médica | Control Total |
-| `/odontograma` | Bloqueado | Bloqueado | Registro Dental | Control Total |
-| `/usuarios` | Bloqueado | Bloqueado | Bloqueado | Control Total |
-| `/roles-permisos` | Bloqueado | Bloqueado | Bloqueado | Control Total |
-| `/configuracion` | Bloqueado | Bloqueado | Bloqueado | Control Total |
-| `/perfil` | Datos de Contacto | Datos Laborales | Datos Profesionales | Super Administrador |
+```mermaid
+flowchart TD
+    A[Usuario selecciona archivo en PerfilView] --> B[FileReader convierte a Base64]
+    B --> C[Actualiza preview local en PerfilView]
+    C --> D[POST /api/v1/Users/profile con AvatarBase64]
+    D --> E[Backend .NET persiste en BD Oracle]
+    E --> F[AuthContext.updateUser actualiza estado global]
+    F --> G[Sincroniza localStorage: auth_user y user_avatar_id]
+    G --> H[PageHeader re-renderiza UserAvatar reactivamente]
+    G --> I[UserProfileDropdown actualiza foto y nombre]
+```
 
-> **Mecanismo de Bloqueo:** El guard `ProtectedRoute.tsx` consulta `hasRouteAccess(user, pathname)`. Si el rol no tiene la ruta permitida, bloquea la renderización y muestra la pantalla de **Acceso Restringido** con botón de redirección automática hacia `/dashboard`.
+### 4.1 Ciclo de Vida del Avatar de Usuario
+1. **Conversión Asíncrona:** Al subir una imagen, `FileReader.readAsDataURL(file)` genera un string codificado en Base64 (`data:image/png;base64,...`).
+2. **Persistencia Backend:** El string se envía al endpoint de perfil de la API .NET y se almacena en la entidad de usuario en la base de datos Oracle.
+3. **Propagación en Estado Global:** Al recibir respuesta exitosa, `AuthContext.updateUser({ avatar: base64 })` actualiza el objeto `user` en memoria y sincroniza `localStorage.setItem('auth_user', ...)`.
+4. **Renderizado Resiliente con Fallback ([`UserAvatar.tsx`](file:///C:/Users/ESSA7/OneDrive/Documentos/frontNexusOdonto/NexusOdontoFrontend/src/components/common/UserAvatar.tsx)):**
+   - Si existe URL o Base64 válido, se renderiza la imagen.
+   - Si la imagen falla al cargar (`onError`) o el usuario no tiene foto, el componente calcula automáticamente las iniciales del nombre y apellido (ej. *Carlos Administrador* $\rightarrow$ `CA`) sobre un gradiente de color corporativo, asegurando que **nunca se muestre una imagen rota**.
 
 ---
 
-## 4. Arquitectura de Estilos Centralizada (`src/index.css`)
+## 5. 🤖 Integración del Microservicio de Chatbot AI
 
-### 4.1 Variables CSS y Configuración de Tema (Tailwind CSS v4)
-La identidad visual de NexusOdonto se encuentra centralizada en `src/index.css` mediante tokens en `:root` y mapeo en `@theme`:
+El Frontend integra un **Asistente Virtual Inteligente** con capacidades de RAG y procesamiento de lenguaje natural conectado con el microservicio en Python/FastAPI (`NexusOdonto_ChatBot_AI-develop`):
 
-```css
-:root {
-  /* Paleta Corporativa Oficial (Cian Médico, Turquesa y Menta Tech) */
-  --nexus-primary-50: #E6F7FA;
-  --nexus-primary-100: #B3ECF5;
-  --nexus-primary-300: #4DD5EB;
-  --nexus-primary-500: #00A8CC;
-  --nexus-primary-600: #0093B3;
-  --nexus-primary-700: #008B9B;
-  --nexus-primary-900: #00505B;
+```
+┌───────────────────────────────┐                  ┌─────────────────────────────────┐
+│     NexusOdontoFrontend       │                  │  NexusOdonto_ChatBot_AI-develop │
+│  (React 19 / DashboardLayout) │                  │  (FastAPI / LangGraph / Docker) │
+│                               │                  │                                 │
+│  ChatBotWidget.tsx            │                  │  app/api/routes/chat.py         │
+│  ├── FAB Flotante             │  HTTP POST /chat │  ├── LangGraph StateGraph       │
+│  ├── Sugerencias por Rol      ├─────────────────►│  ├── OpenAI GPT-4o / RAG       │
+│  └── chatbotService.ts        │  JSON Payload    │  └── Qdrant Semantic Cache      │
+│                               │                  │                                 │
+│  ◄── Fallback Contextual ──── │                  │  Puerto: 8000                   │
+└───────────────────────────────┘                  └─────────────────────────────────┘
+```
 
-  --nexus-secondary-100: #E2F8F0;
-  --nexus-secondary-300: #9CE7CF;
-  --nexus-secondary-500: #66D2B1;
-  --nexus-secondary-700: #3AA887;
+### 5.1 Estructura del Payload de Comunicación
+El servicio [`chatbotService.ts`](file:///C:/Users/ESSA7/OneDrive/Documentos/frontNexusOdonto/NexusOdontoFrontend/src/api/chatbotService.ts) realiza peticiones asíncronas con la siguiente estructura:
 
-  /* Acentos de Especialidades Clínicas */
-  --nexus-accent-cyan: #06B6D4;
-  --nexus-accent-teal: #14B8A6;
-  --nexus-accent-indigo: #6366F1;
-  --nexus-accent-purple: #A855F7;
-  --nexus-accent-sky: #0EA5E9;
-
-  /* Estados Clínicos */
-  --nexus-success-bg: #ECFDF5;
-  --nexus-success-text: #059669;
-  --nexus-warning-bg: #FFFBEB;
-  --nexus-warning-text: #D97706;
-  --nexus-danger-bg: #FEF2F2;
-  --nexus-danger-text: #DC2626;
-  --nexus-info-bg: #EFF6FF;
-  --nexus-info-text: #2563EB;
+```json
+{
+  "message": "¿Cómo solicito una cita de valoración?",
+  "userId": "13000000-0000-0000-0000-000000000005",
+  "role": "PACIENTE",
+  "context": "nexus_odonto",
+  "conversationId": "conv-uuid-12345"
 }
 ```
 
-### 4.2 Regla Estricta de Iconografía (Cero Emojis)
-* Todos los elementos visuales de estado, botones, sugerencias de chat y alertas utilizan exclusivamente componentes de **`lucide-react`** (`CalendarDays`, `UserRound`, `Stethoscope`, `Smile`, `ShieldCheck`, `FileText`, `CheckCircle`, `AlertCircle`, `Receipt`, `UserPlus`, etc.).
+### 5.2 Desacoplamiento e Inyección Global
+* **Ubicación Arquitectónica:** El componente `ChatBotWidget` se encuentra inyectado directamente en [`DashboardLayout.tsx`](file:///C:/Users/ESSA7/OneDrive/Documentos/frontNexusOdonto/NexusOdontoFrontend/src/layouts/DashboardLayout.tsx), lo que garantiza que esté disponible de manera transversal en todas las pantallas protegidas (`/dashboard`, `/citas`, `/pacientes`, `/perfil`) sin necesidad de duplicar código en cada vista.
+* **Tolerancia a Fallos (*Graceful Fallback*):** Si el microservicio de Docker o Python se encuentra apagado o iniciando, `ChatBotWidget` activa de manera transparente su motor de respuestas contextuales interno, garantizando que el usuario **nunca experimente bloqueos o errores de red en la interfaz**.
 
 ---
 
-## 5. Flujo de Negocio Clínico y Ciclo de Vida de las Citas
+## 6. 🎯 Preguntas Clave para Sustentación y Respuestas Técnicas (Cheat Sheet)
 
-```mermaid
-stateDiagram-v2
-    [*] --> Pendiente : Paciente solicita cita desde /citas
-    Pendiente --> Confirmada : Recepción valida cupo y asigna Odontólogo
-    Pendiente --> Cancelada : Solicitud rechazada por recepción o paciente
-    Confirmada --> En_Atencion : Odontólogo inicia consulta clínica
-    Confirmada --> Cancelada : Cancelación previa de cita
-    En_Atencion --> Completada : Odontólogo finaliza y registra Odontograma / Historia
-    Completada --> Facturacion : Recepción emite comprobante de servicio
-    Facturacion --> [*]
-    Cancelada --> [*]
-```
-
-### 5.1 Interacción Paso a Paso
-1. **Solicitud (Paciente):** El paciente hace clic en **"Solicitar Cita"** en `/citas`, seleccionando fecha tentativa, horario y motivo. La cita se registra con estado `Pendiente`.
-2. **Asignación y Aprobación (Recepción / Admin):** En la pestaña de **"Solicitudes Pendientes"**, el recepcionista selecciona **"Asignar / Aprobar"**, define el odontólogo tratante y confirma la cita (`Confirmada`).
-3. **Atención Médica (Odontólogo):** El doctor abre su agenda, selecciona al paciente y marca **"Atender"** (`En Atención`). Durante la consulta:
-   - Abre el **Odontograma Interactivo** (`/odontograma`) para marcar hallazgos en piezas y superficies dentales.
-   - Abre la **Historia Clínica** (`/historia-clinica`) para registrar la evolución médica y el diagnóstico CIE-10.
-4. **Finalización:** El doctor marca **"Completar"** (`Completada`). El paciente visualiza su historial actualizado en su perfil.
+Esta sección recopila las preguntas técnicas más frecuentes en defensas de arquitectura de software, con sus respectivas argumentaciones justificadas:
 
 ---
 
-## 6. Catálogo de Servicios API y Endpoints Consumidos
-
-### 6.1 Autenticación (`src/api/authService.ts`)
-* `POST /api/auth/login` — Autenticación con identificador dual (Cédula o Correo) + Contraseña.
-* `POST /api/auth/register` — Auto-registro público asignando por defecto el rol `PACIENTE`.
-* `GET /api/auth/me` — Consulta de la sesión activa y permisos.
-* `POST /api/auth/refresh` — Renovación de token de sesión mediante refresh token.
-
-### 6.2 Citas y Agenda (`/api/v1/Appointments`)
-* `GET /api/v1/Appointments` — Listado de citas filtrables por rol, fecha o estado.
-* `POST /api/v1/Appointments` — Solicitud o creación directa de citas.
-* `PATCH /api/v1/Appointments/{id}/assign` — Asignación de doctor y consultorio.
-* `PATCH /api/v1/Appointments/{id}/status` — Cambio de estado de la cita.
-
-### 6.3 Pacientes y Personas (`/api/v1/Patients`, `/api/v1/Persons`)
-* `GET /api/v1/Persons` — Catálogo general de personas.
-* `GET /api/v1/Patients` — Directorio de pacientes clínicos.
-* `POST /api/v1/Patients` — Admisión y creación de nuevo paciente.
-
-### 6.4 Historia Clínica y Odontograma (`/api/v1/ClinicalHistories`, `/api/v1/Odontograms`)
-* `GET /api/v1/ClinicalHistories/patient/{patientId}` — Consulta de expediente médico.
-* `POST /api/v1/ClinicalAttentions` — Registro de consulta y evolución clínica.
-* `GET /api/v1/Odontograms/patient/{patientId}` — Consulta de odontograma y superficies dentales.
-* `POST /api/v1/DentalFindings` — Registro de patología o procedimiento en pieza dental.
+### P1: ¿Por qué se utilizó React Context API en lugar de Redux Toolkit en este proyecto?
+> **Respuesta Técnica:**  
+> "Para la escala y necesidades de NexusOdonto, **Context API es la solución óptima**. El estado global de la aplicación se concentra principalmente en tres dominios puntuales: *Identidad/Autenticación (`AuthContext`)*, *Tema Visual (`ThemeContext`)* y *Notificaciones (`NotificationContext`)*.  
+> Los datos transaccionales de negocio (como listas de pacientes, citas y odontogramas) se gestionan localmente en sus respectivos componentes y servicios, manteniendo el estado fresco directamente desde la API. Introducir Redux Toolkit habría agregado complejidad innecesaria (*boilerplate*, reducers, dispatchers, middleware) y sobrepeso al bundle final (~30KB adicionales) sin aportar beneficios arquitectónicos reales frente a Context API bien optimizado."
 
 ---
 
-## 7. Instrucciones para Desarrolladores
+### P2: ¿Cómo se garantiza que un usuario no pueda acceder a rutas restringidas manipulando la barra de direcciones del navegador?
+> **Respuesta Técnica:**  
+> "La seguridad se aplica en dos niveles independientes y complementarios:  
+> 1. **Nivel Frontend (UX y Enrutamiento):** El componente [`ProtectedRoute.tsx`](file:///C:/Users/ESSA7/OneDrive/Documentos/frontNexusOdonto/NexusOdontoFrontend/src/routes/ProtectedRoute.tsx) intercepta cada cambio de ruta. Si el usuario no está autenticado, lo expulsa a `/login`. Si está autenticado pero su rol no figura en la matriz de acceso (`hasRouteAccess`), se bloquea el renderizado y se muestra la vista de *Acceso Restringido*.  
+> 2. **Nivel Backend (Seguridad Estricta):** El frontend solo maneja control de acceso visual. La seguridad definitiva reside en el backend .NET, donde cada endpoint REST (`/api/v1/Users`, `/api/v1/Appointments`) valida el token JWT en cada solicitud con anotaciones de autorización `[Authorize(Roles = "ADMINISTRADOR")]`. Cualquier intento de manipulación en el frontend resultará en una respuesta `401 Unauthorized` o `403 Forbidden` desde la API."
 
-### Comandos de Desarrollo y Construcción
-```bash
-# Navegar al directorio del frontend
-cd NexusOdontoFrontend
+---
 
-# Instalar dependencias
-npm install
+### P3: ¿Por qué se utiliza `{ replace: true }` en las redirecciones de login, callback y logout?
+> **Respuesta Técnica:**  
+> "Por defecto, `navigate('/ruta')` realiza un `history.pushState()`, agregando una nueva entrada a la pila de navegación del navegador. Si un usuario se autentica exitosamente y navega a `/dashboard`, presionar el botón 'Atrás' intentaría cargar nuevamente `/login` o la URL externa de Google OAuth (`accounts.google.com`).  
+> Al utilizar `{ replace: true }`, se ejecuta un `history.replaceState()`, **sustituyendo la entrada actual en lugar de apilar una nueva**. De esta forma, el historial se mantiene limpio y el usuario nunca retrocede a pantallas de autenticación intermedias."
 
-# Iniciar servidor de desarrollo con Vite
-npm run dev
+---
 
-# Verificación estricta de tipos de TypeScript (0 errores)
+### P4: ¿Cómo maneja la aplicación la persistencia del estado ante una recarga manual de página (`F5`)?
+> **Respuesta Técnica:**  
+> "El estado inicial de `AuthContext` se inicializa de forma síncrona leyendo `localStorage.getItem('auth_user')`. Esto garantiza que, en el primer ciclo de renderizado tras un `F5`, la aplicación ya conoce los datos básicos del usuario y evita redirecciones erróneas a `/login`.  
+> Simultáneamente, en un `useEffect` de montaje, se dispara una consulta asíncrona a `GET /api/auth/me` con el token JWT almacenado para revalidar la sesión contra el servidor y sincronizar cualquier cambio reciente en los permisos o perfil del usuario."
+
+---
+
+### P5: ¿Cómo está desacoplada la capa de servicios HTTP de los componentes visuales de React?
+> **Respuesta Técnica:**  
+> "Se implementó el patrón **Service Layer** dentro de la carpeta `src/api/`. Los componentes visuales (como `CitasView.tsx` o `PerfilView.tsx`) nunca interactúan directamente con `axios` ni conocen las URLs finales de los endpoints.  
+> Toda la lógica de comunicación, cabeceras, transformación de DTOs y manejo de errores se encapsula en servicios especializados (`authService`, `patientService`, `chatbotService`). Si la URL de un endpoint o la estructura de un microservicio cambia, solo se modifica el archivo de servicio correspondiente sin alterar una sola línea de código en los componentes de la interfaz de usuario."
+
+---
+
+### P6: ¿Cómo previene el componente `UserAvatar` la aparición de imágenes rotas (`<img>` con alt fallido)?
+> **Respuesta Técnica:**  
+> "El componente [`UserAvatar.tsx`](file:///C:/Users/ESSA7/OneDrive/Documentos/frontNexusOdonto/NexusOdontoFrontend/src/components/common/UserAvatar.tsx) aplica una estrategia de renderizado defensivo en tres capas:  
+> 1. Valida previamente que el string del avatar no sea nulo, vacío ni un formato inválido.  
+> 2. Implementa el manejador `onError` en la etiqueta `<img>`, el cual detecta inmediatamente si la imagen falló en resolverse y activa el estado de error.  
+> 3. En caso de ausencia o fallo de imagen, renderiza un contenedor estilizado con las iniciales calculadas a partir del nombre y apellido del usuario sobre un fondo con gradiente corporativo, garantizando una experiencia visual pulida y profesional en todo momento."
+
+---
+
+## 7. 🚀 Guía Rápida de Comandos para Sustentación
+
+```powershell
+# 1. Verificación estricta de tipos en TypeScript (0 errores)
 npx tsc --noEmit
 
-# Compilación para producción (generación de /dist)
+# 2. Compilación de producción (Vite Bundler)
 npm run build
-```
 
-### Reglas de Mantenimiento
-1. **Desacoplamiento HTTP:** Nunca invocar `fetch` o `axios` directamente dentro de los componentes visuales; utilizar los módulos en `src/api/`.
-2. **Autorización Centralizada:** Toda nueva vista protegida debe registrarse en `ROLE_ALLOWED_ROUTES` dentro de `src/utils/routePermissions.ts`.
-3. **Cero Emojis:** Mantener el estándar corporativo empleando componentes de `lucide-react`.
+# 3. Servidor de desarrollo local
+npm run dev
+```

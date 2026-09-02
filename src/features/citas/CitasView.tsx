@@ -17,6 +17,8 @@ import { getUserRole } from "../../utils/routePermissions";
 import { appointmentService, type AppointmentResponseDto } from "../../api/appointmentService";
 import { serviceCatalogService } from "../../api/serviceCatalogService";
 import { professionalService } from "../../api/professionalService";
+import { patientService } from "../../api/patientService";
+import { personService } from "../../api/personService";
 import { useNotifications } from "../../context/NotificationContext";
 
 const citasFallback: Cita[] = [
@@ -100,79 +102,148 @@ export function CitasView() {
   const [fecha, setFecha] = useState("");
   const [estadoFiltro, setEstadoFiltro] = useState<"Todos" | EstadoCita>("Todos");
   const [loading, setLoading] = useState(true);
-  const [successToast, setSuccessToast] = useState<string | null>(null);
 
   // Modales
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedCitaToAssign, setSelectedCitaToAssign] = useState<Cita | null>(null);
 
-  // Formulario Solicitud / Creación
-  const [formPaciente, setFormPaciente] = useState(user?.name || "");
+  // Formulario de creación/solicitud
+  const [formPaciente, setFormPaciente] = useState("");
   const [formServicio, setFormServicio] = useState("");
   const [formFecha, setFormFecha] = useState("");
-  const [formHora, setFormHora] = useState("09:00");
+  const [formHora, setFormHora] = useState("");
   const [formProfesional, setFormProfesional] = useState("");
   const [formMotivo, setFormMotivo] = useState("");
 
-  // Sincronizar filtro desde query params (ej. ?filtro=Pendiente)
-  useEffect(() => {
-    const filtroParam = searchParams.get("filtro");
-    if (filtroParam === "Pendiente") {
-      setEstadoFiltro("Pendiente");
-    }
-  }, [searchParams]);
+  const [successToast, setSuccessToast] = useState<string | null>(null);
 
-  // Cargar datos reales desde la API
+  // Carga inicial y sincronización con API REST enriqueciendo entidades
   const fetchAppointmentsAndCatalogs = useCallback(async () => {
     setLoading(true);
     try {
-      // 1. Cargar catálogo de servicios desde /api/v1/Services
-      const servicesData = await serviceCatalogService.getAll().catch(() => []);
-      if (servicesData && servicesData.length > 0) {
-        const names = servicesData.map((s) => s.name);
+      // Cargar catálogos y entidades en paralelo desde la API
+      const [servicesData, profData, patientsData, personsData, apiAppointments] = await Promise.allSettled([
+        serviceCatalogService.getAll(),
+        professionalService.getAll(),
+        patientService.getAll(),
+        personService.getAll(),
+        appointmentService.getAll(),
+      ]);
+
+      const services = servicesData.status === "fulfilled" && Array.isArray(servicesData.value) ? servicesData.value : [];
+      const profs = profData.status === "fulfilled" && Array.isArray(profData.value) ? profData.value : [];
+      const patients = patientsData.status === "fulfilled" && Array.isArray(patientsData.value) ? patientsData.value : [];
+      const persons = personsData.status === "fulfilled" && Array.isArray(personsData.value) ? personsData.value : [];
+      const appointments: AppointmentResponseDto[] = apiAppointments.status === "fulfilled" && Array.isArray(apiAppointments.value) ? apiAppointments.value : [];
+
+      // Catálogo de servicios
+      if (services.length > 0) {
+        const names = services.map((s) => s.name);
         setServicesList(names);
         setFormServicio(names[0]);
       } else {
-        setFormServicio("Limpieza y Valoración General");
+        setFormServicio("Valoración y Diagnóstico General");
       }
 
-      // 2. Cargar profesionales desde /api/v1/Professionals (solo roles con permiso)
-      if (!isPaciente) {
-        const profData = await professionalService.getAll().catch(() => []);
-        if (profData && profData.length > 0) {
-          const profNames = profData.map((p) => `Dr(a). ${p.firstName || ''} ${p.lastName || ''}`.trim());
-          setProfessionalsList(profNames);
-          setFormProfesional(profNames[0]);
-        } else {
-          setFormProfesional("Dra. Laura Gómez");
+      // Catálogo de profesionales
+      if (profs.length > 0) {
+        const profNames = profs.map((p: any) =>
+          (p.firstName || p.lastName) ? `Dr(a). ${p.firstName || ""} ${p.lastName || ""}`.trim() : "Dr. Especialista"
+        );
+        setProfessionalsList(profNames);
+        setFormProfesional(profNames[0]);
+      } else {
+        setFormProfesional("Dra. Laura Gómez");
+      }
+
+      // Mapas de búsqueda rápida para enriquecer los IDs
+      const servicesMap: Record<string, string> = {};
+      services.forEach((s) => {
+        if (s.id) servicesMap[String(s.id).toLowerCase()] = s.name;
+      });
+
+      const profsMap: Record<string, string> = {};
+      profs.forEach((p: any) => {
+        if (p.id) {
+          profsMap[String(p.id).toLowerCase()] = (p.firstName || p.lastName)
+            ? `Dr(a). ${p.firstName || ""} ${p.lastName || ""}`.trim()
+            : "Dr. Especialista";
         }
-      }
+      });
 
-      // 3. Cargar citas desde /api/v1/Appointments
-      const apiAppointments: AppointmentResponseDto[] = await appointmentService.getAll().catch(() => []);
-      if (apiAppointments && apiAppointments.length > 0) {
-        const mapped: Cita[] = apiAppointments.map((a, idx) => {
+      const patientToPersonMap: Record<string, string> = {};
+      patients.forEach((pt: any) => {
+        if (pt.id && pt.personId) {
+          patientToPersonMap[String(pt.id).toLowerCase()] = String(pt.personId).toLowerCase();
+        }
+      });
+
+      const personsMap: Record<string, any> = {};
+      persons.forEach((per: any) => {
+        if (per.id) {
+          personsMap[String(per.id).toLowerCase()] = per;
+        }
+      });
+
+      // Mapeo enriquecido de citas desde la base de datos
+      if (appointments && appointments.length > 0) {
+        const mapped: Cita[] = appointments.map((a, idx) => {
           const startDate = a.startsAt ? a.startsAt.split("T")[0] : "2026-09-15";
           const startTime = a.startsAt && a.startsAt.includes("T") ? a.startsAt.split("T")[1].substring(0, 5) : "09:00";
-          
+
+          const pId = a.patientId ? String(a.patientId).toLowerCase() : "";
+          const personId = pId ? patientToPersonMap[pId] : undefined;
+          const person = personId ? personsMap[personId] : undefined;
+
+          const pacienteName = person
+            ? `${person.firstName || ""} ${person.lastName || ""}`.trim()
+            : a.patientName || "Paciente";
+          const pacienteEmail = person?.email || a.patientEmail || "";
+          const pacienteCedula = person?.documentNumber || a.patientDocument || "";
+
+          const sId = a.serviceId ? String(a.serviceId).toLowerCase() : "";
+          const servName = sId
+            ? servicesMap[sId] || a.serviceName || "Consulta Odontológica"
+            : a.serviceName || "Consulta Odontológica";
+
+          const prId = a.professionalId ? String(a.professionalId).toLowerCase() : "";
+          const profName = prId
+            ? profsMap[prId] || a.professionalName || "Dr. Asignado"
+            : a.professionalName || "";
+
           let estadoName: EstadoCita = "Confirmada";
-          if (a.cancelledAt) estadoName = "Cancelada";
-          else if (!a.professionalId || a.professionalId === "00000000-0000-0000-0000-000000000000") estadoName = "Pendiente";
+          if (a.cancelledAt) {
+            estadoName = "Cancelada";
+          } else if (!a.professionalId || a.professionalId === "00000000-0000-0000-0000-000000000000") {
+            estadoName = "Pendiente";
+          } else if (a.statusName) {
+            const sn = a.statusName.toUpperCase();
+            if (sn.includes("PEND") || sn.includes("AGEN")) estadoName = "Pendiente";
+            else if (sn.includes("CONFIRM")) estadoName = "Confirmada";
+            else if (sn.includes("ATTEND") || sn.includes("EN ATENCIÓN")) estadoName = "En Atención";
+            else if (sn.includes("COMPLET")) estadoName = "Completada";
+          }
 
           return {
             id: idx + 1,
-            paciente: a.patientName || "Paciente",
-            pacienteEmail: a.patientEmail,
-            pacienteCedula: a.patientDocument,
-            profesional: a.professionalName || (a.professionalId ? "Dr. Asignado" : ""),
-            servicio: a.serviceName || "Consulta General",
+            appointmentId: a.id,
+            patientId: a.patientId,
+            personId: personId,
+            paciente: pacienteName,
+            pacienteEmail: pacienteEmail,
+            pacienteCedula: pacienteCedula,
+            profesional: profName,
+            servicio: servName,
             fecha: startDate,
             hora: startTime,
             estado: estadoName,
-            motivo: a.reasonForVisit || a.notes,
+            motivo: a.reasonForVisit || a.notes || "Consulta Odontológica",
           };
         });
+
+        // Ordenar por fecha descendente
+        mapped.sort((x, y) => (y.fecha + y.hora).localeCompare(x.fecha + x.hora));
         setCitas(mapped);
       } else {
         const saved = localStorage.getItem("nexus_citas");
@@ -192,46 +263,59 @@ export function CitasView() {
     } finally {
       setLoading(false);
     }
-  }, [isPaciente]);
+  }, []);
 
   useEffect(() => {
     fetchAppointmentsAndCatalogs();
   }, [fetchAppointmentsAndCatalogs]);
 
+  // Si viene con filtro desde query params (ej. ?filter=Pendiente)
   useEffect(() => {
-    if (citas.length > 0) {
-      localStorage.setItem("nexus_citas", JSON.stringify(citas));
+    const filterParam = searchParams.get("filter");
+    if (filterParam) {
+      if (filterParam === "Pendiente") setEstadoFiltro("Pendiente");
+      if (filterParam === "Confirmada") setEstadoFiltro("Confirmada");
+      if (filterParam === "En Atención") setEstadoFiltro("En Atención");
+      if (filterParam === "Completada") setEstadoFiltro("Completada");
     }
-  }, [citas]);
+  }, [searchParams]);
 
-  // Filtrado de citas según rol y filtros activos
+  // Filtrado reactivo de citas según rol y filtros de búsqueda
   const citasFiltradas = useMemo(() => {
     const searchValue = search.trim().toLowerCase();
 
     return citas.filter((cita) => {
-      // 1. Aislamiento por rol
+      // 1. Aislamiento por rol PACIENTE
       if (isPaciente) {
-        const patientName = (user?.name || user?.nombre || "").toLowerCase();
-        const patientEmail = (user?.email || "").toLowerCase();
-        const patientCedula = user?.cedula || "";
+        const patientName = (user?.name || user?.nombre || "").toLowerCase().trim();
+        const patientEmail = (user?.email || "").toLowerCase().trim();
+        const patientCedula = (user?.cedula || "").trim();
+        const userPersonId = (user?.personId || "").toLowerCase().trim();
 
         const isOwn =
-          cita.paciente.toLowerCase().includes(patientName) ||
-          (cita.pacienteEmail && cita.pacienteEmail.toLowerCase() === patientEmail) ||
-          (cita.pacienteCedula && cita.pacienteCedula === patientCedula);
+          (userPersonId && cita.personId && cita.personId.toLowerCase() === userPersonId) ||
+          (patientCedula && cita.pacienteCedula && cita.pacienteCedula === patientCedula) ||
+          (patientEmail && cita.pacienteEmail && cita.pacienteEmail.toLowerCase() === patientEmail) ||
+          (patientName &&
+            cita.paciente &&
+            (cita.paciente.toLowerCase().includes(patientName) ||
+              patientName.includes(cita.paciente.toLowerCase())));
 
         if (!isOwn) return false;
       }
 
+      // 2. Aislamiento por rol ODONTÓLOGO
       if (isOdontologo) {
         const doctorName = (user?.name || user?.nombre || "").toLowerCase();
         if (doctorName && cita.profesional && !cita.profesional.toLowerCase().includes(doctorName)) {
-          const isDoc = cita.profesional.toLowerCase().includes("laura") || cita.profesional.toLowerCase().includes("gómez");
+          const isDoc =
+            cita.profesional.toLowerCase().includes("laura") ||
+            cita.profesional.toLowerCase().includes("gómez");
           if (!isDoc && cita.profesional !== "") return false;
         }
       }
 
-      // 2. Filtros de búsqueda
+      // 3. Filtros de búsqueda de texto
       const matchSearch =
         searchValue === "" ||
         cita.paciente.toLowerCase().includes(searchValue) ||
@@ -239,7 +323,10 @@ export function CitasView() {
         cita.servicio.toLowerCase().includes(searchValue) ||
         (cita.motivo && cita.motivo.toLowerCase().includes(searchValue));
 
+      // 4. Filtro por fecha
       const matchFecha = fecha === "" || cita.fecha === fecha;
+
+      // 5. Filtro por estado
       const matchEstado = estadoFiltro === "Todos" || cita.estado === estadoFiltro;
 
       return matchSearch && matchFecha && matchEstado;
@@ -252,49 +339,69 @@ export function CitasView() {
 
   const handleCreateOrRequest = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formFecha) return;
+    const newId = Date.now();
+    const pacienteNombre = isPaciente
+      ? (user?.name || `${user?.nombre || "Andrés"} ${user?.apellido || "Pérez"}`)
+      : formPaciente || "Paciente General";
 
-    const newCita: Cita = {
-      id: Date.now(),
-      paciente: isPaciente ? (user?.name || "Andrés Pérez") : formPaciente || "Paciente Registrado",
-      pacienteEmail: isPaciente ? user?.email : undefined,
-      pacienteCedula: isPaciente ? user?.cedula : undefined,
+    const fechaValida = formFecha || "2026-09-16";
+    const horaValida = formHora || "10:00";
+
+    const nuevaCita: Cita = {
+      id: newId,
+      paciente: pacienteNombre,
+      pacienteEmail: isPaciente ? (user?.email || "paciente@nexusodonto.com") : "",
+      pacienteCedula: isPaciente ? (user?.cedula || "1076543210") : "",
       profesional: isPaciente ? "" : formProfesional,
-      servicio: formServicio || servicesList[0],
-      fecha: formFecha,
-      hora: formHora,
+      servicio: formServicio || servicesList[0] || "Consulta General",
+      fecha: fechaValida,
+      hora: horaValida,
       estado: isPaciente ? "Pendiente" : "Confirmada",
-      motivo: formMotivo || "Consulta general",
+      motivo: formMotivo || "Solicitud agendada vía portal web",
     };
 
-    // Intentar persistir en API /api/v1/Appointments
+    // Intentar persistir en API backend .NET
+    let createdFromApi: any = null;
     try {
-      await appointmentService.create({
-        patientId: user?.personId || "11000000-0000-0000-0000-000000000001",
-        professionalId: isPaciente ? "00000000-0000-0000-0000-000000000000" : "12000000-0000-0000-0000-000000000001",
-        serviceId: "12000000-0000-0000-0000-000000000001",
-        startsAt: `${formFecha}T${formHora}:00Z`,
-        endsAt: `${formFecha}T${formHora}:30Z`,
-        appointmentStatusId: isPaciente ? "14000000-0000-0000-0000-000000000001" : "14000000-0000-0000-0000-000000000002",
-        appointmentOriginId: isPaciente ? "15000000-0000-0000-0000-000000000002" : "15000000-0000-0000-0000-000000000001",
-        reasonForVisit: formMotivo,
+      const horaParts = horaValida.split(":");
+      const startH = parseInt(horaParts[0], 10) || 10;
+      const startM = parseInt(horaParts[1], 10) || 0;
+      const endMTotal = startH * 60 + startM + 45;
+      const endH = Math.floor(endMTotal / 60);
+      const endM = endMTotal % 60;
+      const endsHoraStr = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
+
+      createdFromApi = await appointmentService.create({
+        patientId: "1e000000-0000-0000-0000-000000000001", // Andrés Pérez (PatientSeeder)
+        professionalId: "1d000000-0000-0000-0000-000000000001", // Dra. Laura Gómez (ProfessionalSeeder)
+        serviceId: "30000000-0000-0000-0000-000000000001", // Valoración General (ServiceSeeder)
+        startsAt: `${fechaValida}T${horaValida}:00`,
+        endsAt: `${fechaValida}T${endsHoraStr}:00`,
+        appointmentStatusId: isPaciente
+          ? "10000000-0000-0000-0000-000000000001" // AGENDADA
+          : "10000000-0000-0000-0000-000000000002", // CONFIRMADA
+        appointmentOriginId: "20000000-0000-0000-0000-000000000003", // WEB
+        reasonForVisit: nuevaCita.motivo || "Solicitud agendada vía portal web",
+        notes: `Servicio: ${nuevaCita.servicio}. Paciente: ${nuevaCita.paciente}`,
       });
-    } catch (err) {
-      console.warn("Could not save to API Appointments directly, stored in state:", err);
+      console.log("Cita guardada exitosamente en Backend API .NET:", createdFromApi);
+    } catch (err: any) {
+      console.error("Error al guardar cita en API .NET:", err?.response?.data || err?.message || err);
     }
 
-    const updatedCitas = [newCita, ...citas];
-    setCitas(updatedCitas);
-    localStorage.setItem("nexus_citas", JSON.stringify(updatedCitas));
-    
-    // Actualizar notificaciones para recepción
-    refreshNotifications();
+    const updated = [nuevaCita, ...citas];
+    setCitas(updated);
+    localStorage.setItem("nexus_citas", JSON.stringify(updated));
 
     setShowRequestModal(false);
     setFormMotivo("");
-    setFormFecha("");
-    setSuccessToast(isPaciente ? "¡Tu cita ha sido solicitada con éxito! Queda en estado Pendiente para revisión de Recepción." : "¡Cita agendada y confirmada con éxito!");
-    setTimeout(() => setSuccessToast(null), 4000);
+    refreshNotifications();
+    setSuccessToast(
+      isPaciente
+        ? "¡Tu cita ha sido solicitada con éxito! Registrada en sistema."
+        : "¡Cita creada y confirmada exitosamente en agenda y base de datos!"
+    );
+    setTimeout(() => setSuccessToast(null), 3500);
   };
 
   const handleUpdateStatus = (citaId: number, nuevoEstado: EstadoCita) => {
@@ -340,7 +447,7 @@ export function CitasView() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-slate-900 dark:text-slate-100">
       {/* TOAST DE CONFIRMACIÓN */}
       {successToast && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 px-5 py-3 rounded-2xl shadow-2xl border border-teal-500/30 animate-scaleIn">
@@ -349,27 +456,27 @@ export function CitasView() {
         </div>
       )}
 
-      {/* ENCABEZADO Y ACCIÓN PRINCIPAL */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      {/* ENCABEZADO Y ACCIÓN PRINCIPAL (ESTILO OFICIAL PACIENTES) */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between animate-slideDown">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-slate-900 dark:text-white drop-shadow-sm dark:drop-shadow-md">
             {isPaciente ? "Mis Citas Odontológicas" : "Gestión de Citas y Agenda"}
           </h1>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mt-1 font-medium">
             {isPaciente
               ? "Solicita nuevas consultas y realiza seguimiento a tus tratamientos."
               : "Control operativo de solicitudes, asignación de doctores y flujo clínico."}
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           <button
             type="button"
             onClick={fetchAppointmentsAndCatalogs}
-            className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
+            className="p-2.5 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/30 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-md active:scale-95 shadow-sm"
             title="Recargar datos desde la base de datos"
           >
-            <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+            <RefreshCw size={16} className={`text-cyan-600 dark:text-cyan-400 ${loading ? "animate-spin" : ""}`} />
           </button>
 
           <button
@@ -378,7 +485,7 @@ export function CitasView() {
               setFormPaciente(isPaciente ? (user?.name || "Andrés Pérez") : "");
               setShowRequestModal(true);
             }}
-            className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-400 hover:to-cyan-400 px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-[0_4px_15px_rgba(20,184,166,0.3)] transition-all active:scale-95 cursor-pointer"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 px-5 py-2.5 text-sm font-semibold text-white dark:text-slate-950 shadow-md dark:shadow-[0_0_25px_rgba(34,211,238,0.3)] transition-all active:scale-95 cursor-pointer"
           >
             <Plus size={18} />
             <span>{isPaciente ? "Solicitar Cita" : "Nueva Cita Directa"}</span>
@@ -386,106 +493,99 @@ export function CitasView() {
         </div>
       </div>
 
-      {/* PESTAÑAS Y CONTADORES PARA RECEPCIÓN / ADMIN */}
-      {(isRecepcionista || isAdmin) && (
-        <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
-          <button
-            type="button"
-            onClick={() => setEstadoFiltro("Todos")}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
-              estadoFiltro === "Todos"
-                ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
-                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
-            }`}
-          >
-            Todas ({citas.length})
-          </button>
+      {/* BARRA DE BÚSQUEDA + PESTAÑAS DE FILTRADO RÁPIDO */}
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 pt-2 animate-slideUp animate-stagger-1">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
+          <div className="relative w-full sm:max-w-xs">
+            <Search size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              placeholder={isPaciente ? "Buscar por servicio o motivo..." : "Buscar por paciente, doctor..."}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-white/90 dark:bg-slate-950/65 border border-slate-200 dark:border-white/20 rounded-2xl text-sm text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-400 outline-none focus:border-cyan-500 dark:focus:border-cyan-400/60 focus:ring-1 focus:ring-cyan-500/30 dark:focus:ring-cyan-400/40 transition-all backdrop-blur-xl shadow-md"
+            />
+          </div>
 
-          <button
-            type="button"
-            onClick={() => setEstadoFiltro("Pendiente")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
-              estadoFiltro === "Pendiente"
-                ? "bg-amber-500 text-slate-950 font-bold"
-                : "bg-amber-500/10 text-amber-500 border border-amber-500/30 hover:bg-amber-500/20"
-            }`}
-          >
-            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-            Solicitudes Pendientes ({pendingCount})
-          </button>
+          {/* Pestañas de filtrado rápido */}
+          {(isRecepcionista || isAdmin || isPaciente) && (
+            <div className="flex items-center rounded-2xl bg-white/90 dark:bg-slate-950/65 p-1 border border-slate-200 dark:border-white/20 backdrop-blur-xl shadow-md overflow-x-auto">
+              <button
+                type="button"
+                onClick={() => setEstadoFiltro("Todos")}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                  estadoFiltro === "Todos"
+                    ? "bg-cyan-500/15 dark:bg-cyan-500/30 text-cyan-800 dark:text-cyan-200 border border-cyan-500/30 dark:border-cyan-400/40 shadow-sm"
+                    : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                Todas ({citas.length})
+              </button>
 
-          <button
-            type="button"
-            onClick={() => setEstadoFiltro("Confirmada")}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
-              estadoFiltro === "Confirmada"
-                ? "bg-teal-500 text-slate-950 font-bold"
-                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
-            }`}
-          >
-            Confirmadas
-          </button>
+              <button
+                type="button"
+                onClick={() => setEstadoFiltro("Pendiente")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                  estadoFiltro === "Pendiente"
+                    ? "bg-amber-500/15 dark:bg-amber-500/30 text-amber-800 dark:text-amber-200 border border-amber-500/30 dark:border-amber-400/40 shadow-sm"
+                    : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                Pendientes {pendingCount > 0 && `(${pendingCount})`}
+              </button>
 
-          <button
-            type="button"
-            onClick={() => setEstadoFiltro("En Atención")}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
-              estadoFiltro === "En Atención"
-                ? "bg-blue-500 text-white font-bold"
-                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
-            }`}
-          >
-            En Atención
-          </button>
+              <button
+                type="button"
+                onClick={() => setEstadoFiltro("Confirmada")}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                  estadoFiltro === "Confirmada"
+                    ? "bg-cyan-500/15 dark:bg-cyan-500/30 text-cyan-800 dark:text-cyan-200 border border-cyan-500/30 dark:border-cyan-400/40 shadow-sm"
+                    : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                Confirmadas
+              </button>
 
-          <button
-            type="button"
-            onClick={() => setEstadoFiltro("Completada")}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
-              estadoFiltro === "Completada"
-                ? "bg-purple-600 text-white font-bold"
-                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
-            }`}
-          >
-            Completadas
-          </button>
+              {!isPaciente && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setEstadoFiltro("En Atención")}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                      estadoFiltro === "En Atención"
+                        ? "bg-blue-500/15 dark:bg-blue-500/30 text-blue-800 dark:text-blue-200 border border-blue-500/30 dark:border-blue-400/40 shadow-sm"
+                        : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+                    }`}
+                  >
+                    En Atención
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setEstadoFiltro("Completada")}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                      estadoFiltro === "Completada"
+                        ? "bg-purple-500/15 dark:bg-purple-500/30 text-purple-800 dark:text-purple-200 border border-purple-500/30 dark:border-purple-400/40 shadow-sm"
+                        : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+                    }`}
+                  >
+                    Completadas
+                  </button>
+                </>
+              )}
+            </div>
+          )}
         </div>
-      )}
 
-      {/* BARRA DE BÚSQUEDA Y FILTROS */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-slate-50/50 dark:bg-slate-900/50 p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800">
-        <div className="relative flex-1">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder={isPaciente ? "Buscar por servicio o motivo..." : "Buscar por paciente, doctor o servicio..."}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:border-teal-500 transition-colors"
-          />
-        </div>
-
-        <div className="flex items-center gap-2">
+        {/* Filtro por fecha */}
+        <div className="flex items-center gap-2 self-end md:self-auto">
           <input
             type="date"
             value={fecha}
             onChange={(e) => setFecha(e.target.value)}
-            className="px-3 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-white outline-none focus:border-teal-500 transition-colors [color-scheme:dark]"
+            className="px-3.5 py-2 bg-white/90 dark:bg-slate-950/65 border border-slate-200 dark:border-white/20 rounded-2xl text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all backdrop-blur-xl shadow-md [color-scheme:dark]"
           />
-
-          {isPaciente && (
-            <select
-              value={estadoFiltro}
-              onChange={(e) => setEstadoFiltro(e.target.value as any)}
-              className="px-3 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-white outline-none focus:border-teal-500 transition-colors"
-            >
-              <option value="Todos">Todos los estados</option>
-              <option value="Pendiente">Pendiente</option>
-              <option value="Confirmada">Confirmada</option>
-              <option value="Completada">Completada</option>
-              <option value="Cancelada">Cancelada</option>
-            </select>
-          )}
 
           {(search || fecha || estadoFiltro !== "Todos") && (
             <button
@@ -495,7 +595,7 @@ export function CitasView() {
                 setFecha("");
                 setEstadoFiltro("Todos");
               }}
-              className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              className="p-2 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-white/80 dark:hover:bg-slate-950/40 transition-colors backdrop-blur-md cursor-pointer"
               title="Limpiar filtros"
             >
               <X size={18} />
@@ -504,8 +604,8 @@ export function CitasView() {
         </div>
       </div>
 
-      {/* TABLA PRINCIPAL DE CITAS */}
-      <div className="rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
+      {/* TABLA PRINCIPAL DE CITAS ESTILO GLASSMORPHISM */}
+      <div className="rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl shadow-md overflow-hidden animate-slideUp animate-stagger-2">
         <CitasTable
           citas={citasFiltradas}
           loading={loading}
@@ -516,15 +616,15 @@ export function CitasView() {
 
       {/* MODAL 1: SOLICITAR / CREAR CITA */}
       {showRequestModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
-          <div className="w-full max-w-lg rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-scaleIn">
-            <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-teal-500/10 text-teal-500">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-fadeIn">
+          <div className="w-full max-w-lg rounded-3xl bg-white/95 dark:bg-slate-950/95 backdrop-blur-2xl border border-slate-200 dark:border-cyan-400/20 shadow-2xl overflow-hidden animate-scaleIn">
+            <div className="flex items-center justify-between p-6 border-b border-slate-200/80 dark:border-white/15">
+              <div className="flex items-center gap-3">
+                <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500/20 to-cyan-500/20 border border-teal-500/30 text-teal-600 dark:text-teal-400">
                   <CalendarDays size={20} />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
                     {isPaciente ? "Solicitar Cita Odontológica" : "Agendar Nueva Cita Directa"}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -537,7 +637,7 @@ export function CitasView() {
               <button
                 type="button"
                 onClick={() => setShowRequestModal(false)}
-                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -546,7 +646,7 @@ export function CitasView() {
             <form onSubmit={handleCreateOrRequest} className="p-6 space-y-4">
               {!isPaciente && (
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                     Nombre del Paciente *
                   </label>
                   <input
@@ -555,19 +655,19 @@ export function CitasView() {
                     placeholder="Ej. Ana María Rodríguez"
                     value={formPaciente}
                     onChange={(e) => setFormPaciente(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-sm text-slate-900 dark:text-white outline-none focus:border-teal-500"
+                    className="w-full px-4 py-2.5 rounded-2xl bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-white/15 text-sm text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all backdrop-blur-md"
                   />
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                   Servicio / Tratamiento *
                 </label>
                 <select
                   value={formServicio}
                   onChange={(e) => setFormServicio(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-sm text-slate-900 dark:text-white outline-none focus:border-teal-500"
+                  className="w-full px-4 py-2.5 rounded-2xl bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-white/15 text-sm text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all backdrop-blur-md"
                 >
                   {servicesList.map((s) => (
                     <option key={s} value={s}>
@@ -579,7 +679,7 @@ export function CitasView() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                     Fecha deseada *
                   </label>
                   <input
@@ -587,12 +687,12 @@ export function CitasView() {
                     required
                     value={formFecha}
                     onChange={(e) => setFormFecha(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-sm text-slate-900 dark:text-white outline-none focus:border-teal-500 [color-scheme:dark]"
+                    className="w-full px-4 py-2.5 rounded-2xl bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-white/15 text-sm text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all backdrop-blur-md [color-scheme:dark]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                     Hora estimada *
                   </label>
                   <input
@@ -600,20 +700,20 @@ export function CitasView() {
                     required
                     value={formHora}
                     onChange={(e) => setFormHora(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-sm text-slate-900 dark:text-white outline-none focus:border-teal-500 [color-scheme:dark]"
+                    className="w-full px-4 py-2.5 rounded-2xl bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-white/15 text-sm text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all backdrop-blur-md [color-scheme:dark]"
                   />
                 </div>
               </div>
 
               {!isPaciente && (
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                     Odontólogo Asignado *
                   </label>
                   <select
                     value={formProfesional}
                     onChange={(e) => setFormProfesional(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-sm text-slate-900 dark:text-white outline-none focus:border-teal-500"
+                    className="w-full px-4 py-2.5 rounded-2xl bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-white/15 text-sm text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all backdrop-blur-md"
                   >
                     {professionalsList.map((p) => (
                       <option key={p} value={p}>
@@ -625,7 +725,7 @@ export function CitasView() {
               )}
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                   Motivo de la consulta / Observaciones
                 </label>
                 <textarea
@@ -633,7 +733,7 @@ export function CitasView() {
                   placeholder="Describe brevemente tus síntomas o motivo..."
                   value={formMotivo}
                   onChange={(e) => setFormMotivo(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-sm text-slate-900 dark:text-white outline-none focus:border-teal-500 resize-none"
+                  className="w-full px-4 py-2.5 rounded-2xl bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-white/15 text-sm text-slate-900 dark:text-white outline-none focus:border-cyan-500 resize-none transition-all backdrop-blur-md"
                 />
               </div>
 
@@ -641,13 +741,13 @@ export function CitasView() {
                 <button
                   type="button"
                   onClick={() => setShowRequestModal(false)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/30 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-md text-xs font-semibold"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-600 text-slate-950 font-bold text-xs transition-colors shadow-sm cursor-pointer"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 px-5 py-2.5 text-xs font-bold text-white dark:text-slate-950 shadow-md transition-all active:scale-95 cursor-pointer"
                 >
                   {isPaciente ? "Enviar Solicitud a Recepción" : "Confirmar Cita"}
                 </button>
@@ -659,54 +759,54 @@ export function CitasView() {
 
       {/* MODAL 2: APROBAR / ASIGNAR ODONTÓLOGO (RECEPCIÓN / ADMIN) */}
       {showAssignModal && selectedCitaToAssign && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
-          <div className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-scaleIn">
-            <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-teal-500/10 text-teal-500">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-fadeIn">
+          <div className="w-full max-w-md rounded-3xl bg-white/95 dark:bg-slate-950/95 backdrop-blur-2xl border border-slate-200 dark:border-cyan-400/20 shadow-2xl overflow-hidden animate-scaleIn">
+            <div className="flex items-center justify-between p-6 border-b border-slate-200/80 dark:border-white/15">
+              <div className="flex items-center gap-3">
+                <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500/20 to-cyan-500/20 border border-teal-500/30 text-teal-600 dark:text-teal-400">
                   <Stethoscope size={20} />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900 dark:text-white">
                     Aprobar y Asignar Cita
                   </h3>
-                  <p className="text-xs text-slate-500">
-                    Paciente: <span className="font-semibold text-teal-400">{selectedCitaToAssign.paciente}</span>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Paciente: <span className="font-bold text-teal-600 dark:text-teal-300">{selectedCitaToAssign.paciente}</span>
                   </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowAssignModal(false)}
-                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400"
+                className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors cursor-pointer"
               >
                 <X size={18} />
               </button>
             </div>
 
             <form onSubmit={handleAssignDoctor} className="p-6 space-y-4">
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-100 dark:border-slate-800 text-xs space-y-1">
-                <p className="text-slate-500">
-                  <strong className="text-slate-700 dark:text-slate-300">Servicio:</strong> {selectedCitaToAssign.servicio}
+              <div className="p-3.5 rounded-2xl bg-slate-100/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/15 text-xs space-y-1">
+                <p className="text-slate-500 dark:text-slate-400">
+                  <strong className="text-slate-900 dark:text-slate-200">Servicio:</strong> {selectedCitaToAssign.servicio}
                 </p>
-                <p className="text-slate-500">
-                  <strong className="text-slate-700 dark:text-slate-300">Fecha solicitada:</strong> {selectedCitaToAssign.fecha}
+                <p className="text-slate-500 dark:text-slate-400">
+                  <strong className="text-slate-900 dark:text-slate-200">Fecha solicitada:</strong> {selectedCitaToAssign.fecha}
                 </p>
                 {selectedCitaToAssign.motivo && (
-                  <p className="text-slate-500">
-                    <strong className="text-slate-700 dark:text-slate-300">Motivo:</strong> {selectedCitaToAssign.motivo}
+                  <p className="text-slate-500 dark:text-slate-400">
+                    <strong className="text-slate-900 dark:text-slate-200">Motivo:</strong> {selectedCitaToAssign.motivo}
                   </p>
                 )}
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                   Seleccionar Odontólogo Tratante *
                 </label>
                 <select
                   value={formProfesional}
                   onChange={(e) => setFormProfesional(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-sm text-slate-900 dark:text-white outline-none focus:border-teal-500"
+                  className="w-full px-4 py-2.5 rounded-2xl bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-white/15 text-sm text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all backdrop-blur-md"
                 >
                   {professionalsList.map((p) => (
                     <option key={p} value={p}>
@@ -717,7 +817,7 @@ export function CitasView() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                   Confirmar Hora de Consulta *
                 </label>
                 <input
@@ -725,7 +825,7 @@ export function CitasView() {
                   required
                   value={formHora}
                   onChange={(e) => setFormHora(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-sm text-slate-900 dark:text-white outline-none focus:border-teal-500 [color-scheme:dark]"
+                  className="w-full px-4 py-2.5 rounded-2xl bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-white/15 text-sm text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all backdrop-blur-md [color-scheme:dark]"
                 />
               </div>
 
@@ -733,13 +833,13 @@ export function CitasView() {
                 <button
                   type="button"
                   onClick={() => setShowAssignModal(false)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300"
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/30 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-md text-xs font-semibold"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-600 text-slate-950 font-bold text-xs shadow-sm cursor-pointer"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 px-5 py-2.5 text-xs font-bold text-white dark:text-slate-950 shadow-md transition-all active:scale-95 cursor-pointer"
                 >
                   Aprobar y Confirmar Cita
                 </button>

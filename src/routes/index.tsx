@@ -28,6 +28,12 @@ const DashboardLayout = lazy(() =>
   })),
 );
 
+const DashboardPage = lazy(() =>
+  import("../features/dashboard/DashboardPage").then((module) => ({
+    default: module.default,
+  })),
+);
+
 const PacientesView = lazy(() =>
   import("../features/pacientes/PacientesView").then((module) => ({
     default: module.PacientesView,
@@ -40,21 +46,33 @@ const PacienteRegistroView = lazy(() =>
   })),
 );
 
-const ServiciosView = lazy(() =>
-  import("../features/servicios/ServiciosView").then((module) => ({
-    default: module.ServiciosView,
-  })),
-);
-
 const CitasView = lazy(() =>
   import("../features/citas/CitasView").then((module) => ({
     default: module.CitasView,
   })),
 );
 
-const UsuariosView = lazy(() =>
-  import("../features/usuarios/UsuariosView").then((module) => ({
-    default: module.UsuariosView,
+const AgendaView = lazy(() =>
+  import("../features/agenda/AgendaView").then((module) => ({
+    default: module.AgendaView,
+  })),
+);
+
+const ProfesionalesView = lazy(() =>
+  import("../features/profesionales/ProfesionalesView").then((module) => ({
+    default: module.ProfesionalesView,
+  })),
+);
+
+const ServiciosView = lazy(() =>
+  import("../features/servicios/ServiciosView").then((module) => ({
+    default: module.ServiciosView,
+  })),
+);
+
+const HistoriaClinicaView = lazy(() =>
+  import("../features/historiaClinica/HistoriaClinicaView").then((module) => ({
+    default: module.HistoriaClinicaView,
   })),
 );
 
@@ -64,14 +82,20 @@ const OdontogramaUI = lazy(() =>
   })),
 );
 
-const PerfilView = lazy(() =>
-  import("../features/perfil/PerfilView").then((module) => ({
-    default: module.default,
+const UsuariosView = lazy(() =>
+  import("../features/usuarios/UsuariosView").then((module) => ({
+    default: module.UsuariosView,
   })),
 );
 
-const DashboardPage = lazy(() =>
-  import("../features/dashboard/DashboardPage").then((module) => ({
+const RolesPermisosView = lazy(() =>
+  import("../features/roles/RolesPermisosView").then((module) => ({
+    default: module.RolesPermisosView,
+  })),
+);
+
+const PerfilView = lazy(() =>
+  import("../features/perfil/PerfilView").then((module) => ({
     default: module.default,
   })),
 );
@@ -80,9 +104,9 @@ function LoadingFallback() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
       <div className="text-center">
-        <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-primary-500 border-t-transparent" />
-        <p className="text-sm text-slate-600 dark:text-slate-400">
-          Cargando...
+        <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-cyan-500 border-t-transparent" />
+        <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
+          Cargando NexusOdonto...
         </p>
       </div>
     </div>
@@ -104,6 +128,7 @@ export default function AppRoutes() {
 
         {/* Rutas Protegidas por RBAC */}
         <Route element={<ProtectedRoute />}>
+          {/* M11: Dashboard */}
           <Route
             path="/dashboard"
             element={
@@ -113,6 +138,7 @@ export default function AppRoutes() {
             }
           />
 
+          {/* M8: Citas */}
           <Route
             path="/citas"
             element={
@@ -122,15 +148,17 @@ export default function AppRoutes() {
             }
           />
 
+          {/* M7: Agenda y Calendario */}
           <Route
             path="/agenda"
             element={
               <DashboardLayout>
-                <CitasView />
+                <AgendaView />
               </DashboardLayout>
             }
           />
 
+          {/* M4: Pacientes */}
           <Route
             path="/pacientes"
             element={
@@ -149,15 +177,17 @@ export default function AppRoutes() {
             }
           />
 
+          {/* M6: Profesionales y Disponibilidad */}
           <Route
             path="/profesionales"
             element={
               <DashboardLayout>
-                <UsuariosView />
+                <ProfesionalesView />
               </DashboardLayout>
             }
           />
 
+          {/* M5: Catálogo de Servicios */}
           <Route
             path="/servicios"
             element={
@@ -167,29 +197,12 @@ export default function AppRoutes() {
             }
           />
 
+          {/* M9: Historia Clínica y Odontograma */}
           <Route
             path="/historia-clinica"
             element={
               <DashboardLayout>
-                <PacientesView />
-              </DashboardLayout>
-            }
-          />
-
-          <Route
-            path="/usuarios"
-            element={
-              <DashboardLayout>
-                <UsuariosView />
-              </DashboardLayout>
-            }
-          />
-
-          <Route
-            path="/roles-permisos"
-            element={
-              <DashboardLayout>
-                <UsuariosView />
+                <HistoriaClinicaView />
               </DashboardLayout>
             }
           />
@@ -203,6 +216,27 @@ export default function AppRoutes() {
             }
           />
 
+          {/* M2: Gestión de Usuarios */}
+          <Route
+            path="/usuarios"
+            element={
+              <DashboardLayout>
+                <UsuariosView />
+              </DashboardLayout>
+            }
+          />
+
+          {/* M3: Roles y Permisos Configurables */}
+          <Route
+            path="/roles-permisos"
+            element={
+              <DashboardLayout>
+                <RolesPermisosView />
+              </DashboardLayout>
+            }
+          />
+
+          {/* Configuración y Perfil */}
           <Route
             path="/configuracion"
             element={

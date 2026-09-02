@@ -55,35 +55,35 @@ function estadoBadge(estado: EstadoCita) {
   switch (estado) {
     case "Pendiente":
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-500 border border-amber-500/30">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
           Pendiente
         </span>
       );
     case "Confirmada":
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-teal-500/15 text-teal-400 border border-teal-500/30">
-          <span className="w-1.5 h-1.5 rounded-full bg-teal-400" />
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-teal-500/15 text-teal-700 dark:text-teal-300 border border-teal-500/30">
+          <span className="w-1.5 h-1.5 rounded-full bg-teal-500" />
           Confirmada
         </span>
       );
     case "En Atención":
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30 animate-pulse">
-          <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30 animate-pulse">
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
           En Atención
         </span>
       );
     case "Completada":
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-500/15 text-purple-300 border border-purple-500/30">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30">
           <CheckCircle size={13} />
           Completada
         </span>
       );
     case "Cancelada":
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-500/15 text-red-400 border border-red-500/30">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30">
           <XCircle size={13} />
           Cancelada
         </span>
@@ -118,16 +118,16 @@ export function CitasTable({
         {Array.from({ length: 4 }).map((_, index) => (
           <div
             key={index}
-            className="flex items-center justify-between p-4 rounded-2xl bg-slate-100/60 dark:bg-slate-800/40 animate-pulse"
+            className="flex items-center justify-between p-4 rounded-2xl bg-slate-100/60 dark:bg-slate-900/40 border border-slate-200/60 dark:border-white/10 animate-pulse backdrop-blur-md"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-slate-300 dark:bg-slate-700" />
+              <div className="w-10 h-10 rounded-xl bg-slate-300 dark:bg-white/10" />
               <div className="space-y-1.5">
-                <div className="w-32 h-4 rounded bg-slate-300 dark:bg-slate-700" />
-                <div className="w-24 h-3 rounded bg-slate-200 dark:bg-slate-800" />
+                <div className="w-32 h-4 rounded bg-slate-300 dark:bg-white/10" />
+                <div className="w-24 h-3 rounded bg-slate-200 dark:bg-white/5" />
               </div>
             </div>
-            <div className="w-24 h-6 rounded-full bg-slate-300 dark:bg-slate-700" />
+            <div className="w-24 h-6 rounded-full bg-slate-300 dark:bg-white/10" />
           </div>
         ))}
       </div>
@@ -136,14 +136,14 @@ export function CitasTable({
 
   if (citas.length === 0) {
     return (
-      <div className="flex min-h-60 w-full flex-col items-center justify-center py-12 text-center">
-        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-teal-500/10 text-teal-400">
+      <div className="flex min-h-60 w-full flex-col items-center justify-center py-16 text-center">
+        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500/20 to-cyan-500/20 border border-teal-500/30 text-teal-600 dark:text-teal-400">
           <CalendarDays size={24} />
         </div>
-        <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+        <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
           No hay citas registradas
         </h3>
-        <p className="mt-1 max-w-sm text-sm text-slate-500 dark:text-slate-400">
+        <p className="mt-1 max-w-sm text-xs sm:text-sm text-slate-500 dark:text-slate-400">
           {isPaciente
             ? "Aún no has solicitado citas. Haz clic en 'Solicitar Cita' para agendar tu atención."
             : "No se encontraron citas con los filtros seleccionados."}
@@ -157,7 +157,7 @@ export function CitasTable({
       {/* TABLA ESCRITORIO */}
       <div className="hidden min-w-[950px] md:block">
         {/* CABECERA */}
-        <div className="grid grid-cols-[1.3fr_1.1fr_1.1fr_1.1fr_120px_160px] border-y border-slate-200/80 bg-slate-50/50 px-5 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:border-slate-800/80 dark:bg-slate-900/40 dark:text-slate-400">
+        <div className="grid grid-cols-[1.3fr_1.1fr_1.1fr_1.1fr_120px_160px] border-b border-slate-200/80 dark:border-white/15 bg-slate-100/75 dark:bg-slate-900/60 px-5 py-3 text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
           <div>Paciente</div>
           <div>Fecha y Hora</div>
           <div>Profesional</div>
@@ -167,34 +167,34 @@ export function CitasTable({
         </div>
 
         {/* FILAS */}
-        <div className="divide-y divide-slate-100 dark:divide-slate-800/70">
+        <div className="divide-y divide-slate-200/60 dark:divide-white/10">
           {citas.map((cita) => (
             <div
               key={cita.id}
-              className="grid grid-cols-[1.3fr_1.1fr_1.1fr_1.1fr_120px_160px] items-center px-5 py-4 transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/40"
+              className="grid grid-cols-[1.3fr_1.1fr_1.1fr_1.1fr_120px_160px] items-center px-5 py-4 transition-colors hover:bg-cyan-500/5 dark:hover:bg-cyan-400/10"
             >
               {/* PACIENTE */}
               <div className="flex items-center gap-3 min-w-0 pr-2">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-500/10 text-teal-500">
-                  <UserRound size={18} />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500/20 via-cyan-500/20 to-blue-500/20 dark:from-teal-400/30 dark:via-cyan-400/30 dark:to-blue-500/30 border border-cyan-500/40 dark:border-cyan-400/50 text-cyan-800 dark:text-cyan-200 font-extrabold shadow-sm">
+                  <UserRound size={16} className="text-teal-600 dark:text-teal-400" />
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  <p className="truncate text-sm font-bold text-slate-900 dark:text-white">
                     {cita.paciente}
                   </p>
                   {cita.pacienteCedula && (
-                    <p className="text-[11px] text-slate-400">CC: {cita.pacienteCedula}</p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">CC: {cita.pacienteCedula}</p>
                   )}
                 </div>
               </div>
 
               {/* FECHA Y HORA */}
               <div className="space-y-0.5 text-xs text-slate-600 dark:text-slate-300">
-                <div className="flex items-center gap-1.5 font-medium text-slate-900 dark:text-slate-100">
-                  <CalendarDays size={14} className="text-teal-500" />
+                <div className="flex items-center gap-1.5 font-semibold text-slate-900 dark:text-white">
+                  <CalendarDays size={14} className="text-teal-600 dark:text-teal-400" />
                   <span>{formatearFecha(cita.fecha)}</span>
                 </div>
-                <div className="flex items-center gap-1.5 text-slate-500">
+                <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
                   <Clock3 size={13} />
                   <span>{formatearHora(cita.hora)}</span>
                 </div>
@@ -203,19 +203,19 @@ export function CitasTable({
               {/* PROFESIONAL */}
               <div className="text-xs text-slate-700 dark:text-slate-300 pr-2">
                 {cita.profesional ? (
-                  <span className="flex items-center gap-1.5 font-medium">
-                    <Stethoscope size={14} className="text-cyan-500" />
+                  <span className="flex items-center gap-1.5 font-semibold text-slate-900 dark:text-slate-100">
+                    <Stethoscope size={14} className="text-cyan-600 dark:text-cyan-400" />
                     {cita.profesional}
                   </span>
                 ) : (
-                  <span className="italic text-amber-500/90 text-xs">Por asignar</span>
+                  <span className="italic text-amber-600 dark:text-amber-400 text-xs">Por asignar</span>
                 )}
               </div>
 
               {/* SERVICIO / MOTIVO */}
               <div className="text-xs text-slate-700 dark:text-slate-300 pr-2 min-w-0">
-                <p className="font-medium truncate text-slate-900 dark:text-slate-100">{cita.servicio}</p>
-                {cita.motivo && <p className="truncate text-[11px] text-slate-400">{cita.motivo}</p>}
+                <p className="font-semibold truncate text-slate-900 dark:text-white">{cita.servicio}</p>
+                {cita.motivo && <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">{cita.motivo}</p>}
               </div>
 
               {/* ESTADO */}
@@ -230,14 +230,14 @@ export function CitasTable({
                       <button
                         type="button"
                         onClick={() => onUpdateStatus(cita.id, "Cancelada")}
-                        className="px-2.5 py-1 rounded-lg border border-red-500/30 hover:bg-red-500/10 text-red-400 transition-colors cursor-pointer"
+                        className="px-2.5 py-1 rounded-xl border border-rose-500/30 hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 transition-all cursor-pointer text-xs font-semibold active:scale-95"
                         title="Cancelar mi cita"
                       >
                         Cancelar
                       </button>
                     )}
                     {cita.estado === "Completada" && (
-                      <span className="text-[11px] text-teal-400 font-medium">Finalizada</span>
+                      <span className="text-[11px] text-teal-600 dark:text-teal-400 font-semibold">Finalizada</span>
                     )}
                   </>
                 )}
@@ -249,7 +249,7 @@ export function CitasTable({
                       <button
                         type="button"
                         onClick={() => onOpenAssignModal(cita)}
-                        className="px-3 py-1 rounded-lg bg-teal-500 hover:bg-teal-600 text-slate-950 font-semibold transition-colors cursor-pointer shadow-sm"
+                        className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-400 hover:to-cyan-400 text-white dark:text-slate-950 font-bold transition-all cursor-pointer shadow-sm active:scale-95 text-xs"
                       >
                         Asignar / Aprobar
                       </button>
@@ -258,7 +258,7 @@ export function CitasTable({
                       <button
                         type="button"
                         onClick={() => onUpdateStatus(cita.id, "Cancelada")}
-                        className="px-2.5 py-1 rounded-lg border border-red-500/30 hover:bg-red-500/10 text-red-400 transition-colors cursor-pointer"
+                        className="px-2.5 py-1 rounded-xl border border-rose-500/30 hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 transition-all cursor-pointer text-xs font-semibold active:scale-95"
                       >
                         Cancelar
                       </button>
@@ -273,18 +273,18 @@ export function CitasTable({
                       <button
                         type="button"
                         onClick={() => onUpdateStatus(cita.id, "En Atención")}
-                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-500 hover:bg-blue-600 text-white font-medium transition-colors cursor-pointer shadow-sm"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold transition-all cursor-pointer shadow-sm active:scale-95 text-xs"
                       >
-                        <PlayCircle size={13} />
+                        <PlayCircle size={14} />
                         <span>Atender</span>
                       </button>
                     )}
                     {cita.estado === "En Atención" && (
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1.5">
                         <button
                           type="button"
                           onClick={() => navigate("/odontograma")}
-                          className="p-1 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-400 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 transition-all cursor-pointer active:scale-95"
                           title="Abrir Odontograma"
                         >
                           <Smile size={14} />
@@ -292,7 +292,7 @@ export function CitasTable({
                         <button
                           type="button"
                           onClick={() => navigate("/historia-clinica")}
-                          className="p-1 rounded-lg bg-blue-500/15 hover:bg-blue-500/25 text-blue-400 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-xl bg-blue-500/15 hover:bg-blue-500/25 text-blue-700 dark:text-blue-300 border border-blue-500/30 transition-all cursor-pointer active:scale-95"
                           title="Abrir Historia Clínica"
                         >
                           <FileText size={14} />
@@ -300,7 +300,7 @@ export function CitasTable({
                         <button
                           type="button"
                           onClick={() => onUpdateStatus(cita.id, "Completada")}
-                          className="px-2 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold transition-colors cursor-pointer"
+                          className="px-2.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold transition-all cursor-pointer shadow-sm active:scale-95 text-xs"
                         >
                           Completar
                         </button>
@@ -319,28 +319,28 @@ export function CitasTable({
         {citas.map((cita) => (
           <div
             key={cita.id}
-            className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/60 shadow-sm space-y-3"
+            className="p-5 rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl shadow-md space-y-3"
           >
             <div className="flex items-start justify-between gap-2">
               <div>
-                <p className="font-semibold text-sm text-slate-900 dark:text-slate-100">{cita.paciente}</p>
-                <p className="text-xs text-slate-500">{cita.servicio}</p>
+                <p className="font-bold text-sm text-slate-900 dark:text-white">{cita.paciente}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{cita.servicio}</p>
               </div>
               {estadoBadge(cita.estado)}
             </div>
 
-            <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 dark:text-slate-300 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 dark:text-slate-300 pt-2 border-t border-slate-200/80 dark:border-white/15">
               <div>
                 <span className="text-[10px] text-slate-400 block">Fecha:</span>
-                <span className="font-medium">{formatearFecha(cita.fecha)}</span>
+                <span className="font-semibold">{formatearFecha(cita.fecha)}</span>
               </div>
               <div>
                 <span className="text-[10px] text-slate-400 block">Hora:</span>
-                <span className="font-medium">{formatearHora(cita.hora)}</span>
+                <span className="font-semibold">{formatearHora(cita.hora)}</span>
               </div>
               <div className="col-span-2">
                 <span className="text-[10px] text-slate-400 block">Profesional:</span>
-                <span className="font-medium text-cyan-500">{cita.profesional || "Por asignar"}</span>
+                <span className="font-semibold text-cyan-600 dark:text-cyan-400">{cita.profesional || "Por asignar"}</span>
               </div>
             </div>
 
@@ -349,7 +349,7 @@ export function CitasTable({
               <button
                 type="button"
                 onClick={() => onOpenAssignModal(cita)}
-                className="w-full py-2 rounded-xl bg-teal-500 text-slate-950 font-semibold text-xs text-center"
+                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 text-white dark:text-slate-950 font-bold text-xs text-center shadow-md active:scale-95"
               >
                 Aprobar y Asignar Doctor
               </button>
@@ -359,7 +359,7 @@ export function CitasTable({
               <button
                 type="button"
                 onClick={() => onUpdateStatus(cita.id, "En Atención")}
-                className="w-full py-2 rounded-xl bg-blue-500 text-white font-semibold text-xs text-center"
+                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold text-xs text-center shadow-md active:scale-95"
               >
                 Iniciar Consulta
               </button>

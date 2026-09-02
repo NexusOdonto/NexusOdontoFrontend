@@ -1,7 +1,10 @@
 import axiosClient from './axiosClient';
 
 export interface LoginRequest {
-  login: string;
+  documentNumber?: string;
+  loginId?: string;
+  login?: string;
+  username?: string;
   password: string;
 }
 
@@ -55,8 +58,31 @@ export interface AuthResponse {
 
 export const authService = {
   login: async (credentials: LoginRequest): Promise<AuthResponse> => {
-    const response = await axiosClient.post('/auth/login', credentials);
-    return response.data;
+    const docOrId =
+      credentials.documentNumber ||
+      credentials.loginId ||
+      credentials.login ||
+      (credentials as any).username ||
+      '';
+
+    const payload = {
+      loginId: docOrId,
+      documentNumber: docOrId,
+      password: credentials.password,
+    };
+
+    const response = await axiosClient.post('/auth/login', payload);
+    const data = response.data;
+
+    if (data && data.token) {
+      localStorage.setItem('auth_token', data.token);
+      localStorage.setItem('nexus_token', data.token);
+    }
+    if (data && data.user) {
+      localStorage.setItem('nexus_user', JSON.stringify(data.user));
+    }
+
+    return data;
   },
 
   register: async (data: RegisterRequest): Promise<any> => {
