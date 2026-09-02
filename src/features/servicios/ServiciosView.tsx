@@ -32,7 +32,8 @@ const serviciosFallback: Servicio[] = [
   {
     id: 4,
     nombre: "Limpieza y profilaxis dental",
-    descripcion: "Limpieza profesional con ultrasonido para eliminar placa y sarro.",
+    descripcion:
+      "Limpieza profesional con ultrasonido para eliminar placa y sarro.",
     duracion: 40,
     precio: 45000,
     activo: true,
@@ -40,7 +41,8 @@ const serviciosFallback: Servicio[] = [
   {
     id: 5,
     nombre: "Tratamiento de Endodoncia",
-    descripcion: "Tratamiento de conductos radiculares para salvar piezas comprometidas.",
+    descripcion:
+      "Tratamiento de conductos radiculares para salvar piezas comprometidas.",
     duracion: 90,
     precio: 180000,
     activo: true,
@@ -67,24 +69,31 @@ export function ServiciosView() {
 
   const fetchServicios = useCallback(async () => {
     setLoading(true);
+
     try {
-      // Consumir directamente /api/v1/Services del backend
       const data = await serviceCatalogService.getAll().catch(() => []);
+
       if (data && data.length > 0) {
         const mapped: Servicio[] = data.map((s, idx) => ({
           id: idx + 1,
           nombre: s.name,
-          descripcion: s.description || "Servicio odontológico profesional.",
+          descripcion:
+            s.description || "Servicio odontológico profesional.",
           duracion: s.durationMinutes || 45,
           precio: s.price || 50000,
           activo: s.isActive,
         }));
+
         setServicios(mapped);
       } else {
         setServicios(serviciosFallback);
       }
     } catch (err) {
-      console.warn("API Services unavailable, using local fallback:", err);
+      console.warn(
+        "API Services unavailable, using local fallback:",
+        err
+      );
+
       setServicios(serviciosFallback);
     } finally {
       setLoading(false);
@@ -97,14 +106,20 @@ export function ServiciosView() {
 
   const serviciosFiltrados = servicios.filter((servicio) => {
     const coincideBusqueda =
-      servicio.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-      servicio.descripcion.toLowerCase().includes(busqueda.toLowerCase());
+      servicio.nombre
+        .toLowerCase()
+        .includes(busqueda.toLowerCase()) ||
+      servicio.descripcion
+        .toLowerCase()
+        .includes(busqueda.toLowerCase());
 
     const coincidePrecio =
-      precioMaximo === "" || servicio.precio <= Number(precioMaximo);
+      precioMaximo === "" ||
+      servicio.precio <= Number(precioMaximo);
 
     const coincideDuracion =
-      duracionMaxima === "" || servicio.duracion <= Number(duracionMaxima);
+      duracionMaxima === "" ||
+      servicio.duracion <= Number(duracionMaxima);
 
     const coincideEstado =
       estado === "todos" ||
@@ -125,7 +140,9 @@ export function ServiciosView() {
     setEstado("todos");
   }
 
-  async function agregarServicio(event: React.FormEvent<HTMLFormElement>) {
+  async function agregarServicio(
+    event: React.FormEvent<HTMLFormElement>
+  ) {
     event.preventDefault();
 
     const duracionNumero = Number(nuevoServicio.duracion);
@@ -150,7 +167,6 @@ export function ServiciosView() {
       activo: nuevoServicio.activo,
     };
 
-    // Intentar persistir en API /api/v1/Services
     try {
       await serviceCatalogService.create({
         code: `SRV-${Date.now().toString().slice(-4)}`,
@@ -162,7 +178,10 @@ export function ServiciosView() {
         sortOrder: servicios.length + 1,
       });
     } catch (err) {
-      console.warn("Could not save to API Services directly, saved in state:", err);
+      console.warn(
+        "Could not save to API Services directly, saved in state:",
+        err
+      );
     }
 
     setServicios((prev) => [nuevoObj, ...prev]);
@@ -180,13 +199,13 @@ export function ServiciosView() {
 
   return (
     <div className="space-y-6">
-      {/* Encabezado */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-slate-900 dark:text-white">
             Catálogo de Servicios y Tarifas
           </h1>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+
+          <p className="mt-2 text-sm sm:text-base text-slate-600 dark:text-slate-400">
             Administración de tratamientos, duraciones y precios de la clínica.
           </p>
         </div>
@@ -195,16 +214,21 @@ export function ServiciosView() {
           <button
             type="button"
             onClick={fetchServicios}
-            className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
+            className="rounded-xl border border-white/10 bg-slate-900/25 p-2.5 text-slate-600 backdrop-blur-md transition-colors hover:bg-slate-900/40 dark:text-slate-300"
             title="Recargar desde la base de datos"
           >
-            <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+            <RefreshCw
+              size={16}
+              className={loading ? "animate-spin" : ""}
+            />
           </button>
 
           <button
             type="button"
-            onClick={() => setMostrarFormulario(!mostrarFormulario)}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-400 hover:to-cyan-400 px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-[0_4px_15px_rgba(20,184,166,0.3)] transition-all active:scale-95 cursor-pointer"
+            onClick={() =>
+              setMostrarFormulario(!mostrarFormulario)
+            }
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-[0_4px_15px_rgba(20,184,166,0.3)] transition-all hover:from-teal-400 hover:to-cyan-400 active:scale-95"
           >
             <Plus size={18} />
             <span>Nuevo Servicio</span>
@@ -212,63 +236,70 @@ export function ServiciosView() {
         </div>
       </div>
 
-      {/* Barra de Filtros */}
-      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-slate-50/50 dark:bg-slate-900/50 p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+      <div className="flex flex-col items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/25 p-3 backdrop-blur-md sm:flex-row">
         <input
           type="text"
           placeholder="Buscar servicio o descripción..."
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          className="w-full sm:max-w-md px-4 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:border-teal-500 transition-colors"
+          className="w-full rounded-xl border border-white/10 bg-slate-950/45 px-4 py-2.5 text-sm text-white placeholder:text-slate-400 outline-none backdrop-blur-md transition-colors focus:border-teal-400 sm:max-w-md"
         />
 
         <button
           type="button"
-          onClick={() => setMostrarFiltros(!mostrarFiltros)}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+          onClick={() =>
+            setMostrarFiltros(!mostrarFiltros)
+          }
+          className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-slate-900/30 px-3 py-2.5 text-xs font-semibold text-slate-300 backdrop-blur-md transition-colors hover:bg-slate-800/40"
         >
           <Filter size={15} />
           <span>Filtros avanzados</span>
         </button>
       </div>
 
-      {/* Panel de Filtros Avanzados */}
       {mostrarFiltros && (
-        <div className="p-4 rounded-2xl bg-slate-100/70 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-3 gap-3 animate-fadeIn">
+        <div className="grid grid-cols-1 gap-3 rounded-2xl border border-white/10 bg-slate-950/25 p-4 backdrop-blur-md sm:grid-cols-3 animate-fadeIn">
           <div>
-            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+            <label className="mb-1 block text-xs font-semibold text-slate-300">
               Precio Máximo ($)
             </label>
+
             <input
               type="number"
               placeholder="Ej. 100000"
               value={precioMaximo}
-              onChange={(e) => setPrecioMaximo(e.target.value)}
-              className="w-full px-3 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs"
+              onChange={(e) =>
+                setPrecioMaximo(e.target.value)
+              }
+              className="w-full rounded-xl border border-white/10 bg-slate-950/45 px-3 py-2.5 text-xs text-white placeholder:text-slate-500 outline-none focus:border-teal-400"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+            <label className="mb-1 block text-xs font-semibold text-slate-300">
               Duración Máxima (min)
             </label>
+
             <input
               type="number"
               placeholder="Ej. 60"
               value={duracionMaxima}
-              onChange={(e) => setDuracionMaxima(e.target.value)}
-              className="w-full px-3 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs"
+              onChange={(e) =>
+                setDuracionMaxima(e.target.value)
+              }
+              className="w-full rounded-xl border border-white/10 bg-slate-950/45 px-3 py-2.5 text-xs text-white placeholder:text-slate-500 outline-none focus:border-teal-400"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+            <label className="mb-1 block text-xs font-semibold text-slate-300">
               Estado del Servicio
             </label>
+
             <select
               value={estado}
               onChange={(e) => setEstado(e.target.value)}
-              className="w-full px-3 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs"
+              className="w-full rounded-xl border border-white/10 bg-slate-950/45 px-3 py-2.5 text-xs text-white outline-none focus:border-teal-400"
             >
               <option value="todos">Todos los estados</option>
               <option value="activo">Solo Activos</option>
@@ -276,11 +307,11 @@ export function ServiciosView() {
             </select>
           </div>
 
-          <div className="sm:col-span-3 flex justify-end">
+          <div className="flex justify-end sm:col-span-3">
             <button
               type="button"
               onClick={limpiarFiltros}
-              className="text-xs text-teal-600 dark:text-teal-400 hover:underline"
+              className="text-xs font-medium text-teal-400 transition-colors hover:text-teal-300 hover:underline"
             >
               Restablecer filtros
             </button>
@@ -288,80 +319,109 @@ export function ServiciosView() {
         </div>
       )}
 
-      {/* Modal / Formulario Nuevo Servicio */}
       {mostrarFormulario && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
-          <div className="w-full max-w-lg rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6 space-y-4 animate-scaleIn">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-lg space-y-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900 animate-scaleIn">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
               <h3 className="text-base font-bold text-slate-900 dark:text-white">
                 Registrar Nuevo Servicio Odontológico
               </h3>
+
               <button
                 type="button"
-                onClick={() => setMostrarFormulario(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                onClick={() =>
+                  setMostrarFormulario(false)
+                }
+                className="rounded-lg p-1.5 text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-200"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={agregarServicio} className="space-y-4">
+            <form
+              onSubmit={agregarServicio}
+              className="space-y-4"
+            >
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Nombre del Servicio *
                 </label>
+
                 <input
                   type="text"
                   required
                   placeholder="Ej. Profilaxis y Detartraje"
                   value={nuevoServicio.nombre}
-                  onChange={(e) => setNuevoServicio({ ...nuevoServicio, nombre: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-sm"
+                  onChange={(e) =>
+                    setNuevoServicio({
+                      ...nuevoServicio,
+                      nombre: e.target.value,
+                    })
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Descripción Clínica *
                 </label>
+
                 <textarea
                   rows={2}
                   required
                   placeholder="Detalle del procedimiento..."
                   value={nuevoServicio.descripcion}
-                  onChange={(e) => setNuevoServicio({ ...nuevoServicio, descripcion: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-sm resize-none"
+                  onChange={(e) =>
+                    setNuevoServicio({
+                      ...nuevoServicio,
+                      descripcion: e.target.value,
+                    })
+                  }
+                  className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Duración (minutos) *
                   </label>
+
                   <input
                     type="number"
                     required
                     min="5"
                     placeholder="45"
                     value={nuevoServicio.duracion}
-                    onChange={(e) => setNuevoServicio({ ...nuevoServicio, duracion: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-sm"
+                    onChange={(e) =>
+                      setNuevoServicio({
+                        ...nuevoServicio,
+                        duracion: e.target.value,
+                      })
+                    }
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Precio ($ COP) *
                   </label>
+
                   <input
                     type="number"
                     required
                     min="1000"
                     placeholder="80000"
                     value={nuevoServicio.precio}
-                    onChange={(e) => setNuevoServicio({ ...nuevoServicio, precio: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-sm"
+                    onChange={(e) =>
+                      setNuevoServicio({
+                        ...nuevoServicio,
+                        precio: e.target.value,
+                      })
+                    }
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-white"
                   />
                 </div>
               </div>
@@ -369,14 +429,17 @@ export function ServiciosView() {
               <div className="flex items-center justify-end gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setMostrarFormulario(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold"
+                  onClick={() =>
+                    setMostrarFormulario(false)
+                  }
+                  className="rounded-xl border border-slate-300 px-4 py-2 text-xs font-semibold dark:border-slate-700"
                 >
                   Cancelar
                 </button>
+
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-teal-500 hover:bg-teal-600 text-slate-950 font-bold text-xs shadow-sm cursor-pointer"
+                  className="cursor-pointer rounded-xl bg-teal-500 px-5 py-2 text-xs font-bold text-slate-950 shadow-sm transition-colors hover:bg-teal-600"
                 >
                   Guardar en Base de Datos
                 </button>
@@ -386,7 +449,6 @@ export function ServiciosView() {
         </div>
       )}
 
-      {/* Grid de Servicios */}
       <ServiciosGrid servicios={serviciosFiltrados} />
     </div>
   );
