@@ -1,4 +1,9 @@
-import { useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
 import {
   CalendarDays,
   ChevronLeft,
@@ -11,6 +16,7 @@ import {
   Settings2,
   X,
   Save,
+  Trash2,
 } from "lucide-react";
 
 import {
@@ -29,24 +35,34 @@ import {
 } from "./AgendaData";
 
 export function AgendaView() {
-  const [citas, setCitas] = useState<Cita[]>(citasIniciales);
+  const [citas, setCitas] =
+    useState<Cita[]>(citasIniciales);
 
-  const [vista, setVista] = useState<"Día" | "Semana" | "Mes">(
-    "Semana"
-  );
+  const [vista, setVista] = useState<
+    "Día" | "Semana" | "Mes"
+  >("Semana");
 
-  const [fechaActual, setFechaActual] = useState(
-    new Date(2026, 8, 1)
-  );
+  const [fechaActual, setFechaActual] =
+    useState(new Date(2026, 8, 1));
 
-  const [odontologosSeleccionados, setOdontologosSeleccionados] =
-    useState<string[]>(["Todos los odontólogos"]);
+  const [
+    odontologosSeleccionados,
+    setOdontologosSeleccionados,
+  ] = useState<string[]>([
+    "Todos los odontólogos",
+  ]);
 
-  const [mostrarModal, setMostrarModal] = useState(false);
+  const [mostrarModal, setMostrarModal] =
+    useState(false);
 
-  const [fechaSeleccionada, setFechaSeleccionada] = useState("");
+  const [fechaSeleccionada, setFechaSeleccionada] =
+    useState("");
 
-  const [horaSeleccionada, setHoraSeleccionada] = useState("");
+  const [horaSeleccionada, setHoraSeleccionada] =
+    useState("");
+
+  const [horaActual, setHoraActual] =
+    useState(new Date());
 
   const [nuevaCita, setNuevaCita] = useState({
     paciente: "",
@@ -57,27 +73,47 @@ export function AgendaView() {
     estado: "Pendiente" as EstadoCita,
   });
 
+  useEffect(() => {
+    const actualizarHora = () => {
+      setHoraActual(new Date());
+    };
+
+    actualizarHora();
+
+    const intervalo = setInterval(
+      actualizarHora,
+      60000
+    );
+
+    return () => {
+      clearInterval(intervalo);
+    };
+  }, []);
+
   const inicioSemana = useMemo(() => {
     return obtenerInicioSemana(fechaActual);
   }, [fechaActual]);
 
   const diasSemana = useMemo(() => {
-    return Array.from({ length: 7 }, (_, index) =>
-      sumarDias(inicioSemana, index)
+    return Array.from(
+      { length: 7 },
+      (_, index) =>
+        sumarDias(inicioSemana, index)
     );
   }, [inicioSemana]);
 
   const horasGrid = useMemo(() => {
-    return Array.from({ length: 22 }, (_, index) => {
-      const totalMinutos = 7 * 60 + index * 30;
+    return Array.from(
+      { length: 11 },
+      (_, index) => {
+        const hora = 7 + index;
 
-      const hora = Math.floor(totalMinutos / 60);
-      const minutos = totalMinutos % 60;
-
-      return `${String(hora).padStart(2, "0")}:${String(
-        minutos
-      ).padStart(2, "0")}`;
-    });
+        return `${String(hora).padStart(
+          2,
+          "0"
+        )}:00`;
+      }
+    );
   }, []);
 
   const citasFiltradas = useMemo(() => {
@@ -90,37 +126,50 @@ export function AgendaView() {
     }
 
     return citas.filter((cita) =>
-      odontologosSeleccionados.includes(cita.odontologo)
+      odontologosSeleccionados.includes(
+        cita.odontologo
+      )
     );
-  }, [citas, odontologosSeleccionados]);
+  }, [
+    citas,
+    odontologosSeleccionados,
+  ]);
 
   const citasHoy = useMemo(() => {
-    const hoy = formatoFechaInput(fechaActual);
+    const hoy =
+      formatoFechaInput(fechaActual);
 
-    return citas.filter((cita) => cita.fecha === hoy).length;
+    return citas.filter(
+      (cita) => cita.fecha === hoy
+    ).length;
   }, [citas, fechaActual]);
 
   const confirmadas = useMemo(() => {
     return citas.filter(
-      (cita) => cita.estado === "Confirmada"
+      (cita) =>
+        cita.estado === "Confirmada"
     ).length;
   }, [citas]);
 
   const pendientes = useMemo(() => {
     return citas.filter(
-      (cita) => cita.estado === "Pendiente"
+      (cita) =>
+        cita.estado === "Pendiente"
     ).length;
   }, [citas]);
 
   const espaciosDisponibles = useMemo(() => {
     return (
       citas.filter(
-        (cita) => cita.estado === "Disponible"
+        (cita) =>
+          cita.estado === "Disponible"
       ).length + 20
     );
   }, [citas]);
 
-  const cambiarSemana = (direccion: number) => {
+  const cambiarSemana = (
+    direccion: number
+  ) => {
     setFechaActual((fecha) =>
       sumarDias(fecha, direccion * 7)
     );
@@ -130,8 +179,13 @@ export function AgendaView() {
     setFechaActual(new Date());
   };
 
-  const cambiarOdontologo = (nombre: string) => {
-    if (nombre === "Todos los odontólogos") {
+  const cambiarOdontologo = (
+    nombre: string
+  ) => {
+    if (
+      nombre ===
+      "Todos los odontólogos"
+    ) {
       setOdontologosSeleccionados([
         "Todos los odontólogos",
       ]);
@@ -139,42 +193,61 @@ export function AgendaView() {
       return;
     }
 
-    setOdontologosSeleccionados((actuales) => {
-      const sinTodos = actuales.filter(
-        (odontologo) =>
-          odontologo !== "Todos los odontólogos"
-      );
-
-      if (sinTodos.includes(nombre)) {
-        const nuevos = sinTodos.filter(
-          (odontologo) => odontologo !== nombre
+    setOdontologosSeleccionados(
+      (actuales) => {
+        const sinTodos = actuales.filter(
+          (odontologo) =>
+            odontologo !==
+            "Todos los odontólogos"
         );
 
-        return nuevos.length > 0
-          ? nuevos
-          : ["Todos los odontólogos"];
+        if (sinTodos.includes(nombre)) {
+          const nuevos =
+            sinTodos.filter(
+              (odontologo) =>
+                odontologo !== nombre
+            );
+
+          return nuevos.length > 0
+            ? nuevos
+            : ["Todos los odontólogos"];
+        }
+
+        return [
+          ...sinTodos,
+          nombre,
+        ];
       }
-
-      return [...sinTodos, nombre];
-    });
-  };
-
-  const obtenerCitasDia = (fecha: Date) => {
-    const fechaTexto = formatoFechaInput(fecha);
-
-    return citasFiltradas.filter(
-      (cita) => cita.fecha === fechaTexto
     );
   };
 
-  const abrirNuevaCita = (fecha: Date, hora: string) => {
-    const horaNumero = Number(hora.split(":")[0]);
+  const obtenerCitasDia = (
+    fecha: Date
+  ) => {
+    const fechaTexto =
+      formatoFechaInput(fecha);
+
+    return citasFiltradas.filter(
+      (cita) =>
+        cita.fecha === fechaTexto
+    );
+  };
+
+  const abrirNuevaCita = (
+    fecha: Date,
+    hora: string
+  ) => {
+    const horaNumero = Number(
+      hora.split(":")[0]
+    );
 
     const horaFin = `${String(
       horaNumero + 1
     ).padStart(2, "0")}:00`;
 
-    setFechaSeleccionada(formatoFechaInput(fecha));
+    setFechaSeleccionada(
+      formatoFechaInput(fecha)
+    );
 
     setHoraSeleccionada(hora);
 
@@ -202,242 +275,467 @@ export function AgendaView() {
     const cita: Cita = {
       id:
         citas.length > 0
-          ? Math.max(...citas.map((item) => item.id)) + 1
+          ? Math.max(
+              ...citas.map(
+                (item) => item.id
+              )
+            ) + 1
           : 1,
-      paciente: nuevaCita.paciente,
-      servicio: nuevaCita.servicio,
-      odontologo: nuevaCita.odontologo,
+
+      paciente:
+        nuevaCita.paciente,
+
+      servicio:
+        nuevaCita.servicio,
+
+      odontologo:
+        nuevaCita.odontologo,
+
       fecha: fechaSeleccionada,
-      horaInicio: nuevaCita.horaInicio,
-      horaFin: nuevaCita.horaFin,
-      estado: nuevaCita.estado,
+
+      horaInicio:
+        nuevaCita.horaInicio,
+
+      horaFin:
+        nuevaCita.horaFin,
+
+      estado:
+        nuevaCita.estado,
     };
 
-    setCitas((actuales) => [...actuales, cita]);
+    setCitas((actuales) => [
+      ...actuales,
+      cita,
+    ]);
 
     setMostrarModal(false);
   };
 
-  const obtenerPosicionEvento = (cita: Cita) => {
-    const [horaInicio, minutosInicio] =
-      cita.horaInicio.split(":").map(Number);
+  const eliminarCita = (
+    id: number
+  ) => {
+    setCitas((actuales) =>
+      actuales.filter(
+        (cita) => cita.id !== id
+      )
+    );
+  };
 
-    const [horaFin, minutosFin] =
-      cita.horaFin.split(":").map(Number);
+  const obtenerPosicionEvento = (
+    cita: Cita
+  ) => {
+    const [
+      horaInicio,
+      minutosInicio,
+    ] = cita.horaInicio
+      .split(":")
+      .map(Number);
+
+    const [
+      horaFin,
+      minutosFin,
+    ] = cita.horaFin
+      .split(":")
+      .map(Number);
 
     const inicioMinutos =
-      (horaInicio - 7) * 60 + minutosInicio;
+      (horaInicio - 7) * 60 +
+      minutosInicio;
 
     const finMinutos =
-      (horaFin - 7) * 60 + minutosFin;
+      (horaFin - 7) * 60 +
+      minutosFin;
 
     return {
       top: `${inicioMinutos}px`,
+
       height: `${Math.max(
         finMinutos - inicioMinutos,
-        54
+        60
       )}px`,
     };
   };
+
+  const obtenerPosicionHoraActual = () => {
+    const fechaHoy =
+      formatoFechaInput(horaActual);
+
+    const estaSemana =
+      diasSemana.some(
+        (dia) =>
+          formatoFechaInput(dia) ===
+          fechaHoy
+      );
+
+    if (!estaSemana) {
+      return null;
+    }
+
+    const hora =
+      horaActual.getHours();
+
+    const minutos =
+      horaActual.getMinutes();
+
+    if (hora < 7 || hora > 17) {
+      return null;
+    }
+
+    return (
+      (hora - 7) * 60 + minutos
+    );
+  };
+
+  const posicionHoraActual =
+    obtenerPosicionHoraActual();
 
   const gridTemplateColumns =
     "48px repeat(7, minmax(100px, 1fr))";
 
   return (
     <>
-      <div className="min-h-full w-full overflow-hidden px-4 pb-6 pt-4 text-slate-100 sm:px-6 lg:px-8">
-        <div className="mx-auto w-full max-w-[1700px]">
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_235px]">
-            <main className="min-w-0 space-y-4">
-              <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-700/70 bg-slate-950/85 px-4 py-4 shadow-lg backdrop-blur-sm">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan-400/20 bg-cyan-500/10">
+      <div className="min-h-full w-full overflow-hidden px-4 pb-6 pt-5 text-slate-100 sm:px-6 lg:px-8">
+
+        <div className="mx-auto w-full max-w-[1700px] space-y-4">
+
+          {/* =========================
+              TÍTULO
+          ========================= */}
+
+          <section className="flex items-center gap-4">
+
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-cyan-400/20 bg-slate-950/85 shadow-lg backdrop-blur-sm">
+
+              <CalendarDays
+                size={23}
+                className="text-cyan-400"
+              />
+
+            </div>
+
+            <div>
+
+              <h1 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+
+                Gestión de Agenda
+
+              </h1>
+
+              <p className="mt-1 text-sm font-medium text-slate-400">
+
+                Administra y organiza las citas de la clínica
+
+              </p>
+
+            </div>
+
+          </section>
+
+
+          {/* =========================
+              TARJETAS
+          ========================= */}
+
+          <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+
+            {/* CITAS HOY */}
+
+            <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-700/70 bg-slate-950/85 px-4 py-4 shadow-lg backdrop-blur-sm">
+
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan-400/20 bg-cyan-500/10">
+
+                <CalendarDays
+                  size={20}
+                  className="text-cyan-400"
+                />
+
+              </div>
+
+              <div>
+
+                <p className="text-xs font-medium text-slate-400">
+                  Citas hoy
+                </p>
+
+                <p className="mt-1 text-2xl font-bold text-white">
+                  {citasHoy}
+                </p>
+
+                <p className="mt-1 text-[11px] text-slate-500">
+                  Total programadas
+                </p>
+
+              </div>
+
+            </div>
+
+
+            {/* ESPACIOS */}
+
+            <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-700/70 bg-slate-950/85 px-4 py-4 shadow-lg backdrop-blur-sm">
+
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan-400/20 bg-cyan-500/10">
+
+                <Clock3
+                  size={20}
+                  className="text-cyan-400"
+                />
+
+              </div>
+
+              <div>
+
+                <p className="text-xs font-medium text-slate-400">
+                  Espacios disponibles
+                </p>
+
+                <p className="mt-1 text-2xl font-bold text-white">
+                  {espaciosDisponibles}
+                </p>
+
+                <p className="mt-1 text-[11px] text-slate-500">
+                  Para agendar
+                </p>
+
+              </div>
+
+            </div>
+
+
+            {/* CONFIRMADAS */}
+
+            <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-700/70 bg-slate-950/85 px-4 py-4 shadow-lg backdrop-blur-sm">
+
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-blue-400/20 bg-blue-500/10">
+
+                <CheckCircle2
+                  size={20}
+                  className="text-blue-400"
+                />
+
+              </div>
+
+              <div>
+
+                <p className="text-xs font-medium text-slate-400">
+                  Confirmadas
+                </p>
+
+                <p className="mt-1 text-2xl font-bold text-white">
+                  {confirmadas}
+                </p>
+
+                <p className="mt-1 text-[11px] text-slate-500">
+                  Citas confirmadas
+                </p>
+
+              </div>
+
+            </div>
+
+
+            {/* PENDIENTES */}
+
+            <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-700/70 bg-slate-950/85 px-4 py-4 shadow-lg backdrop-blur-sm">
+
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-amber-400/20 bg-amber-500/10">
+
+                <Hourglass
+                  size={20}
+                  className="text-amber-400"
+                />
+
+              </div>
+
+              <div>
+
+                <p className="text-xs font-medium text-slate-400">
+                  Pendientes
+                </p>
+
+                <p className="mt-1 text-2xl font-bold text-white">
+                  {pendientes}
+                </p>
+
+                <p className="mt-1 text-[11px] text-slate-500">
+                  Por confirmar
+                </p>
+
+              </div>
+
+            </div>
+
+          </section>
+
+
+          {/* =========================
+              CALENDARIO + SIDEBAR
+          ========================= */}
+
+          <section className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_235px]">
+
+
+            {/* =========================
+                CALENDARIO
+            ========================= */}
+
+            <section className="rounded-2xl border border-slate-700/80 bg-slate-950/90 p-3 shadow-xl backdrop-blur-sm">
+
+              {/* CONTROLES */}
+
+              <div className="flex flex-col gap-3 px-1 pb-3 sm:flex-row sm:items-center sm:justify-between">
+
+                <div className="flex flex-wrap items-center gap-2">
+
+                  <button
+                    type="button"
+                    onClick={irHoy}
+                    className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-semibold text-slate-200 transition hover:border-cyan-400/40 hover:text-cyan-300"
+                  >
+                    Hoy
+                  </button>
+
+
+                  <div className="flex items-center overflow-hidden rounded-xl border border-slate-700 bg-slate-900">
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        cambiarSemana(-1)
+                      }
+                      className="flex h-9 w-9 items-center justify-center text-slate-400 transition hover:bg-slate-800 hover:text-white"
+                    >
+
+                      <ChevronLeft size={17} />
+
+                    </button>
+
+                    <div className="h-5 w-px bg-slate-700" />
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        cambiarSemana(1)
+                      }
+                      className="flex h-9 w-9 items-center justify-center text-slate-400 transition hover:bg-slate-800 hover:text-white"
+                    >
+
+                      <ChevronRight size={17} />
+
+                    </button>
+
+                  </div>
+
+
+                  <div className="flex items-center gap-2 pl-1">
+
                     <CalendarDays
-                      size={20}
+                      size={16}
                       className="text-cyan-400"
                     />
+
+                    <span className="text-sm font-semibold text-slate-200">
+
+                      {obtenerRangoSemana(
+                        inicioSemana
+                      )}
+
+                    </span>
+
                   </div>
 
-                  <div>
-                    <p className="text-xs font-medium text-slate-400">
-                      Citas hoy
-                    </p>
-
-                    <p className="mt-1 text-2xl font-bold text-white">
-                      {citasHoy}
-                    </p>
-
-                    <p className="mt-1 text-[11px] text-slate-500">
-                      Total programadas
-                    </p>
-                  </div>
                 </div>
 
-                <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-700/70 bg-slate-950/85 px-4 py-4 shadow-lg backdrop-blur-sm">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan-400/20 bg-cyan-500/10">
-                    <Clock3
-                      size={20}
-                      className="text-cyan-400"
-                    />
-                  </div>
 
-                  <div>
-                    <p className="text-xs font-medium text-slate-400">
-                      Espacios disponibles
-                    </p>
+                <div className="flex w-full rounded-xl border border-slate-700 bg-slate-950 p-1 sm:w-auto">
 
-                    <p className="mt-1 text-2xl font-bold text-white">
-                      {espaciosDisponibles}
-                    </p>
-
-                    <p className="mt-1 text-[11px] text-slate-500">
-                      Para agendar
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-700/70 bg-slate-950/85 px-4 py-4 shadow-lg backdrop-blur-sm">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-blue-400/20 bg-blue-500/10">
-                    <CheckCircle2
-                      size={20}
-                      className="text-blue-400"
-                    />
-                  </div>
-
-                  <div>
-                    <p className="text-xs font-medium text-slate-400">
-                      Confirmadas
-                    </p>
-
-                    <p className="mt-1 text-2xl font-bold text-white">
-                      {confirmadas}
-                    </p>
-
-                    <p className="mt-1 text-[11px] text-slate-500">
-                      Citas confirmadas
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-700/70 bg-slate-950/85 px-4 py-4 shadow-lg backdrop-blur-sm">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-amber-400/20 bg-amber-500/10">
-                    <Hourglass
-                      size={20}
-                      className="text-amber-400"
-                    />
-                  </div>
-
-                  <div>
-                    <p className="text-xs font-medium text-slate-400">
-                      Pendientes
-                    </p>
-
-                    <p className="mt-1 text-2xl font-bold text-white">
-                      {pendientes}
-                    </p>
-
-                    <p className="mt-1 text-[11px] text-slate-500">
-                      Por confirmar
-                    </p>
-                  </div>
-                </div>
-              </section>
-
-              <section className="rounded-2xl border border-slate-700/80 bg-slate-950/90 p-3 shadow-xl backdrop-blur-sm">
-                <div className="flex flex-col gap-3 px-1 pb-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={irHoy}
-                      className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-semibold text-slate-200 transition hover:border-cyan-400/40 hover:text-cyan-300"
-                    >
-                      Hoy
-                    </button>
-
-                    <div className="flex items-center overflow-hidden rounded-xl border border-slate-700 bg-slate-900">
-                      <button
-                        type="button"
-                        onClick={() => cambiarSemana(-1)}
-                        className="flex h-9 w-9 items-center justify-center text-slate-400 transition hover:bg-slate-800 hover:text-white"
-                      >
-                        <ChevronLeft size={17} />
-                      </button>
-
-                      <div className="h-5 w-px bg-slate-700" />
-
-                      <button
-                        type="button"
-                        onClick={() => cambiarSemana(1)}
-                        className="flex h-9 w-9 items-center justify-center text-slate-400 transition hover:bg-slate-800 hover:text-white"
-                      >
-                        <ChevronRight size={17} />
-                      </button>
-                    </div>
-
-                    <div className="flex items-center gap-2 pl-1">
-                      <CalendarDays
-                        size={16}
-                        className="text-cyan-400"
-                      />
-
-                      <span className="text-sm font-semibold text-slate-200">
-                        {obtenerRangoSemana(inicioSemana)}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex w-full rounded-xl border border-slate-700 bg-slate-950 p-1 sm:w-auto">
-                    {(["Día", "Semana", "Mes"] as const).map(
-                      (opcion) => (
-                        <button
-                          key={opcion}
-                          type="button"
-                          onClick={() => setVista(opcion)}
-                          className={`flex-1 rounded-lg px-4 py-2 text-xs font-semibold transition sm:flex-none ${
-                            vista === opcion
-                              ? "bg-cyan-500/15 text-cyan-300"
-                              : "text-slate-500 hover:text-slate-300"
-                          }`}
-                        >
-                          {opcion}
-                        </button>
-                      )
-                    )}
+                  {(
+                    [
+                      "Día",
+                      "Semana",
+                      "Mes",
+                    ] as const
+                  ).map((opcion) => (
 
                     <button
+                      key={opcion}
                       type="button"
-                      className="ml-1 flex w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-900 hover:text-slate-300"
+                      onClick={() =>
+                        setVista(opcion)
+                      }
+                      className={`flex-1 rounded-lg px-4 py-2 text-xs font-semibold transition sm:flex-none ${
+                        vista === opcion
+                          ? "bg-cyan-500/15 text-cyan-300"
+                          : "text-slate-500 hover:text-slate-300"
+                      }`}
                     >
-                      <Settings2 size={15} />
+
+                      {opcion}
+
                     </button>
-                  </div>
+
+                  ))}
+
+
+                  <button
+                    type="button"
+                    className="ml-1 flex w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-900 hover:text-slate-300"
+                  >
+
+                    <Settings2 size={15} />
+
+                  </button>
+
                 </div>
 
-                <div className="overflow-x-auto rounded-xl border border-slate-700/80">
-                  <div className="min-w-[860px]">
-                    <div className="h-[560px] overflow-y-auto">
-                      <div className="sticky top-0 z-30 border-b border-slate-700/80 bg-slate-900">
-                        <div
-                          className="grid"
-                          style={{
-                            gridTemplateColumns,
-                          }}
-                        >
-                          <div className="h-[72px] border-r border-slate-700/80 bg-slate-900" />
+              </div>
 
-                          {diasSemana.map((dia, index) => {
+
+              {/* GRID */}
+
+              <div className="overflow-x-auto rounded-xl border border-slate-700/80">
+
+                <div className="min-w-[860px]">
+
+                  <div className="h-[560px] overflow-y-auto">
+
+
+                    {/* ENCABEZADO */}
+
+                    <div className="sticky top-0 z-30 border-b border-slate-700/80 bg-slate-900">
+
+                      <div
+                        className="grid"
+                        style={{
+                          gridTemplateColumns,
+                        }}
+                      >
+
+                        <div className="h-[72px] border-r border-slate-700/80 bg-slate-900" />
+
+
+                        {diasSemana.map(
+                          (dia, index) => {
+
                             const fechaDia =
-                              formatoFechaInput(dia);
+                              formatoFechaInput(
+                                dia
+                              );
 
                             const esHoy =
                               fechaDia ===
-                              formatoFechaInput(new Date());
+                              formatoFechaInput(
+                                new Date()
+                              );
 
                             const esSeleccionado =
                               fechaDia ===
-                              formatoFechaInput(fechaActual);
+                              formatoFechaInput(
+                                fechaActual
+                              );
 
                             return (
+
                               <button
                                 key={fechaDia}
                                 type="button"
@@ -452,6 +750,7 @@ export function AgendaView() {
                                     : "bg-slate-900"
                                 }`}
                               >
+
                                 <span
                                   className={`text-[9px] font-bold tracking-[0.16em] ${
                                     esSeleccionado
@@ -459,8 +758,15 @@ export function AgendaView() {
                                       : "text-slate-500"
                                   }`}
                                 >
-                                  {nombresDias[index]}
+
+                                  {
+                                    nombresDias[
+                                      index
+                                    ]
+                                  }
+
                                 </span>
+
 
                                 <span
                                   className={`mt-2 flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${
@@ -471,13 +777,25 @@ export function AgendaView() {
                                       : "text-slate-300"
                                   }`}
                                 >
+
                                   {dia.getDate()}
+
                                 </span>
+
                               </button>
+
                             );
-                          })}
-                        </div>
+                          }
+                        )}
+
                       </div>
+
+                    </div>
+
+
+                    {/* CUERPO */}
+
+                    <div className="relative">
 
                       <div
                         className="grid"
@@ -485,129 +803,244 @@ export function AgendaView() {
                           gridTemplateColumns,
                         }}
                       >
+
+
+                        {/* HORAS */}
+
                         <div className="border-r border-slate-700/80 bg-slate-950">
+
                           {horasGrid.map(
-                            (hora, index) => (
+                            (hora) => (
+
                               <div
                                 key={hora}
-                                className={`relative h-[30px] ${
-                                  index % 2 === 0
-                                    ? "border-t border-slate-700/80"
-                                    : "border-t border-slate-800/70"
-                                }`}
+                                className="relative h-[60px] border-t border-slate-700/80"
                               >
-                                {index % 2 === 0 && (
-                                  <span className="absolute right-2 top-[6px] whitespace-nowrap text-[9px] text-slate-500">
-                                    {hora}
-                                  </span>
-                                )}
+
+                                <span className="absolute right-2 top-[7px] whitespace-nowrap text-[9px] text-slate-500">
+
+                                  {hora}
+
+                                </span>
+
                               </div>
+
                             )
                           )}
+
                         </div>
 
-                        {diasSemana.map((dia) => {
-                          const citasDia =
-                            obtenerCitasDia(dia);
 
-                          const fechaDia =
-                            formatoFechaInput(dia);
+                        {/* DÍAS */}
 
-                          return (
-                            <div
-                              key={fechaDia}
-                              className="relative min-w-0 border-r border-slate-700/80 last:border-r-0"
-                            >
-                              {horasGrid.map(
-                                (hora, index) => (
-                                  <button
-                                    key={hora}
-                                    type="button"
-                                    onClick={() => {
-                                      if (
-                                        index % 2 ===
-                                        0
-                                      ) {
+                        {diasSemana.map(
+                          (dia) => {
+
+                            const citasDia =
+                              obtenerCitasDia(
+                                dia
+                              );
+
+                            const fechaDia =
+                              formatoFechaInput(
+                                dia
+                              );
+
+                            return (
+
+                              <div
+                                key={fechaDia}
+                                className="relative min-w-0 border-r border-slate-700/80 last:border-r-0"
+                              >
+
+
+                                {/* CASILLAS */}
+
+                                {horasGrid.map(
+                                  (hora) => (
+
+                                    <button
+                                      key={hora}
+                                      type="button"
+                                      onClick={() =>
                                         abrirNuevaCita(
                                           dia,
                                           hora
-                                        );
+                                        )
                                       }
-                                    }}
-                                    className={`block h-[30px] w-full text-left transition ${
-                                      index % 2 === 0
-                                        ? "border-t border-slate-700/80 hover:bg-cyan-500/5"
-                                        : "border-t border-slate-800/70"
-                                    }`}
-                                  />
-                                )
-                              )}
+                                      className="block h-[60px] w-full border-t border-slate-700/80 text-left transition hover:bg-cyan-500/5"
+                                    />
 
-                              {citasDia.map((cita) => {
-                                const colores =
-                                  obtenerColorEvento(
-                                    cita.estado
-                                  );
+                                  )
+                                )}
 
-                                const posicion =
-                                  obtenerPosicionEvento(
-                                    cita
-                                  );
 
-                                return (
-                                  <button
-                                    key={cita.id}
-                                    type="button"
-                                    style={{
-                                      top: posicion.top,
-                                      height:
-                                        posicion.height,
-                                    }}
-                                    className={`absolute left-1 right-1 z-20 overflow-hidden rounded-lg border px-2 py-1.5 text-left shadow-md transition hover:z-30 hover:scale-[1.01] ${colores.contenedor}`}
-                                  >
-                                    <div className="flex items-start justify-between gap-1">
-                                      <span className="text-[9px] font-medium text-slate-400">
-                                        {cita.horaInicio} -{" "}
-                                        {cita.horaFin}
-                                      </span>
+                                {/* CITAS */}
 
-                                      <span
-                                        className={`mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full ${colores.punto}`}
-                                      />
-                                    </div>
+                                {citasDia.map(
+                                  (cita) => {
 
-                                    <p
-                                      className={`mt-1 truncate text-[11px] font-bold ${colores.titulo}`}
-                                    >
-                                      {cita.paciente}
-                                    </p>
+                                    const colores =
+                                      obtenerColorEvento(
+                                        cita.estado
+                                      );
 
-                                    <p
-                                      className={`mt-0.5 truncate text-[9px] ${colores.texto}`}
-                                    >
-                                      {cita.servicio}
-                                    </p>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          );
-                        })}
+                                    const posicion =
+                                      obtenerPosicionEvento(
+                                        cita
+                                      );
+
+                                    return (
+
+                                      <div
+                                        key={cita.id}
+                                        style={{
+                                          top: posicion.top,
+                                          height:
+                                            posicion.height,
+                                        }}
+                                        className={`absolute left-1 right-1 z-20 overflow-hidden rounded-lg border px-2 py-1.5 shadow-md transition hover:z-30 hover:scale-[1.01] ${colores.contenedor}`}
+                                      >
+
+                                        <div className="flex items-start justify-between gap-1">
+
+
+                                          <span className="text-[9px] font-medium text-slate-400">
+
+                                            {
+                                              cita.horaInicio
+                                            }{" "}
+                                            -{" "}
+                                            {
+                                              cita.horaFin
+                                            }
+
+                                          </span>
+
+
+                                          <div className="flex items-center gap-1">
+
+                                            <span
+                                              className={`h-1.5 w-1.5 shrink-0 rounded-full ${colores.punto}`}
+                                            />
+
+                                            <button
+                                              type="button"
+                                              onClick={(
+                                                event
+                                              ) => {
+                                                event.stopPropagation();
+
+                                                eliminarCita(
+                                                  cita.id
+                                                );
+                                              }}
+                                              className="flex h-4 w-4 items-center justify-center rounded text-red-400 transition hover:bg-red-500/15 hover:text-red-300"
+                                              title="Eliminar cita"
+                                            >
+
+                                              <Trash2
+                                                size={11}
+                                              />
+
+                                            </button>
+
+                                          </div>
+
+                                        </div>
+
+
+                                        <p
+                                          className={`mt-1 truncate text-[11px] font-bold ${colores.titulo}`}
+                                        >
+
+                                          {
+                                            cita.paciente
+                                          }
+
+                                        </p>
+
+
+                                        <p
+                                          className={`mt-0.5 truncate text-[9px] ${colores.texto}`}
+                                        >
+
+                                          {
+                                            cita.servicio
+                                          }
+
+                                        </p>
+
+                                      </div>
+
+                                    );
+                                  }
+                                )}
+
+                              </div>
+
+                            );
+                          }
+                        )}
+
                       </div>
-                    </div>
-                  </div>
-                </div>
-              </section>
-            </main>
 
-            <aside className="space-y-4">
-              <section className="rounded-2xl border border-slate-700/80 bg-slate-950/90 p-4 shadow-xl backdrop-blur-sm">
+
+                      {/* LÍNEA HORA ACTUAL */}
+
+                      {posicionHoraActual !==
+                        null && (
+
+                        <div
+                          className="pointer-events-none absolute left-[48px] right-0 z-40 flex items-center"
+                          style={{
+                            top: `${posicionHoraActual}px`,
+                          }}
+                        >
+
+                          <span className="absolute -left-1 h-2.5 w-2.5 rounded-full bg-red-400 shadow-[0_0_10px_rgba(248,113,113,0.9)]" />
+
+                          <div className="h-[2px] w-full bg-red-400 shadow-[0_0_10px_rgba(248,113,113,0.8)]" />
+
+                        </div>
+
+                      )}
+
+                    </div>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+            </section>
+
+
+            {/* =========================
+                SIDEBAR
+            ========================= */}
+
+            <aside className="grid h-[632px] grid-rows-[235px_145px_minmax(0,1fr)] gap-3">
+
+
+              {/* MINI CALENDARIO */}
+
+              <section className="overflow-hidden rounded-2xl border border-slate-700/80 bg-slate-950/90 p-4 shadow-xl backdrop-blur-sm">
+
                 <div className="mb-4 flex items-center justify-between">
+
                   <h3 className="text-sm font-bold capitalize text-slate-200">
-                    {obtenerNombreMes(fechaActual)}
+
+                    {obtenerNombreMes(
+                      fechaActual
+                    )}
+
                   </h3>
 
+
                   <div className="flex items-center gap-1">
+
                     <button
                       type="button"
                       onClick={() =>
@@ -622,8 +1055,11 @@ export function AgendaView() {
                       }
                       className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-900 hover:text-white"
                     >
+
                       <ChevronLeft size={15} />
+
                     </button>
+
 
                     <button
                       type="button"
@@ -639,12 +1075,18 @@ export function AgendaView() {
                       }
                       className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-900 hover:text-white"
                     >
+
                       <ChevronRight size={15} />
+
                     </button>
+
                   </div>
+
                 </div>
 
+
                 <div className="grid grid-cols-7 gap-y-2 text-center">
+
                   {[
                     "D",
                     "L",
@@ -653,55 +1095,79 @@ export function AgendaView() {
                     "J",
                     "V",
                     "S",
-                  ].map((dia, index) => (
-                    <span
-                      key={`${dia}-${index}`}
-                      className="text-[9px] font-bold text-slate-500"
-                    >
-                      {dia}
-                    </span>
-                  ))}
+                  ].map(
+                    (dia, index) => (
 
-                  {Array.from(
-                    {
-                      length: new Date(
-                        fechaActual.getFullYear(),
-                        fechaActual.getMonth(),
-                        1
-                      ).getDay(),
-                    },
-                    (_, index) => (
-                      <span key={`vacio-${index}`} />
+                      <span
+                        key={`${dia}-${index}`}
+                        className="text-[9px] font-bold text-slate-500"
+                      >
+
+                        {dia}
+
+                      </span>
+
                     )
                   )}
 
+
                   {Array.from(
                     {
-                      length: new Date(
-                        fechaActual.getFullYear(),
-                        fechaActual.getMonth() + 1,
-                        0
-                      ).getDate(),
+                      length:
+                        new Date(
+                          fechaActual.getFullYear(),
+                          fechaActual.getMonth(),
+                          1
+                        ).getDay(),
+                    },
+                    (_, index) => (
+
+                      <span
+                        key={`vacio-${index}`}
+                      />
+
+                    )
+                  )}
+
+
+                  {Array.from(
+                    {
+                      length:
+                        new Date(
+                          fechaActual.getFullYear(),
+                          fechaActual.getMonth() + 1,
+                          0
+                        ).getDate(),
                     },
                     (_, index) => {
-                      const diaNumero = index + 1;
 
-                      const fechaDia = new Date(
-                        fechaActual.getFullYear(),
-                        fechaActual.getMonth(),
-                        diaNumero
-                      );
+                      const diaNumero =
+                        index + 1;
+
+                      const fechaDia =
+                        new Date(
+                          fechaActual.getFullYear(),
+                          fechaActual.getMonth(),
+                          diaNumero
+                        );
 
                       const esSeleccionado =
-                        formatoFechaInput(fechaDia) ===
-                        formatoFechaInput(fechaActual);
+                        formatoFechaInput(
+                          fechaDia
+                        ) ===
+                        formatoFechaInput(
+                          fechaActual
+                        );
 
                       return (
+
                         <button
                           key={diaNumero}
                           type="button"
                           onClick={() =>
-                            setFechaActual(fechaDia)
+                            setFechaActual(
+                              fechaDia
+                            )
                           }
                           className={`mx-auto flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-semibold transition ${
                             esSeleccionado
@@ -709,138 +1175,232 @@ export function AgendaView() {
                               : "text-slate-400 hover:bg-slate-900 hover:text-white"
                           }`}
                         >
+
                           {diaNumero}
+
                         </button>
+
                       );
                     }
                   )}
+
                 </div>
+
               </section>
 
-              <section className="rounded-2xl border border-slate-700/80 bg-slate-950/90 p-4 shadow-xl backdrop-blur-sm">
-                <div className="mb-4 flex items-center gap-2">
+
+              {/* ODONTÓLOGOS */}
+
+              <section className="overflow-hidden rounded-2xl border border-slate-700/80 bg-slate-950/90 p-4 shadow-xl backdrop-blur-sm">
+
+                <div className="mb-3 flex items-center gap-2">
+
                   <Users
                     size={17}
                     className="text-cyan-400"
                   />
 
                   <h3 className="text-sm font-bold text-slate-200">
+
                     Odontólogos
+
                   </h3>
+
                 </div>
 
-                <div className="space-y-3">
-                  {odontologos.map((odontologo) => {
-                    const seleccionado =
-                      odontologosSeleccionados.includes(
-                        odontologo.nombre
-                      );
 
-                    return (
-                      <button
-                        key={odontologo.nombre}
-                        type="button"
-                        onClick={() =>
-                          cambiarOdontologo(
+                <div className="space-y-2">
+
+                  {odontologos.map(
+                    (odontologo) => {
+
+                      const seleccionado =
+                        odontologosSeleccionados.includes(
+                          odontologo.nombre
+                        );
+
+                      return (
+
+                        <button
+                          key={
                             odontologo.nombre
-                          )
-                        }
-                        className="flex w-full items-center gap-2 text-left"
-                      >
-                        <span
-                          className={`flex h-4 w-4 items-center justify-center rounded border transition ${
-                            seleccionado
-                              ? "border-cyan-400 bg-cyan-500/20"
-                              : "border-slate-600"
-                          }`}
+                          }
+                          type="button"
+                          onClick={() =>
+                            cambiarOdontologo(
+                              odontologo.nombre
+                            )
+                          }
+                          className="flex w-full items-center gap-2 text-left"
                         >
-                          {seleccionado && (
-                            <span className="h-2 w-2 rounded-sm bg-cyan-400" />
-                          )}
-                        </span>
 
-                        <span
-                          className={`h-2 w-2 rounded-full ${odontologo.color}`}
-                        />
+                          <span
+                            className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition ${
+                              seleccionado
+                                ? "border-cyan-400 bg-cyan-500/20"
+                                : "border-slate-600"
+                            }`}
+                          >
 
-                        <span className="text-xs text-slate-400">
-                          {odontologo.nombre}
-                        </span>
-                      </button>
-                    );
-                  })}
+                            {seleccionado && (
+
+                              <span className="h-2 w-2 rounded-sm bg-cyan-400" />
+
+                            )}
+
+                          </span>
+
+
+                          <span
+                            className={`h-2 w-2 shrink-0 rounded-full ${odontologo.color}`}
+                          />
+
+
+                          <span className="truncate text-xs text-slate-400">
+
+                            {
+                              odontologo.nombre
+                            }
+
+                          </span>
+
+                        </button>
+
+                      );
+                    }
+                  )}
+
                 </div>
+
               </section>
 
-              <section className="rounded-2xl border border-slate-700/80 bg-slate-950/90 p-4 shadow-xl backdrop-blur-sm">
-                <div className="mb-4 flex items-center gap-2">
+
+              {/* TIPOS DE CITA */}
+
+              <section className="min-h-0 overflow-hidden rounded-2xl border border-slate-700/80 bg-slate-950/90 p-4 shadow-xl backdrop-blur-sm">
+
+                <div className="mb-3 flex items-center gap-2">
+
                   <Stethoscope
                     size={17}
                     className="text-cyan-400"
                   />
 
                   <h3 className="text-sm font-bold text-slate-200">
+
                     Tipos de cita
+
                   </h3>
+
                 </div>
 
-                <div className="space-y-3">
-                  {tiposCita.map((tipo) => (
-                    <div
-                      key={tipo.nombre}
-                      className="flex items-center gap-2"
-                    >
-                      <span className="h-4 w-4 rounded border border-slate-600" />
 
-                      <span
-                        className={`h-2 w-2 rounded-full ${tipo.color}`}
-                      />
+                <div className="space-y-2.5">
 
-                      <span className="text-xs text-slate-400">
-                        {tipo.nombre}
-                      </span>
-                    </div>
-                  ))}
+                  {tiposCita.map(
+                    (tipo) => (
+
+                      <div
+                        key={tipo.nombre}
+                        className="flex items-center gap-2"
+                      >
+
+                        <span className="h-4 w-4 shrink-0 rounded border border-slate-600" />
+
+                        <span
+                          className={`h-2 w-2 shrink-0 rounded-full ${tipo.color}`}
+                        />
+
+                        <span className="text-xs text-slate-400">
+
+                          {tipo.nombre}
+
+                        </span>
+
+                      </div>
+
+                    )
+                  )}
+
                 </div>
 
-                <div className="mt-5 border-t border-slate-800 pt-4">
+
+                <div className="mt-4 border-t border-slate-800 pt-3">
+
                   <div className="flex items-center gap-2">
+
                     <span className="relative block h-px w-9 bg-red-400">
+
                       <span className="absolute -top-1 left-0 h-2 w-2 rounded-full bg-red-400" />
+
                     </span>
 
                     <span className="text-[10px] text-slate-500">
+
                       Hora actual
+
                     </span>
+
                   </div>
 
+
                   <div className="mt-3 flex items-center gap-2">
+
                     <span className="h-4 w-7 rounded border border-slate-700 bg-slate-900" />
 
                     <span className="text-[10px] text-slate-500">
+
                       No disponible
+
                     </span>
+
                   </div>
+
                 </div>
+
               </section>
+
             </aside>
-          </div>
+
+          </section>
+
         </div>
+
       </div>
 
+
+      {/* =========================
+          MODAL
+      ========================= */}
+
       {mostrarModal && (
+
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
+
           <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-950 p-5 shadow-2xl">
+
+
+            {/* HEADER */}
+
             <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+
               <div>
+
                 <h2 className="text-lg font-bold text-white">
+
                   Agendar cita
+
                 </h2>
 
                 <p className="mt-1 text-xs text-slate-500">
-                  {fechaSeleccionada} · {horaSeleccionada}
+
+                  {fechaSeleccionada} ·{" "}
+                  {horaSeleccionada}
+
                 </p>
+
               </div>
+
 
               <button
                 type="button"
@@ -849,122 +1409,263 @@ export function AgendaView() {
                 }
                 className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-900 hover:text-white"
               >
+
                 <X size={19} />
+
               </button>
+
             </div>
 
+
+            {/* FORMULARIO */}
+
             <div className="mt-5 space-y-4">
+
+
+              {/* PACIENTE */}
+
               <div>
+
                 <label className="mb-2 block text-xs font-medium text-slate-400">
+
                   Paciente
+
                 </label>
 
                 <input
                   value={nuevaCita.paciente}
                   onChange={(event) =>
-                    setNuevaCita((actual) => ({
-                      ...actual,
-                      paciente: event.target.value,
-                    }))
+                    setNuevaCita(
+                      (actual) => ({
+                        ...actual,
+                        paciente:
+                          event.target.value,
+                      })
+                    )
                   }
                   placeholder="Nombre del paciente"
                   className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-400"
                 />
+
               </div>
 
+
+              {/* SERVICIO */}
+
               <div>
+
                 <label className="mb-2 block text-xs font-medium text-slate-400">
+
                   Servicio
+
                 </label>
 
                 <input
                   value={nuevaCita.servicio}
                   onChange={(event) =>
-                    setNuevaCita((actual) => ({
-                      ...actual,
-                      servicio: event.target.value,
-                    }))
+                    setNuevaCita(
+                      (actual) => ({
+                        ...actual,
+                        servicio:
+                          event.target.value,
+                      })
+                    )
                   }
                   placeholder="Ej: Limpieza dental"
                   className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-400"
                 />
+
               </div>
 
+
+              {/* ODONTÓLOGO */}
+
               <div>
+
                 <label className="mb-2 block text-xs font-medium text-slate-400">
+
                   Odontólogo
+
                 </label>
 
                 <select
-                  value={nuevaCita.odontologo}
+                  value={
+                    nuevaCita.odontologo
+                  }
                   onChange={(event) =>
-                    setNuevaCita((actual) => ({
-                      ...actual,
-                      odontologo: event.target.value,
-                    }))
+                    setNuevaCita(
+                      (actual) => ({
+                        ...actual,
+                        odontologo:
+                          event.target.value,
+                      })
+                    )
                   }
                   className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-400"
                 >
-                  <option>Dra. Laura Gómez</option>
-                  <option>Dr. Juan Martínez</option>
-                  <option>Dra. Patricia Silva</option>
+
+                  <option>
+                    Dra. Laura Gómez
+                  </option>
+
+                  <option>
+                    Dr. Juan Martínez
+                  </option>
+
+                  <option>
+                    Dra. Patricia Silva
+                  </option>
+
                 </select>
+
               </div>
+
+
+              {/* HORAS */}
 
               <div className="grid grid-cols-2 gap-3">
+
+
+                {/* INICIO */}
+
                 <div>
+
                   <label className="mb-2 block text-xs font-medium text-slate-400">
+
                     Inicio
+
                   </label>
 
-                  <input
-                    type="time"
-                    value={nuevaCita.horaInicio}
-                    onChange={(event) =>
-                      setNuevaCita((actual) => ({
-                        ...actual,
-                        horaInicio: event.target.value,
-                      }))
+                  <select
+                    value={
+                      nuevaCita.horaInicio
                     }
+                    onChange={(event) => {
+
+                      const horaInicio =
+                        event.target.value;
+
+                      const horaNumero =
+                        Number(
+                          horaInicio.split(
+                            ":"
+                          )[0]
+                        );
+
+                      const horaFin =
+                        `${String(
+                          horaNumero + 1
+                        ).padStart(
+                          2,
+                          "0"
+                        )}:00`;
+
+                      setNuevaCita(
+                        (actual) => ({
+                          ...actual,
+                          horaInicio,
+                          horaFin,
+                        })
+                      );
+                    }}
                     className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-400"
-                  />
+                  >
+
+                    {horasGrid.map(
+                      (hora) => (
+
+                        <option
+                          key={hora}
+                          value={hora}
+                        >
+
+                          {hora}
+
+                        </option>
+
+                      )
+                    )}
+
+                  </select>
+
                 </div>
+
+
+                {/* FINALIZA */}
 
                 <div>
+
                   <label className="mb-2 block text-xs font-medium text-slate-400">
+
                     Finaliza
+
                   </label>
 
-                  <input
-                    type="time"
-                    value={nuevaCita.horaFin}
+                  <select
+                    value={
+                      nuevaCita.horaFin
+                    }
                     onChange={(event) =>
-                      setNuevaCita((actual) => ({
-                        ...actual,
-                        horaFin: event.target.value,
-                      }))
+                      setNuevaCita(
+                        (actual) => ({
+                          ...actual,
+                          horaFin:
+                            event.target.value,
+                        })
+                      )
                     }
                     className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-400"
-                  />
+                  >
+
+                    {horasGrid
+                      .slice(1)
+                      .map((hora) => (
+
+                        <option
+                          key={hora}
+                          value={hora}
+                        >
+
+                          {hora}
+
+                        </option>
+
+                      ))}
+
+                  </select>
+
                 </div>
+
               </div>
 
+
+              {/* ESTADO */}
+
               <div>
+
                 <label className="mb-2 block text-xs font-medium text-slate-400">
+
                   Estado
+
                 </label>
 
                 <select
-                  value={nuevaCita.estado}
+                  value={
+                    nuevaCita.estado
+                  }
                   onChange={(event) =>
-                    setNuevaCita((actual) => ({
-                      ...actual,
-                      estado: event.target
-                        .value as EstadoCita,
-                    }))
+                    setNuevaCita(
+                      (actual) => ({
+                        ...actual,
+                        estado:
+                          event.target
+                            .value as EstadoCita,
+                      })
+                    )
                   }
                   className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-400"
                 >
+
                   <option value="Confirmada">
                     Confirmada
                   </option>
@@ -976,11 +1677,18 @@ export function AgendaView() {
                   <option value="En Atención">
                     En Atención
                   </option>
+
                 </select>
+
               </div>
+
             </div>
 
+
+            {/* BOTONES */}
+
             <div className="mt-6 flex justify-end gap-3 border-t border-slate-800 pt-4">
+
               <button
                 type="button"
                 onClick={() =>
@@ -988,21 +1696,32 @@ export function AgendaView() {
                 }
                 className="rounded-xl border border-slate-700 px-4 py-2.5 text-sm font-semibold text-slate-300 transition hover:bg-slate-900"
               >
+
                 Cancelar
+
               </button>
+
 
               <button
                 type="button"
                 onClick={guardarCita}
                 className="flex items-center gap-2 rounded-xl bg-cyan-500 px-4 py-2.5 text-sm font-bold text-slate-950 transition hover:bg-cyan-400"
               >
+
                 <Save size={16} />
+
                 Guardar cita
+
               </button>
+
             </div>
+
           </div>
+
         </div>
+
       )}
+
     </>
   );
 }

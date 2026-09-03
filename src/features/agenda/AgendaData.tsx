@@ -129,16 +129,23 @@ export const tiposCita = [
 
 export function sumarDias(fecha: Date, dias: number) {
   const nuevaFecha = new Date(fecha);
-  nuevaFecha.setDate(nuevaFecha.getDate() + dias);
+
+  nuevaFecha.setDate(
+    nuevaFecha.getDate() + dias
+  );
 
   return nuevaFecha;
 }
 
 export function obtenerInicioSemana(fecha: Date) {
   const nuevaFecha = new Date(fecha);
+
   const dia = nuevaFecha.getDay();
 
-  nuevaFecha.setDate(nuevaFecha.getDate() - dia);
+  nuevaFecha.setDate(
+    nuevaFecha.getDate() - dia
+  );
+
   nuevaFecha.setHours(0, 0, 0, 0);
 
   return nuevaFecha;
@@ -146,8 +153,14 @@ export function obtenerInicioSemana(fecha: Date) {
 
 export function formatoFechaInput(fecha: Date) {
   const year = fecha.getFullYear();
-  const month = String(fecha.getMonth() + 1).padStart(2, "0");
-  const day = String(fecha.getDate()).padStart(2, "0");
+
+  const month = String(
+    fecha.getMonth() + 1
+  ).padStart(2, "0");
+
+  const day = String(
+    fecha.getDate()
+  ).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
 }
@@ -159,24 +172,37 @@ export function obtenerNombreMes(fecha: Date) {
   }).format(fecha);
 }
 
-export function obtenerRangoSemana(inicioSemana: Date) {
-  const finSemana = sumarDias(inicioSemana, 6);
+export function obtenerRangoSemana(
+  inicioSemana: Date
+) {
+  const finSemana = sumarDias(
+    inicioSemana,
+    6
+  );
 
-  const inicio = new Intl.DateTimeFormat("es-CO", {
-    day: "numeric",
-    month: "long",
-  }).format(inicioSemana);
+  const inicio = new Intl.DateTimeFormat(
+    "es-CO",
+    {
+      day: "numeric",
+      month: "long",
+    }
+  ).format(inicioSemana);
 
-  const fin = new Intl.DateTimeFormat("es-CO", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(finSemana);
+  const fin = new Intl.DateTimeFormat(
+    "es-CO",
+    {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }
+  ).format(finSemana);
 
   return `${inicio} - ${fin}`;
 }
 
-export function obtenerColorEvento(estado: EstadoCita) {
+export function obtenerColorEvento(
+  estado: EstadoCita
+) {
   switch (estado) {
     case "Confirmada":
       return {
