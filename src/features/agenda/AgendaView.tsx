@@ -12,6 +12,7 @@ import {
   X,
   Save,
   Check,
+  Trash2,
 } from "lucide-react";
 
 import {
@@ -60,6 +61,18 @@ export function AgendaView() {
   const [mostrarModal, setMostrarModal] = useState(false);
   const [fechaSeleccionada, setFechaSeleccionada] = useState("");
   const [horaSeleccionada, setHoraSeleccionada] = useState("");
+  const [horaActual, setHoraActual] = useState(new Date());
+
+  useEffect(() => {
+    const actualizarHora = () => {
+      setHoraActual(new Date());
+    };
+    actualizarHora();
+    const intervalo = setInterval(actualizarHora, 60000);
+    return () => {
+      clearInterval(intervalo);
+    };
+  }, []);
 
   const [nuevaCita, setNuevaCita] = useState({
     paciente: isPaciente ? (user?.name || "Paciente") : "",
@@ -344,6 +357,10 @@ export function AgendaView() {
     setMostrarModal(false);
   };
 
+  const eliminarCita = (id: number) => {
+    setCitas((actuales) => actuales.filter((cita) => cita.id !== id));
+  };
+
   const obtenerPosicionEvento = (cita: Cita) => {
     const [horaInicio, minutosInicio] = cita.horaInicio.split(":").map(Number);
     const [horaFin, minutosFin] = cita.horaFin.split(":").map(Number);
@@ -355,6 +372,24 @@ export function AgendaView() {
       height: `${Math.max(finMinutos - inicioMinutos, 54)}px`,
     };
   };
+
+  const obtenerPosicionHoraActual = () => {
+    const fechaHoy = formatoFechaInput(horaActual);
+    const estaSemana = diasSemana.some(
+      (dia) => formatoFechaInput(dia) === fechaHoy
+    );
+    if (!estaSemana) {
+      return null;
+    }
+    const hora = horaActual.getHours();
+    const minutos = horaActual.getMinutes();
+    if (hora < 7 || hora > 18) {
+      return null;
+    }
+    return (hora - 7) * 60 + minutos;
+  };
+
+  const posicionHoraActual = obtenerPosicionHoraActual();
 
   const gridTemplateColumns = "48px repeat(7, minmax(100px, 1fr))";
 
@@ -592,20 +627,32 @@ export function AgendaView() {
                                 const posicion = obtenerPosicionEvento(cita);
 
                                 return (
-                                  <button
+                                  <div
                                     key={cita.id}
-                                    type="button"
                                     style={{
                                       top: posicion.top,
                                       height: posicion.height,
                                     }}
-                                    className={`absolute left-1 right-1 z-20 overflow-hidden rounded-lg border px-2 py-1.5 text-left shadow-md transition hover:z-30 hover:scale-[1.01] cursor-pointer ${colores.contenedor}`}
+                                    className={`absolute left-1 right-1 z-20 overflow-hidden rounded-lg border px-2 py-1.5 text-left shadow-md transition hover:z-30 hover:scale-[1.01] ${colores.contenedor}`}
                                   >
                                     <div className="flex items-start justify-between gap-1">
                                       <span className="text-[9px] font-medium text-slate-400">
                                         {cita.horaInicio} - {cita.horaFin}
                                       </span>
-                                      <span className={`mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full ${colores.punto}`} />
+                                      <div className="flex items-center gap-1">
+                                        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${colores.punto}`} />
+                                        <button
+                                          type="button"
+                                          onClick={(event) => {
+                                            event.stopPropagation();
+                                            eliminarCita(cita.id);
+                                          }}
+                                          className="flex h-4 w-4 items-center justify-center rounded text-red-400 transition hover:bg-red-500/15 hover:text-red-300 cursor-pointer"
+                                          title="Eliminar cita"
+                                        >
+                                          <Trash2 size={11} />
+                                        </button>
+                                      </div>
                                     </div>
 
                                     <p className={`mt-1 truncate text-[11px] font-bold ${colores.titulo}`}>
@@ -615,13 +662,26 @@ export function AgendaView() {
                                     <p className={`mt-0.5 truncate text-[9px] ${colores.texto}`}>
                                       {cita.servicio} · <span className="opacity-80">{cita.odontologo}</span>
                                     </p>
-                                  </button>
+                                  </div>
                                 );
                               })}
                             </div>
                           );
                         })}
                       </div>
+
+                      {/* Línea de Hora Actual en Vivo */}
+                      {posicionHoraActual !== null && (
+                        <div
+                          className="pointer-events-none absolute left-[48px] right-0 z-40 flex items-center"
+                          style={{
+                            top: `${posicionHoraActual}px`,
+                          }}
+                        >
+                          <span className="absolute -left-1 h-2.5 w-2.5 rounded-full bg-red-400 shadow-[0_0_10px_rgba(248,113,113,0.9)]" />
+                          <div className="h-[2px] w-full bg-red-400 shadow-[0_0_10px_rgba(248,113,113,0.8)]" />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
