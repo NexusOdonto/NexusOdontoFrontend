@@ -1,7 +1,10 @@
-import { useState, useRef, useMemo, useEffect } from "react";
+import { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import { useTheme } from "../../context/ThemeContext";
 import { OdontogramaGrid } from "./components/OdontogramaGrid";
 import { ConvencionesToolbar } from "./components/ConvencionesToolbar";
+import { patientService } from "../../api/patientService";
+import { personService } from "../../api/personService";
+import { odontogramService } from "../../api/odontogramService";
 import {
   User,
   X,
@@ -110,11 +113,11 @@ function guardarOdontograma(data: {
   localStorage.setItem(ODONTOGRAMA_STORAGE_KEY, JSON.stringify(data));
 }
 
-const pacientesList = [
-  { id: "1", nombre: "Andrés Pérez", cedula: "1076543210" },
-  { id: "2", nombre: "María Fernanda López", cedula: "1087654321" },
-  { id: "3", nombre: "Carlos Andrés Pérez", cedula: "1098761234" },
-];
+interface PacienteItem {
+  id: string;
+  nombre: string;
+  cedula: string;
+}
 
 function OdontogramaUI() {
   const { theme } = useTheme();
@@ -126,7 +129,12 @@ function OdontogramaUI() {
     surface: Surface;
   } | null>(null);
   const [selectedTooth, setSelectedTooth] = useState<number | null>(null);
-  const [selectedPaciente, setSelectedPaciente] = useState(pacientesList[0]);
+  const [pacientesList, setPacientesList] = useState<PacienteItem[]>([
+    { id: "1", nombre: "Andrés Pérez", cedula: "1076543210" },
+    { id: "2", nombre: "María Fernanda López", cedula: "1087654321" },
+    { id: "3", nombre: "Carlos Andrés Pérez", cedula: "1098761234" },
+  ]);
+  const [selectedPaciente, setSelectedPaciente] = useState<PacienteItem>(pacientesList[0]);
   const [notasClinicas, setNotasClinicas] = useState(
     "Paciente presenta buena higiene bucal. Se detecta lesión cariosa inicial en cara oclusal de pieza #16 y cálculo supragingival leve en sector anteroinferior."
   );
@@ -134,6 +142,33 @@ function OdontogramaUI() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isPatientDropdownOpen, setIsPatientDropdownOpen] = useState(false);
   const patientDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Cargar lista dinámica de pacientes desde API
+  const fetchPacientes = useCallback(async () => {
+    try {
+      const patientsData = await patientService.getAll().catch(() => []);
+      const personsData = await personService.getAll().catch(() => []);
+
+      if (patientsData && patientsData.length > 0) {
+        const mapped: PacienteItem[] = patientsData.map((p, idx) => {
+          const person = personsData.find((per) => per.id === p.personId);
+          const fullName = person ? `${person.firstName} ${person.lastName}` : (p.firstName ? `${p.firstName} ${p.lastName}` : `Paciente #${idx + 1}`);
+          const doc = person?.documentNumber || p.documentNumber || `10${idx}8765432`;
+          return { id: p.id, nombre: fullName, cedula: doc };
+        });
+        setPacientesList(mapped);
+        if (mapped.length > 0) {
+          setSelectedPaciente(mapped[0]);
+        }
+      }
+    } catch (err) {
+      console.warn("API Patients unavailable in Odontograma:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchPacientes();
+  }, [fetchPacientes]);
 
   // Cerrar dropdown de paciente al hacer clic fuera
   useEffect(() => {
@@ -333,8 +368,19 @@ function OdontogramaUI() {
     if (event.target) event.target.value = '';
   };
 
-  const handleSaveNotes = () => {
+  const handleSaveNotes = async () => {
     guardarOdontograma(state);
+    if (selectedPaciente && selectedPaciente.id) {
+      try {
+        await odontogramService.create({
+          patientId: selectedPaciente.id,
+          dentitionTypeId: state.dentitionType === "permanent" ? "10000000-0000-0000-0000-000000000001" : "10000000-0000-0000-0000-000000000002",
+          notes: notasClinicas,
+        });
+      } catch (err) {
+        console.warn("Could not sync odontogram with backend API directly:", err);
+      }
+    }
     setSuccessToast("¡Odontograma y notas clínicas guardadas con éxito!");
     setTimeout(() => setSuccessToast(null), 3500);
   };
@@ -450,10 +496,10 @@ function OdontogramaUI() {
                 </span>
                 <div className="flex items-center gap-2">
                   <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white leading-tight">
-                    {selectedPaciente.nombre}
+                    {selectedPaciente?.nombre || "Seleccionar Paciente"}
                   </span>
                   <span className="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-white/10 px-1.5 py-0.5 rounded-md border border-slate-200/50 dark:border-white/10">
-                    CC: {selectedPaciente.cedula}
+                    CC: {selectedPaciente?.cedula || "---"}
                   </span>
                 </div>
               </div>

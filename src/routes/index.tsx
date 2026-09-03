@@ -100,6 +100,12 @@ const PerfilView = lazy(() =>
   })),
 );
 
+const ConfiguracionView = lazy(() =>
+  import("../features/configuracion/ConfiguracionView").then((module) => ({
+    default: module.default,
+  })),
+);
+
 function LoadingFallback() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
@@ -236,8 +242,14 @@ export default function AppRoutes() {
             }
           />
 
-          {/* Redirección de configuración hacia dashboard */}
-          <Route path="/configuracion" element={<Navigate to="/dashboard" replace />} />
+          <Route
+            path="/configuracion"
+            element={
+              <DashboardLayout>
+                <ConfiguracionView />
+              </DashboardLayout>
+            }
+          />
 
           <Route
             path="/perfil"

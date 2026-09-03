@@ -3,6 +3,8 @@ import {
   ChevronRight,
   Mail,
   UserRound,
+  ShieldCheck,
+  Power,
 } from "lucide-react";
 
 import type { Usuario } from "../../../types/usuarios";
@@ -13,6 +15,55 @@ interface UsuariosTableProps {
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
+  onManagePermissions?: (usuario: Usuario) => void;
+  onToggleStatus?: (usuario: Usuario) => void;
+}
+
+function getRoleBadge(roleCode?: string, roleName?: string) {
+  const code = (roleCode || "").toUpperCase();
+  const name = roleName || "Usuario";
+
+  if (code.includes("ADMIN")) {
+    return {
+      label: name || "Administrador",
+      className: "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30",
+      dot: "bg-purple-500",
+    };
+  }
+  if (code.includes("ODONTO") || code.includes("DOCTOR")) {
+    return {
+      label: name || "Odontólogo",
+      className: "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-cyan-500/30",
+      dot: "bg-cyan-500",
+    };
+  }
+  if (code.includes("RECEPC")) {
+    return {
+      label: name || "Recepcionista",
+      className: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
+      dot: "bg-emerald-500",
+    };
+  }
+  if (code.includes("PACIENTE")) {
+    return {
+      label: name || "Paciente",
+      className: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30",
+      dot: "bg-amber-500",
+    };
+  }
+  if (code.includes("BOT") || code.includes("CHATBOT") || code.includes("SERVICE")) {
+    return {
+      label: name || "Servicio API",
+      className: "bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-500/30",
+      dot: "bg-slate-500",
+    };
+  }
+
+  return {
+    label: name || "Personal",
+    className: "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30",
+    dot: "bg-blue-500",
+  };
 }
 
 function getStatusClasses(isActive: boolean) {
@@ -49,6 +100,8 @@ export function UsuariosTable({
   currentPage,
   totalPages,
   onPageChange,
+  onManagePermissions,
+  onToggleStatus,
 }: UsuariosTableProps) {
   if (loading) {
     return <UsuariosTableSkeleton />;
@@ -83,105 +136,184 @@ export function UsuariosTable({
                 Correo Electrónico
               </th>
               <th className="px-5 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                Permisos Asignados
+                Rol Asignado
+              </th>
+              <th className="px-5 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                Permisos y Accesos
               </th>
               <th className="px-5 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
                 Estado
+              </th>
+              <th className="px-5 py-3.5 text-right text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                Acciones
               </th>
             </tr>
           </thead>
 
           <tbody className="divide-y divide-slate-200/60 dark:divide-white/10">
-            {usuarios.map((usuario) => (
-              <tr
-                key={usuario.id}
-                className="transition-colors hover:bg-cyan-500/5 dark:hover:bg-cyan-400/10"
-              >
-                <td className="px-5 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500/20 via-cyan-500/20 to-blue-500/20 dark:from-teal-400/30 dark:via-cyan-400/30 dark:to-blue-500/30 border border-cyan-500/40 dark:border-cyan-400/50 text-cyan-800 dark:text-cyan-200 font-extrabold shadow-sm">
-                      <UserRound size={16} className="text-teal-600 dark:text-teal-400" />
+            {usuarios.map((usuario) => {
+              const roleInfo = getRoleBadge(usuario.roleCode, usuario.roleName);
+              const modulesCount = usuario.modulesList?.length || usuario.permissionsCount || 0;
+
+              return (
+                <tr
+                  key={usuario.id}
+                  className="transition-colors hover:bg-cyan-500/5 dark:hover:bg-cyan-400/10"
+                >
+                  {/* Nombre */}
+                  <td className="px-5 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500/20 via-cyan-500/20 to-blue-500/20 dark:from-teal-400/30 dark:via-cyan-400/30 dark:to-blue-500/30 border border-cyan-500/40 dark:border-cyan-400/50 text-cyan-800 dark:text-cyan-200 font-extrabold shadow-sm">
+                        <UserRound size={16} className="text-teal-600 dark:text-teal-400" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-slate-900 dark:text-white">
+                          {usuario.name}
+                        </p>
+                        <p className="text-[10px] text-slate-400 font-mono">
+                          ID: {usuario.id.slice(0, 8)}...
+                        </p>
+                      </div>
                     </div>
-                    <span className="text-sm font-bold text-slate-900 dark:text-white">
-                      {usuario.name}
-                    </span>
-                  </div>
-                </td>
+                  </td>
 
-                <td className="px-5 py-4">
-                  <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-600 dark:text-slate-300">
-                    <Mail size={14} className="text-cyan-600 dark:text-cyan-400 flex-shrink-0" />
-                    <span className="break-all">{usuario.email}</span>
-                  </div>
-                </td>
+                  {/* Correo */}
+                  <td className="px-5 py-4">
+                    <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-600 dark:text-slate-300">
+                      <Mail size={14} className="text-cyan-600 dark:text-cyan-400 flex-shrink-0" />
+                      <span className="break-all">{usuario.email}</span>
+                    </div>
+                  </td>
 
-                <td className="px-5 py-4">
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-cyan-500/10 text-cyan-800 dark:text-cyan-200 border border-cyan-500/25">
-                    {usuario.permissions.length} permisos
-                  </span>
-                </td>
-
-                <td className="px-5 py-4">
-                  <span className={getStatusClasses(usuario.isActive)}>
+                  {/* Rol Asignado */}
+                  <td className="px-5 py-4">
                     <span
-                      className={`h-1.5 w-1.5 rounded-full ${
-                        usuario.isActive ? "bg-emerald-500" : "bg-rose-500"
-                      }`}
-                    />
-                    {usuario.isActive ? "Activo" : "Inactivo"}
-                  </span>
-                </td>
-              </tr>
-            ))}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold border ${roleInfo.className}`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${roleInfo.dot}`} />
+                      {roleInfo.label}
+                    </span>
+                  </td>
+
+                  {/* Permisos y Accesos */}
+                  <td className="px-5 py-4">
+                    <button
+                      type="button"
+                      onClick={() => onManagePermissions?.(usuario)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-cyan-500/10 dark:bg-white/5 dark:hover:bg-cyan-500/15 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:text-cyan-600 dark:hover:text-cyan-300 transition-all cursor-pointer shadow-sm group"
+                      title="Ver matriz de permisos del rol"
+                    >
+                      <ShieldCheck size={14} className="text-cyan-500 group-hover:scale-110 transition-transform" />
+                      <span>
+                        {modulesCount > 0
+                          ? `${modulesCount} módulos asignados`
+                          : "Acceso asignado por rol"}
+                      </span>
+                    </button>
+                  </td>
+
+                  {/* Estado */}
+                  <td className="px-5 py-4">
+                    <span className={getStatusClasses(usuario.isActive)}>
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${
+                          usuario.isActive ? "bg-emerald-500" : "bg-rose-500"
+                        }`}
+                      />
+                      {usuario.isActive ? "Activo" : "Inactivo"}
+                    </span>
+                  </td>
+
+                  {/* Acciones */}
+                  <td className="px-5 py-4 text-right">
+                    <div className="inline-flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => onManagePermissions?.(usuario)}
+                        className="p-2 rounded-xl border border-slate-200 dark:border-white/10 bg-white/80 dark:bg-slate-900/60 hover:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 hover:border-cyan-500/30 transition-all cursor-pointer shadow-sm"
+                        title="Gestionar rol y permisos"
+                      >
+                        <ShieldCheck size={16} />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => onToggleStatus?.(usuario)}
+                        className={`p-2 rounded-xl border transition-all cursor-pointer shadow-sm ${
+                          usuario.isActive
+                            ? "border-slate-200 dark:border-white/10 bg-white/80 dark:bg-slate-900/60 hover:bg-rose-500/10 text-slate-400 hover:text-rose-500 hover:border-rose-500/30"
+                            : "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
+                        }`}
+                        title={usuario.isActive ? "Desactivar usuario" : "Activar usuario"}
+                      >
+                        <Power size={15} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
 
       {/* VISTA MÓVIL */}
       <div className="space-y-3 p-3 md:hidden">
-        {usuarios.map((usuario) => (
-          <article
-            key={usuario.id}
-            className="p-5 rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl shadow-md space-y-3"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500/20 via-cyan-500/20 to-blue-500/20 border border-cyan-500/40 text-cyan-800 dark:text-cyan-200 font-extrabold shadow-sm">
-                  <UserRound size={17} className="text-teal-600 dark:text-teal-400" />
-                </div>
+        {usuarios.map((usuario) => {
+          const roleInfo = getRoleBadge(usuario.roleCode, usuario.roleName);
+          const modulesCount = usuario.modulesList?.length || usuario.permissionsCount || 0;
 
-                <div className="min-w-0">
-                  <h3 className="truncate text-sm font-bold text-slate-900 dark:text-white">
-                    {usuario.name}
-                  </h3>
+          return (
+            <article
+              key={usuario.id}
+              className="p-5 rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl shadow-md space-y-3"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500/20 via-cyan-500/20 to-blue-500/20 border border-cyan-500/40 text-cyan-800 dark:text-cyan-200 font-extrabold shadow-sm">
+                    <UserRound size={17} className="text-teal-600 dark:text-teal-400" />
+                  </div>
 
-                  <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-                    <Mail size={13} className="text-cyan-600 dark:text-cyan-400 shrink-0" />
-                    <span className="break-all">{usuario.email}</span>
+                  <div className="min-w-0">
+                    <h3 className="truncate text-sm font-bold text-slate-900 dark:text-white">
+                      {usuario.name}
+                    </h3>
+
+                    <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                      <Mail size={13} className="text-cyan-600 dark:text-cyan-400 shrink-0" />
+                      <span className="break-all">{usuario.email}</span>
+                    </div>
                   </div>
                 </div>
+
+                <span className={getStatusClasses(usuario.isActive)}>
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${
+                      usuario.isActive ? "bg-emerald-500" : "bg-rose-500"
+                    }`}
+                  />
+                  {usuario.isActive ? "Activo" : "Inactivo"}
+                </span>
               </div>
 
-              <span className={getStatusClasses(usuario.isActive)}>
-                <span
-                  className={`h-1.5 w-1.5 rounded-full ${
-                    usuario.isActive ? "bg-emerald-500" : "bg-rose-500"
-                  }`}
-                />
-                {usuario.isActive ? "Activo" : "Inactivo"}
-              </span>
-            </div>
+              <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-200/80 dark:border-white/10">
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold border ${roleInfo.className}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${roleInfo.dot}`} />
+                  {roleInfo.label}
+                </span>
 
-            <div className="mt-4 flex items-center justify-between border-t border-slate-200/80 dark:border-white/15 pt-3">
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                Permisos Asignados
-              </span>
-              <span className="text-xs font-bold text-cyan-800 dark:text-cyan-200">
-                {usuario.permissions.length} permisos
-              </span>
-            </div>
-          </article>
-        ))}
+                <button
+                  type="button"
+                  onClick={() => onManagePermissions?.(usuario)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/25"
+                >
+                  <ShieldCheck size={13} />
+                  <span>{modulesCount > 0 ? `${modulesCount} módulos` : "Permisos"}</span>
+                </button>
+              </div>
+            </article>
+          );
+        })}
       </div>
 
       {/* PAGINACIÓN */}

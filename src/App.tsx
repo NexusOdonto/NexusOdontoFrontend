@@ -2,6 +2,7 @@ import { BrowserRouter } from "react-router-dom";
 import { ThemeProvider } from "./context/ThemeContext";
 import { AuthProvider } from "./features/auth/AuthContext";
 import { NotificationProvider } from "./context/NotificationContext";
+import { ErrorBoundary } from "./components/common/ErrorBoundary";
 import AppRoutes from './routes';
 
 export default function App() {
@@ -10,7 +11,9 @@ export default function App() {
       <BrowserRouter>
         <AuthProvider>
           <NotificationProvider>
-            <AppRoutes />
+            <ErrorBoundary>
+              <AppRoutes />
+            </ErrorBoundary>
           </NotificationProvider>
         </AuthProvider>
       </BrowserRouter>
