@@ -20,6 +20,7 @@ export const ROLE_ALLOWED_ROUTES: Record<SystemRole, string[]> = {
     "/odontograma",
     "/usuarios",
     "/roles-permisos",
+    "/configuracion",
     "/perfil",
   ],
   ODONTOLOGO: [

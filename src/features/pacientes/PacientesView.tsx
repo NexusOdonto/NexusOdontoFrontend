@@ -11,52 +11,7 @@ import { patientService } from "../../api/patientService";
 import { personService } from "../../api/personService";
 import { Plus, RefreshCw, LayoutGrid, List, Download } from "lucide-react";
 
-const pacientesFallback: Paciente[] = [
-  {
-    id: 1,
-    nombre: "Ana María Rodríguez",
-    documento: "1098765432",
-    telefono: "3001234567",
-    estado: "Activo",
-    correo: "ana.rodriguez@email.com",
-    proximaCita: "Mañana a las 09:00 AM",
-    alergias: "Alérgica a Penicilina",
-  },
-  {
-    id: 2,
-    nombre: "Carlos Andrés Pérez",
-    documento: "1023456789",
-    telefono: "3012345678",
-    estado: "Activo",
-    correo: "carlos.perez@email.com",
-    proximaCita: "Viernes a las 03:00 PM",
-  },
-  {
-    id: 3,
-    nombre: "María Fernanda López",
-    documento: "1009876543",
-    telefono: "3023456789",
-    estado: "Activo",
-    correo: "maria.lopez@email.com",
-    proximaCita: "Próximo Lunes 11:00 AM",
-  },
-  {
-    id: 4,
-    nombre: "Juan David Gómez",
-    documento: "1091234567",
-    telefono: "3034567890",
-    estado: "Activo",
-    correo: "juan.gomez@email.com",
-  },
-  {
-    id: 5,
-    nombre: "Laura Daniela Torres",
-    documento: "1012345678",
-    telefono: "3045678901",
-    estado: "Activo",
-    correo: "laura.torres@email.com",
-  },
-];
+const pacientesFallback: Paciente[] = [];
 
 const ITEMS_PER_PAGE = 6;
 

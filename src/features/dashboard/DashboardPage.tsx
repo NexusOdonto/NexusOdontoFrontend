@@ -35,58 +35,7 @@ interface CitaItem {
   valor: number;
 }
 
-const citasDeHoyMock: CitaItem[] = [
-  {
-    id: "c1",
-    hora: "08:30 AM",
-    paciente: "Andrés Pérez",
-    doctor: "Dra. Laura Gómez",
-    servicio: "Limpieza y Valoración General",
-    sillon: "Sillón 1",
-    estado: "Completada",
-    valor: 45000,
-  },
-  {
-    id: "c2",
-    hora: "09:30 AM",
-    paciente: "Carlos Andrés Pérez",
-    doctor: "Dra. Laura Gómez",
-    servicio: "Blanqueamiento Dental Láser",
-    sillon: "Sillón 1",
-    estado: "En Atención",
-    valor: 80000,
-  },
-  {
-    id: "c3",
-    hora: "10:30 AM",
-    paciente: "María Fernanda López",
-    doctor: "Dr. Juan Martínez",
-    servicio: "Calza en Resina Pieza #16",
-    sillon: "Sillón 2",
-    estado: "Confirmada",
-    valor: 60000,
-  },
-  {
-    id: "c4",
-    hora: "02:00 PM",
-    paciente: "Lucía Ramírez",
-    doctor: "Dra. Patricia Silva",
-    servicio: "Tratamiento de Endodoncia",
-    sillon: "Sillón 3",
-    estado: "Confirmada",
-    valor: 180000,
-  },
-  {
-    id: "c5",
-    hora: "03:30 PM",
-    paciente: "Julián Morales",
-    doctor: "Dr. Juan Martínez",
-    servicio: "Extracción Dental Cordal",
-    sillon: "Sillón 2",
-    estado: "Pendiente",
-    valor: 50000,
-  },
-];
+const citasDeHoyMock: CitaItem[] = [];
 
 const odontologosTurno = [
   { nombre: "Dra. Laura Gómez", especialidad: "Ortodoncia y Estética", sillon: "Sillón 1", citasHoy: 4, activo: true },
@@ -110,7 +59,7 @@ export default function DashboardPage() {
 
   const [loading, setLoading] = useState(false);
   const [citasHoy, setCitasHoy] = useState<CitaItem[]>(citasDeHoyMock);
-  const [totalPacientes, setTotalPacientes] = useState(24);
+  const [totalPacientes, setTotalPacientes] = useState(0);
   const [filtroPeriodo, setFiltroPeriodo] = useState<"Hoy" | "Semana" | "Mes">("Hoy");
 
   const currentDateFormatted = useMemo(() => {
@@ -365,7 +314,14 @@ export default function DashboardPage() {
 
             {/* LISTA DE CITAS */}
             <div className="divide-y divide-slate-100 dark:divide-white/5">
-              {citasHoy.map((cita) => (
+              {citasHoy.length === 0 ? (
+                <div className="py-8 text-center">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                    No hay citas programadas para el día de hoy.
+                  </p>
+                </div>
+              ) : (
+                citasHoy.map((cita) => (
                 <div
                   key={cita.id}
                   className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/80 dark:hover:bg-slate-900/40 rounded-xl px-2.5 transition-colors"
@@ -416,7 +372,8 @@ export default function DashboardPage() {
                     </button>
                   </div>
                 </div>
-              ))}
+              ))
+              )}
             </div>
           </div>
 

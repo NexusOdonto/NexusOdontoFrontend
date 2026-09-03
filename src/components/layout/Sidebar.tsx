@@ -11,6 +11,7 @@ import {
   ChevronRight,
   UserCircle,
   Sparkles,
+  Settings,
 } from "lucide-react";
 
 import { useState } from "react";
@@ -84,6 +85,11 @@ export function Sidebar({
       label: "Roles y permisos",
       icon: ShieldCheck,
       path: "/roles-permisos",
+    },
+    {
+      label: "Configuración",
+      icon: Settings,
+      path: "/configuracion",
     },
     {
       label: "Mi Perfil",

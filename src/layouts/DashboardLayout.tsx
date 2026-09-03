@@ -10,6 +10,8 @@ import { useAuth } from "../features/auth/AuthContext";
 import fondoLight from "../assets/fondo-ligh.webp";
 import fondoDark from "../assets/fondo-darck.webp";
 
+import { ErrorBoundary } from "../components/common/ErrorBoundary";
+
 interface DashboardLayoutProps {
   children: ReactNode;
 }
@@ -66,7 +68,9 @@ export function DashboardLayout({
         >
           {/* Contenido principal fluido con ancho máximo de 1440px */}
           <div className="relative z-10 w-full max-w-[1440px] mx-auto p-4 sm:p-6 md:p-8">
-            {children}
+            <ErrorBoundary>
+              {children}
+            </ErrorBoundary>
           </div>
         </main>
       </div>

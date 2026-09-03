@@ -15,6 +15,10 @@ export interface Usuario {
   name: string;
   email: string;
   roleIds: string[];
+  roleName?: string;
+  roleCode?: string;
+  permissionsCount?: number;
+  modulesList?: string[];
   permissions: string[];
   isActive: boolean;
 }
