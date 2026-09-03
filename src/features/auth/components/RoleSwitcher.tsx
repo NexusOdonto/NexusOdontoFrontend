@@ -1,35 +1,40 @@
 import { useAuth } from '../AuthContext';
-import { MOCK_USERS } from '../mocks/users.mock';
+
+const SEEDED_USERS = [
+  { id: '1', nombre: 'Carlos', apellido: 'Administrador', login: '1234567890', pass: 'Admin123!', rol: 'ADMINISTRADOR' },
+  { id: '2', nombre: 'Dra. Laura', apellido: 'Gómez', login: '1098765432', pass: 'Doctor123!', rol: 'ODONTOLOGO' },
+  { id: '3', nombre: 'María', apellido: 'Recepción', login: '1087654321', pass: 'Recepcion123!', rol: 'RECEPCIONISTA' },
+  { id: '4', nombre: 'Andrés', apellido: 'Pérez', login: '1076543210', pass: 'Paciente123!', rol: 'PACIENTE' },
+];
 
 export function RoleSwitcher() {
   const { user, login } = useAuth();
 
-  // Hide in production builds
   if (!user || import.meta.env.PROD) {
     return null;
   }
 
-  const handleSwitchRole = async (email: string, password: string) => {
-    await login(email, password);
+  const handleSwitchRole = async (loginId: string, pass: string) => {
+    await login(loginId, pass);
   };
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 p-4 bg-slate-900/90 backdrop-blur-md rounded-lg border border-slate-700 shadow-xl">
-      <h3 className="text-sm font-semibold text-white mb-3">Switch Role (Dev)</h3>
-      <div className="space-y-2">
-        {MOCK_USERS.map((mockUser) => (
+    <div className="fixed bottom-4 right-4 z-50 p-4 bg-slate-900/90 backdrop-blur-md rounded-2xl border border-cyan-500/30 shadow-2xl">
+      <h3 className="text-xs font-black uppercase tracking-wider text-cyan-400 mb-2.5">Cambiar Rol (Modo Dev)</h3>
+      <div className="space-y-1.5">
+        {SEEDED_USERS.map((su) => (
           <button
-            key={mockUser.id}
+            key={su.id}
             type="button"
-            onClick={() => handleSwitchRole(mockUser.email, mockUser.password)}
-            className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
-              user.id === String(mockUser.id)
-                ? 'bg-primary-500 text-white'
-                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+            onClick={() => handleSwitchRole(su.login, su.pass)}
+            className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
+              user.rol === su.rol
+                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+                : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800'
             }`}
           >
-            <div className="font-medium">{mockUser.nombre} {mockUser.apellido}</div>
-            <div className="text-xs opacity-75">{mockUser.rol}</div>
+            <div className="font-bold">{su.nombre} {su.apellido}</div>
+            <div className="text-[10px] opacity-75">{su.rol}</div>
           </button>
         ))}
       </div>

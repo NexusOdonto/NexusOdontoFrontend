@@ -19,6 +19,9 @@ import {
   Award,
   Calendar,
   Smile,
+  Printer,
+  Edit3,
+  Trash2,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -44,52 +47,6 @@ interface LocalAttention {
   planTratamiento: string;
   observaciones?: string;
 }
-
-const mockAttentionsFallback: Record<string, LocalAttention[]> = {
-  "1": [
-    {
-      id: "att-101",
-      fecha: "2026-08-28 10:30 AM",
-      profesional: "Dr. Roberto Silva",
-      motivo: "Dolor punzante en zona molar superior derecha (pieza #16)",
-      enfermedadActual:
-        "Paciente refiere molestia al masticar alimentos fríos y dulces de 5 días de evolución.",
-      examenFisico:
-        "Inspección clínica evidencia lesión cariosa profunda en fosa oclusal de pieza #16 con sensibilidad a la percusión vertical.",
-      diagnostico: "Caries de la dentina",
-      cie10: "K02.1",
-      planTratamiento:
-        "Eliminación de tejido cariado, preparación de cavidad tipo I y obturación estética en resina de fotocurado 3M Filtek.",
-      observaciones: "Aislar campo con dique de goma. Control en 6 meses.",
-    },
-    {
-      id: "att-102",
-      fecha: "2026-03-14 09:00 AM",
-      profesional: "Dra. Camila Morales",
-      motivo: "Control odontológico periódico y profilaxis",
-      enfermedadActual: "Paciente asintomático, sin dolencias activas.",
-      examenFisico: "Encías rosadas, sin inflamación. Ligera acumulación de placa bacteriana anteroinferior.",
-      diagnostico: "Depósitos [acreciones] en los dientes",
-      cie10: "K03.6",
-      planTratamiento: "Detartraje ultrasónico completo + pulido coronario con pasta profiláctica fluorada.",
-      observaciones: "Reforzar técnica de cepillado e hilo dental nocturno.",
-    },
-  ],
-  "2": [
-    {
-      id: "att-201",
-      fecha: "2026-08-10 03:15 PM",
-      profesional: "Dr. Juan Martínez",
-      motivo: "Evaluación para blanqueamiento dental",
-      enfermedadActual: "Deseo estético de aclarar tono dental.",
-      examenFisico: "Tono inicial A3 en escala Vita. Esmalte íntegro sin fisuras ni sensibilidad.",
-      diagnostico: "Pigmentación dental extrínseca",
-      cie10: "K03.7",
-      planTratamiento: "Sesión de Blanqueamiento Láser de diodo 35% peróxido de hidrógeno.",
-      observaciones: "Se logró tono A1. Evitar café, vino tinto y alimentos pigmentados por 72 horas.",
-    },
-  ],
-};
 
 export function HistoriaClinicaView() {
   const navigate = useNavigate();
@@ -119,6 +76,28 @@ export function HistoriaClinicaView() {
   const [formPlan, setFormPlan] = useState("");
   const [formObservaciones, setFormObservaciones] = useState("");
   const [formProfesional, setFormProfesional] = useState(user?.name || "Dr. Roberto Silva");
+
+  // Modales adicionales
+  const [showAntecedentesModal, setShowAntecedentesModal] = useState(false);
+  const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
+
+  // Form State para Antecedentes
+  const [formAlergias, setFormAlergias] = useState("");
+  const [formEnfermedades, setFormEnfermedades] = useState("");
+  const [formMedicamentos, setFormMedicamentos] = useState("");
+  const [formContactoNombre, setFormContactoNombre] = useState("");
+  const [formContactoTelefono, setFormContactoTelefono] = useState("");
+  const [formAseguradora, setFormAseguradora] = useState("");
+
+  // Form State para Fórmula Médica
+  const [prescriptionItems, setPrescriptionItems] = useState([
+    { medicamento: "Amoxicilina 500mg", dosis: "1 cápsula cada 8 horas", duracion: "7 días", indicaciones: "Tomar después de las comidas" },
+    { medicamento: "Ibuprofeno 600mg", dosis: "1 tableta cada 8 horas", duracion: "3 días", indicaciones: "En caso de dolor o inflamación" },
+  ]);
+  const [newMed, setNewMed] = useState({ medicamento: "", dosis: "", duracion: "", indicaciones: "" });
+  const [prescIndicacionesGrales, setPrescIndicacionesGrales] = useState(
+    "Mantener higiene bucal cuidadosa con cepillo de cerdas suaves. Evitar alimentos irritantes, duros o muy calientes durante las próximas 48 horas."
+  );
 
   // 1. Cargar Pacientes
   const fetchPatients = useCallback(async () => {
@@ -240,13 +219,11 @@ export function HistoriaClinicaView() {
         }));
         setAttentions(mapped);
       } else {
-        const key = String(selectedPatientId);
-        setAttentions(mockAttentionsFallback[key] || mockAttentionsFallback["1"]);
+        setAttentions([]);
       }
     } catch (err) {
-      console.warn("API clinical history offline, showing mock timeline:", err);
-      const key = String(selectedPatientId);
-      setAttentions(mockAttentionsFallback[key] || mockAttentionsFallback["1"]);
+      console.warn("API clinical history offline, setting empty attentions list:", err);
+      setAttentions([]);
     }
   }, [selectedPatientId]);
 
@@ -319,6 +296,52 @@ export function HistoriaClinicaView() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
+  const handleOpenAntecedentes = () => {
+    if (!selectedPatient) return;
+    setFormAlergias(selectedPatient.allergies || "");
+    setFormEnfermedades((selectedPatient as any).chronicDiseases || "Hipertensión controlada");
+    setFormMedicamentos((selectedPatient as any).currentMedications || "Losartán 50mg diario");
+    setFormContactoNombre(selectedPatient.emergencyContactName || "Familiar Responsable");
+    setFormContactoTelefono(selectedPatient.emergencyContactPhone || selectedPatient.phone || "3001234567");
+    setFormAseguradora(selectedPatient.insuranceProvider || "Particular / EPS");
+    setShowAntecedentesModal(true);
+  };
+
+  const handleSaveAntecedentes = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPatient) return;
+
+    setPatients((prev) =>
+      prev.map((p) =>
+        String(p.id) === String(selectedPatient.id)
+          ? {
+              ...p,
+              allergies: formAlergias.trim() || "Sin alergias declaradas",
+              emergencyContactName: formContactoNombre.trim(),
+              emergencyContactPhone: formContactoTelefono.trim(),
+              insuranceProvider: formAseguradora.trim(),
+              chronicDiseases: formEnfermedades.trim(),
+              currentMedications: formMedicamentos.trim(),
+            } as any
+          : p
+      )
+    );
+
+    setShowAntecedentesModal(false);
+    setToastMessage("Antecedentes médicos actualizados con éxito.");
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleAddMedication = () => {
+    if (!newMed.medicamento.trim()) return;
+    setPrescriptionItems((prev) => [...prev, { ...newMed }]);
+    setNewMed({ medicamento: "", dosis: "", duracion: "", indicaciones: "" });
+  };
+
+  const handleRemoveMedication = (idx: number) => {
+    setPrescriptionItems((prev) => prev.filter((_, i) => i !== idx));
+  };
+
   const getInitials = (nombre: string) => {
     const parts = nombre.trim().split(" ");
     if (parts.length >= 2) {
@@ -357,6 +380,18 @@ export function HistoriaClinicaView() {
             <FileDown size={15} className="text-cyan-600 dark:text-cyan-400" />
             <span>Imprimir Expediente</span>
           </button>
+
+          {!isPaciente && (
+            <button
+              type="button"
+              onClick={() => setShowPrescriptionModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-cyan-500/40 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-800 dark:text-cyan-200 transition-all cursor-pointer backdrop-blur-xl active:scale-95 text-xs font-semibold shadow-sm"
+              title="Generar e imprimir receta odontológica oficial"
+            >
+              <FileText size={15} className="text-cyan-600 dark:text-cyan-400" />
+              <span>Fórmula Médica</span>
+            </button>
+          )}
 
           <button
             type="button"
@@ -593,7 +628,7 @@ export function HistoriaClinicaView() {
                   }`}
                 >
                   <Clock size={14} />
-                  <span>Evoluciones Clínicas ({attentions.length})</span>
+                  <span>Evoluciones Clínicas ({attentions?.length || 0})</span>
                 </button>
 
                 <button
@@ -838,18 +873,50 @@ export function HistoriaClinicaView() {
 
               {activeTab === "antecedentes" && (
                 <div className="rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl p-6 shadow-md space-y-4">
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <ShieldCheck size={16} className="text-cyan-600 dark:text-cyan-400" />
-                    <span>Antecedentes Médicos y Alertas Sistemáticas</span>
-                  </h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <ShieldCheck size={16} className="text-cyan-600 dark:text-cyan-400" />
+                      <span>Antecedentes Médicos y Alertas Sistémicas</span>
+                    </h3>
+                    {!isPaciente && (
+                      <button
+                        type="button"
+                        onClick={handleOpenAntecedentes}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-800 dark:text-cyan-200 text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-95"
+                      >
+                        <Edit3 size={13} />
+                        <span>Actualizar Antecedentes</span>
+                      </button>
+                    )}
+                  </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                     <div className="p-4 rounded-xl bg-slate-100/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 space-y-1">
-                      <span className="font-bold text-cyan-700 dark:text-cyan-300 uppercase text-[10px] tracking-wider">
-                        Alergias Medicamentosa / Alimentos
+                      <span className="font-bold text-rose-600 dark:text-rose-400 uppercase text-[10px] tracking-wider flex items-center gap-1">
+                        <AlertTriangle size={12} />
+                        Alergias Medicamentosas / Alimentos
                       </span>
                       <p className="text-slate-900 dark:text-white font-bold">
-                        {selectedPatient.allergies || "No refiere alergias."}
+                        {selectedPatient.allergies || "No refiere alergias conocidas."}
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-slate-100/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 space-y-1">
+                      <span className="font-bold text-amber-600 dark:text-amber-400 uppercase text-[10px] tracking-wider flex items-center gap-1">
+                        <Activity size={12} />
+                        Enfermedades Sistémicas / Crónicas
+                      </span>
+                      <p className="text-slate-900 dark:text-white font-bold">
+                        {(selectedPatient as any).chronicDiseases || "Ninguna patología de base declarada."}
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-slate-100/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 space-y-1">
+                      <span className="font-bold text-cyan-700 dark:text-cyan-300 uppercase text-[10px] tracking-wider">
+                        Medicamentos de Uso Frecuente
+                      </span>
+                      <p className="text-slate-900 dark:text-white font-semibold">
+                        {(selectedPatient as any).currentMedications || "Sin farmacoterapia permanente."}
                       </p>
                     </div>
 
@@ -877,7 +944,7 @@ export function HistoriaClinicaView() {
                       </span>
                       <p className="text-slate-900 dark:text-white font-semibold flex items-center gap-1.5">
                         <CheckCircle2 size={14} className="text-emerald-500" />
-                        Firmado digitalmente y verificado.
+                        Firmado digitalmente y verificado para procedimientos clínicos.
                       </p>
                     </div>
                   </div>
@@ -1050,6 +1117,302 @@ export function HistoriaClinicaView() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL ACTUALIZAR ANTECEDENTES MÉDICOS */}
+      {showAntecedentesModal && selectedPatient && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-lg rounded-3xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/20 p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <ShieldCheck size={18} className="text-cyan-500" />
+                  <span>Actualizar Antecedentes Médicos</span>
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Paciente: {selectedPatient.firstName} {selectedPatient.lastName}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAntecedentesModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveAntecedentes} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Alergias Medicamentosas / Alimentos
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ej. Alérgica a Penicilina, AINES, etc."
+                  value={formAlergias}
+                  onChange={(e) => setFormAlergias(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Patologías de Base / Enfermedades Crónicas
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ej. Hipertensión arterial controlada, Diabetes tipo 2"
+                  value={formEnfermedades}
+                  onChange={(e) => setFormEnfermedades(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Medicamentos de Uso Frecuente
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ej. Losartán 50mg/día, Metformina 850mg"
+                  value={formMedicamentos}
+                  onChange={(e) => setFormMedicamentos(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Contacto de Emergencia
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Nombre familiar"
+                    value={formContactoNombre}
+                    onChange={(e) => setFormContactoNombre(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Teléfono Contacto
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Número telefónico"
+                    value={formContactoTelefono}
+                    onChange={(e) => setFormContactoTelefono(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Aseguradora / Cobertura
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ej. Sanitas EPS, Particular, Sura"
+                  value={formAseguradora}
+                  onChange={(e) => setFormAseguradora(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-200 dark:border-white/10 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowAntecedentesModal(false)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-white/20 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 text-slate-950 font-bold text-xs shadow-md active:scale-95 cursor-pointer"
+                >
+                  Guardar Antecedentes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL FÓRMULA MÉDICA ODONTOLÓGICA (IMPRIMIBLE) */}
+      {showPrescriptionModal && selectedPatient && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-2xl rounded-3xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/20 p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-700 dark:text-cyan-300">
+                  <FileText size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                    Fórmula Médica Odontológica
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    NexusOdonto Dental Clinic — Prescripción Oficial
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-800 dark:text-cyan-200 text-xs font-bold transition-all cursor-pointer"
+                  title="Imprimir prescripción médica"
+                >
+                  <Printer size={14} />
+                  <span>Imprimir</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowPrescriptionModal(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Hoja de Prescripción con formato clínico */}
+            <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-white/10 space-y-4 text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pb-3 border-b border-slate-200 dark:border-white/10">
+                <div>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold">Paciente</span>
+                  <p className="font-bold text-slate-900 dark:text-white">{selectedPatient.firstName} {selectedPatient.lastName}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold">Documento</span>
+                  <p className="font-bold text-slate-900 dark:text-white">{selectedPatient.documentNumber || "1098765432"}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold">Fecha</span>
+                  <p className="font-bold text-slate-900 dark:text-white">{new Date().toLocaleDateString("es-CO")}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold">Odontólogo</span>
+                  <p className="font-bold text-cyan-700 dark:text-cyan-300">{formProfesional}</p>
+                </div>
+              </div>
+
+              {/* Lista de Medicamentos Prescritos */}
+              <div className="space-y-2">
+                <span className="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wider block">
+                  Medicamentos Formulados:
+                </span>
+                <div className="space-y-2">
+                  {prescriptionItems.map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="p-3 rounded-xl bg-white dark:bg-slate-950/70 border border-slate-200/80 dark:border-white/10 flex items-center justify-between gap-3"
+                    >
+                      <div className="flex-1 space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-900 dark:text-white">{idx + 1}. {item.medicamento}</span>
+                          <span className="px-2 py-0.5 rounded-md bg-cyan-500/15 text-cyan-800 dark:text-cyan-300 text-[10px] font-bold">
+                            {item.duracion}
+                          </span>
+                        </div>
+                        <p className="text-slate-600 dark:text-slate-400 text-[11px]">
+                          <strong>Dosis:</strong> {item.dosis} — <em>{item.indicaciones}</em>
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveMedication(idx)}
+                        className="p-1 text-slate-400 hover:text-rose-500 transition-colors"
+                        title="Quitar medicamento"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Formulario para agregar nuevo medicamento */}
+              <div className="p-3 rounded-xl bg-slate-100 dark:bg-white/5 border border-dashed border-slate-300 dark:border-white/15 space-y-2">
+                <span className="font-bold text-slate-700 dark:text-slate-300 text-[11px] block">
+                  + Agregar Fármaco a la Prescripción
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <input
+                    type="text"
+                    placeholder="Medicamento (ej. Enjuague Clorhexidina 0.12%)"
+                    value={newMed.medicamento}
+                    onChange={(e) => setNewMed({ ...newMed, medicamento: e.target.value })}
+                    className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-xs"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Dosis (ej. 15 ml cada 12 horas)"
+                    value={newMed.dosis}
+                    onChange={(e) => setNewMed({ ...newMed, dosis: e.target.value })}
+                    className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-xs"
+                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Duración (ej. 10 días)"
+                      value={newMed.duracion}
+                      onChange={(e) => setNewMed({ ...newMed, duracion: e.target.value })}
+                      className="flex-1 px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddMedication}
+                      className="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs cursor-pointer active:scale-95 transition-all"
+                    >
+                      Agregar
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Indicaciones Generales */}
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Recomendaciones y Cuidados Post-Tratamiento
+                </label>
+                <textarea
+                  rows={2}
+                  value={prescIndicacionesGrales}
+                  onChange={(e) => setPrescIndicacionesGrales(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 resize-none"
+                />
+              </div>
+
+              <div className="pt-4 border-t border-slate-200 dark:border-white/10 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+                <span>Válido por 30 días a partir de la fecha de expedición.</span>
+                <span className="font-bold text-slate-700 dark:text-slate-300">Firma Odontólogo: ___________________</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowPrescriptionModal(false)}
+                className="px-4 py-2 rounded-xl border border-slate-300 dark:border-white/20 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+              >
+                Cerrar
+              </button>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 text-slate-950 font-bold text-xs shadow-md active:scale-95 cursor-pointer"
+              >
+                <Printer size={15} />
+                <span>Imprimir Receta</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

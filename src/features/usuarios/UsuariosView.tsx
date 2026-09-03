@@ -4,6 +4,9 @@ import {
   UserRound,
   X,
   RefreshCw,
+  ShieldCheck,
+  CheckCircle2,
+  Check,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -16,8 +19,108 @@ import type {
 import { userService } from "../../api/userService";
 import { roleService } from "../../api/roleService";
 import { documentTypeService } from "../../api/documentTypeService";
+import { personService } from "../../api/personService";
 
 const ITEMS_PER_PAGE = 5;
+
+const ROLE_PRESETS: Record<string, { name: string; code: string; modules: string[]; description: string; permissions: Record<string, { ver: boolean; crear: boolean; editar: boolean; eliminar: boolean }> }> = {
+  "13000000-0000-0000-0000-000000000001": {
+    name: "Administrador del Sistema",
+    code: "ADMINISTRADOR",
+    description: "Acceso total para configurar el sistema, gestionar usuarios, roles, catálogo y finanzas.",
+    modules: ["Pacientes", "Citas", "Odontograma", "Historia Clínica", "Servicios", "Profesionales", "Usuarios", "Roles y Permisos"],
+    permissions: {
+      "Pacientes": { ver: true, crear: true, editar: true, eliminar: true },
+      "Citas & Agenda": { ver: true, crear: true, editar: true, eliminar: true },
+      "Odontograma": { ver: true, crear: true, editar: true, eliminar: true },
+      "Historia Clínica": { ver: true, crear: true, editar: true, eliminar: true },
+      "Catálogo Servicios": { ver: true, crear: true, editar: true, eliminar: true },
+      "Profesionales": { ver: true, crear: true, editar: true, eliminar: true },
+      "Gestión Usuarios": { ver: true, crear: true, editar: true, eliminar: true },
+      "Roles & Permisos": { ver: true, crear: true, editar: true, eliminar: true },
+    },
+  },
+  "13000000-0000-0000-0000-000000000002": {
+    name: "Odontólogo Especialista",
+    code: "ODONTOLOGO",
+    description: "Atención clínica de pacientes, registro de odontograma, evolución clínica y consulta de agenda.",
+    modules: ["Pacientes", "Citas", "Odontograma", "Historia Clínica", "Servicios", "Profesionales"],
+    permissions: {
+      "Pacientes": { ver: true, crear: true, editar: true, eliminar: false },
+      "Citas & Agenda": { ver: true, crear: false, editar: true, eliminar: false },
+      "Odontograma": { ver: true, crear: true, editar: true, eliminar: false },
+      "Historia Clínica": { ver: true, crear: true, editar: true, eliminar: false },
+      "Catálogo Servicios": { ver: true, crear: false, editar: false, eliminar: false },
+      "Profesionales": { ver: true, crear: false, editar: false, eliminar: false },
+      "Gestión Usuarios": { ver: false, crear: false, editar: false, eliminar: false },
+      "Roles & Permisos": { ver: false, crear: false, editar: false, eliminar: false },
+    },
+  },
+  "13000000-0000-0000-0000-000000000003": {
+    name: "Recepcionista / Admisiones",
+    code: "RECEPCIONISTA",
+    description: "Agendamiento, recepción de pacientes, validación de citas y control de pagos.",
+    modules: ["Pacientes", "Citas", "Servicios", "Profesionales"],
+    permissions: {
+      "Pacientes": { ver: true, crear: true, editar: true, eliminar: false },
+      "Citas & Agenda": { ver: true, crear: true, editar: true, eliminar: true },
+      "Odontograma": { ver: true, crear: false, editar: false, eliminar: false },
+      "Historia Clínica": { ver: false, crear: false, editar: false, eliminar: false },
+      "Catálogo Servicios": { ver: true, crear: false, editar: false, eliminar: false },
+      "Profesionales": { ver: true, crear: false, editar: false, eliminar: false },
+      "Gestión Usuarios": { ver: false, crear: false, editar: false, eliminar: false },
+      "Roles & Permisos": { ver: false, crear: false, editar: false, eliminar: false },
+    },
+  },
+  "13000000-0000-0000-0000-000000000004": {
+    name: "Asistente Dental",
+    code: "ASISTENTE",
+    description: "Apoyo en procedimientos clínicos, preparación de instrumental y visualización de historias.",
+    modules: ["Pacientes", "Citas", "Odontograma"],
+    permissions: {
+      "Pacientes": { ver: true, crear: false, editar: false, eliminar: false },
+      "Citas & Agenda": { ver: true, crear: false, editar: false, eliminar: false },
+      "Odontograma": { ver: true, crear: false, editar: false, eliminar: false },
+      "Historia Clínica": { ver: true, crear: false, editar: false, eliminar: false },
+      "Catálogo Servicios": { ver: false, crear: false, editar: false, eliminar: false },
+      "Profesionales": { ver: true, crear: false, editar: false, eliminar: false },
+      "Gestión Usuarios": { ver: false, crear: false, editar: false, eliminar: false },
+      "Roles & Permisos": { ver: false, crear: false, editar: false, eliminar: false },
+    },
+  },
+  "13000000-0000-0000-0000-000000000005": {
+    name: "Paciente Registrado",
+    code: "PACIENTE",
+    description: "Acceso al portal del paciente para consultar citas agendadas y perfil clínico.",
+    modules: ["Mis Citas", "Mi Perfil Clínico"],
+    permissions: {
+      "Pacientes": { ver: false, crear: false, editar: false, eliminar: false },
+      "Citas & Agenda": { ver: true, crear: true, editar: false, eliminar: false },
+      "Odontograma": { ver: false, crear: false, editar: false, eliminar: false },
+      "Historia Clínica": { ver: false, crear: false, editar: false, eliminar: false },
+      "Catálogo Servicios": { ver: true, crear: false, editar: false, eliminar: false },
+      "Profesionales": { ver: true, crear: false, editar: false, eliminar: false },
+      "Gestión Usuarios": { ver: false, crear: false, editar: false, eliminar: false },
+      "Roles & Permisos": { ver: false, crear: false, editar: false, eliminar: false },
+    },
+  },
+  "13000000-0000-0000-0000-000000000006": {
+    name: "Chatbot & Automatizaciones",
+    code: "BOT",
+    description: "Integración de inteligencia artificial y agendamiento automatizado por WhatsApp.",
+    modules: ["API de Agendamiento", "Mensajería WhatsApp"],
+    permissions: {
+      "Pacientes": { ver: true, crear: true, editar: false, eliminar: false },
+      "Citas & Agenda": { ver: true, crear: true, editar: true, eliminar: false },
+      "Odontograma": { ver: false, crear: false, editar: false, eliminar: false },
+      "Historia Clínica": { ver: false, crear: false, editar: false, eliminar: false },
+      "Catálogo Servicios": { ver: true, crear: false, editar: false, eliminar: false },
+      "Profesionales": { ver: true, crear: false, editar: false, eliminar: false },
+      "Gestión Usuarios": { ver: false, crear: false, editar: false, eliminar: false },
+      "Roles & Permisos": { ver: false, crear: false, editar: false, eliminar: false },
+    },
+  },
+};
 
 export function UsuariosView() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
@@ -30,8 +133,9 @@ export function UsuariosView() {
   const [rol, setRol] = useState<"Todos" | string>("Todos");
   const [estado, setEstado] = useState<"Todos" | "Activo" | "Inactivo">("Todos");
   const [currentPage, setCurrentPage] = useState(1);
-  const [showModal, setShowModal] = useState(false);
 
+  // Modal Crear Usuario
+  const [showModal, setShowModal] = useState(false);
   const [nuevoNombre, setNuevoNombre] = useState("");
   const [nuevoApellido, setNuevoApellido] = useState("");
   const [nuevoCorreo, setNuevoCorreo] = useState("");
@@ -41,6 +145,17 @@ export function UsuariosView() {
   const [nuevoDocumento, setNuevoDocumento] = useState("");
   const [nuevoTelefono, setNuevoTelefono] = useState("");
   const [errorForm, setErrorForm] = useState("");
+
+  // Modal Gestión de Rol y Permisos
+  const [selectedUserForPermissions, setSelectedUserForPermissions] = useState<Usuario | null>(null);
+  const [selectedRoleIdForUser, setSelectedRoleIdForUser] = useState<string>("");
+  const [isSavingRole, setIsSavingRole] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
 
   const fetchCatalogs = async () => {
     try {
@@ -65,56 +180,72 @@ export function UsuariosView() {
   const fetchUsuarios = async () => {
     try {
       setLoading(true);
-      const data = await userService.getAll();
-      const mappedUsuarios: Usuario[] = data.map((u: any) => {
-        const fullName = u.person 
-          ? `${u.person.firstName} ${u.person.lastName}`
-          : u.name || u.email.split('@')[0];
+      const [data, personsData, rolesData] = await Promise.all([
+        userService.getAll().catch(() => []),
+        personService.getAll().catch(() => []),
+        roleService.getAll().catch(() => []),
+      ]);
+
+      const mappedUsuarios: Usuario[] = data.map((u: any, idx: number) => {
+        const matchedPerson = personsData.find((p: any) => p.id === u.personId);
+
+        let fullName = "Usuario del Sistema";
+        if (u.person && (u.person.firstName || u.person.lastName)) {
+          fullName = `${u.person.firstName || ""} ${u.person.lastName || ""}`.trim();
+        } else if (matchedPerson && (matchedPerson.firstName || matchedPerson.lastName)) {
+          fullName = `${matchedPerson.firstName || ""} ${matchedPerson.lastName || ""}`.trim();
+        } else if (u.name) {
+          fullName = u.name;
+        } else if (u.email && typeof u.email === "string" && u.email.includes("@")) {
+          fullName = u.email.split("@")[0];
+        } else {
+          fullName = `Usuario #${idx + 1}`;
+        }
+
+        const userEmail = matchedPerson?.email || u.email || `usuario${idx + 1}@nexusodonto.com`;
+
+        // Resolver rol real a partir de roleIds
+        const userRoleIds: string[] = u.roleIds || [];
+        let primaryRoleId = userRoleIds[0];
+
+        // Si no viene roleId, deducir según email / datos del sistema
+        if (!primaryRoleId) {
+          if (userEmail.includes("admin")) primaryRoleId = "13000000-0000-0000-0000-000000000001";
+          else if (userEmail.includes("odontologo")) primaryRoleId = "13000000-0000-0000-0000-000000000002";
+          else if (userEmail.includes("recepcion")) primaryRoleId = "13000000-0000-0000-0000-000000000003";
+          else if (userEmail.includes("paciente")) primaryRoleId = "13000000-0000-0000-0000-000000000005";
+          else if (userEmail.includes("bot")) primaryRoleId = "13000000-0000-0000-0000-000000000006";
+          else primaryRoleId = "13000000-0000-0000-0000-000000000003";
+        }
+
+        const matchedRole = rolesData.find((r: any) => r.id === primaryRoleId);
+        const preset = ROLE_PRESETS[primaryRoleId] || {
+          name: matchedRole?.name || "Personal",
+          code: matchedRole?.code || "USUARIO",
+          modules: ["Pacientes", "Citas"],
+          description: "Acceso básico asignado",
+          permissions: {},
+        };
 
         return {
           id: u.id,
           personId: u.personId || u.id,
           name: fullName,
-          email: u.email,
+          email: userEmail,
           isActive: u.isActive ?? true,
-          roleIds: u.roleIds || (u.roles ? u.roles.map((r: any) => r.id || r.code || r) : []),
-          permissions: u.permissions || []
+          roleIds: [primaryRoleId],
+          roleName: matchedRole?.name || preset.name,
+          roleCode: matchedRole?.code || preset.code,
+          permissionsCount: preset.modules.length,
+          modulesList: preset.modules,
+          permissions: preset.modules,
         };
       });
 
       setUsuarios(mappedUsuarios);
     } catch (error) {
-      console.error('Error fetching users from API, using fallback data:', error);
-      const fallbackUsuarios: Usuario[] = [
-        {
-          id: "1",
-          personId: "p1",
-          name: "Carlos Administrador",
-          email: "admin@nexusodonto.com",
-          isActive: true,
-          roleIds: ["13000000-0000-0000-0000-000000000001"],
-          permissions: ["USERS:VIEW", "USERS:CREATE", "USERS:UPDATE", "USERS:DELETE"]
-        },
-        {
-          id: "2",
-          personId: "p2",
-          name: "Dra. Laura Gómez",
-          email: "odontologo@nexusodonto.com",
-          isActive: true,
-          roleIds: ["13000000-0000-0000-0000-000000000002"],
-          permissions: ["APPOINTMENTS:VIEW", "PATIENTS:VIEW"]
-        },
-        {
-          id: "3",
-          personId: "p3",
-          name: "María Recepción",
-          email: "recepcion@nexusodonto.com",
-          isActive: true,
-          roleIds: ["13000000-0000-0000-0000-000000000003"],
-          permissions: ["APPOINTMENTS:VIEW", "APPOINTMENTS:CREATE"]
-        }
-      ];
-      setUsuarios(fallbackUsuarios);
+      console.error('Error fetching users from API:', error);
+      setUsuarios([]);
     } finally {
       setLoading(false);
     }
@@ -152,7 +283,8 @@ export function UsuariosView() {
       const cumpleBusqueda =
         search === "" ||
         usuario.name.toLowerCase().includes(search.toLowerCase()) ||
-        usuario.email.toLowerCase().includes(search.toLowerCase());
+        usuario.email.toLowerCase().includes(search.toLowerCase()) ||
+        (usuario.roleName && usuario.roleName.toLowerCase().includes(search.toLowerCase()));
 
       const cumpleRol =
         rol === "Todos" ||
@@ -168,20 +300,19 @@ export function UsuariosView() {
   }, [usuarios, search, rol, estado]);
 
   const totalPages = Math.max(1, Math.ceil(usuariosFiltrados.length / ITEMS_PER_PAGE));
-
   const usuariosPagina = useMemo(() => {
-    const inicio = (currentPage - 1) * ITEMS_PER_PAGE;
-    return usuariosFiltrados.slice(inicio, inicio + ITEMS_PER_PAGE);
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return usuariosFiltrados.slice(start, start + ITEMS_PER_PAGE);
   }, [usuariosFiltrados, currentPage]);
 
   const abrirModal = () => {
+    setErrorForm("");
     setNuevoNombre("");
     setNuevoApellido("");
     setNuevoCorreo("");
     setNuevoPassword("");
     setNuevoDocumento("");
     setNuevoTelefono("");
-    setErrorForm("");
     setShowModal(true);
   };
 
@@ -189,41 +320,146 @@ export function UsuariosView() {
     setShowModal(false);
   };
 
-  const registrarUsuario = async () => {
-    if (!nuevoNombre.trim() || !nuevoApellido.trim() || !nuevoCorreo.trim() || !nuevoPassword.trim()) {
-      setErrorForm("Por favor completa todos los campos requeridos.");
+  // Abrir Modal de Permisos y Rol
+  const handleOpenPermissionsModal = (usuario: Usuario) => {
+    setSelectedUserForPermissions(usuario);
+    setSelectedRoleIdForUser(usuario.roleIds[0] || "13000000-0000-0000-0000-000000000003");
+  };
+
+  // Guardar cambio de Rol y Permisos en el Backend
+  const handleSaveUserRole = async () => {
+    if (!selectedUserForPermissions || !selectedRoleIdForUser) return;
+
+    try {
+      setIsSavingRole(true);
+      await userService.update(selectedUserForPermissions.id, {
+        roleIds: [selectedRoleIdForUser],
+      });
+
+      const preset = ROLE_PRESETS[selectedRoleIdForUser];
+      const roleFound = roles.find((r) => r.id === selectedRoleIdForUser);
+
+      setUsuarios((prev) =>
+        prev.map((u) => {
+          if (u.id === selectedUserForPermissions.id) {
+            return {
+              ...u,
+              roleIds: [selectedRoleIdForUser],
+              roleName: roleFound?.name || preset?.name || u.roleName,
+              roleCode: roleFound?.code || preset?.code || u.roleCode,
+              permissionsCount: preset?.modules.length || u.permissionsCount,
+              modulesList: preset?.modules || u.modulesList,
+              permissions: preset?.modules || u.permissions,
+            };
+          }
+          return u;
+        })
+      );
+
+      showToast(`¡Rol y permisos actualizados para ${selectedUserForPermissions.name}!`);
+      setSelectedUserForPermissions(null);
+    } catch (err) {
+      console.warn("Could not persist role in backend:", err);
+      showToast("No se pudo actualizar el rol en el servidor.");
+    } finally {
+      setIsSavingRole(false);
+    }
+  };
+
+  // Toggle de Estado Activo/Inactivo
+  const handleToggleStatus = async (usuario: Usuario) => {
+    const newStatus = !usuario.isActive;
+    try {
+      await userService.update(usuario.id, { isActive: newStatus });
+      setUsuarios((prev) =>
+        prev.map((u) => (u.id === usuario.id ? { ...u, isActive: newStatus } : u))
+      );
+      showToast(`Usuario ${usuario.name} ${newStatus ? "activado" : "desactivado"}.`);
+    } catch (err) {
+      console.warn("Error updating user status:", err);
+      showToast("Error al cambiar estado del usuario.");
+    }
+  };
+
+  const handleCrearUsuario = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorForm("");
+
+    if (!nuevoNombre.trim() || !nuevoApellido.trim() || !nuevoCorreo.trim() || !nuevoPassword.trim() || !nuevoDocumento.trim()) {
+      setErrorForm("Por favor completa los campos obligatorios.");
       return;
     }
 
     try {
       setIsSubmitting(true);
-      setErrorForm("");
-      if (nuevoTelefono && nuevoDocumento) {
-        // Validación de datos complementarios
-      }
-      setErrorForm("La creación de usuarios requiere registrar primero la persona asociada en la base de datos.");
-    } catch (error) {
-      console.error('Error creating user:', error);
-      setErrorForm("Error al crear el usuario. Intente nuevamente.");
+
+      const personCreated = await personService.create({
+        documentTypeId: nuevoTipoDocumento,
+        documentNumber: nuevoDocumento.trim(),
+        firstName: nuevoNombre.trim(),
+        lastName: nuevoApellido.trim(),
+        email: nuevoCorreo.trim(),
+        phone: nuevoTelefono.trim() || "+573000000000",
+      });
+
+      const userCreated = await userService.create({
+        personId: personCreated.id,
+        password: nuevoPassword,
+        roleId: nuevoRol,
+      });
+
+      const preset = ROLE_PRESETS[nuevoRol];
+      const roleFound = roles.find((r) => r.id === nuevoRol);
+
+      const nuevoUsuario: Usuario = {
+        id: userCreated?.id || `user-${Date.now()}`,
+        personId: personCreated.id,
+        name: `${nuevoNombre.trim()} ${nuevoApellido.trim()}`,
+        email: nuevoCorreo.trim(),
+        roleIds: [nuevoRol],
+        roleName: roleFound?.name || preset?.name || "Personal",
+        roleCode: roleFound?.code || preset?.code || "USUARIO",
+        permissionsCount: preset?.modules.length || 4,
+        modulesList: preset?.modules || [],
+        permissions: preset?.modules || [],
+        isActive: true,
+      };
+
+      setUsuarios((prev) => [nuevoUsuario, ...prev]);
+      cerrarModal();
+      showToast("¡Usuario y credenciales creados exitosamente!");
+    } catch (err: any) {
+      console.error("Error creating user:", err);
+      setErrorForm(err.response?.data?.message || "No se pudo registrar el usuario en el backend.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const activePreset = ROLE_PRESETS[selectedRoleIdForUser] || ROLE_PRESETS["13000000-0000-0000-0000-000000000003"];
+
   return (
-    <div className="space-y-6 text-slate-900 dark:text-slate-100 pb-8">
-      {/* Encabezado Principal estilo Pacientes */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between animate-slideDown">
-        <div>
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-slate-900 dark:text-white drop-shadow-sm dark:drop-shadow-md">
+    <div className="space-y-6">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 px-5 py-3 rounded-2xl shadow-2xl border border-cyan-500/30 animate-slideUp">
+          <CheckCircle2 size={18} className="text-cyan-400 dark:text-cyan-600 shrink-0" />
+          <span className="text-xs font-semibold">{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Header Superior */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-slideUp">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
             Directorio de Usuarios
           </h1>
-          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mt-1 font-medium">
-            Gestión de cuentas, roles y personal autorizado en NexusOdonto.
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+            Gestión de cuentas, asignación de roles RBAC y control de permisos de acceso.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+        <div className="flex items-center gap-2.5">
           <button
             type="button"
             onClick={fetchUsuarios}
@@ -236,9 +472,9 @@ export function UsuariosView() {
           <button
             type="button"
             onClick={abrirModal}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 px-5 py-2.5 text-sm font-semibold text-white dark:text-slate-950 shadow-md dark:shadow-[0_0_25px_rgba(34,211,238,0.3)] transition-all active:scale-95 cursor-pointer"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 px-5 py-2.5 text-sm font-bold text-slate-950 shadow-md transition-all active:scale-95 cursor-pointer"
           >
-            <Plus size={18} />
+            <Plus size={18} strokeWidth={2.5} />
             <span>Nuevo Usuario</span>
           </button>
         </div>
@@ -247,13 +483,13 @@ export function UsuariosView() {
       {/* Barra de Búsqueda y Filtros */}
       <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 pt-2 animate-slideUp animate-stagger-1">
         <div className="relative flex-1">
-          <Search size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-400 pointer-events-none" />
+          <Search size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           <input
             type="search"
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
-            placeholder="Buscar por nombre o correo..."
-            className="w-full pl-10 pr-4 py-2.5 bg-white/90 dark:bg-slate-950/65 border border-slate-200 dark:border-white/20 rounded-2xl text-sm text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-400 outline-none focus:border-cyan-500 dark:focus:border-cyan-400/60 focus:ring-1 focus:ring-cyan-500/30 dark:focus:ring-cyan-400/40 transition-all backdrop-blur-xl shadow-md"
+            placeholder="Buscar usuario por nombre, correo o rol..."
+            className="w-full pl-10 pr-4 py-2.5 bg-white/90 dark:bg-slate-950/65 border border-slate-200 dark:border-white/20 rounded-2xl text-sm text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-400 outline-none focus:border-cyan-500 transition-all backdrop-blur-xl shadow-md"
           />
         </div>
 
@@ -264,9 +500,9 @@ export function UsuariosView() {
             className="px-3.5 py-2.5 bg-white/90 dark:bg-slate-950/65 border border-slate-200 dark:border-white/20 rounded-2xl text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all backdrop-blur-xl shadow-md cursor-pointer"
           >
             <option value="Todos">Todos los roles</option>
-            {roles.map((role) => (
-              <option key={role.id} value={role.id}>
-                {role.name}
+            {roles.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
               </option>
             ))}
           </select>
@@ -294,7 +530,7 @@ export function UsuariosView() {
         </div>
       </div>
 
-      {/* Tabla Principal de Usuarios estilo Glassmorphism */}
+      {/* Tabla Principal de Usuarios */}
       <div className="rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl shadow-md overflow-hidden animate-slideUp animate-stagger-2">
         <UsuariosTable
           usuarios={usuariosPagina}
@@ -302,8 +538,142 @@ export function UsuariosView() {
           currentPage={currentPage}
           totalPages={totalPages}
           onPageChange={setCurrentPage}
+          onManagePermissions={handleOpenPermissionsModal}
+          onToggleStatus={handleToggleStatus}
         />
       </div>
+
+      {/* MODAL INTERACTIVO: GESTIÓN DE ROL Y PERMISOS DE USUARIO */}
+      {selectedUserForPermissions && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-fadeIn"
+          onClick={() => setSelectedUserForPermissions(null)}
+        >
+          <div
+            className="w-full max-w-2xl rounded-3xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/20 p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto animate-scaleIn"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header del Modal */}
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-700 dark:text-cyan-300">
+                  <ShieldCheck size={24} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                    Permisos y Control de Acceso
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {selectedUserForPermissions.name} • {selectedUserForPermissions.email}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedUserForPermissions(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Selector de Rol */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                Rol del Usuario en el Sistema
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {roles.map((r) => {
+                  const isCurrentSelected = selectedRoleIdForUser === r.id;
+                  const preset = ROLE_PRESETS[r.id];
+
+                  return (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => setSelectedRoleIdForUser(r.id)}
+                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                        isCurrentSelected
+                          ? "bg-cyan-500/10 dark:bg-cyan-500/20 border-cyan-500 text-cyan-900 dark:text-cyan-200 shadow-sm ring-2 ring-cyan-500/30"
+                          : "bg-slate-50 dark:bg-slate-900/60 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:border-slate-300"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold">{r.name}</span>
+                        {isCurrentSelected && (
+                          <Check size={16} className="text-cyan-600 dark:text-cyan-400" />
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
+                        {preset?.description || r.description}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Matriz de Permisos Desglosada por Módulo */}
+            <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-white/10">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  Matriz de Permisos Otorgados por este Rol
+                </span>
+                <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400">
+                  {activePreset?.modules.length || 0} módulos autorizados
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs max-h-60 overflow-y-auto pr-1">
+                {Object.entries(activePreset?.permissions || {}).map(([modulo, perms]) => (
+                  <div
+                    key={modulo}
+                    className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200/80 dark:border-white/10 space-y-1.5"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-900 dark:text-white">{modulo}</span>
+                      {perms.ver ? (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-bold">
+                          Autorizado
+                        </span>
+                      ) : (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-500">
+                          Bloqueado
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-500 dark:text-slate-400">
+                      <span className={perms.ver ? "text-emerald-600 font-bold" : "opacity-40"}>Ver</span> •
+                      <span className={perms.crear ? "text-cyan-600 font-bold" : "opacity-40"}>Crear</span> •
+                      <span className={perms.editar ? "text-amber-600 font-bold" : "opacity-40"}>Editar</span> •
+                      <span className={perms.eliminar ? "text-rose-600 font-bold" : "opacity-40"}>Eliminar</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Acciones */}
+            <div className="pt-3 border-t border-slate-200 dark:border-white/10 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setSelectedUserForPermissions(null)}
+                className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-white/20 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={isSavingRole}
+                onClick={handleSaveUserRole}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 text-slate-950 font-bold text-xs shadow-md transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+              >
+                {isSavingRole ? "Guardando..." : "Guardar Cambios de Rol"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL CREAR USUARIO */}
       {showModal && (
@@ -315,7 +685,7 @@ export function UsuariosView() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="nuevo-usuario-title"
-            className="w-full max-w-lg rounded-3xl bg-white/95 dark:bg-slate-950/95 backdrop-blur-2xl border border-slate-200 dark:border-cyan-400/20 shadow-2xl overflow-hidden animate-scaleIn"
+            className="w-full max-w-lg rounded-3xl bg-white dark:bg-slate-950 backdrop-blur-2xl border border-slate-200 dark:border-cyan-400/20 shadow-2xl overflow-hidden animate-scaleIn"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between p-6 border-b border-slate-200/80 dark:border-white/15">
@@ -328,7 +698,7 @@ export function UsuariosView() {
                     Nuevo Usuario
                   </h2>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Registra un nuevo usuario en el sistema.
+                    Registra un nuevo usuario con credenciales en el sistema.
                   </p>
                 </div>
               </div>
@@ -352,10 +722,11 @@ export function UsuariosView() {
                   <input
                     id="nuevo-nombre"
                     type="text"
+                    required
                     value={nuevoNombre}
                     onChange={(e) => setNuevoNombre(e.target.value)}
-                    placeholder="Ej. Laura"
-                    className="w-full px-4 py-2.5 rounded-2xl bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-white/15 text-sm text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all backdrop-blur-md"
+                    placeholder="Ej. Carlos"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all"
                   />
                 </div>
 
@@ -366,42 +737,29 @@ export function UsuariosView() {
                   <input
                     id="nuevo-apellido"
                     type="text"
+                    required
                     value={nuevoApellido}
                     onChange={(e) => setNuevoApellido(e.target.value)}
                     placeholder="Ej. Gómez"
-                    className="w-full px-4 py-2.5 rounded-2xl bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-white/15 text-sm text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all backdrop-blur-md"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all"
                   />
                 </div>
               </div>
 
-              <div>
-                <label htmlFor="nuevo-correo" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Correo electrónico *
-                </label>
-                <input
-                  id="nuevo-correo"
-                  type="email"
-                  value={nuevoCorreo}
-                  onChange={(e) => setNuevoCorreo(e.target.value)}
-                  placeholder="correo@nexusodonto.com"
-                  className="w-full px-4 py-2.5 rounded-2xl bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-white/15 text-sm text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all backdrop-blur-md"
-                />
-              </div>
-
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="nuevo-tipo-documento" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                    Tipo de documento
+                  <label htmlFor="nuevo-tipo-doc" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Tipo de Documento *
                   </label>
                   <select
-                    id="nuevo-tipo-documento"
+                    id="nuevo-tipo-doc"
                     value={nuevoTipoDocumento}
                     onChange={(e) => setNuevoTipoDocumento(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-2xl bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-white/15 text-sm text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all backdrop-blur-md"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all cursor-pointer"
                   >
-                    {documentTypes.map((docType) => (
-                      <option key={docType.id} value={docType.id}>
-                        {docType.name}
+                    {documentTypes.map((dt) => (
+                      <option key={dt.id} value={dt.id}>
+                        {dt.name || dt.code}
                       </option>
                     ))}
                   </select>
@@ -409,85 +767,109 @@ export function UsuariosView() {
 
                 <div>
                   <label htmlFor="nuevo-documento" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                    Número de documento
+                    Número de Documento *
                   </label>
                   <input
                     id="nuevo-documento"
                     type="text"
+                    required
                     value={nuevoDocumento}
                     onChange={(e) => setNuevoDocumento(e.target.value)}
-                    placeholder="Ej. 1234567890"
-                    className="w-full px-4 py-2.5 rounded-2xl bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-white/15 text-sm text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all backdrop-blur-md font-mono"
+                    placeholder="Ej. 1098765432"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all"
                   />
                 </div>
               </div>
 
-              <div>
-                <label htmlFor="nuevo-password" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Contraseña *
-                </label>
-                <input
-                  id="nuevo-password"
-                  type="password"
-                  value={nuevoPassword}
-                  onChange={(e) => setNuevoPassword(e.target.value)}
-                  placeholder="•••••••••"
-                  className="w-full px-4 py-2.5 rounded-2xl bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-white/15 text-sm text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all backdrop-blur-md"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="nuevo-correo" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Correo Electrónico *
+                  </label>
+                  <input
+                    id="nuevo-correo"
+                    type="email"
+                    required
+                    value={nuevoCorreo}
+                    onChange={(e) => setNuevoCorreo(e.target.value)}
+                    placeholder="carlos@nexusodonto.com"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="nuevo-telefono" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Teléfono Móvil
+                  </label>
+                  <input
+                    id="nuevo-telefono"
+                    type="tel"
+                    value={nuevoTelefono}
+                    onChange={(e) => setNuevoTelefono(e.target.value)}
+                    placeholder="+57 300 000 0000"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label htmlFor="nuevo-rol" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Rol de Acceso *
-                </label>
-                <select
-                  id="nuevo-rol"
-                  value={nuevoRol}
-                  onChange={(e) => setNuevoRol(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-2xl bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-white/15 text-sm text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all backdrop-blur-md"
-                >
-                  {roles.filter(role => role.code !== "ASISTENTE").map((role) => (
-                    <option key={role.id} value={role.id}>
-                      {role.name}
-                    </option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="nuevo-password" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Contraseña Inicial *
+                  </label>
+                  <input
+                    id="nuevo-password"
+                    type="password"
+                    required
+                    value={nuevoPassword}
+                    onChange={(e) => setNuevoPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="nuevo-rol" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Rol Inicial *
+                  </label>
+                  <select
+                    id="nuevo-rol"
+                    value={nuevoRol}
+                    onChange={(e) => setNuevoRol(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all cursor-pointer"
+                  >
+                    {roles.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {errorForm && (
-                <p className="p-3.5 bg-rose-500/15 border border-rose-500/30 rounded-2xl text-rose-600 dark:text-rose-400 text-xs flex items-center gap-2 animate-fadeIn backdrop-blur-md">
+                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-medium">
                   {errorForm}
-                </p>
+                </div>
               )}
+            </div>
 
-              <div className="pt-2 flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={cerrarModal}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/30 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-md text-xs font-semibold"
-                >
-                  Cancelar
-                </button>
-
-                <button
-                  type="button"
-                  onClick={registrarUsuario}
-                  disabled={isSubmitting}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 px-5 py-2.5 text-xs font-bold text-white dark:text-slate-950 shadow-md transition-all active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                      <span>Registrando...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Plus size={16} />
-                      <span>Registrar Usuario</span>
-                    </>
-                  )}
-                </button>
-              </div>
+            <div className="flex items-center justify-end gap-3 p-6 border-t border-slate-200/80 dark:border-white/15 bg-slate-50/50 dark:bg-slate-900/30">
+              <button
+                type="button"
+                onClick={cerrarModal}
+                className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-white/20 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={handleCrearUsuario}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 text-slate-950 text-xs font-black shadow-md transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+              >
+                {isSubmitting ? "Registrando..." : "Crear Usuario"}
+              </button>
             </div>
           </div>
         </div>
@@ -495,3 +877,5 @@ export function UsuariosView() {
     </div>
   );
 }
+
+export default UsuariosView;

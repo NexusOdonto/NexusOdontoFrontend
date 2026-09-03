@@ -29,58 +29,7 @@ const CATEGORIAS_FILTRO = [
   { id: "Ortodoncia", label: "Ortodoncia" },
 ];
 
-const serviciosFallback: Servicio[] = [
-  {
-    id: 1,
-    codigo: "SRV-001",
-    nombre: "Blanqueamiento dental láser",
-    categoria: "Estética Dental",
-    descripcion: "Tratamiento fotoactivado de última generación para aclarar el tono dental de 2 a 4 tonos.",
-    duracion: 60,
-    precio: 80000,
-    activo: true,
-  },
-  {
-    id: 2,
-    codigo: "SRV-002",
-    nombre: "Restauración en resina fotocurada",
-    categoria: "Operatoria / Resinas",
-    descripcion: "Reconstrucción estética y funcional de cavidades dentales por caries o fractura.",
-    duracion: 45,
-    precio: 60000,
-    activo: true,
-  },
-  {
-    id: 3,
-    codigo: "SRV-003",
-    nombre: "Extracción dental simple",
-    categoria: "Cirugía Oral",
-    descripcion: "Procedimiento quirúrgico ambulatorio bajo anestesia local con técnica atraumática.",
-    duracion: 30,
-    precio: 50000,
-    activo: true,
-  },
-  {
-    id: 4,
-    codigo: "SRV-004",
-    nombre: "Profilaxis y detartraje con ultrasonido",
-    categoria: "Higiene y Prevención",
-    descripcion: "Eliminación supragingival y subgingival de cálculo bacteriano y pulido con pasta profiláctica.",
-    duracion: 40,
-    precio: 45000,
-    activo: true,
-  },
-  {
-    id: 5,
-    codigo: "SRV-005",
-    nombre: "Tratamiento de Endodoncia Unirradicular",
-    categoria: "Endodoncia",
-    descripcion: "Biopulpectomía e instrumentación rotatoria con obturación termoplástica tridimensional.",
-    duracion: 90,
-    precio: 180000,
-    activo: true,
-  },
-];
+const serviciosFallback: Servicio[] = [];
 
 export function ServiciosView() {
   const [servicios, setServicios] = useState<Servicio[]>([]);

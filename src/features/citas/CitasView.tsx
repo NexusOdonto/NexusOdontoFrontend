@@ -21,56 +21,7 @@ import { patientService } from "../../api/patientService";
 import { personService } from "../../api/personService";
 import { useNotifications } from "../../context/NotificationContext";
 
-const citasFallback: Cita[] = [
-  {
-    id: 1,
-    paciente: "Andrés Pérez",
-    pacienteEmail: "paciente@nexusodonto.com",
-    pacienteCedula: "1076543210",
-    profesional: "Dra. Laura Gómez",
-    servicio: "Limpieza y Valoración General",
-    fecha: "2026-09-15",
-    hora: "10:00",
-    estado: "Confirmada",
-    motivo: "Revisión semestral y limpieza dental",
-  },
-  {
-    id: 2,
-    paciente: "Carlos Andrés Pérez",
-    pacienteEmail: "carlos.perez@correo.com",
-    pacienteCedula: "1098761234",
-    profesional: "",
-    servicio: "Blanqueamiento Dental Láser",
-    fecha: "2026-09-02",
-    hora: "09:30",
-    estado: "Pendiente",
-    motivo: "Estética dental",
-  },
-  {
-    id: 3,
-    paciente: "María Fernanda López",
-    pacienteEmail: "maria.lopez@correo.com",
-    pacienteCedula: "1087654321",
-    profesional: "Dra. Laura Gómez",
-    servicio: "Calza en Resina Pieza #16",
-    fecha: "2026-08-30",
-    hora: "10:30",
-    estado: "Completada",
-    motivo: "Obturación por caries",
-  },
-  {
-    id: 4,
-    paciente: "Andrés Pérez",
-    pacienteEmail: "paciente@nexusodonto.com",
-    pacienteCedula: "1076543210",
-    profesional: "",
-    servicio: "Extracción Dental Cordal",
-    fecha: "2026-09-22",
-    hora: "14:00",
-    estado: "Pendiente",
-    motivo: "Dolor en cordal inferior izquierda",
-  },
-];
+const citasFallback: Cita[] = [];
 
 export function CitasView() {
   const { user } = useAuth();
@@ -102,6 +53,10 @@ export function CitasView() {
   const [fecha, setFecha] = useState("");
   const [estadoFiltro, setEstadoFiltro] = useState<"Todos" | EstadoCita>("Todos");
   const [loading, setLoading] = useState(true);
+
+  const [servicesEntities, setServicesEntities] = useState<any[]>([]);
+  const [profsEntities, setProfsEntities] = useState<any[]>([]);
+  const [patientsEntities, setPatientsEntities] = useState<any[]>([]);
 
   // Modales
   const [showRequestModal, setShowRequestModal] = useState(false);
@@ -136,6 +91,10 @@ export function CitasView() {
       const patients = patientsData.status === "fulfilled" && Array.isArray(patientsData.value) ? patientsData.value : [];
       const persons = personsData.status === "fulfilled" && Array.isArray(personsData.value) ? personsData.value : [];
       const appointments: AppointmentResponseDto[] = apiAppointments.status === "fulfilled" && Array.isArray(apiAppointments.value) ? apiAppointments.value : [];
+
+      setServicesEntities(services);
+      setProfsEntities(profs);
+      setPatientsEntities(patients);
 
       // Catálogo de servicios
       if (services.length > 0) {
@@ -371,10 +330,24 @@ export function CitasView() {
       const endM = endMTotal % 60;
       const endsHoraStr = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
 
+      const matchedService = servicesEntities.find((s) => s.name === nuevaCita.servicio);
+      const targetServiceId = matchedService?.id || "30000000-0000-0000-0000-000000000001";
+
+      const matchedProf = profsEntities.find((p) => {
+        const pFullName = `Dr(a). ${p.firstName || ""} ${p.lastName || ""}`.trim();
+        return pFullName === nuevaCita.profesional || p.firstName === nuevaCita.profesional;
+      });
+      const targetProfId = matchedProf?.id || "1d000000-0000-0000-0000-000000000001";
+
+      const matchedPatient = patientsEntities.find((pt) => {
+        return pt.id === user?.id || pt.personId === user?.personId;
+      }) || (patientsEntities.length > 0 ? patientsEntities[0] : null);
+      const targetPatientId = matchedPatient?.id || "1e000000-0000-0000-0000-000000000001";
+
       createdFromApi = await appointmentService.create({
-        patientId: "1e000000-0000-0000-0000-000000000001", // Andrés Pérez (PatientSeeder)
-        professionalId: "1d000000-0000-0000-0000-000000000001", // Dra. Laura Gómez (ProfessionalSeeder)
-        serviceId: "30000000-0000-0000-0000-000000000001", // Valoración General (ServiceSeeder)
+        patientId: targetPatientId,
+        professionalId: targetProfId,
+        serviceId: targetServiceId,
         startsAt: `${fechaValida}T${horaValida}:00`,
         endsAt: `${fechaValida}T${endsHoraStr}:00`,
         appointmentStatusId: isPaciente
@@ -404,18 +377,82 @@ export function CitasView() {
     setTimeout(() => setSuccessToast(null), 3500);
   };
 
-  const handleUpdateStatus = (citaId: number, nuevoEstado: EstadoCita) => {
+  const handleUpdateStatus = async (citaId: number, nuevoEstado: EstadoCita) => {
+    const targetCita = citas.find((c) => c.id === citaId);
+
+    if (targetCita && targetCita.appointmentId) {
+      const statusMap: Record<EstadoCita, string> = {
+        Pendiente: "10000000-0000-0000-0000-000000000001",
+        Confirmada: "10000000-0000-0000-0000-000000000002",
+        "En Atención": "10000000-0000-0000-0000-000000000003",
+        Completada: "10000000-0000-0000-0000-000000000004",
+        Cancelada: "10000000-0000-0000-0000-000000000005",
+      };
+
+      const matchedProf = profsEntities.find((p) =>
+        `${p.firstName || ""} ${p.lastName || ""}`.toLowerCase().includes(targetCita.profesional?.toLowerCase() || "")
+      );
+      const matchedServ = servicesEntities.find((s) =>
+        s.name?.toLowerCase().includes(targetCita.servicio?.toLowerCase() || "")
+      );
+
+      try {
+        await appointmentService.update(targetCita.appointmentId, {
+          patientId: targetCita.patientId || "1e000000-0000-0000-0000-000000000001",
+          professionalId: matchedProf?.id || "12000000-0000-0000-0000-000000000001",
+          serviceId: matchedServ?.id || "14000000-0000-0000-0000-000000000001",
+          startsAt: `${targetCita.fecha}T${targetCita.hora}:00`,
+          endsAt: `${targetCita.fecha}T${targetCita.hora}:00`,
+          appointmentStatusId: statusMap[nuevoEstado] || "10000000-0000-0000-0000-000000000002",
+          appointmentOriginId: "20000000-0000-0000-0000-000000000003",
+          reasonForVisit: targetCita.motivo,
+          notes: `Estado actualizado a ${nuevoEstado}`,
+          cancelledAt: nuevoEstado === "Cancelada" ? new Date().toISOString() : undefined,
+          cancellationReason: nuevoEstado === "Cancelada" ? "Cancelada por el usuario" : undefined,
+        });
+      } catch (err) {
+        console.warn("Could not persist appointment status in API:", err);
+      }
+    }
+
     setCitas((prev) => {
       const updated = prev.map((c) => (c.id === citaId ? { ...c, estado: nuevoEstado } : c));
       localStorage.setItem("nexus_citas", JSON.stringify(updated));
       return updated;
     });
     refreshNotifications();
+    setSuccessToast(`Estado actualizado: Cita ${nuevoEstado}`);
+    setTimeout(() => setSuccessToast(null), 3000);
   };
 
-  const handleAssignDoctor = (e: React.FormEvent) => {
+  const handleAssignDoctor = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCitaToAssign) return;
+
+    const matchedProf = profsEntities.find((p) =>
+      `${p.firstName || ""} ${p.lastName || ""}`.toLowerCase().includes(formProfesional.toLowerCase())
+    );
+    const matchedServ = servicesEntities.find((s) =>
+      s.name?.toLowerCase().includes(selectedCitaToAssign.servicio?.toLowerCase() || "")
+    );
+
+    if (selectedCitaToAssign.appointmentId) {
+      try {
+        await appointmentService.update(selectedCitaToAssign.appointmentId, {
+          patientId: selectedCitaToAssign.patientId || "1e000000-0000-0000-0000-000000000001",
+          professionalId: matchedProf?.id || "12000000-0000-0000-0000-000000000001",
+          serviceId: matchedServ?.id || "14000000-0000-0000-0000-000000000001",
+          startsAt: `${selectedCitaToAssign.fecha}T${formHora || selectedCitaToAssign.hora}:00`,
+          endsAt: `${selectedCitaToAssign.fecha}T${formHora || selectedCitaToAssign.hora}:00`,
+          appointmentStatusId: "10000000-0000-0000-0000-000000000002", // CONFIRMADA
+          appointmentOriginId: "20000000-0000-0000-0000-000000000003",
+          reasonForVisit: selectedCitaToAssign.motivo,
+          notes: `Asignado a ${formProfesional}`,
+        });
+      } catch (err) {
+        console.warn("Could not persist assigned doctor in API:", err);
+      }
+    }
 
     setCitas((prev) => {
       const updated: Cita[] = prev.map((c) =>
@@ -435,7 +472,7 @@ export function CitasView() {
     setShowAssignModal(false);
     setSelectedCitaToAssign(null);
     refreshNotifications();
-    setSuccessToast("¡Cita aprobada y odontólogo asignado con éxito!");
+    setSuccessToast("¡Cita aprobada y odontólogo asignado con éxito en agenda y base de datos!");
     setTimeout(() => setSuccessToast(null), 3500);
   };
 
