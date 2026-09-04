@@ -4,48 +4,7 @@ import type { Servicio } from "../../types/servicios";
 import { serviceCatalogService } from "../../api/serviceCatalogService";
 import { Plus, RefreshCw, Filter, X, Sparkles, Search } from "lucide-react";
 
-const serviciosFallback: Servicio[] = [
-  {
-    id: 1,
-    nombre: "Blanqueamiento dental",
-    descripcion: "Tratamiento para mejorar el tono y apariencia de los dientes.",
-    duracion: 60,
-    precio: 80000,
-    activo: true,
-  },
-  {
-    id: 2,
-    nombre: "Calza dental en resina",
-    descripcion: "Restauración de una pieza dental afectada por caries.",
-    duracion: 45,
-    precio: 60000,
-    activo: true,
-  },
-  {
-    id: 3,
-    nombre: "Extracción dental simple",
-    descripcion: "Procedimiento quirúrgico menor para retirar una pieza dental.",
-    duracion: 30,
-    precio: 50000,
-    activo: true,
-  },
-  {
-    id: 4,
-    nombre: "Limpieza y profilaxis dental",
-    descripcion: "Limpieza profesional con ultrasonido para eliminar placa y sarro.",
-    duracion: 40,
-    precio: 45000,
-    activo: true,
-  },
-  {
-    id: 5,
-    nombre: "Tratamiento de Endodoncia",
-    descripcion: "Tratamiento de conductos radiculares para salvar piezas comprometidas.",
-    duracion: 90,
-    precio: 180000,
-    activo: true,
-  },
-];
+const serviciosFallback: Servicio[] = [];
 
 export function ServiciosView() {
   const [servicios, setServicios] = useState<Servicio[]>([]);

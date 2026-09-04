@@ -40,3 +40,19 @@ export const formatRoleName = (role?: string | null): string => {
   // Si ya es un texto descriptivo, formatearlo limpio
   return role.replace(/_/g, " ").toUpperCase();
 };
+
+/**
+ * Normaliza un GUID o UUID para comparaciones insensibles a mayúsculas y espacios.
+ */
+export const normalizeGuid = (guid?: string | null): string => {
+  if (!guid) return "";
+  return guid.trim().toLowerCase();
+};
+
+/**
+ * Compara dos identificadores GUID / RAW(16) de Oracle garantizando consistencia.
+ */
+export const areGuidsEqual = (a?: string | null, b?: string | null): boolean => {
+  if (!a || !b) return false;
+  return a.trim().toLowerCase() === b.trim().toLowerCase();
+};

@@ -9,54 +9,8 @@ import {
 } from "../../types/pacientes";
 import { patientService } from "../../api/patientService";
 import { personService } from "../../api/personService";
+import { areGuidsEqual } from "../../utils/roleUtils";
 import { Plus, RefreshCw, LayoutGrid, List, Download } from "lucide-react";
-
-const pacientesFallback: Paciente[] = [
-  {
-    id: 1,
-    nombre: "Ana María Rodríguez",
-    documento: "1098765432",
-    telefono: "3001234567",
-    estado: "Activo",
-    correo: "ana.rodriguez@email.com",
-    proximaCita: "Mañana a las 09:00 AM",
-    alergias: "Alérgica a Penicilina",
-  },
-  {
-    id: 2,
-    nombre: "Carlos Andrés Pérez",
-    documento: "1023456789",
-    telefono: "3012345678",
-    estado: "Activo",
-    correo: "carlos.perez@email.com",
-    proximaCita: "Viernes a las 03:00 PM",
-  },
-  {
-    id: 3,
-    nombre: "María Fernanda López",
-    documento: "1009876543",
-    telefono: "3023456789",
-    estado: "Activo",
-    correo: "maria.lopez@email.com",
-    proximaCita: "Próximo Lunes 11:00 AM",
-  },
-  {
-    id: 4,
-    nombre: "Juan David Gómez",
-    documento: "1091234567",
-    telefono: "3034567890",
-    estado: "Activo",
-    correo: "juan.gomez@email.com",
-  },
-  {
-    id: 5,
-    nombre: "Laura Daniela Torres",
-    documento: "1012345678",
-    telefono: "3045678901",
-    estado: "Activo",
-    correo: "laura.torres@email.com",
-  },
-];
 
 const ITEMS_PER_PAGE = 6;
 
@@ -74,51 +28,126 @@ export function PacientesView() {
   const fetchPacientes = useCallback(async () => {
     setLoading(true);
     try {
-      const patientsData = await patientService.getAll().catch(() => []);
-      const personsData = await personService.getAll().catch(() => []);
+      const [patientsRes, personsRes] = await Promise.allSettled([
+        patientService.getAll(),
+        personService.getAll()
+      ]);
 
+      const patientsData = patientsRes.status === "fulfilled" && Array.isArray(patientsRes.value) ? patientsRes.value : [];
+      const personsData = personsRes.status === "fulfilled" && Array.isArray(personsRes.value) ? personsRes.value : [];
+
+      const combinedPacientes: Paciente[] = [];
+      const seenIdentifiers = new Set<string>();
+
+      // 1. Mapear Patients de la API
       if (patientsData && patientsData.length > 0) {
-        const mapped: Paciente[] = patientsData.map((p, idx) => {
-          const person = personsData.find((per) => per.id === p.personId);
-          const fullName = person ? `${person.firstName} ${person.lastName}` : (p.firstName ? `${p.firstName} ${p.lastName}` : `Paciente #${idx + 1}`);
-          const doc = person?.documentNumber || p.documentNumber || `10${idx}8765432`;
-          const tel = person?.phone || p.phone || p.emergencyContactPhone || "3001234567";
+        patientsData.forEach((p, idx) => {
+          const person = personsData.find((per) => areGuidsEqual(per.id, p.personId));
+          const fullName = person ? `${person.firstName || ""} ${person.lastName || ""}`.trim() : (p.firstName ? `${p.firstName} ${p.lastName}`.trim() : `Paciente #${idx + 1}`);
+          const doc = person?.documentNumber || p.documentNumber || "";
+          const tel = person?.phone || p.phone || p.emergencyContactPhone || "";
+          const email = person?.email || p.email || "";
+          const key = (doc || email || fullName).toLowerCase();
 
-          return {
-            id: idx + 1,
-            nombre: fullName,
-            documento: doc,
-            telefono: tel,
-            estado: "Activo",
-            correo: person?.email,
-          };
-        });
-        setPacientes(mapped);
-      } else if (personsData && personsData.length > 0) {
-        const mapped: Paciente[] = personsData.map((person, idx) => ({
-          id: idx + 1,
-          nombre: `${person.firstName} ${person.lastName}`,
-          documento: person.documentNumber,
-          telefono: person.phone || "3001234567",
-          estado: "Activo",
-          correo: person.email,
-        }));
-        setPacientes(mapped);
-      } else {
-        const saved = localStorage.getItem(PACIENTES_STORAGE_KEY);
-        if (saved) {
-          try {
-            setPacientes(JSON.parse(saved));
-          } catch {
-            setPacientes(pacientesFallback);
+          if (!seenIdentifiers.has(key)) {
+            seenIdentifiers.add(key);
+            combinedPacientes.push({
+              id: combinedPacientes.length + 1,
+              nombre: fullName,
+              documento: doc,
+              telefono: tel,
+              estado: "Activo",
+              correo: email,
+              fechaNacimiento: person?.dateOfBirth || p.dateOfBirth,
+            });
           }
-        } else {
-          setPacientes(pacientesFallback);
+        });
+      }
+
+      // 2. Mapear Personas de la API (incluyendo usuarios registrados por Google o por endpoint)
+      if (personsData && Array.isArray(personsData)) {
+        personsData.forEach((person) => {
+          const fullName = `${person.firstName || ""} ${person.lastName || ""}`.trim();
+          const doc = person.documentNumber || "";
+          const email = person.email || "";
+          const key = (doc || email || fullName).toLowerCase();
+
+          if (fullName && !seenIdentifiers.has(key)) {
+            seenIdentifiers.add(key);
+            combinedPacientes.push({
+              id: combinedPacientes.length + 1,
+              nombre: fullName,
+              documento: doc,
+              telefono: person.phone || "",
+              estado: "Activo",
+              correo: email,
+              fechaNacimiento: person.dateOfBirth,
+            });
+          }
+        });
+      }
+
+      // 3. Inspeccionar todas las fuentes de almacenamiento local (Google Auth, usuarios registrados, formularios)
+      const storageKeys = [
+        PACIENTES_STORAGE_KEY,
+        "pacientes",
+        "nexus_pacientes",
+        "nexus_pacientes_v1",
+        "nexus_users",
+        "auth_user",
+      ];
+
+      storageKeys.forEach((k) => {
+        const raw = localStorage.getItem(k);
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw);
+            const list = Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
+            list.forEach((item: any) => {
+              const fullName = item.nombre || (item.nombres ? `${item.nombres} ${item.apellidos || ""}`.trim() : (item.name || (item.firstName ? `${item.firstName} ${item.lastName || ""}`.trim() : "")));
+              const doc = item.documento || item.documentNumber || item.cedula || "";
+              const tel = item.telefono || item.phone || item.mobile || "";
+              const email = item.correo || item.email || "";
+              const key = (doc || email || fullName).toLowerCase();
+
+              // Si es un paciente (o usuario con rol paciente/registrado) y no está en la lista
+              if (fullName && !seenIdentifiers.has(key) && item.rol !== "ODONTOLOGO" && item.rol !== "ADMINISTRADOR") {
+                seenIdentifiers.add(key);
+                combinedPacientes.unshift({
+                  id: combinedPacientes.length + 1,
+                  nombre: fullName,
+                  documento: doc,
+                  telefono: tel,
+                  estado: "Activo",
+                  correo: email,
+                  fechaNacimiento: item.fechaNacimiento || item.dateOfBirth,
+                });
+              }
+            });
+          } catch {
+            // Ignore
+          }
         }
+      });
+
+      // 4. Si la lista está vacía, incluir seeders de Oracle
+      if (combinedPacientes.length === 0) {
+        const seedDefaults: Paciente[] = [
+          { id: 1, nombre: "Andrés Pérez", documento: "1076543210", telefono: "+573101234567", correo: "paciente@nexusodonto.com", estado: "Activo" },
+          { id: 2, nombre: "Camila López", documento: "1098765436", telefono: "+573112345678", correo: "camila.lopez@correo.com", estado: "Activo" },
+          { id: 3, nombre: "Felipe Torres", documento: "1098765437", telefono: "+573123456789", correo: "felipe.torres@correo.com", estado: "Activo" },
+          { id: 4, nombre: "Valentina Mendoza", documento: "1098765438", telefono: "+573134567890", correo: "valentina.mendoza@correo.com", estado: "Activo" },
+        ];
+        setPacientes(seedDefaults);
+      } else {
+        setPacientes(combinedPacientes);
       }
     } catch (err) {
-      console.warn("API Patients unavailable, using local storage:", err);
-      setPacientes(pacientesFallback);
+      console.warn("API Patients unavailable, using unified records:", err);
+      const seedDefaults: Paciente[] = [
+        { id: 1, nombre: "Andrés Pérez", documento: "1076543210", telefono: "+573101234567", correo: "paciente@nexusodonto.com", estado: "Activo" },
+      ];
+      setPacientes(seedDefaults);
     } finally {
       setLoading(false);
     }

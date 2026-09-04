@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import { LoginInput } from './components/LoginInput';
 import { LoginButton } from './components/LoginButton';
 import { GoogleAuthButton } from './components/GoogleAuthButton';
@@ -68,6 +69,16 @@ export default function LoginPage() {
       className="relative min-h-screen w-full flex items-center justify-center bg-cover bg-center bg-no-repeat overflow-hidden p-4"
       style={{ backgroundImage: `url(${backgroundImage})` }}
     >
+      {/* Botón flotante para regresar a la Landing Page */}
+      <button
+        type="button"
+        onClick={() => navigate('/')}
+        className="absolute top-6 left-6 z-20 inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-slate-950/70 hover:bg-slate-900/90 text-slate-200 hover:text-white border border-white/15 backdrop-blur-xl shadow-lg text-xs font-bold transition-all hover:-translate-x-1 active:scale-95 cursor-pointer"
+      >
+        <ArrowLeft size={16} className="text-teal-400" />
+        <span>Volver a la Página Principal</span>
+      </button>
+
       {/* Container with interactive hover effect */}
       <div className="relative w-full max-w-md mx-auto group transition-all duration-500 hover:-translate-y-1.5">
         

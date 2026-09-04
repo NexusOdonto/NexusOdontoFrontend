@@ -10,7 +10,7 @@ const axiosClient = axios.create({
 // Adjunta el token JWT en el header Authorization si existe
 axiosClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('auth_token');
+    const token = localStorage.getItem('auth_token') || localStorage.getItem('nexus_token');
     if (token && token !== 'mock_dev_token') {
       config.headers.Authorization = `Bearer ${token}`;
     }

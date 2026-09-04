@@ -18,6 +18,7 @@ interface CitasTableProps {
   citas: Cita[];
   loading: boolean;
   onOpenAssignModal?: (cita: Cita) => void;
+  onOpenEditModal?: (cita: Cita) => void;
   onUpdateStatus?: (citaId: number, nuevoEstado: EstadoCita) => void;
 }
 
@@ -101,6 +102,7 @@ export function CitasTable({
   citas,
   loading,
   onOpenAssignModal,
+  onOpenEditModal,
   onUpdateStatus,
 }: CitasTableProps) {
   const { user } = useAuth();
@@ -171,15 +173,17 @@ export function CitasTable({
           {citas.map((cita) => (
             <div
               key={cita.id}
-              className="grid grid-cols-[1.3fr_1.1fr_1.1fr_1.1fr_120px_160px] items-center px-5 py-4 transition-colors hover:bg-cyan-500/5 dark:hover:bg-cyan-400/10"
+              onClick={() => onOpenEditModal && onOpenEditModal(cita)}
+              title="Haz clic para ver o editar los detalles de esta cita"
+              className="grid grid-cols-[1.3fr_1.1fr_1.1fr_1.1fr_120px_160px] items-center px-5 py-4 transition-all duration-200 hover:bg-teal-500/10 dark:hover:bg-cyan-400/10 cursor-pointer group"
             >
               {/* PACIENTE */}
               <div className="flex items-center gap-3 min-w-0 pr-2">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500/20 via-cyan-500/20 to-blue-500/20 dark:from-teal-400/30 dark:via-cyan-400/30 dark:to-blue-500/30 border border-cyan-500/40 dark:border-cyan-400/50 text-cyan-800 dark:text-cyan-200 font-extrabold shadow-sm">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500/20 via-cyan-500/20 to-blue-500/20 dark:from-teal-400/30 dark:via-cyan-400/30 dark:to-blue-500/30 border border-cyan-500/40 dark:border-cyan-400/50 text-cyan-800 dark:text-cyan-200 font-extrabold shadow-sm group-hover:scale-105 transition-transform">
                   <UserRound size={16} className="text-teal-600 dark:text-teal-400" />
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-bold text-slate-900 dark:text-white">
+                  <p className="truncate text-sm font-bold text-slate-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
                     {cita.paciente}
                   </p>
                   {cita.pacienteCedula && (
@@ -229,7 +233,10 @@ export function CitasTable({
                     {(cita.estado === "Pendiente" || cita.estado === "Confirmada") && onUpdateStatus && (
                       <button
                         type="button"
-                        onClick={() => onUpdateStatus(cita.id, "Cancelada")}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onUpdateStatus(cita.id, "Cancelada");
+                        }}
                         className="px-2.5 py-1 rounded-xl border border-rose-500/30 hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 transition-all cursor-pointer text-xs font-semibold active:scale-95"
                         title="Cancelar mi cita"
                       >
@@ -248,7 +255,10 @@ export function CitasTable({
                     {cita.estado === "Pendiente" && onOpenAssignModal && (
                       <button
                         type="button"
-                        onClick={() => onOpenAssignModal(cita)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenAssignModal(cita);
+                        }}
                         className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-400 hover:to-cyan-400 text-white dark:text-slate-950 font-bold transition-all cursor-pointer shadow-sm active:scale-95 text-xs"
                       >
                         Asignar / Aprobar
@@ -257,7 +267,10 @@ export function CitasTable({
                     {cita.estado === "Confirmada" && onUpdateStatus && (
                       <button
                         type="button"
-                        onClick={() => onUpdateStatus(cita.id, "Cancelada")}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onUpdateStatus(cita.id, "Cancelada");
+                        }}
                         className="px-2.5 py-1 rounded-xl border border-rose-500/30 hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 transition-all cursor-pointer text-xs font-semibold active:scale-95"
                       >
                         Cancelar
@@ -272,7 +285,10 @@ export function CitasTable({
                     {cita.estado === "Confirmada" && (
                       <button
                         type="button"
-                        onClick={() => onUpdateStatus(cita.id, "En Atención")}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onUpdateStatus(cita.id, "En Atención");
+                        }}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold transition-all cursor-pointer shadow-sm active:scale-95 text-xs"
                       >
                         <PlayCircle size={14} />
@@ -280,7 +296,7 @@ export function CitasTable({
                       </button>
                     )}
                     {cita.estado === "En Atención" && (
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
                           onClick={() => navigate("/odontograma")}
@@ -319,7 +335,8 @@ export function CitasTable({
         {citas.map((cita) => (
           <div
             key={cita.id}
-            className="p-5 rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl shadow-md space-y-3"
+            onClick={() => onOpenEditModal && onOpenEditModal(cita)}
+            className="p-5 rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl shadow-md space-y-3 cursor-pointer hover:border-teal-500/50 transition-all"
           >
             <div className="flex items-start justify-between gap-2">
               <div>
@@ -348,7 +365,10 @@ export function CitasTable({
             {(isRecepcionista || isAdmin) && cita.estado === "Pendiente" && onOpenAssignModal && (
               <button
                 type="button"
-                onClick={() => onOpenAssignModal(cita)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenAssignModal(cita);
+                }}
                 className="w-full py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 text-white dark:text-slate-950 font-bold text-xs text-center shadow-md active:scale-95"
               >
                 Aprobar y Asignar Doctor
@@ -358,7 +378,10 @@ export function CitasTable({
             {isOdontologo && cita.estado === "Confirmada" && onUpdateStatus && (
               <button
                 type="button"
-                onClick={() => onUpdateStatus(cita.id, "En Atención")}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUpdateStatus(cita.id, "En Atención");
+                }}
                 className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold text-xs text-center shadow-md active:scale-95"
               >
                 Iniciar Consulta

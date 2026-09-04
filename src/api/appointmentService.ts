@@ -37,7 +37,7 @@ export interface CreateAppointmentDto {
 }
 
 export interface UpdateAppointmentDto {
-  patientId: string;
+  patientId?: string;
   professionalId: string;
   serviceId: string;
   startsAt: string;

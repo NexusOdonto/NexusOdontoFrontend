@@ -4,6 +4,12 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import ProtectedRoute from "./ProtectedRoute";
 import PublicOnlyRoute from "./PublicOnlyRoute";
 
+const LandingPage = lazy(() =>
+  import("../features/landing/LandingPage").then((module) => ({
+    default: module.default,
+  })),
+);
+
 const LoginPage = lazy(() =>
   import("../features/auth/LoginPage").then((module) => ({
     default: module.default,
@@ -117,6 +123,9 @@ export default function AppRoutes() {
   return (
     <Suspense fallback={<LoadingFallback />}>
       <Routes>
+        {/* Pantalla de Bienvenida / Landing Page Pública */}
+        <Route path="/" element={<LandingPage />} />
+
         {/* Callback OAuth público */}
         <Route path="/auth/callback" element={<AuthCallback />} />
 
@@ -256,8 +265,7 @@ export default function AppRoutes() {
           />
         </Route>
 
-        <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>
   );

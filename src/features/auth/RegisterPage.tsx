@@ -228,6 +228,26 @@ export default function RegisterPage() {
         };
 
         await authService.register(payload);
+
+        const patientEntry = {
+          id: Date.now(),
+          nombre: `${cleanFirstName} ${cleanLastName}`.trim(),
+          documento: cleanDocNumber,
+          telefono: cleanPhone || "",
+          estado: "Activo",
+          correo: cleanEmail,
+          fechaNacimiento: dateOfBirth,
+          direccion: address.trim(),
+          rol: "PACIENTE",
+        };
+        try {
+          const raw = localStorage.getItem("nexusodontopacientes");
+          const list = raw ? JSON.parse(raw) : [];
+          list.unshift(patientEntry);
+          localStorage.setItem("nexusodontopacientes", JSON.stringify(list));
+        } catch {
+          // Ignore
+        }
       }
 
       setIsSuccess(true);
@@ -248,6 +268,16 @@ export default function RegisterPage() {
       className="relative min-h-screen w-full flex items-center justify-center bg-cover bg-center bg-no-repeat overflow-x-hidden p-4 py-8"
       style={{ backgroundImage: `url(${backgroundImage})` }}
     >
+      {/* Botón flotante para regresar a la Landing Page */}
+      <button
+        type="button"
+        onClick={() => navigate('/')}
+        className="absolute top-6 left-6 z-20 inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-slate-950/70 hover:bg-slate-900/90 text-slate-200 hover:text-white border border-white/15 backdrop-blur-xl shadow-lg text-xs font-bold transition-all hover:-translate-x-1 active:scale-95 cursor-pointer"
+      >
+        <ArrowLeft size={16} className="text-teal-400" />
+        <span>Volver a la Página Principal</span>
+      </button>
+
       <div className="relative w-full max-w-2xl mx-auto my-auto group transition-all duration-500">
         {/* Capas traseras decorativas */}
         <div className="absolute -inset-4 rotate-[-2deg] rounded-3xl bg-teal-500/10 backdrop-blur-sm border border-teal-300/20 shadow-xl pointer-events-none transition-all duration-500 ease-out group-hover:-inset-6 group-hover:rotate-[-4deg] group-hover:bg-teal-500/20" />

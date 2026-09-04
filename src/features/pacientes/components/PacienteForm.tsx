@@ -221,7 +221,7 @@ export function PacienteForm() {
 
     const nuevoId =
       pacientes.length > 0
-        ? Math.max(...pacientes.map((paciente) => paciente.id)) + 1
+        ? Math.max(0, ...pacientes.map((paciente) => (typeof paciente.id === "number" ? paciente.id : parseInt(String(paciente.id), 10) || 0))) + 1
         : 1;
 
     const nuevoPaciente: Paciente = {
@@ -232,16 +232,37 @@ export function PacienteForm() {
       estado: "Activo",
     };
 
+    const docTypeMap: Record<string, string> = {
+      CC: "e0000000-0000-0000-0000-000000000001",
+      CE: "e0000000-0000-0000-0000-000000000002",
+      TI: "e0000000-0000-0000-0000-000000000003",
+      PAS: "e0000000-0000-0000-0000-000000000004",
+      PASAPORTE: "e0000000-0000-0000-0000-000000000004",
+    };
+
+    const sexMap: Record<string, string> = {
+      FEMENINO: "f0000000-0000-0000-0000-000000000001",
+      F: "f0000000-0000-0000-0000-000000000001",
+      MASCULINO: "f0000000-0000-0000-0000-000000000002",
+      M: "f0000000-0000-0000-0000-000000000002",
+      OTRO: "f0000000-0000-0000-0000-000000000003",
+    };
+
+    const resolvedDocTypeId =
+      docTypeMap[data.tipoDocumento?.toUpperCase()] || "e0000000-0000-0000-0000-000000000001";
+    const resolvedSexId =
+      sexMap[data.genero?.toUpperCase()] || "f0000000-0000-0000-0000-000000000002";
+
     try {
       const createdPerson = await personService.create({
-        documentTypeId: "10000000-0000-0000-0000-000000000001",
+        documentTypeId: resolvedDocTypeId,
         documentNumber: documentoIngresado,
         firstName: data.nombres.trim(),
         lastName: data.apellidos.trim(),
         email: data.correo?.trim() || `${documentoIngresado}@paciente.com`,
         phone: data.telefono.trim(),
         dateOfBirth: data.fechaNacimiento,
-        sexId: "11000000-0000-0000-0000-000000000001",
+        sexId: resolvedSexId,
       });
 
       if (createdPerson?.id) {

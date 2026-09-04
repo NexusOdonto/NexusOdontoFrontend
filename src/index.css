@@ -153,4 +153,30 @@
 .animate-stagger-3 { animation-delay: 0.18s; opacity: 0; }
 .animate-stagger-4 { animation-delay: 0.24s; opacity: 0; }
 .animate-stagger-5 { animation-delay: 0.30s; opacity: 0; }
-.animate-stagger-6 { animation-delay: 0.36s; opacity: 0; }
+.animate-stagger-6 { animation-delay: 0.36s; opacity: 0; }
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes bounceSubtle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+.animate-bounce-subtle {
+  animation: bounceSubtle 3s ease-in-out infinite;
+}

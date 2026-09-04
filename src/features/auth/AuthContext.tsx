@@ -96,6 +96,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const userData = parseProfileToUser(profile);
         setUser(userData);
         localStorage.setItem('auth_user', JSON.stringify(userData));
+
+        // Sincronizar automáticamente en el directorio de pacientes
+        const fullName = `${userData.nombre || ''} ${userData.apellido || ''}`.trim() || userData.name;
+        if (fullName) {
+          const patientEntry = {
+            id: userData.id || Date.now(),
+            nombre: fullName,
+            documento: userData.cedula || '',
+            telefono: userData.telefono || '',
+            estado: 'Activo',
+            correo: userData.email || '',
+            fechaNacimiento: userData.fechaNacimiento || '',
+            direccion: userData.direccion || '',
+            rol: 'PACIENTE',
+          };
+          
+          try {
+            const raw = localStorage.getItem('nexusodontopacientes');
+            const list = raw ? JSON.parse(raw) : [];
+            const filtered = Array.isArray(list) ? list.filter((p: any) => p.documento !== userData.cedula && p.correo !== userData.email) : [];
+            filtered.unshift(patientEntry);
+            localStorage.setItem('nexusodontopacientes', JSON.stringify(filtered));
+          } catch {
+            // Ignore
+          }
+        }
+
         navigate('/dashboard', { replace: true });
         return true;
       }
