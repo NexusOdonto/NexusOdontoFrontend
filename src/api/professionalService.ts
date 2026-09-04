@@ -25,15 +25,25 @@ export interface ProfessionalResponseDto {
 }
 
 export interface CreateProfessionalDto {
-  employeeId: string;
-  professionalLicense: string;
-  specialtyIds: string[];
+  employeeId?: string;
+  personId?: string;
+  specialtyIds?: string[];
+  specialtyId?: string;
+  professionalLicense?: string;
+  licenseNumber?: string;
+  bio?: string;
+  isActive?: boolean;
 }
 
 export interface UpdateProfessionalDto {
-  professionalLicense?: string;
+  employeeId?: string;
+  personId?: string;
   specialtyIds?: string[];
+  specialtyId?: string;
+  professionalLicense?: string;
+  licenseNumber?: string;
   isActive?: boolean;
+  bio?: string;
 }
 
 export interface RegisterProfessionalRequest {
@@ -48,6 +58,20 @@ export interface RegisterProfessionalRequest {
   professionalLicense: string;
   bio?: string;
 }
+
+const mapProfessional = (item: any): ProfessionalResponseDto => {
+  const license = item.professionalLicense || item.licenseNumber || '';
+  const specIds: string[] = item.specialtyIds || (item.specialtyId ? [item.specialtyId] : []);
+  const specId = specIds[0] || item.specialtyId || '';
+  return {
+    ...item,
+    personId: item.personId || item.employeeId || '',
+    licenseNumber: license,
+    professionalLicense: license,
+    specialtyIds: specIds,
+    specialtyId: specId,
+  };
+};
 
 export const professionalService = {
   getAll: async (): Promise<ProfessionalResponseDto[]> => {
@@ -73,7 +97,7 @@ export const professionalService = {
           ? `Dr(a). ${firstName} ${lastName}`.trim()
           : undefined;
 
-        return {
+        return mapProfessional({
           ...p,
           employeeId: p.employeeId,
           personId: emp?.personId,
@@ -88,26 +112,43 @@ export const professionalService = {
           specialtyId: specialty?.id || p.specialtyIds?.[0],
           specialtyIds: p.specialtyIds || [],
           specialtyName: specialty?.name || 'Odontología General',
-        };
+        });
       });
     } catch {
-      return rawProfs;
+      return rawProfs.map(mapProfessional);
     }
   },
 
   getById: async (id: string): Promise<ProfessionalResponseDto> => {
     const response = await axiosClient.get(`/v1/Professionals/${id}`);
-    return response.data;
+    return mapProfessional(response.data);
   },
 
   create: async (data: CreateProfessionalDto): Promise<ProfessionalResponseDto> => {
-    const response = await axiosClient.post('/v1/Professionals', data);
-    return response.data;
+    const license = data.professionalLicense || data.licenseNumber || '';
+    const specIds = data.specialtyIds || (data.specialtyId ? [data.specialtyId] : []);
+    const payload = {
+      employeeId: data.employeeId || data.personId || undefined,
+      personId: data.personId || data.employeeId || undefined,
+      professionalLicense: license,
+      licenseNumber: license,
+      specialtyIds: specIds,
+      specialtyId: specIds[0] || data.specialtyId,
+    };
+    const response = await axiosClient.post('/v1/Professionals', payload);
+    return mapProfessional(response.data);
   },
 
   update: async (id: string, data: UpdateProfessionalDto): Promise<ProfessionalResponseDto> => {
-    const response = await axiosClient.put(`/v1/Professionals/${id}`, data);
-    return response.data;
+    const license = data.professionalLicense || data.licenseNumber || '';
+    const specIds = data.specialtyIds || (data.specialtyId ? [data.specialtyId] : undefined);
+    const payload = {
+      professionalLicense: license,
+      specialtyIds: specIds,
+      isActive: data.isActive,
+    };
+    const response = await axiosClient.put(`/v1/Professionals/${id}`, payload);
+    return mapProfessional(response.data);
   },
 
   delete: async (id: string): Promise<void> => {
@@ -160,7 +201,7 @@ export const professionalService = {
       ? [req.specialtyId]
       : ['18000000-0000-0000-0000-000000000001']; // Odontología General por defecto
 
-    // 5. Crear profesional en Oracle
+    // 5. Crear profesional
     const createdProf = await professionalService.create({
       employeeId: employee.id,
       professionalLicense: req.professionalLicense.trim() || `COL-${timestamp.toString().slice(-5)}`,

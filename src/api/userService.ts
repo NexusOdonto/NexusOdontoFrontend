@@ -13,7 +13,8 @@ export interface User {
 export interface CreateUserRequest {
   personId: string;
   password: string;
-  roleId: string;
+  roleId?: string;
+  roleIds?: string[];
 }
 
 export const userService = {
@@ -28,8 +29,23 @@ export const userService = {
   },
   
   create: async (data: CreateUserRequest): Promise<User> => {
-    const response = await axiosClient.post('/v1/Users', data);
-    return response.data;
+    const payload = {
+      personId: data.personId,
+      password: data.password,
+      roleId: data.roleId,
+      roleIds: data.roleIds || (data.roleId ? [data.roleId] : []),
+    };
+    const response = await axiosClient.post('/v1/Users', payload);
+    const user = response.data;
+    if (data.roleId && (!user.roleIds || user.roleIds.length === 0)) {
+      try {
+        await axiosClient.post(`/v1/UserRoles/users/${user.id}/roles/${data.roleId}`);
+        user.roleIds = [data.roleId];
+      } catch (err) {
+        console.warn('Fallback UserRoles assignment:', err);
+      }
+    }
+    return user;
   },
   
   update: async (id: string, data: Partial<User>): Promise<User> => {

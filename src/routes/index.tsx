@@ -64,6 +64,12 @@ const AgendaView = lazy(() =>
   })),
 );
 
+const AtencionAsesorView = lazy(() =>
+  import("../features/chat-asesor/AtencionAsesorView").then((module) => ({
+    default: module.AtencionAsesorView,
+  })),
+);
+
 const ProfesionalesView = lazy(() =>
   import("../features/profesionales/ProfesionalesView").then((module) => ({
     default: module.ProfesionalesView,
@@ -187,6 +193,16 @@ export default function AppRoutes() {
             element={
               <DashboardLayout>
                 <AgendaView />
+              </DashboardLayout>
+            }
+          />
+
+          {/* M8: Atención y Escalamiento WhatsApp (Chatbot) */}
+          <Route
+            path="/atencion-chat"
+            element={
+              <DashboardLayout>
+                <AtencionAsesorView />
               </DashboardLayout>
             }
           />
