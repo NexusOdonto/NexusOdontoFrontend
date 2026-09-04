@@ -78,6 +78,10 @@ export function CitasView() {
   const [estadoFiltro, setEstadoFiltro] = useState<"Todos" | EstadoCita>("Todos");
   const [loading, setLoading] = useState(true);
 
+  const [servicesEntities, setServicesEntities] = useState<any[]>([]);
+  const [profsEntities, setProfsEntities] = useState<any[]>([]);
+  const [patientsEntities, setPatientsEntities] = useState<any[]>([]);
+
   // Modales
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -123,6 +127,9 @@ export function CitasView() {
       const persons = personsData.status === "fulfilled" && Array.isArray(personsData.value) ? personsData.value : [];
       const appointments: AppointmentResponseDto[] = apiAppointments.status === "fulfilled" && Array.isArray(apiAppointments.value) ? apiAppointments.value : [];
 
+      setServicesEntities(services);
+      setProfsEntities(profs);
+      setPatientsEntities(patients);
       // Mapas de búsqueda rápida para enriquecer los IDs
       const servicesMap: Record<string, string> = {};
       services.forEach((s) => {
@@ -471,10 +478,24 @@ export function CitasView() {
       const endM = endMTotal % 60;
       const endsHoraStr = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
 
+      const matchedService = servicesEntities.find((s) => s.name === nuevaCita.servicio);
+      const targetServiceId = matchedService?.id || "30000000-0000-0000-0000-000000000001";
+
+      const matchedProf = profsEntities.find((p) => {
+        const pFullName = `Dr(a). ${p.firstName || ""} ${p.lastName || ""}`.trim();
+        return pFullName === nuevaCita.profesional || p.firstName === nuevaCita.profesional;
+      });
+      const targetProfId = matchedProf?.id || "1d000000-0000-0000-0000-000000000001";
+
+      const matchedPatient = patientsEntities.find((pt) => {
+        return pt.id === user?.id || pt.personId === user?.personId;
+      }) || (patientsEntities.length > 0 ? patientsEntities[0] : null);
+      const targetPatientId = matchedPatient?.id || "1e000000-0000-0000-0000-000000000001";
+
       createdFromApi = await appointmentService.create({
-        patientId: matchedPatientId,
-        professionalId: matchedProfId,
-        serviceId: matchedServiceId,
+        patientId: matchedPatientId || targetPatientId,
+        professionalId: matchedProfId || targetProfId,
+        serviceId: matchedServiceId || targetServiceId,
         startsAt: `${fechaValida}T${horaValida}:00`,
         endsAt: `${fechaValida}T${endsHoraStr}:00`,
         appointmentStatusId: isPaciente
@@ -513,46 +534,68 @@ export function CitasView() {
   };
 
   const handleUpdateStatus = async (citaId: number, nuevoEstado: EstadoCita) => {
-    const target = citas.find((c) => c.id === citaId);
+    const targetCita = citas.find((c) => c.id === citaId);
+
     setCitas((prev) => {
       const updated = prev.map((c) => (c.id === citaId ? { ...c, estado: nuevoEstado } : c));
       localStorage.setItem("nexus_citas", JSON.stringify(updated));
       return updated;
     });
 
-    if (target?.appointmentId) {
+    if (targetCita && targetCita.appointmentId) {
       const statusMap: Record<EstadoCita, string> = {
-        "Pendiente": "10000000-0000-0000-0000-000000000001",
-        "Confirmada": "10000000-0000-0000-0000-000000000002",
+        Pendiente: "10000000-0000-0000-0000-000000000001",
+        Confirmada: "10000000-0000-0000-0000-000000000002",
         "En Atención": "10000000-0000-0000-0000-000000000003",
-        "Completada": "10000000-0000-0000-0000-000000000004",
-        "Cancelada": "10000000-0000-0000-0000-000000000005",
+        Completada: "10000000-0000-0000-0000-000000000004",
+        Cancelada: "10000000-0000-0000-0000-000000000005",
       };
+
+      const matchedProf = profsEntities.find((p) =>
+        `${p.firstName || ""} ${p.lastName || ""}`.toLowerCase().includes(targetCita.profesional?.toLowerCase() || "")
+      );
+      const matchedServ = servicesEntities.find((s) =>
+        s.name?.toLowerCase().includes(targetCita.servicio?.toLowerCase() || "")
+      );
+
       try {
-        await appointmentService.update(target.appointmentId, {
-          professionalId: target.professionalId || "1d000000-0000-0000-0000-000000000001",
-          serviceId: target.serviceId || "30000000-0000-0000-0000-000000000001",
-          startsAt: `${target.fecha}T${target.hora}:00`,
-          endsAt: `${target.fecha}T${target.hora}:00`,
+        await appointmentService.update(targetCita.appointmentId, {
+          patientId: targetCita.patientId || "1e000000-0000-0000-0000-000000000001",
+          professionalId: targetCita.professionalId || matchedProf?.id || "1d000000-0000-0000-0000-000000000001",
+          serviceId: targetCita.serviceId || matchedServ?.id || "30000000-0000-0000-0000-000000000001",
+          startsAt: `${targetCita.fecha}T${targetCita.hora}:00`,
+          endsAt: `${targetCita.fecha}T${targetCita.hora}:00`,
           appointmentStatusId: statusMap[nuevoEstado] || "10000000-0000-0000-0000-000000000002",
           appointmentOriginId: "20000000-0000-0000-0000-000000000003",
-          reasonForVisit: target.motivo,
+          reasonForVisit: targetCita.motivo,
           notes: `Estado actualizado a ${nuevoEstado}`,
+          cancelledAt: nuevoEstado === "Cancelada" ? new Date().toISOString() : undefined,
+          cancellationReason: nuevoEstado === "Cancelada" ? "Cancelada por el usuario" : undefined,
         });
-      } catch (e) {
-        console.warn("API status update error:", e);
+      } catch (err) {
+        console.warn("Could not persist appointment status in API:", err);
       }
     }
+
     refreshNotifications();
+    setSuccessToast(`Estado actualizado: Cita ${nuevoEstado}`);
+    setTimeout(() => setSuccessToast(null), 3000);
   };
 
   const handleAssignDoctor = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCitaToAssign) return;
 
+    const matchedProf = profsEntities.find((p) =>
+      `${p.firstName || ""} ${p.lastName || ""}`.toLowerCase().includes(formProfesional.toLowerCase())
+    );
     const matchedProfId =
       professionalsOptions.find((d) => d.label.toLowerCase() === formProfesional.toLowerCase())?.data?.id ||
+      matchedProf?.id ||
       "1d000000-0000-0000-0000-000000000001";
+    const matchedServ = servicesEntities.find((s) =>
+      s.name?.toLowerCase().includes(selectedCitaToAssign.servicio?.toLowerCase() || "")
+    );
 
     setCitas((prev) => {
       const updated: Cita[] = prev.map((c) =>
@@ -573,8 +616,9 @@ export function CitasView() {
     if (selectedCitaToAssign.appointmentId) {
       try {
         await appointmentService.update(selectedCitaToAssign.appointmentId, {
+          patientId: selectedCitaToAssign.patientId || "1e000000-0000-0000-0000-000000000001",
           professionalId: matchedProfId,
-          serviceId: selectedCitaToAssign.serviceId || "30000000-0000-0000-0000-000000000001",
+          serviceId: selectedCitaToAssign.serviceId || matchedServ?.id || "30000000-0000-0000-0000-000000000001",
           startsAt: `${selectedCitaToAssign.fecha}T${formHora || selectedCitaToAssign.hora}:00`,
           endsAt: `${selectedCitaToAssign.fecha}T${formHora || selectedCitaToAssign.hora}:00`,
           appointmentStatusId: "10000000-0000-0000-0000-000000000002", // CONFIRMADA
@@ -582,15 +626,15 @@ export function CitasView() {
           reasonForVisit: selectedCitaToAssign.motivo,
           notes: `Odontólogo asignado: ${formProfesional}`,
         });
-      } catch (e) {
-        console.warn("API assign error:", e);
+      } catch (err) {
+        console.warn("Could not persist assigned doctor in API:", err);
       }
     }
 
     setShowAssignModal(false);
     setSelectedCitaToAssign(null);
     refreshNotifications();
-    setSuccessToast("¡Cita aprobada y odontólogo asignado con éxito en base de datos!");
+    setSuccessToast("¡Cita aprobada y odontólogo asignado con éxito!");
     setTimeout(() => setSuccessToast(null), 3500);
   };
 

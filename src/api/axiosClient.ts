@@ -19,13 +19,20 @@ axiosClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Interceptor de respuesta resiliente: NO expulsa al usuario al login por 401/403 en endpoints de recursos
+// Interceptor de respuesta resiliente
 axiosClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Si un recurso específico responde 401/403 por falta de permisos de rol,
-    // se propaga el error al componente que hizo la llamada para que muestre su estado
-    // sin destruir la sesión activa del usuario ni forzar recargas a /login.
+    if (error.response?.status === 401) {
+      const url = error.config?.url || '';
+      // Si la verificación de perfil o me da 401, el token ha expirado
+      if (url.includes('/auth/me') || url.includes('/auth/profile')) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('nexus_token');
+        localStorage.removeItem('auth_user');
+        localStorage.removeItem('nexus_user');
+      }
+    }
     return Promise.reject(error);
   }
 );

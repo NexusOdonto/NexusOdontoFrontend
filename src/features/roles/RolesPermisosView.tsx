@@ -130,14 +130,17 @@ export function RolesPermisosView() {
       const data = await roleService.getAll();
       if (data && data.length > 0) {
         const mapped = data.map((r, idx) => {
-          const fallbackMatch = rolesFallback.find((fb) => fb.code === r.code) || rolesFallback[idx % rolesFallback.length];
+          const fallbackMatch = rolesFallback.find(
+            (fb) => fb.code?.toUpperCase() === r.code?.toUpperCase()
+          ) || rolesFallback[idx % rolesFallback.length] || rolesFallback[0];
+
           return {
             id: r.id,
             code: r.code,
             name: r.name,
-            description: r.description || fallbackMatch.description,
+            description: r.description || fallbackMatch?.description || "Rol del sistema",
             isActive: r.isActive,
-            permisos: fallbackMatch.permisos,
+            permisos: fallbackMatch?.permisos || {},
           };
         });
         setRoles(mapped);

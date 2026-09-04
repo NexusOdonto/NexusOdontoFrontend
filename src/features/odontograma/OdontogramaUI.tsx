@@ -1,13 +1,28 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import { useTheme } from "../../context/ThemeContext";
 import { OdontogramaGrid } from "./components/OdontogramaGrid";
 import { ConvencionesToolbar } from "./components/ConvencionesToolbar";
+import { patientService } from "../../api/patientService";
+import { personService } from "../../api/personService";
+import { odontogramService } from "../../api/odontogramService";
 import {
   User,
   X,
   FileText,
   Save,
   CheckCircle2,
+  Activity,
+  Flame,
+  ShieldCheck,
+  Crown,
+  Zap,
+  Hexagon,
+  XCircle,
+  AlertTriangle,
+  Sparkles,
+  Shield,
+  Move,
+  ChevronDown,
 } from "lucide-react";
 import type {
   ToothState,
@@ -98,11 +113,11 @@ function guardarOdontograma(data: {
   localStorage.setItem(ODONTOGRAMA_STORAGE_KEY, JSON.stringify(data));
 }
 
-const pacientesList = [
-  { id: "1", nombre: "Andrés Pérez", cedula: "1076543210" },
-  { id: "2", nombre: "María Fernanda López", cedula: "1087654321" },
-  { id: "3", nombre: "Carlos Andrés Pérez", cedula: "1098761234" },
-];
+interface PacienteItem {
+  id: string;
+  nombre: string;
+  cedula: string;
+}
 
 function OdontogramaUI() {
   const { theme } = useTheme();
@@ -114,12 +129,60 @@ function OdontogramaUI() {
     surface: Surface;
   } | null>(null);
   const [selectedTooth, setSelectedTooth] = useState<number | null>(null);
-  const [selectedPaciente, setSelectedPaciente] = useState(pacientesList[0]);
+  const [pacientesList, setPacientesList] = useState<PacienteItem[]>([
+    { id: "1", nombre: "Andrés Pérez", cedula: "1076543210" },
+    { id: "2", nombre: "María Fernanda López", cedula: "1087654321" },
+    { id: "3", nombre: "Carlos Andrés Pérez", cedula: "1098761234" },
+  ]);
+  const [selectedPaciente, setSelectedPaciente] = useState<PacienteItem>(pacientesList[0]);
   const [notasClinicas, setNotasClinicas] = useState(
     "Paciente presenta buena higiene bucal. Se detecta lesión cariosa inicial en cara oclusal de pieza #16 y cálculo supragingival leve en sector anteroinferior."
   );
   const [successToast, setSuccessToast] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isPatientDropdownOpen, setIsPatientDropdownOpen] = useState(false);
+  const patientDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Cargar lista dinámica de pacientes desde API
+  const fetchPacientes = useCallback(async () => {
+    try {
+      const patientsData = await patientService.getAll().catch(() => []);
+      const personsData = await personService.getAll().catch(() => []);
+
+      if (patientsData && patientsData.length > 0) {
+        const mapped: PacienteItem[] = patientsData.map((p, idx) => {
+          const person = personsData.find((per) => per.id === p.personId);
+          const fullName = person ? `${person.firstName} ${person.lastName}` : (p.firstName ? `${p.firstName} ${p.lastName}` : `Paciente #${idx + 1}`);
+          const doc = person?.documentNumber || p.documentNumber || `10${idx}8765432`;
+          return { id: p.id, nombre: fullName, cedula: doc };
+        });
+        setPacientesList(mapped);
+        if (mapped.length > 0) {
+          setSelectedPaciente(mapped[0]);
+        }
+      }
+    } catch (err) {
+      console.warn("API Patients unavailable in Odontograma:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchPacientes();
+  }, [fetchPacientes]);
+
+  // Cerrar dropdown de paciente al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        patientDropdownRef.current &&
+        !patientDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsPatientDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const getCurrentQuadrants = (): Quadrants => {
     if (state.dentitionType === "permanent") {
@@ -305,13 +368,94 @@ function OdontogramaUI() {
     if (event.target) event.target.value = '';
   };
 
-  const handleSaveNotes = () => {
+  const handleSaveNotes = async () => {
     guardarOdontograma(state);
+    if (selectedPaciente && selectedPaciente.id) {
+      try {
+        await odontogramService.create({
+          patientId: selectedPaciente.id,
+          dentitionTypeId: state.dentitionType === "permanent" ? "10000000-0000-0000-0000-000000000001" : "10000000-0000-0000-0000-000000000002",
+          notes: notasClinicas,
+        });
+      } catch (err) {
+        console.warn("Could not sync odontogram with backend API directly:", err);
+      }
+    }
     setSuccessToast("¡Odontograma y notas clínicas guardadas con éxito!");
     setTimeout(() => setSuccessToast(null), 3500);
   };
 
   const currentQuadrants = getCurrentQuadrants();
+
+  // Resumen reactivo de hallazgos clínicos del paciente
+  const clinicalFindings = useMemo(() => {
+    const counts: Record<string, number> = {
+      caries: 0,
+      restoration: 0,
+      sealant: 0,
+      endodontic: 0,
+      crown: 0,
+      bridge: 0,
+      implant: 0,
+      extraction: 0,
+      fracture: 0,
+      mobility: 0,
+      healthy: 0,
+    };
+
+    const teethList = currentQuadrants.topRight
+      .concat(currentQuadrants.topLeft)
+      .concat(currentQuadrants.bottomRight)
+      .concat(currentQuadrants.bottomLeft);
+
+    teethList.forEach((toothId) => {
+      const t = state.teeth[toothId];
+      if (!t || !t.isVisible) return;
+
+      if (t.isAbsent || t.isExtracted) {
+        counts.extraction++;
+        return;
+      }
+
+      const faces = t.faces || {};
+      const uniqueDiags = new Set<Diagnosis>();
+
+      (Object.keys(faces) as Surface[]).forEach((s) => {
+        const diag = faces[s]?.diagnosis;
+        if (diag && diag !== "none") {
+          uniqueDiags.add(diag);
+        }
+      });
+
+      if (t.condition === "implanted") {
+        uniqueDiags.add("implant");
+      }
+
+      if (uniqueDiags.size === 0) {
+        counts.healthy++;
+      } else {
+        uniqueDiags.forEach((d) => {
+          if (counts[d] !== undefined) {
+            counts[d]++;
+          }
+        });
+      }
+    });
+
+    const totalPathologies =
+      counts.caries +
+      counts.restoration +
+      counts.sealant +
+      counts.endodontic +
+      counts.crown +
+      counts.bridge +
+      counts.implant +
+      counts.extraction +
+      counts.fracture +
+      counts.mobility;
+
+    return { counts, totalPathologies, totalTeeth: teethList.length };
+  }, [state.teeth, currentQuadrants]);
 
   return (
     <div className="space-y-6 text-slate-900 dark:text-slate-100 pb-8">
@@ -323,50 +467,106 @@ function OdontogramaUI() {
         </div>
       )}
 
-      {/* Encabezado Principal estilo Pacientes */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between animate-slideDown">
+      {/* Encabezado Principal de Nivel Ejecutivo */}
+      <div className="relative z-30 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between animate-slideDown">
         <div>
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-slate-900 dark:text-white drop-shadow-sm dark:drop-shadow-md">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-slate-900 dark:text-white drop-shadow-sm">
             Odontograma Interactivo FDI
           </h1>
-          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mt-1 font-medium">
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-1 font-medium max-w-2xl leading-relaxed">
             Registro visual anatómico de patologías, tratamientos y estado dental por superficie.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-3.5 py-2 bg-white/90 dark:bg-slate-950/65 border border-slate-200 dark:border-white/20 rounded-2xl backdrop-blur-xl shadow-md text-xs font-semibold">
-            <User size={15} className="text-cyan-600 dark:text-cyan-400" />
-            <select
-              value={selectedPaciente.id}
-              onChange={(e) => {
-                const found = pacientesList.find((p) => p.id === e.target.value);
-                if (found) setSelectedPaciente(found);
-              }}
-              className="bg-transparent outline-none font-bold text-slate-900 dark:text-white cursor-pointer"
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Selector de Paciente en Cápsula de Cristal Personalizada */}
+          <div ref={patientDropdownRef} className="relative z-40">
+            <button
+              type="button"
+              onClick={() => setIsPatientDropdownOpen((prev) => !prev)}
+              className="flex items-center gap-3 px-4 py-2 bg-white/80 dark:bg-slate-900/70 hover:bg-white dark:hover:bg-slate-900/90 border border-slate-200/80 dark:border-white/10 hover:border-cyan-500/40 dark:hover:border-cyan-400/40 rounded-2xl backdrop-blur-2xl shadow-lg shadow-slate-900/5 dark:shadow-[0_12px_36px_rgba(0,0,0,0.5)] text-xs font-bold cursor-pointer transition-all active:scale-98 group"
+              title="Cambiar paciente actual"
             >
-              {pacientesList.map((pac) => (
-                <option key={pac.id} value={pac.id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
-                  {pac.nombre} (CC: {pac.cedula})
-                </option>
-              ))}
-            </select>
+              <div className="h-8 w-8 rounded-xl bg-cyan-500/15 text-cyan-600 dark:text-cyan-300 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                <User size={16} />
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-400 font-bold leading-none mb-1">
+                  Paciente Actual
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white leading-tight">
+                    {selectedPaciente?.nombre || "Seleccionar Paciente"}
+                  </span>
+                  <span className="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-white/10 px-1.5 py-0.5 rounded-md border border-slate-200/50 dark:border-white/10">
+                    CC: {selectedPaciente?.cedula || "---"}
+                  </span>
+                </div>
+              </div>
+              <ChevronDown
+                size={16}
+                className={`text-slate-400 group-hover:text-cyan-400 transition-transform duration-200 ml-1.5 ${
+                  isPatientDropdownOpen ? "rotate-180 text-cyan-500" : ""
+                }`}
+              />
+            </button>
+
+            {/* Menú Desplegable Personalizado */}
+            {isPatientDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-72 p-2 rounded-2xl bg-white/95 dark:bg-slate-900/98 border border-slate-200/90 dark:border-white/15 shadow-[0_20px_50px_rgba(0,0,0,0.6)] backdrop-blur-2xl z-50 animate-scaleIn space-y-1">
+                <div className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-white/5">
+                  Seleccionar Paciente
+                </div>
+                {pacientesList.map((pac) => {
+                  const isSelected = pac.id === selectedPaciente.id;
+                  return (
+                    <button
+                      key={pac.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedPaciente(pac);
+                        setIsPatientDropdownOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-left ${
+                        isSelected
+                          ? "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30"
+                          : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5"
+                      }`}
+                    >
+                      <div className="flex flex-col">
+                        <span className="font-black text-slate-900 dark:text-white">
+                          {pac.nombre}
+                        </span>
+                        <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
+                          CC: {pac.cedula}
+                        </span>
+                      </div>
+                      {isSelected && (
+                        <CheckCircle2 size={15} className="text-cyan-500 flex-shrink-0" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
+          {/* Botón de Acción Principal Guardar */}
           <button
             type="button"
             onClick={handleSaveNotes}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 px-5 py-2.5 text-sm font-semibold text-white dark:text-slate-950 shadow-md dark:shadow-[0_0_25px_rgba(34,211,238,0.3)] transition-all active:scale-95 cursor-pointer"
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 px-6 py-3 text-xs sm:text-sm font-black text-white dark:text-slate-950 shadow-lg shadow-cyan-500/25 dark:shadow-[0_0_25px_rgba(34,211,238,0.4)] transition-all active:scale-95 cursor-pointer transform hover:-translate-y-0.5"
+            title="Guardar estado del odontograma y notas clínicas"
           >
-            <Save size={16} />
+            <Save size={17} strokeWidth={2.4} />
             <span>Guardar</span>
           </button>
         </div>
       </div>
 
-      {/* Grid del Odontograma y Herramientas */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 pt-2 animate-slideUp">
-        {/* Panel de Herramientas (Izquierda) */}
+      {/* Grid del Odontograma y Herramientas Clínicas */}
+      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-4 gap-6 pt-2 animate-slideUp">
+        {/* Panel de Controles y Diagnósticos (Izquierda) */}
         <div className="lg:col-span-1 space-y-4">
           <ConvencionesToolbar
             selectedDiagnosis={state.selectedDiagnosis}
@@ -387,27 +587,184 @@ function OdontogramaUI() {
           />
         </div>
 
-        {/* Grid de Piezas Dentales FDI (Derecha) */}
+        {/* Arcadas Dentales FDI y Observaciones (Centro y Derecha) */}
         <div className="lg:col-span-3 space-y-6">
-          <div className="p-6 rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl shadow-md overflow-x-auto">
-            <OdontogramaGrid
-              teeth={state.teeth}
-              quadrants={currentQuadrants}
-              onSurfaceClick={handleSurfaceClick}
-              onToothClick={handleToothClick}
-              selectedTooth={selectedTooth}
-              isDarkMode={isDarkMode}
-            />
+          {/* Barra de Conteo Clínico en Vivo (Hallazgos del Paciente) */}
+          <div className="rounded-3xl border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-slate-900/70 backdrop-blur-2xl p-4 sm:p-5 shadow-lg shadow-slate-900/5 dark:shadow-[0_12px_36px_rgba(0,0,0,0.5)] space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <div className="h-6 w-6 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                  <Activity size={13} className="animate-pulse" />
+                </div>
+                <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                  Hallazgos Clínicos en Vivo
+                </span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 font-bold border border-slate-200 dark:border-white/10">
+                  {clinicalFindings.totalTeeth} piezas evaluadas
+                </span>
+              </div>
+
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                {clinicalFindings.totalPathologies === 0
+                  ? "Dentición completa en estado saludable"
+                  : `${clinicalFindings.totalPathologies} tratamientos/lesiones detectadas`}
+              </span>
+            </div>
+
+            {/* Badges reactivos de hallazgos */}
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              {/* Piezas Sanas */}
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 shadow-xs">
+                <Sparkles size={13} />
+                <span>Sanos: {clinicalFindings.counts.healthy}</span>
+              </div>
+
+              {/* Caries */}
+              {clinicalFindings.counts.caries > 0 && (
+                <button
+                  type="button"
+                  onClick={() => handleDiagnosisChange("caries")}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-red-500/15 dark:bg-red-500/25 text-red-700 dark:text-red-300 border border-red-500/40 hover:scale-105 transition-all cursor-pointer shadow-xs"
+                  title="Seleccionar Caries en paleta"
+                >
+                  <Flame size={13} className="text-red-500" />
+                  <span>Caries: {clinicalFindings.counts.caries}</span>
+                </button>
+              )}
+
+              {/* Obturaciones */}
+              {clinicalFindings.counts.restoration > 0 && (
+                <button
+                  type="button"
+                  onClick={() => handleDiagnosisChange("restoration")}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-blue-500/15 dark:bg-blue-500/25 text-blue-700 dark:text-blue-300 border border-blue-500/40 hover:scale-105 transition-all cursor-pointer shadow-xs"
+                  title="Seleccionar Obturación en paleta"
+                >
+                  <ShieldCheck size={13} className="text-blue-500" />
+                  <span>Obturaciones: {clinicalFindings.counts.restoration}</span>
+                </button>
+              )}
+
+              {/* Coronas */}
+              {clinicalFindings.counts.crown > 0 && (
+                <button
+                  type="button"
+                  onClick={() => handleDiagnosisChange("crown")}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-emerald-500/15 dark:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 hover:scale-105 transition-all cursor-pointer shadow-xs"
+                  title="Seleccionar Corona en paleta"
+                >
+                  <Crown size={13} className="text-emerald-500" />
+                  <span>Coronas: {clinicalFindings.counts.crown}</span>
+                </button>
+              )}
+
+              {/* Endodoncias */}
+              {clinicalFindings.counts.endodontic > 0 && (
+                <button
+                  type="button"
+                  onClick={() => handleDiagnosisChange("endodontic")}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-purple-500/15 dark:bg-purple-500/25 text-purple-700 dark:text-purple-300 border border-purple-500/40 hover:scale-105 transition-all cursor-pointer shadow-xs"
+                  title="Seleccionar Endodoncia en paleta"
+                >
+                  <Zap size={13} className="text-purple-500" />
+                  <span>Endodoncias: {clinicalFindings.counts.endodontic}</span>
+                </button>
+              )}
+
+              {/* Implantes */}
+              {clinicalFindings.counts.implant > 0 && (
+                <button
+                  type="button"
+                  onClick={() => handleDiagnosisChange("implant")}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-teal-500/15 dark:bg-teal-500/25 text-teal-700 dark:text-teal-300 border border-teal-500/40 hover:scale-105 transition-all cursor-pointer shadow-xs"
+                  title="Seleccionar Implante en paleta"
+                >
+                  <Hexagon size={13} className="text-teal-500" />
+                  <span>Implantes: {clinicalFindings.counts.implant}</span>
+                </button>
+              )}
+
+              {/* Extracciones / Ausentes */}
+              {clinicalFindings.counts.extraction > 0 && (
+                <button
+                  type="button"
+                  onClick={() => handleDiagnosisChange("extraction")}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-rose-500/15 dark:bg-rose-500/25 text-rose-700 dark:text-rose-300 border border-rose-500/40 hover:scale-105 transition-all cursor-pointer shadow-xs"
+                  title="Seleccionar Extracción en paleta"
+                >
+                  <XCircle size={13} className="text-rose-500" />
+                  <span>Extracciones: {clinicalFindings.counts.extraction}</span>
+                </button>
+              )}
+
+              {/* Fracturas */}
+              {clinicalFindings.counts.fracture > 0 && (
+                <button
+                  type="button"
+                  onClick={() => handleDiagnosisChange("fracture")}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-orange-500/15 dark:bg-orange-500/25 text-orange-700 dark:text-orange-300 border border-orange-500/40 hover:scale-105 transition-all cursor-pointer shadow-xs"
+                  title="Seleccionar Fractura en paleta"
+                >
+                  <AlertTriangle size={13} className="text-orange-500" />
+                  <span>Fracturas: {clinicalFindings.counts.fracture}</span>
+                </button>
+              )}
+
+              {/* Sellantes */}
+              {clinicalFindings.counts.sealant > 0 && (
+                <button
+                  type="button"
+                  onClick={() => handleDiagnosisChange("sealant")}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-amber-500/15 dark:bg-amber-500/25 text-amber-700 dark:text-amber-300 border border-amber-500/40 hover:scale-105 transition-all cursor-pointer shadow-xs"
+                  title="Seleccionar Sellante en paleta"
+                >
+                  <Shield size={13} className="text-amber-500" />
+                  <span>Sellantes: {clinicalFindings.counts.sealant}</span>
+                </button>
+              )}
+
+              {/* Movilidad */}
+              {clinicalFindings.counts.mobility > 0 && (
+                <button
+                  type="button"
+                  onClick={() => handleDiagnosisChange("mobility")}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-yellow-500/15 dark:bg-yellow-500/25 text-yellow-700 dark:text-yellow-300 border border-yellow-500/40 hover:scale-105 transition-all cursor-pointer shadow-xs"
+                  title="Seleccionar Movilidad en paleta"
+                >
+                  <Move size={13} className="text-yellow-500" />
+                  <span>Movilidad: {clinicalFindings.counts.mobility}</span>
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* Panel de Notas Clínicas y Diagnóstico Integral */}
-          <div className="p-6 rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl shadow-md space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-200/80 dark:border-white/10">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <FileText size={16} className="text-cyan-500" />
-                <span>Observaciones del Odontograma y Plan de Tratamiento</span>
-              </h3>
-              <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+          <OdontogramaGrid
+            teeth={state.teeth}
+            quadrants={currentQuadrants}
+            onSurfaceClick={handleSurfaceClick}
+            onToothClick={handleToothClick}
+            selectedTooth={selectedTooth}
+            isDarkMode={isDarkMode}
+          />
+
+          {/* Panel de Observaciones del Odontograma y Plan de Tratamiento */}
+          <div className="rounded-3xl border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-slate-900/70 backdrop-blur-2xl p-5 sm:p-6 shadow-lg shadow-slate-900/5 dark:shadow-[0_12px_36px_rgba(0,0,0,0.5)] space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3 border-b border-slate-200/80 dark:border-white/10">
+              <div className="flex items-center gap-2.5">
+                <div className="h-8 w-8 rounded-xl bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 flex items-center justify-center font-bold">
+                  <FileText size={16} />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+                    Observaciones del Odontograma y Plan de Tratamiento
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Notas clínicas oficiales registradas para el expediente del paciente.
+                  </p>
+                </div>
+              </div>
+
+              <span className="text-[11px] text-slate-600 dark:text-slate-300 font-mono font-bold bg-slate-100 dark:bg-white/[0.04] px-3 py-1 rounded-xl border border-slate-200 dark:border-white/10 self-start sm:self-auto">
                 Paciente: {selectedPaciente.nombre}
               </span>
             </div>
@@ -416,8 +773,8 @@ function OdontogramaUI() {
               rows={3}
               value={notasClinicas}
               onChange={(e) => setNotasClinicas(e.target.value)}
-              placeholder="Escribe aquí las observaciones clínicas detalladas por cuadrante o pieza..."
-              className="w-full px-4 py-2.5 rounded-2xl bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-white/15 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 resize-none transition-all backdrop-blur-md"
+              placeholder="Escribe aquí las observaciones clínicas detalladas por cuadrante o pieza dental..."
+              className="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-white/15 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:border-cyan-500 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 resize-none transition-all leading-relaxed"
             />
           </div>
         </div>
@@ -425,37 +782,37 @@ function OdontogramaUI() {
 
       {/* Modal de diagnóstico rápido al tocar una cara */}
       {selectedSurface && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadeIn">
-          <div className="rounded-3xl bg-white/95 dark:bg-slate-950/95 backdrop-blur-2xl border border-slate-200 dark:border-cyan-400/20 shadow-2xl max-w-md w-full p-6 space-y-4 animate-scaleIn">
-            <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-white/15 pb-3">
+        <div className="fixed inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-xl flex items-center justify-center p-4 z-50 animate-fadeIn">
+          <div className="rounded-3xl bg-white dark:bg-slate-900 backdrop-blur-3xl border border-slate-200 dark:border-white/15 shadow-2xl max-w-md w-full p-6 space-y-4 animate-scaleIn">
+            <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 pb-3">
               <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                  Aplicar Diagnóstico
+                <h3 className="text-base font-black text-slate-900 dark:text-white">
+                  Aplicar Diagnóstico Clínico
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Diente <strong className="text-cyan-600 dark:text-cyan-400">{selectedSurface.toothNumber}</strong> • Cara <strong className="text-cyan-600 dark:text-cyan-400 uppercase">{selectedSurface.surface}</strong>
+                <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">
+                  Pieza <strong className="text-cyan-600 dark:text-cyan-400 font-mono">#{selectedSurface.toothNumber}</strong> • Cara <strong className="text-cyan-600 dark:text-cyan-400 uppercase">{selectedSurface.surface}</strong>
                 </p>
               </div>
               <button
                 onClick={() => setSelectedSurface(null)}
-                className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors cursor-pointer"
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-2.5 pt-1">
+            <div className="grid grid-cols-2 gap-3 pt-1">
               <button
                 type="button"
                 onClick={() => applyDiagnosis(state.selectedDiagnosis)}
-                className="p-3 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 text-white dark:text-slate-950 font-bold text-xs shadow-md transition-all active:scale-95 cursor-pointer capitalize"
+                className="p-3 rounded-2xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 text-white dark:text-slate-950 font-black text-xs shadow-md transition-all active:scale-95 cursor-pointer capitalize"
               >
                 Aplicar {state.selectedDiagnosis}
               </button>
               <button
                 type="button"
                 onClick={() => applyDiagnosis("none")}
-                className="p-3 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/30 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 font-semibold text-xs transition-all active:scale-95 cursor-pointer"
+                className="p-3 rounded-2xl border border-slate-200 dark:border-white/15 bg-slate-50 dark:bg-slate-950/40 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 font-bold text-xs transition-all active:scale-95 cursor-pointer"
               >
                 Limpiar Cara
               </button>

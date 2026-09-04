@@ -77,7 +77,7 @@ const ServiciosView = lazy(() =>
 );
 
 const HistoriaClinicaView = lazy(() =>
-  import("../features/historiaClinica/HistoriaClinicaView").then((module) => ({
+  import("../features/historia-clinica/HistoriaClinicaView").then((module) => ({
     default: module.HistoriaClinicaView,
   })),
 );
@@ -102,6 +102,12 @@ const RolesPermisosView = lazy(() =>
 
 const PerfilView = lazy(() =>
   import("../features/perfil/PerfilView").then((module) => ({
+    default: module.default,
+  })),
+);
+
+const ConfiguracionView = lazy(() =>
+  import("../features/configuracion/ConfiguracionView").then((module) => ({
     default: module.default,
   })),
 );
@@ -245,12 +251,11 @@ export default function AppRoutes() {
             }
           />
 
-          {/* Configuración y Perfil */}
           <Route
             path="/configuracion"
             element={
               <DashboardLayout>
-                <ServiciosView />
+                <ConfiguracionView />
               </DashboardLayout>
             }
           />

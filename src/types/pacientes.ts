@@ -47,13 +47,13 @@ export interface Paciente {
   estado: string; // Activo, Inactivo
   correo?: string;
   fechaNacimiento?: string;
-  genero?: string;
   generoId?: string; // FK -> genders
   direccion?: string;
   proximaCita?: string;
   contactoEmergenciaNombre?: string;
   contactoEmergenciaTelefono?: string;
   alergias?: string;
+  fotoUrl?: string;
   antecedentes?: PatientBackgroundEntity[];
 }
 

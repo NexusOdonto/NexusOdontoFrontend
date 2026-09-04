@@ -312,7 +312,14 @@ export default function DashboardPage() {
 
             {/* LISTA DE CITAS */}
             <div className="divide-y divide-slate-100 dark:divide-white/5">
-              {citasHoy.map((cita) => (
+              {citasHoy.length === 0 ? (
+                <div className="py-8 text-center">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                    No hay citas programadas para el día de hoy.
+                  </p>
+                </div>
+              ) : (
+                citasHoy.map((cita) => (
                 <div
                   key={cita.id}
                   className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/80 dark:hover:bg-slate-900/40 rounded-xl px-2.5 transition-colors"
@@ -363,7 +370,8 @@ export default function DashboardPage() {
                     </button>
                   </div>
                 </div>
-              ))}
+              ))
+              )}
             </div>
           </div>
 

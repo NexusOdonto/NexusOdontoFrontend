@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { useAuth } from '../features/auth/AuthContext';
 import { getUserRole } from '../utils/routePermissions';
 import { appointmentService, type AppointmentResponseDto } from '../api/appointmentService';
+import { signalRService } from '../api/signalrService';
 
 export interface SystemNotification {
   id: string;
@@ -31,7 +32,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [pendingAppointmentsCount, setPendingAppointmentsCount] = useState<number>(0);
 
   const refreshNotifications = useCallback(async () => {
-    if (!user) return;
+    if (!user || !localStorage.getItem('auth_token')) return;
 
     try {
       const isStaff = role === 'RECEPCIONISTA' || role === 'ADMINISTRADOR';
@@ -112,9 +113,35 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   useEffect(() => {
     refreshNotifications();
-    const interval = setInterval(refreshNotifications, 15000); // Polling cada 15 segundos
+    const interval = setInterval(refreshNotifications, 20000);
     return () => clearInterval(interval);
   }, [refreshNotifications]);
+
+  const userId = user?.id;
+  useEffect(() => {
+    if (!userId) return;
+
+    let isSubscribed = true;
+    const setupSignalR = async () => {
+      const conn = await signalRService.startConnection();
+      if (conn && isSubscribed) {
+        const handlePushEvent = () => {
+          refreshNotifications();
+        };
+
+        signalRService.on('ReceiveNotification', handlePushEvent);
+        signalRService.on('AppointmentCreated', handlePushEvent);
+        signalRService.on('AppointmentUpdated', handlePushEvent);
+        signalRService.on('StatusChanged', handlePushEvent);
+      }
+    };
+
+    setupSignalR();
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, [userId]);
 
   const markAsRead = (id: string) => {
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));

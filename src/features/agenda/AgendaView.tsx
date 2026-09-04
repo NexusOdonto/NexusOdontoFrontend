@@ -2,691 +2,982 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import {
   ChevronLeft,
   ChevronRight,
-  Clock,
-  User,
-  Plus,
-  Stethoscope,
-  X,
+  Clock3,
   CheckCircle2,
-  Calendar as CalendarIcon,
+  Hourglass,
+  X,
+  Save,
+  Check,
+  Trash2,
+  CalendarDays,
+  Plus,
   RefreshCw,
 } from "lucide-react";
+
+import {
+  type Cita,
+  type EstadoCita,
+  citasIniciales,
+  nombresDias,
+  odontologos as odontologosFallback,
+  sumarDias,
+  obtenerInicioSemana,
+  formatoFechaInput,
+  obtenerNombreMes,
+  obtenerRangoSemana,
+  obtenerColorEvento,
+} from "./AgendaData";
+
 import { useAuth } from "../auth/AuthContext";
 import { getUserRole } from "../../utils/routePermissions";
-import { appointmentService } from "../../api/appointmentService";
+import { appointmentService, type AppointmentResponseDto } from "../../api/appointmentService";
 import { professionalService } from "../../api/professionalService";
+import { serviceCatalogService, type ServiceResponseDto } from "../../api/serviceCatalogService";
 import { patientService } from "../../api/patientService";
-import { personService } from "../../api/personService";
-import { serviceCatalogService } from "../../api/serviceCatalogService";
-import { SelectOrWriteInput, type SelectOption } from "../../components/common/SelectOrWriteInput";
-import { areGuidsEqual } from "../../utils/roleUtils";
-import { PACIENTES_STORAGE_KEY } from "../../types/pacientes";
-
-const defaultSeedDoctors: SelectOption[] = [
-  { label: "Dra. Laura Gómez", subLabel: "Especialidad: Ortodoncia y Estética", id: "14000000-0000-0000-0000-000000000001", data: { professionalId: "14000000-0000-0000-0000-000000000001" } },
-  { label: "Dr. Roberto Martínez", subLabel: "Especialidad: Cirugía Oral e Implantología", id: "14000000-0000-0000-0000-000000000002", data: { professionalId: "14000000-0000-0000-0000-000000000002" } },
-  { label: "Dra. Ana Sofía Silva", subLabel: "Especialidad: Endodoncia y Periodoncia", id: "14000000-0000-0000-0000-000000000003", data: { professionalId: "14000000-0000-0000-0000-000000000003" } },
-  { label: "Dr. Juan Martínez", subLabel: "Especialidad: Odontología General", id: "14000000-0000-0000-0000-000000000004", data: { professionalId: "14000000-0000-0000-0000-000000000004" } },
-  { label: "Dra. Patricia Silva", subLabel: "Especialidad: Endodoncia Microscópica", id: "14000000-0000-0000-0000-000000000005", data: { professionalId: "14000000-0000-0000-0000-000000000005" } },
-];
-
-const defaultSeedPatients: SelectOption[] = [
-  { label: "Andrés Felipe Navas Alvear", subLabel: "Cédula: 1082917087 • chirialvear@gmail.com", id: "c9c45f44-cfa7-4202-b8af-92678aa80580", data: { patientId: "c9c45f44-cfa7-4202-b8af-92678aa80580", doc: "1082917087", email: "chirialvear@gmail.com" } },
-  { label: "Andrés Pérez", subLabel: "Cédula: 1076543210 • paciente@nexusodonto.com", id: "1e000000-0000-0000-0000-000000000001", data: { patientId: "1e000000-0000-0000-0000-000000000001", doc: "1076543210", email: "paciente@nexusodonto.com" } },
-  { label: "Camila López", subLabel: "Cédula: 1098765436", id: "1e000000-0000-0000-0000-000000000002", data: { patientId: "1e000000-0000-0000-0000-000000000002", doc: "1098765436" } },
-  { label: "Felipe Torres", subLabel: "Cédula: 1098765437", id: "1e000000-0000-0000-0000-000000000003", data: { patientId: "1e000000-0000-0000-0000-000000000003", doc: "1098765437" } },
-  { label: "Valentina Mendoza", subLabel: "Cédula: 1098765438", id: "1e000000-0000-0000-0000-000000000004", data: { patientId: "1e000000-0000-0000-0000-000000000004", doc: "1098765438" } },
-];
-
-interface AgendaSlot {
-  id: string;
-  appointmentId?: string;
-  hora: string;
-  paciente?: string;
-  servicio?: string;
-  doctor: string;
-  estado?: "Libre" | "Confirmada" | "Pendiente" | "En Atención" | "Completada";
-  motivo?: string;
-}
-
-const horasDia = [
-  "08:00",
-  "09:00",
-  "10:00",
-  "11:00",
-  "12:00",
-  "13:00",
-  "14:00",
-  "15:00",
-  "16:00",
-  "17:00",
-];
 
 export function AgendaView() {
   const { user } = useAuth();
   const role = getUserRole(user);
   const isPaciente = role === "PACIENTE";
 
-  const [selectedDate, setSelectedDate] = useState<string>(() => {
-    return new Date().toISOString().split("T")[0];
-  });
-  const [selectedDoctor, setSelectedDoctor] = useState<string>("Todos los Odontólogos");
-  const [doctoresList, setDoctoresList] = useState<string[]>(["Todos los Odontólogos"]);
-  const [slots, setSlots] = useState<AgendaSlot[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showBookModal, setShowBookModal] = useState(false);
-  const [selectedSlotForBooking, setSelectedSlotForBooking] = useState<{ hora: string; doctor: string } | null>(null);
+  // Citas locales y de la base de datos
+  const [citas, setCitas] = useState<Cita[]>(citasIniciales);
+  const [vista, setVista] = useState<"Día" | "Semana" | "Mes">("Semana");
+  const [fechaActual, setFechaActual] = useState(new Date());
+
+  // Catálogos reales del backend
+  const [profesionalesEntities, setProfesionalesEntities] = useState<any[]>([]);
+  const [serviciosEntities, setServiciosEntities] = useState<ServiceResponseDto[]>([]);
+  const [pacientesEntities, setPacientesEntities] = useState<any[]>([]);
+  const [listaOdontologos, setListaOdontologos] = useState(odontologosFallback);
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
-  // Form agendamiento rápido
-  const [formPaciente, setFormPaciente] = useState(isPaciente ? (user?.name || "Andrés Pérez") : "");
-  const [formDoctor, setFormDoctor] = useState("");
-  const [formServicio, setFormServicio] = useState("Limpieza y Valoración General");
-  const [formMotivo, setFormMotivo] = useState("");
+  const [odontologosSeleccionados, setOdontologosSeleccionados] = useState<string[]>([
+    "Todos los odontólogos",
+  ]);
 
-  const [patientsOptions, setPatientsOptions] = useState<SelectOption[]>([]);
-  const [professionalsOptions, setProfessionalsOptions] = useState<SelectOption[]>([]);
-  const [servicesList, setServicesList] = useState<string[]>([]);
+  const [mostrarModal, setMostrarModal] = useState(false);
+  const [fechaSeleccionada, setFechaSeleccionada] = useState("");
+  const [horaSeleccionada, setHoraSeleccionada] = useState("");
+  const [horaActual, setHoraActual] = useState(new Date());
 
+  useEffect(() => {
+    const actualizarHora = () => {
+      setHoraActual(new Date());
+    };
+    actualizarHora();
+    const intervalo = setInterval(actualizarHora, 60000);
+    return () => {
+      clearInterval(intervalo);
+    };
+  }, []);
+
+  const [nuevaCita, setNuevaCita] = useState({
+    paciente: isPaciente ? (user?.name || "Paciente") : "",
+    servicio: "Valoración General",
+    odontologo: "Dra. Laura Gómez",
+    horaInicio: "09:00",
+    horaFin: "10:00",
+    estado: "Confirmada" as EstadoCita,
+  });
+
+  // Cargar citas reales y catálogos de backend
   const fetchAgendaData = useCallback(async () => {
-    setLoading(true);
     try {
-      const [apiAppointments, profsData, patientsData, personsData, servicesData] = await Promise.allSettled([
+      const [apiApps, profs, srvs, pts] = await Promise.allSettled([
         appointmentService.getAll(),
         professionalService.getAll(),
-        patientService.getAll(),
-        personService.getAll(),
         serviceCatalogService.getAll(),
+        patientService.getAll(),
       ]);
 
-      const profs = profsData.status === "fulfilled" && Array.isArray(profsData.value) ? profsData.value : [];
-      const patients = patientsData.status === "fulfilled" && Array.isArray(patientsData.value) ? patientsData.value : [];
-      const persons = personsData.status === "fulfilled" && Array.isArray(personsData.value) ? personsData.value : [];
-      const services = servicesData.status === "fulfilled" && Array.isArray(servicesData.value) ? servicesData.value : [];
-      const appointments = apiAppointments.status === "fulfilled" && Array.isArray(apiAppointments.value) ? apiAppointments.value : [];
+      // 1. Odontólogos
+      if (profs.status === "fulfilled" && Array.isArray(profs.value) && profs.value.length > 0) {
+        setProfesionalesEntities(profs.value);
+        const colores = ["bg-cyan-400", "bg-blue-400", "bg-amber-400", "bg-purple-400", "bg-emerald-400"];
+        const docsMapeados = profs.value.map((p: any, idx: number) => {
+          const nombre =
+            p.firstName || p.lastName
+              ? `Dr(a). ${p.firstName || ""} ${p.lastName || ""}`.trim()
+              : `Dr. Especialista #${idx + 1}`;
+          return {
+            nombre,
+            color: colores[idx % colores.length],
+          };
+        });
 
-      // Mapas de resolución
-      const profsMap: Record<string, string> = {};
-      const docNames: string[] = ["Todos los Odontólogos"];
-      const profOpts: SelectOption[] = [];
-      const seenDoctorLabels = new Set<string>();
-
-      profs.forEach((p: any) => {
-        const name = (p.firstName || p.lastName)
-          ? `Dr(a). ${p.firstName || ""} ${p.lastName || ""}`.trim()
-          : (p.fullName || p.name || "Dr. Especialista");
-        const spec = p.specialty || p.specialtyName || p.roleName || "Odontología Integral";
-        if (p.id) {
-          profsMap[String(p.id).toLowerCase()] = name;
-        }
-        if (!seenDoctorLabels.has(name.toLowerCase())) {
-          seenDoctorLabels.add(name.toLowerCase());
-          docNames.push(name);
-          profOpts.push({
-            id: p.id,
-            label: name,
-            subLabel: `Especialidad: ${spec}`,
-            data: { professionalId: p.id, specialty: spec },
-          });
-        }
-      });
-
-      // Añadir seed doctors si no existen en la lista
-      defaultSeedDoctors.forEach((seedDoc) => {
-        if (!seenDoctorLabels.has(seedDoc.label.toLowerCase())) {
-          seenDoctorLabels.add(seedDoc.label.toLowerCase());
-          docNames.push(seedDoc.label);
-          profOpts.push(seedDoc);
-          if (seedDoc.id) {
-            profsMap[seedDoc.id.toLowerCase()] = seedDoc.label;
+        // Filtrar nombres únicos
+        const uniqueDocs: { nombre: string; color: string }[] = [];
+        docsMapeados.forEach((d) => {
+          if (!uniqueDocs.some((u) => u.nombre === d.nombre)) {
+            uniqueDocs.push(d);
           }
+        });
+
+        setListaOdontologos([
+          { nombre: "Todos los odontólogos", color: "bg-cyan-400" },
+          ...uniqueDocs,
+        ]);
+
+        if (uniqueDocs.length > 0) {
+          setNuevaCita((prev) => ({ ...prev, odontologo: uniqueDocs[0].nombre }));
         }
-      });
+      }
 
-      console.log("Profesionales cargados en Agenda:", profOpts);
-      setDoctoresList(docNames);
-      setProfessionalsOptions(profOpts);
+      // 2. Servicios
+      if (srvs.status === "fulfilled" && Array.isArray(srvs.value) && srvs.value.length > 0) {
+        setServiciosEntities(srvs.value);
+        setNuevaCita((prev) => ({ ...prev, servicio: srvs.value[0].name }));
+      }
 
-      // Pacientes (Unificación PATIENTS + PERSONS + LocalStorage)
-      const patientToPersonMap: Record<string, string> = {};
-      patients.forEach((pt: any) => {
-        if (pt.id && pt.personId) {
-          patientToPersonMap[String(pt.id).toLowerCase()] = String(pt.personId).toLowerCase();
-        }
-      });
+      // 3. Pacientes
+      if (pts.status === "fulfilled" && Array.isArray(pts.value)) {
+        setPacientesEntities(pts.value);
+      }
 
-      const personsMap: Record<string, any> = {};
-      persons.forEach((per: any) => {
-        if (per.id) personsMap[String(per.id).toLowerCase()] = per;
-      });
+      // 4. Citas guardadas en API backend
+      if (apiApps.status === "fulfilled" && Array.isArray(apiApps.value) && apiApps.value.length > 0) {
+        const mappedFromBackend: Cita[] = apiApps.value
+          .filter((a: AppointmentResponseDto) => !a.cancelledAt)
+          .map((a: AppointmentResponseDto, idx: number) => {
+            const fechaStr = a.startsAt ? a.startsAt.split("T")[0] : formatoFechaInput(new Date());
+            const inicio =
+              a.startsAt && a.startsAt.includes("T") ? a.startsAt.split("T")[1].substring(0, 5) : "09:00";
+            const fin =
+              a.endsAt && a.endsAt.includes("T") ? a.endsAt.split("T")[1].substring(0, 5) : "10:00";
 
-      const patOpts: SelectOption[] = [];
-      const seenPatientKeys = new Set<string>();
+            let estadoMapeado: EstadoCita = "Confirmada";
+            if (a.statusName === "En Atención" || a.statusName === "En Atencion") estadoMapeado = "En Atención";
+            else if (a.statusName === "Pendiente" || a.statusName === "Agendada") estadoMapeado = "Pendiente";
+            else if (a.statusName === "Cancelada") estadoMapeado = "No disponible";
 
-      // 1. Desde tabla PATIENTS
-      patients.forEach((pt: any) => {
-        const person = pt.personId ? personsMap[String(pt.personId).toLowerCase()] : undefined;
-        const name = person ? `${person.firstName || ""} ${person.lastName || ""}`.trim() : (pt.name || pt.firstName ? `${pt.firstName} ${pt.lastName}` : "Paciente Registrado");
-        const doc = person?.documentNumber || pt.documentNumber || "";
-        const email = person?.email || pt.email || "";
-        const key = (doc || email || name).toLowerCase();
-
-        if (name && !seenPatientKeys.has(key)) {
-          seenPatientKeys.add(key);
-          patOpts.push({
-            id: pt.id,
-            label: name,
-            subLabel: doc ? `Cédula: ${doc}${email ? ` • ${email}` : ""}` : email || undefined,
-            data: { patientId: pt.id, personId: pt.personId, doc, email },
+            return {
+              id: idx + 1000,
+              paciente: a.patientName || "Paciente Agendado",
+              servicio: a.serviceName || "Consulta Odontológica",
+              odontologo: a.professionalName || "Dra. Laura Gómez",
+              fecha: fechaStr,
+              horaInicio: inicio,
+              horaFin: fin,
+              estado: estadoMapeado,
+            };
           });
-        }
-      });
 
-      // 2. Desde tabla PERSONS (Google OAuth y usuarios directos)
-      persons.forEach((per: any) => {
-        const name = `${per.firstName || ""} ${per.lastName || ""}`.trim();
-        const doc = per.documentNumber || "";
-        const email = per.email || "";
-        const key = (doc || email || name).toLowerCase();
-
-        if (name && !seenPatientKeys.has(key)) {
-          seenPatientKeys.add(key);
-          patOpts.push({
-            id: per.id,
-            label: name,
-            subLabel: doc ? `Cédula: ${doc}${email ? ` • ${email}` : ""}` : email || undefined,
-            data: { personId: per.id, patientId: per.id, doc, email },
+        setCitas((prev) => {
+          const combinadas = [...mappedFromBackend];
+          prev.forEach((p) => {
+            if (
+              !combinadas.some(
+                (c) =>
+                  c.fecha === p.fecha &&
+                  c.horaInicio === p.horaInicio &&
+                  c.odontologo === p.odontologo
+              )
+            ) {
+              combinadas.push(p);
+            }
           });
-        }
-      });
-
-      // 3. Inspeccionar LocalStorage
-      const storageKeys = [PACIENTES_STORAGE_KEY, "pacientes", "nexus_pacientes", "nexusodontopacientes", "auth_user"];
-      storageKeys.forEach((k) => {
-        const raw = localStorage.getItem(k);
-        if (raw) {
-          try {
-            const parsed = JSON.parse(raw);
-            const list = Array.isArray(parsed) ? parsed : [parsed];
-            list.forEach((item: any) => {
-              const name = item.nombre || item.name || (item.firstName ? `${item.firstName} ${item.lastName}` : "");
-              const doc = item.documento || item.cedula || item.documentNumber || "";
-              const email = item.correo || item.email || "";
-              const key = (doc || email || name).toLowerCase();
-
-              if (name && !seenPatientKeys.has(key)) {
-                seenPatientKeys.add(key);
-                patOpts.push({
-                  id: item.patientId || item.id || `local-${seenPatientKeys.size}`,
-                  label: name,
-                  subLabel: doc ? `Cédula: ${doc}${email ? ` • ${email}` : ""}` : email || undefined,
-                  data: { patientId: item.patientId || item.id, doc, email },
-                });
-              }
-            });
-          } catch {
-            // ignore
-          }
-        }
-      });
-
-      // 4. Añadir seed patients de fallback si faltan
-      defaultSeedPatients.forEach((seedPat) => {
-        const key = seedPat.label.toLowerCase();
-        if (!seenPatientKeys.has(key)) {
-          seenPatientKeys.add(key);
-          patOpts.push(seedPat);
-        }
-      });
-
-      console.log("Pacientes cargados en Agenda:", patOpts);
-      setPatientsOptions(patOpts);
-
-      // Servicios
-      const srvMap: Record<string, string> = {};
-      const srvNames = services.map((s) => {
-        if (s.id) srvMap[String(s.id).toLowerCase()] = s.name;
-        return s.name;
-      });
-      setServicesList(srvNames.length > 0 ? srvNames : ["Consulta y Valoración General"]);
-
-      // Filtrar citas reales por fecha seleccionada
-      const realSlots: AgendaSlot[] = [];
-      appointments.forEach((a, idx) => {
-        const appDate = a.startsAt ? a.startsAt.split("T")[0] : "";
-        if (appDate === selectedDate) {
-          const appTime = a.startsAt && a.startsAt.includes("T") ? a.startsAt.split("T")[1].substring(0, 5) : "09:00";
-          const pId = a.patientId ? String(a.patientId).toLowerCase() : "";
-          const personId = pId ? patientToPersonMap[pId] : undefined;
-          const person = personId ? personsMap[personId] : undefined;
-          const pacName = person ? `${person.firstName || ""} ${person.lastName || ""}`.trim() : (a.patientName || "Paciente");
-          const docName = a.professionalId ? (profsMap[String(a.professionalId).toLowerCase()] || a.professionalName || "Dr. Asignado") : "Por asignar";
-          const servName = a.serviceId ? (srvMap[String(a.serviceId).toLowerCase()] || a.serviceName || "Tratamiento") : "Tratamiento";
-
-          let estadoName: "Confirmada" | "Pendiente" | "En Atención" | "Completada" = "Confirmada";
-          if (!a.professionalId || a.professionalId === "00000000-0000-0000-0000-000000000000") {
-            estadoName = "Pendiente";
-          } else if (a.statusName) {
-            const sn = a.statusName.toUpperCase();
-            if (sn.includes("PEND") || sn.includes("AGEN")) estadoName = "Pendiente";
-            else if (sn.includes("ATTEND") || sn.includes("EN ATENCIÓN")) estadoName = "En Atención";
-            else if (sn.includes("COMPLET")) estadoName = "Completada";
-          }
-
-          realSlots.push({
-            id: `api-slot-${a.id || idx}`,
-            appointmentId: a.id,
-            hora: appTime,
-            paciente: pacName,
-            doctor: docName,
-            servicio: servName,
-            estado: estadoName,
-            motivo: a.reasonForVisit || a.notes,
-          });
-        }
-      });
-
-      setSlots(realSlots);
+          return combinadas;
+        });
+      }
     } catch (err) {
-      console.warn("Could not load live agenda appointments:", err);
-      setSlots([]);
-    } finally {
-      setLoading(false);
+      console.warn("Sincronización inicial de agenda con backend:", err);
     }
-  }, [selectedDate]);
+  }, []);
 
   useEffect(() => {
     fetchAgendaData();
   }, [fetchAgendaData]);
 
-  const handlePrevDay = () => {
-    const d = new Date(selectedDate);
-    d.setDate(d.getDate() - 1);
-    setSelectedDate(d.toISOString().split("T")[0]);
+  const inicioSemana = useMemo(() => {
+    return obtenerInicioSemana(fechaActual);
+  }, [fechaActual]);
+
+  const diasSemana = useMemo(() => {
+    return Array.from({ length: 7 }, (_, index) =>
+      sumarDias(inicioSemana, index)
+    );
+  }, [inicioSemana]);
+
+  const citasFiltradas = useMemo(() => {
+    if (odontologosSeleccionados.includes("Todos los odontólogos")) {
+      return citas;
+    }
+    return citas.filter((cita) =>
+      odontologosSeleccionados.includes(cita.odontologo)
+    );
+  }, [citas, odontologosSeleccionados]);
+
+  const citasHoy = useMemo(() => {
+    const hoy = formatoFechaInput(new Date());
+    return citas.filter((cita) => cita.fecha === hoy).length;
+  }, [citas]);
+
+  const confirmadas = useMemo(() => {
+    return citas.filter((cita) => cita.estado === "Confirmada").length;
+  }, [citas]);
+
+  const pendientes = useMemo(() => {
+    return citas.filter((cita) => cita.estado === "Pendiente").length;
+  }, [citas]);
+
+  const espaciosDisponibles = useMemo(() => {
+    return (
+      citas.filter((cita) => cita.estado === "Disponible").length + 20
+    );
+  }, [citas]);
+
+  const cambiarSemana = (direccion: number) => {
+    setFechaActual((fecha) => sumarDias(fecha, direccion * 7));
   };
 
-  const handleNextDay = () => {
-    const d = new Date(selectedDate);
-    d.setDate(d.getDate() + 1);
-    setSelectedDate(d.toISOString().split("T")[0]);
+  const irHoy = () => {
+    setFechaActual(new Date());
   };
 
-  const filteredSlots = useMemo(() => {
-    return horasDia.map((hora) => {
-      const match = slots.find((s) => {
-        const docMatch = selectedDoctor === "Todos los Odontólogos" || s.doctor === selectedDoctor;
-        return s.hora === hora && docMatch;
-      });
+  const cambiarOdontologo = (nombre: string) => {
+    if (nombre === "Todos los odontólogos") {
+      setOdontologosSeleccionados(["Todos los odontólogos"]);
+      return;
+    }
 
-      if (match) return match;
-      return {
-        id: `free-${hora}`,
-        hora,
-        doctor: selectedDoctor === "Todos los Odontólogos" ? (doctoresList[1] || "Dr. Especialista") : selectedDoctor,
-        estado: "Libre" as const,
-      };
+    setOdontologosSeleccionados((actuales) => {
+      const sinTodos = actuales.filter(
+        (odontologo) => odontologo !== "Todos los odontólogos"
+      );
+
+      if (sinTodos.includes(nombre)) {
+        const nuevos = sinTodos.filter(
+          (odontologo) => odontologo !== nombre
+        );
+        return nuevos.length > 0 ? nuevos : ["Todos los odontólogos"];
+      }
+
+      return [...sinTodos, nombre];
     });
-  }, [slots, selectedDoctor, doctoresList]);
-
-  const handleOpenBook = (hora: string, doctor: string) => {
-    setSelectedSlotForBooking({ hora, doctor });
-    const initialDoc = doctor && doctor !== "Todos los Odontólogos" ? doctor : (professionalsOptions[0]?.label || "Dra. Laura Gómez");
-    setFormDoctor(initialDoc);
-    setFormPaciente(isPaciente ? (user?.name || "Andrés Pérez") : "");
-    setShowBookModal(true);
   };
 
-  const handleConfirmBooking = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedSlotForBooking) return;
+  const obtenerCitasDia = (fecha: Date) => {
+    const fechaTexto = formatoFechaInput(fecha);
+    return citasFiltradas.filter((cita) => cita.fecha === fechaTexto);
+  };
 
-    const matchedProf =
-      professionalsOptions.find((d) => d.label.toLowerCase() === formDoctor.toLowerCase() || areGuidsEqual(d.id, formDoctor)) ||
-      professionalsOptions[0];
-    const matchedProfId = matchedProf?.data?.professionalId || matchedProf?.id || "14000000-0000-0000-0000-000000000001";
+  const abrirNuevaCita = (fecha: Date, hora: string) => {
+    const horaNumero = Number(hora.split(":")[0]);
+    const horaFin = `${String(horaNumero + 1).padStart(2, "0")}:00`;
 
-    const matchedPat =
-      patientsOptions.find((p) => p.label.toLowerCase() === formPaciente.toLowerCase() || areGuidsEqual(p.id, formPaciente)) ||
-      patientsOptions[0];
-    const matchedPatientId = matchedPat?.data?.patientId || matchedPat?.id || (isPaciente && user?.id ? user.id : "1e000000-0000-0000-0000-000000000001");
-
-    const newSlot: AgendaSlot = {
-      id: `slot-${Date.now()}`,
-      hora: selectedSlotForBooking.hora,
-      doctor: formDoctor || selectedSlotForBooking.doctor,
-      paciente: formPaciente || "Paciente Registrado",
-      servicio: formServicio,
+    setFechaSeleccionada(formatoFechaInput(fecha));
+    setHoraSeleccionada(hora);
+    setNuevaCita({
+      paciente: isPaciente ? (user?.name || "Paciente") : "",
+      servicio: serviciosEntities.length > 0 ? serviciosEntities[0].name : "Valoración General",
+      odontologo:
+        listaOdontologos.length > 1
+          ? listaOdontologos[1].nombre
+          : "Dra. Laura Gómez",
+      horaInicio: hora,
+      horaFin,
       estado: isPaciente ? "Pendiente" : "Confirmada",
-      motivo: formMotivo || "Consulta agendada desde calendario",
+    });
+
+    setMostrarModal(true);
+  };
+
+  const guardarCita = async () => {
+    if (!nuevaCita.paciente.trim() || !nuevaCita.servicio.trim() || !fechaSeleccionada) {
+      return;
+    }
+
+    const matchedService = serviciosEntities.find((s) => s.name === nuevaCita.servicio);
+    const serviceIdToUse = matchedService?.id || "30000000-0000-0000-0000-000000000001";
+
+    const matchedProf = profesionalesEntities.find((p) => {
+      const pFullName = `Dr(a). ${p.firstName || ""} ${p.lastName || ""}`.trim();
+      return pFullName === nuevaCita.odontologo || p.firstName === nuevaCita.odontologo;
+    });
+    const profIdToUse =
+      matchedProf?.id ||
+      (profesionalesEntities.length > 0
+        ? profesionalesEntities[0].id
+        : "1d000000-0000-0000-0000-000000000001");
+
+    const matchedPatient =
+      pacientesEntities.find((pt) => {
+        return pt.id === user?.id || pt.personId === user?.personId;
+      }) || (pacientesEntities.length > 0 ? pacientesEntities[0] : null);
+    const patientIdToUse = matchedPatient?.id || "1e000000-0000-0000-0000-000000000001";
+
+    // Persistir en API .NET
+    try {
+      await appointmentService.create({
+        patientId: patientIdToUse,
+        professionalId: profIdToUse,
+        serviceId: serviceIdToUse,
+        startsAt: `${fechaSeleccionada}T${nuevaCita.horaInicio}:00`,
+        endsAt: `${fechaSeleccionada}T${nuevaCita.horaFin}:00`,
+        appointmentStatusId:
+          nuevaCita.estado === "Pendiente"
+            ? "10000000-0000-0000-0000-000000000001"
+            : "10000000-0000-0000-0000-000000000002",
+        appointmentOriginId: "20000000-0000-0000-0000-000000000003",
+        reasonForVisit: `Agendado desde agenda interactiva para ${nuevaCita.paciente}`,
+        notes: `Servicio: ${nuevaCita.servicio}. Odontólogo: ${nuevaCita.odontologo}`,
+      });
+      setSuccessToast("¡Cita agendada y guardada exitosamente en el backend!");
+      setTimeout(() => setSuccessToast(null), 3500);
+    } catch (err) {
+      console.warn("No se pudo guardar la cita en la API REST:", err);
+      setSuccessToast("Cita registrada en calendario interactivo.");
+      setTimeout(() => setSuccessToast(null), 3000);
+    }
+
+    const cita: Cita = {
+      id: citas.length > 0 ? Math.max(...citas.map((item) => item.id)) + 1 : 1,
+      paciente: nuevaCita.paciente,
+      servicio: nuevaCita.servicio,
+      odontologo: nuevaCita.odontologo,
+      fecha: fechaSeleccionada,
+      horaInicio: nuevaCita.horaInicio,
+      horaFin: nuevaCita.horaFin,
+      estado: nuevaCita.estado,
     };
 
-    // Intentar persistir en API backend .NET
-    try {
-      const fechaBase = selectedDate || new Date().toISOString().split("T")[0];
-      const horaParts = (newSlot.hora || "10:00").split(":");
-      const startH = parseInt(horaParts[0], 10) || 10;
-      const startM = parseInt(horaParts[1], 10) || 0;
-      const endMTotal = startH * 60 + startM + 45;
-      const endH = Math.floor(endMTotal / 60);
-      const endM = endMTotal % 60;
-      const endsHoraStr = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
-
-      await appointmentService.create({
-        patientId: matchedPatientId,
-        professionalId: matchedProfId,
-        serviceId: "30000000-0000-0000-0000-000000000001",
-        startsAt: `${fechaBase}T${newSlot.hora}:00`,
-        endsAt: `${fechaBase}T${endsHoraStr}:00`,
-        appointmentStatusId: isPaciente
-          ? "10000000-0000-0000-0000-000000000001" // AGENDADA
-          : "10000000-0000-0000-0000-000000000002", // CONFIRMADA
-        appointmentOriginId: "20000000-0000-0000-0000-000000000003", // WEB
-        reasonForVisit: newSlot.motivo || "Consulta agendada desde calendario",
-        notes: `Servicio: ${newSlot.servicio}. Paciente: ${newSlot.paciente}`,
-      });
-    } catch (err) {
-      console.warn("Could not save to API Appointments directly, fallback saved locally:", err);
-    }
-
-    setSlots((prev) => [newSlot, ...prev.filter((s) => !(s.hora === newSlot.hora && s.doctor === newSlot.doctor))]);
-    setShowBookModal(false);
-    setSelectedSlotForBooking(null);
-    setFormMotivo("");
-    setSuccessToast("¡Espacio de agenda reservado con éxito!");
-    setTimeout(() => setSuccessToast(null), 3500);
+    setCitas((actuales) => [...actuales, cita]);
+    setMostrarModal(false);
   };
 
-  const getStatusBadge = (estado?: string) => {
-    switch (estado) {
-      case "Confirmada":
-        return "bg-cyan-500/15 text-cyan-800 dark:text-cyan-200 border-cyan-500/30";
-      case "En Atención":
-        return "bg-blue-500/15 text-blue-800 dark:text-blue-200 border-blue-500/30";
-      case "Pendiente":
-        return "bg-amber-500/15 text-amber-800 dark:text-amber-200 border-amber-500/30";
-      case "Completada":
-        return "bg-purple-500/15 text-purple-800 dark:text-purple-200 border-purple-500/30";
-      default:
-        return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30";
-    }
+  const eliminarCita = (id: number) => {
+    setCitas((actuales) => actuales.filter((cita) => cita.id !== id));
   };
+
+  const obtenerPosicionEvento = (cita: Cita) => {
+    const [horaInicio, minutosInicio] = cita.horaInicio.split(":").map(Number);
+    const [horaFin, minutosFin] = cita.horaFin.split(":").map(Number);
+    const inicioMinutos = (horaInicio - 7) * 60 + minutosInicio;
+    const finMinutos = (horaFin - 7) * 60 + minutosFin;
+
+    return {
+      top: `${inicioMinutos}px`,
+      height: `${Math.max(finMinutos - inicioMinutos, 54)}px`,
+    };
+  };
+
+  const obtenerPosicionHoraActual = () => {
+    const fechaHoy = formatoFechaInput(horaActual);
+    const estaSemana = diasSemana.some(
+      (dia) => formatoFechaInput(dia) === fechaHoy
+    );
+    if (!estaSemana) {
+      return null;
+    }
+    const hora = horaActual.getHours();
+    const minutos = horaActual.getMinutes();
+    if (hora < 7 || hora > 18) {
+      return null;
+    }
+    return (hora - 7) * 60 + minutos;
+  };
+
+  const posicionHoraActual = obtenerPosicionHoraActual();
+
+  const gridTemplateColumns = "48px repeat(7, minmax(100px, 1fr))";
 
   return (
-    <div className="space-y-6 text-slate-900 dark:text-slate-100 pb-8">
-      {/* Toast */}
+    <>
+      {/* Toast Notificación */}
       {successToast && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 px-5 py-3 rounded-2xl shadow-2xl border border-teal-500/30 animate-scaleIn">
-          <CheckCircle2 size={18} className="text-teal-400 dark:text-teal-600 flex-shrink-0" />
-          <span className="text-xs font-semibold">{successToast}</span>
+        <div className="fixed top-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-slate-900/95 text-cyan-300 border border-cyan-500/40 shadow-2xl backdrop-blur-xl animate-slideDown">
+          <Check size={18} className="text-cyan-400" />
+          <span className="text-xs font-bold">{successToast}</span>
         </div>
       )}
 
-      {/* Encabezado Principal estilo Pacientes */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between animate-slideDown">
-        <div>
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-slate-900 dark:text-white drop-shadow-sm dark:drop-shadow-md">
-            Calendario y Agenda Clínica
-          </h1>
-          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mt-1 font-medium">
-            Visualización interactiva de disponibilidad horaria por profesional y día.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-          <button
-            type="button"
-            onClick={fetchAgendaData}
-            className="p-2.5 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/30 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-md active:scale-95 shadow-sm"
-            title="Recargar agenda desde base de datos"
-          >
-            <RefreshCw size={16} className={`text-cyan-600 dark:text-cyan-400 ${loading ? "animate-spin" : ""}`} />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setSelectedDate(new Date().toISOString().split("T")[0])}
-            className="p-2.5 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/30 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-md active:scale-95 shadow-sm text-xs font-semibold"
-          >
-            Hoy
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleOpenBook("09:00", selectedDoctor === "Todos los Odontólogos" ? (doctoresList[1] || "Dr. Especialista") : selectedDoctor)}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 px-5 py-2.5 text-sm font-semibold text-white dark:text-slate-950 shadow-md dark:shadow-[0_0_25px_rgba(34,211,238,0.3)] transition-all active:scale-95 cursor-pointer"
-          >
-            <Plus size={18} />
-            <span>Agendar Espacio</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Barra de Navegación de Fecha + Selector de Doctor */}
-      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 pt-2 animate-slideUp animate-stagger-1">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handlePrevDay}
-            className="p-2.5 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/30 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-md active:scale-95 shadow-sm"
-            aria-label="Día anterior"
-          >
-            <ChevronLeft size={18} />
-          </button>
-
-          <div className="flex items-center gap-2 px-4 py-2 bg-white/90 dark:bg-slate-950/65 border border-slate-200 dark:border-white/20 rounded-2xl backdrop-blur-xl shadow-md">
-            <CalendarIcon size={16} className="text-cyan-600 dark:text-cyan-400" />
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="bg-transparent text-sm font-bold text-slate-900 dark:text-white outline-none cursor-pointer [color-scheme:dark]"
-            />
-          </div>
-
-          <button
-            type="button"
-            onClick={handleNextDay}
-            className="p-2.5 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/30 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-md active:scale-95 shadow-sm"
-            aria-label="Día siguiente"
-          >
-            <ChevronRight size={18} />
-          </button>
-        </div>
-
-        {/* Filtro por Odontólogo */}
-        <div className="flex items-center gap-2">
-          <Stethoscope size={18} className="text-cyan-600 dark:text-cyan-400 flex-shrink-0" />
-          <select
-            value={selectedDoctor}
-            onChange={(e) => setSelectedDoctor(e.target.value)}
-            className="w-full sm:w-auto px-4 py-2.5 bg-white/90 dark:bg-slate-950/65 border border-slate-200 dark:border-white/20 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 dark:text-white outline-none focus:border-cyan-500 backdrop-blur-xl shadow-md cursor-pointer"
-          >
-            {doctoresList.map((doc) => (
-              <option key={doc} value={doc}>
-                {doc}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Grid de Franjas Horarias (Timeline Diario) */}
-      <div className="rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl shadow-md overflow-hidden p-6 space-y-3 animate-slideUp animate-stagger-2">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-200/80 dark:border-white/15">
-          <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Clock size={18} className="text-cyan-500" />
-            <span>Franjas Horarias del Día ({selectedDate})</span>
-          </h2>
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-            {filteredSlots.filter((s) => s.estado === "Libre").length} espacios disponibles
-          </span>
-        </div>
-
-        <div className="space-y-3">
-          {filteredSlots.map((slot) => {
-            const isLibre = slot.estado === "Libre";
-            return (
-              <div
-                key={`${slot.hora}-${slot.doctor}`}
-                className={`p-4 rounded-2xl border transition-all duration-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                  isLibre
-                    ? "bg-slate-50/50 dark:bg-slate-900/30 border-dashed border-slate-300/80 dark:border-white/15 hover:border-cyan-500/50 hover:bg-cyan-500/5"
-                    : "bg-white/95 dark:bg-slate-900/70 border-slate-200/90 dark:border-white/20 shadow-sm"
-                }`}
-              >
-                {/* Hora y Doctor */}
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-mono font-bold text-xs border border-slate-200 dark:border-white/10">
-                    <Clock size={13} className="text-cyan-500" />
-                    <span>{slot.hora}</span>
+      <div className="min-h-full w-full overflow-hidden px-4 pb-6 pt-4 text-slate-100 sm:px-6 lg:px-8">
+        <div className="mx-auto w-full max-w-[1700px]">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_240px]">
+            <main className="min-w-0 space-y-4">
+              {/* Tarjetas KPI Superiores */}
+              <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-700/70 bg-slate-950/85 px-4 py-4 shadow-lg backdrop-blur-sm">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan-400/20 bg-cyan-500/10">
+                    <CalendarDays size={20} className="text-cyan-400" />
                   </div>
-
                   <div>
-                    {isLibre ? (
-                      <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                        Espacio Disponible para Atención
-                      </p>
-                    ) : (
-                      <div className="space-y-0.5">
-                        <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                          <User size={14} className="text-cyan-600 dark:text-cyan-400" />
-                          <span>{slot.paciente}</span>
-                        </h4>
-                        <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">
-                          {slot.servicio}
-                        </p>
-                      </div>
-                    )}
+                    <p className="text-xs font-medium text-slate-400">Citas hoy</p>
+                    <p className="mt-1 text-2xl font-bold text-white">{citasHoy}</p>
+                    <p className="mt-1 text-[11px] text-slate-500">Total programadas</p>
                   </div>
                 </div>
 
-                {/* Info Doctor y Acción */}
-                <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/60 dark:border-white/10">
-                  <div className="text-right text-xs">
-                    <span className="font-semibold text-slate-700 dark:text-slate-300 block">{slot.doctor}</span>
-                    {slot.motivo && <span className="text-[11px] text-slate-500 dark:text-slate-400">{slot.motivo}</span>}
+                <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-700/70 bg-slate-950/85 px-4 py-4 shadow-lg backdrop-blur-sm">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan-400/20 bg-cyan-500/10">
+                    <Clock3 size={20} className="text-cyan-400" />
                   </div>
+                  <div>
+                    <p className="text-xs font-medium text-slate-400">Espacios disponibles</p>
+                    <p className="mt-1 text-2xl font-bold text-white">{espaciosDisponibles}</p>
+                    <p className="mt-1 text-[11px] text-slate-500">Para agendar</p>
+                  </div>
+                </div>
 
-                  <span
-                    className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold border ${getStatusBadge(
-                      slot.estado
-                    )}`}
-                  >
-                    {isLibre && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />}
-                    {slot.estado}
-                  </span>
+                <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-700/70 bg-slate-950/85 px-4 py-4 shadow-lg backdrop-blur-sm">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-blue-400/20 bg-blue-500/10">
+                    <CheckCircle2 size={20} className="text-blue-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-slate-400">Confirmadas</p>
+                    <p className="mt-1 text-2xl font-bold text-white">{confirmadas}</p>
+                    <p className="mt-1 text-[11px] text-slate-500">Citas confirmadas</p>
+                  </div>
+                </div>
 
-                  {isLibre && (
+                <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-700/70 bg-slate-950/85 px-4 py-4 shadow-lg backdrop-blur-sm">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-amber-400/20 bg-amber-500/10">
+                    <Hourglass size={20} className="text-amber-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-slate-400">Pendientes</p>
+                    <p className="mt-1 text-2xl font-bold text-white">{pendientes}</p>
+                    <p className="mt-1 text-[11px] text-slate-500">Por confirmar</p>
+                  </div>
+                </div>
+              </section>
+
+              {/* Calendario Principal */}
+              <section className="rounded-2xl border border-slate-700/80 bg-slate-950/90 p-3 shadow-xl backdrop-blur-sm">
+                {/* Cabecera y Controles */}
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => handleOpenBook(slot.hora, slot.doctor)}
-                      className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 text-white dark:text-slate-950 font-bold text-xs shadow-sm hover:scale-105 active:scale-95 transition-transform cursor-pointer"
+                      onClick={irHoy}
+                      className="rounded-xl border border-slate-700 bg-slate-900/90 px-3.5 py-2 text-xs font-bold text-slate-200 transition hover:border-cyan-500/50 hover:bg-slate-800 hover:text-white cursor-pointer"
                     >
-                      Reservar
+                      Hoy
                     </button>
-                  )}
+
+                    <div className="flex items-center rounded-xl border border-slate-700 bg-slate-900/90 p-0.5">
+                      <button
+                        type="button"
+                        onClick={() => cambiarSemana(-1)}
+                        className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-white cursor-pointer"
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => cambiarSemana(1)}
+                        className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-white cursor-pointer"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
+
+                    <p className="text-sm font-bold text-white">
+                      {obtenerRangoSemana(inicioSemana)}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={fetchAgendaData}
+                      className="rounded-xl border border-slate-700 bg-slate-900/90 p-2 text-slate-400 transition hover:text-cyan-400 cursor-pointer"
+                      title="Sincronizar con backend"
+                    >
+                      <RefreshCw size={16} />
+                    </button>
+
+                    <div className="flex rounded-xl border border-slate-700 bg-slate-900/90 p-0.5">
+                      {(["Día", "Semana", "Mes"] as const).map((modo) => (
+                        <button
+                          key={modo}
+                          type="button"
+                          onClick={() => setVista(modo)}
+                          className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition cursor-pointer ${
+                            vista === modo
+                              ? "bg-cyan-500 text-slate-950 font-bold"
+                              : "text-slate-400 hover:text-white"
+                          }`}
+                        >
+                          {modo}
+                        </button>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => abrirNuevaCita(new Date(), "09:00")}
+                      className="flex items-center gap-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 px-4 py-2 text-xs font-bold text-slate-950 transition cursor-pointer shadow-lg shadow-cyan-500/20"
+                    >
+                      <Plus size={16} />
+                      <span>Nueva Cita</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+
+                {/* Filtro Rápido Odontólogos */}
+                <div className="flex items-center gap-1.5 overflow-x-auto py-2.5 text-xs">
+                  {listaOdontologos.map((doc) => {
+                    const seleccionado = odontologosSeleccionados.includes(doc.nombre);
+                    return (
+                      <button
+                        key={doc.nombre}
+                        type="button"
+                        onClick={() => cambiarOdontologo(doc.nombre)}
+                        className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 font-medium transition cursor-pointer whitespace-nowrap ${
+                          seleccionado
+                            ? "border-cyan-500/60 bg-cyan-500/15 text-cyan-300"
+                            : "border-slate-800 bg-slate-900/50 text-slate-400 hover:border-slate-700 hover:text-slate-200"
+                        }`}
+                      >
+                        <span className={`h-2 w-2 rounded-full ${doc.color}`} />
+                        <span>{doc.nombre}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Matriz Calendario */}
+                <div className="overflow-x-auto">
+                  <div className="min-w-[760px]">
+                    {/* Encabezado Columnas Días */}
+                    <div
+                      className="grid border-b border-slate-800 text-center"
+                      style={{ gridTemplateColumns }}
+                    >
+                      <div className="py-2.5 text-[11px] font-bold text-slate-500">
+                        GMT-5
+                      </div>
+
+                      {diasSemana.map((dia, idx) => {
+                        const esHoy =
+                          formatoFechaInput(dia) === formatoFechaInput(horaActual);
+                        return (
+                          <div
+                            key={idx}
+                            className={`py-2 text-center border-l border-slate-800/60 ${
+                              esHoy ? "bg-cyan-500/10" : ""
+                            }`}
+                          >
+                            <p className="text-[11px] font-semibold text-slate-400">
+                              {nombresDias[dia.getDay()]}
+                            </p>
+                            <p
+                              className={`mt-0.5 text-sm font-bold inline-flex items-center justify-center h-6 w-6 rounded-full ${
+                                esHoy
+                                  ? "bg-cyan-500 text-slate-950"
+                                  : "text-slate-200"
+                              }`}
+                            >
+                              {dia.getDate()}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Cuerpo de Horas y Eventos */}
+                    <div
+                      className="relative grid"
+                      style={{
+                        gridTemplateColumns,
+                        height: "720px",
+                      }}
+                    >
+                      {/* Línea Hora Actual */}
+                      {posicionHoraActual !== null && (
+                        <div
+                          className="pointer-events-none absolute left-0 right-0 z-30 flex items-center"
+                          style={{ top: `${posicionHoraActual}px` }}
+                        >
+                          <div className="h-2 w-2 rounded-full bg-rose-500 -ml-1" />
+                          <div className="h-0.5 w-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]" />
+                        </div>
+                      )}
+
+                      {/* Columna Horas Eje Y */}
+                      <div className="relative border-r border-slate-800 text-right pr-2">
+                        {Array.from({ length: 12 }, (_, i) => {
+                          const hora = i + 7;
+                          return (
+                            <div
+                              key={hora}
+                              className="absolute right-2 text-[11px] font-mono font-medium text-slate-500"
+                              style={{ top: `${i * 60 - 7}px` }}
+                            >
+                              {`${String(hora).padStart(2, "0")}:00`}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* 7 Columnas de Días */}
+                      {diasSemana.map((dia, idx) => {
+                        const citasDia = obtenerCitasDia(dia);
+                        const esHoy =
+                          formatoFechaInput(dia) === formatoFechaInput(horaActual);
+
+                        return (
+                          <div
+                            key={idx}
+                            className={`relative border-r border-slate-800/60 ${
+                              esHoy ? "bg-cyan-500/[0.02]" : ""
+                            }`}
+                          >
+                            {/* Líneas Horarias */}
+                            {Array.from({ length: 12 }, (_, i) => (
+                              <div
+                                key={i}
+                                onClick={() =>
+                                  abrirNuevaCita(
+                                    dia,
+                                    `${String(i + 7).padStart(2, "0")}:00`
+                                  )
+                                }
+                                className="absolute left-0 right-0 border-b border-slate-800/40 hover:bg-slate-800/20 cursor-pointer transition-colors"
+                                style={{
+                                  top: `${i * 60}px`,
+                                  height: "60px",
+                                }}
+                              />
+                            ))}
+
+                            {/* Citas / Eventos */}
+                            {citasDia.map((cita) => {
+                              const posicion = obtenerPosicionEvento(cita);
+                              const colorEvento = obtenerColorEvento(cita.estado);
+
+                              return (
+                                <div
+                                  key={cita.id}
+                                  style={{
+                                    top: posicion.top,
+                                    height: posicion.height,
+                                  }}
+                                  className={`group absolute left-1 right-1 z-20 overflow-hidden rounded-xl border p-2 shadow-md transition hover:scale-[1.01] hover:z-30 cursor-pointer ${colorEvento.contenedor}`}
+                                >
+                                  <div className="flex items-start justify-between gap-1">
+                                    <p className="truncate text-xs font-bold leading-tight">
+                                      {cita.paciente}
+                                    </p>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        eliminarCita(cita.id);
+                                      }}
+                                      className="opacity-0 group-hover:opacity-100 transition p-0.5 hover:text-rose-400"
+                                      title="Eliminar cita"
+                                    >
+                                      <Trash2 size={12} />
+                                    </button>
+                                  </div>
+                                  <p className="truncate text-[11px] opacity-90 mt-0.5">
+                                    {cita.servicio}
+                                  </p>
+                                  <p className="text-[10px] opacity-75 mt-0.5 font-mono">
+                                    {cita.horaInicio} - {cita.horaFin}
+                                  </p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </main>
+
+            {/* Barra Lateral Derecha */}
+            <aside className="space-y-4">
+              {/* Calendario Miniatura */}
+              <section className="rounded-2xl border border-slate-700/80 bg-slate-950/90 p-4 shadow-xl backdrop-blur-sm">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                  <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                    {obtenerNombreMes(fechaActual)} {fechaActual.getFullYear()}
+                  </h3>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFechaActual(
+                          new Date(
+                            fechaActual.getFullYear(),
+                            fechaActual.getMonth() - 1,
+                            1
+                          )
+                        )
+                      }
+                      className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 cursor-pointer"
+                    >
+                      <ChevronLeft size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFechaActual(
+                          new Date(
+                            fechaActual.getFullYear(),
+                            fechaActual.getMonth() + 1,
+                            1
+                          )
+                        )
+                      }
+                      className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 cursor-pointer"
+                    >
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Días Mini Calendario */}
+                <div className="mt-3 grid grid-cols-7 gap-1 text-center text-[11px]">
+                  {["D", "L", "M", "M", "J", "V", "S"].map((d, i) => (
+                    <span key={i} className="font-semibold text-slate-500">
+                      {d}
+                    </span>
+                  ))}
+                  {Array.from({ length: 31 }, (_, i) => {
+                    const diaNum = i + 1;
+                    const esSeleccionado = diaNum === fechaActual.getDate();
+                    return (
+                      <button
+                        key={diaNum}
+                        type="button"
+                        onClick={() =>
+                          setFechaActual(
+                            new Date(
+                              fechaActual.getFullYear(),
+                              fechaActual.getMonth(),
+                              diaNum
+                            )
+                          )
+                        }
+                        className={`h-6 w-6 rounded-full flex items-center justify-center transition cursor-pointer mx-auto ${
+                          esSeleccionado
+                            ? "bg-cyan-500 font-bold text-slate-950 shadow-sm"
+                            : "text-slate-300 hover:bg-slate-800"
+                        }`}
+                      >
+                        {diaNum}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+
+              {/* Convenciones y Leyenda */}
+              <section className="rounded-2xl border border-slate-700/80 bg-slate-950/90 p-4 shadow-xl backdrop-blur-sm space-y-3 text-xs">
+                <h3 className="font-bold text-white uppercase tracking-wider text-[11px] pb-2 border-b border-slate-800">
+                  Estados de Cita
+                </h3>
+
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="h-3 w-3 rounded-full bg-cyan-400" />
+                    <span className="text-slate-300">Confirmada</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="h-3 w-3 rounded-full bg-blue-400" />
+                    <span className="text-slate-300">En Atención</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="h-3 w-3 rounded-full bg-amber-400" />
+                    <span className="text-slate-300">Pendiente</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="h-3 w-3 rounded-full bg-emerald-400" />
+                    <span className="text-slate-300">Disponible</span>
+                  </div>
+                </div>
+              </section>
+            </aside>
+          </div>
         </div>
       </div>
 
-      {/* MODAL RESERVAR ESPACIO */}
-      {showBookModal && selectedSlotForBooking && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-fadeIn">
-          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-scaleIn">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+      {/* Modal Agendar Cita */}
+      {mostrarModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-950 p-5 shadow-2xl animate-scaleIn">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
               <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                  Reservar Cita en Agenda
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  {selectedDate} a las <strong className="text-teal-600 dark:text-teal-400">{selectedSlotForBooking.hora}</strong>
+                <h2 className="text-lg font-bold text-white">Agendar Cita en Agenda</h2>
+                <p className="mt-1 text-xs text-slate-400">
+                  {fechaSeleccionada} · {horaSeleccionada}
                 </p>
               </div>
+
               <button
                 type="button"
-                onClick={() => setShowBookModal(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                onClick={() => setMostrarModal(false)}
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-900 hover:text-white cursor-pointer"
               >
-                <X size={18} />
+                <X size={19} />
               </button>
             </div>
 
-            <form onSubmit={handleConfirmBooking} className="p-6 space-y-4">
-              <SelectOrWriteInput
-                label="Odontólogo Tratante"
-                value={formDoctor}
-                onChange={(val) => setFormDoctor(val)}
-                options={professionalsOptions}
-                placeholder="Seleccionar doctor..."
-                required
-                type="doctor"
-              />
-
-              {!isPaciente && (
-                <SelectOrWriteInput
-                  label="Paciente"
-                  value={formPaciente}
-                  onChange={(val) => setFormPaciente(val)}
-                  options={patientsOptions}
-                  placeholder="Buscar o escribir paciente..."
-                  required
-                  type="paciente"
+            <div className="mt-5 space-y-4">
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-400">
+                  Paciente *
+                </label>
+                <input
+                  value={nuevaCita.paciente}
+                  onChange={(event) =>
+                    setNuevaCita((actual) => ({
+                      ...actual,
+                      paciente: event.target.value,
+                    }))
+                  }
+                  placeholder="Nombre del paciente"
+                  className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3.5 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-400"
                 />
-              )}
+              </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Procedimiento o Servicio <span className="text-rose-500">*</span>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-400">
+                  Tratamiento / Servicio *
+                </label>
+                {serviciosEntities.length > 0 ? (
+                  <select
+                    value={nuevaCita.servicio}
+                    onChange={(event) =>
+                      setNuevaCita((actual) => ({
+                        ...actual,
+                        servicio: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3.5 py-2.5 text-sm text-white outline-none focus:border-cyan-400 cursor-pointer"
+                  >
+                    {serviciosEntities.map((s) => (
+                      <option key={s.id} value={s.name}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    value={nuevaCita.servicio}
+                    onChange={(event) =>
+                      setNuevaCita((actual) => ({
+                        ...actual,
+                        servicio: event.target.value,
+                      }))
+                    }
+                    placeholder="Ej: Limpieza dental y valoración"
+                    className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3.5 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-400"
+                  />
+                )}
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-400">
+                  Odontólogo *
                 </label>
                 <select
-                  value={formServicio}
-                  onChange={(e) => setFormServicio(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all shadow-sm cursor-pointer"
+                  value={nuevaCita.odontologo}
+                  onChange={(event) =>
+                    setNuevaCita((actual) => ({
+                      ...actual,
+                      odontologo: event.target.value,
+                    }))
+                  }
+                  className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3.5 py-2.5 text-sm text-white outline-none focus:border-cyan-400 cursor-pointer"
                 >
-                  {servicesList.map((srv) => (
-                    <option key={srv} value={srv}>
-                      {srv}
-                    </option>
-                  ))}
+                  {listaOdontologos
+                    .filter((o) => o.nombre !== "Todos los odontólogos")
+                    .map((o) => (
+                      <option key={o.nombre} value={o.nombre}>
+                        {o.nombre}
+                      </option>
+                    ))}
                 </select>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Motivo de la Cita o Notas
-                </label>
-                <textarea
-                  rows={2}
-                  placeholder="Escribe el motivo de la consulta..."
-                  value={formMotivo}
-                  onChange={(e) => setFormMotivo(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 resize-none outline-none transition-all shadow-sm"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-slate-400">
+                    Hora Inicio
+                  </label>
+                  <input
+                    type="time"
+                    value={nuevaCita.horaInicio}
+                    onChange={(event) =>
+                      setNuevaCita((actual) => ({
+                        ...actual,
+                        horaInicio: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3.5 py-2.5 text-sm text-white outline-none focus:border-cyan-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-slate-400">
+                    Hora Finalización
+                  </label>
+                  <input
+                    type="time"
+                    value={nuevaCita.horaFin}
+                    onChange={(event) =>
+                      setNuevaCita((actual) => ({
+                        ...actual,
+                        horaFin: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3.5 py-2.5 text-sm text-white outline-none focus:border-cyan-400"
+                  />
+                </div>
               </div>
 
-              <div className="pt-2 flex items-center justify-end gap-2.5 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setShowBookModal(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-colors text-xs font-medium cursor-pointer"
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-400">
+                  Estado de la Cita
+                </label>
+                <select
+                  value={nuevaCita.estado}
+                  onChange={(event) =>
+                    setNuevaCita((actual) => ({
+                      ...actual,
+                      estado: event.target.value as EstadoCita,
+                    }))
+                  }
+                  className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3.5 py-2.5 text-sm text-white outline-none focus:border-cyan-400 cursor-pointer"
                 >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-sm transition-all active:scale-95 cursor-pointer"
-                >
-                  Confirmar Cita
-                </button>
+                  <option value="Confirmada">Confirmada</option>
+                  <option value="Pendiente">Pendiente</option>
+                  <option value="En Atención">En Atención</option>
+                </select>
               </div>
-            </form>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3 border-t border-slate-800 pt-4">
+              <button
+                type="button"
+                onClick={() => setMostrarModal(false)}
+                className="rounded-xl border border-slate-700 px-4 py-2.5 text-sm font-semibold text-slate-300 transition hover:bg-slate-900 cursor-pointer"
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                onClick={guardarCita}
+                className="flex items-center gap-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 px-5 py-2.5 text-sm font-bold text-slate-950 transition cursor-pointer shadow-lg shadow-cyan-500/20"
+              >
+                <Save size={16} />
+                Guardar Cita
+              </button>
+            </div>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
+
 export default AgendaView;

@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../../api/authService';
-import { authenticateUser } from './mocks/users.mock';
 
 export interface User {
   id: string;
@@ -150,7 +149,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // 2. Si hay token guardado previamente, sincronizar sesión silenciosamente
     const token = localStorage.getItem('auth_token');
-    if (token && token !== 'mock_dev_token') {
+    if (token) {
       authService
         .getProfile()
         .then((profile) => {
@@ -163,7 +162,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
         })
         .catch((err) => {
-          console.warn('Silent session validation in background:', err?.message || err);
+          console.warn('Sesión previa inválida o expirada:', err?.message || err);
+          if (err?.response?.status === 401) {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('nexus_token');
+            localStorage.removeItem('auth_user');
+            localStorage.removeItem('nexus_user');
+            setUser(null);
+            navigate('/login', { replace: true });
+          }
         })
         .finally(() => {
           setIsLoading(false);
@@ -171,7 +178,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } else {
       setIsLoading(false);
     }
-  }, []);
+  }, [navigate]);
 
   const updateUser = (updatedData: Partial<User>) => {
     setUser((prev) => {
@@ -191,7 +198,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const cleanIdentifier = identifier.trim();
     const cleanPassword = password.trim();
     
-    // Si el identificador es un correo conocido de los roles, mapear a su número de documento
+    // Si el identificador es un correo conocido de los roles, mapear a su número de documento en la BD
     let resolvedLoginId = cleanIdentifier;
     const lower = cleanIdentifier.toLowerCase();
     if (lower.includes("admin")) resolvedLoginId = "1234567890";
@@ -213,7 +220,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           localStorage.setItem('refresh_token', refreshToken);
         }
 
-        // Obtener perfil completo con datos de persona
+        // Obtener perfil completo con datos de persona desde el backend
         let userData: User;
         try {
           const profile = await authService.getProfile();
@@ -230,56 +237,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       return { success: false, error: 'Error al procesar la autenticación.' };
     } catch (error: any) {
-      console.warn('Backend login attempt returned error, verifying demo credentials...', error);
-
-      // 2. Fallback de soporte para desarrollo con roles
-      const mock = authenticateUser(cleanIdentifier, cleanPassword);
-      if (mock) {
-        const mockPermissions =
-          mock.rol === "ADMINISTRADOR"
-            ? [
-                "APPOINTMENTS:VIEW", "APPOINTMENTS:CREATE", "APPOINTMENTS:CANCEL", "APPOINTMENTS:ATTEND", "APPOINTMENTS:REASSIGN",
-                "PATIENTS:VIEW", "PATIENTS:CREATE", "PATIENTS:UPDATE", "PATIENTS:DELETE",
-                "EMPLOYEES:VIEW", "EMPLOYEES:CREATE", "EMPLOYEES:UPDATE", "EMPLOYEES:DELETE",
-                "USERS:VIEW", "USERS:CREATE", "USERS:UPDATE", "USERS:DELETE", "USERS:RESET_PASSWORD",
-                "SERVICES:VIEW", "SERVICES:CREATE", "SERVICES:UPDATE", "SERVICES:DELETE",
-                "PEOPLE:VIEW", "PEOPLE:CREATE", "PEOPLE:UPDATE", "PEOPLE:DELETE",
-                "ROLES:VIEW", "ROLES:UPDATE", "CATALOGS:VIEW", "AUDIT:VIEW", "CLINICAL_RECORDS:VIEW", "ODONTOGRAM:VIEW",
-                "REPORTS:VIEW", "PROFILE:VIEW"
-              ]
-            : mock.rol === "ODONTOLOGO"
-            ? ["APPOINTMENTS:VIEW", "APPOINTMENTS:ATTEND", "PATIENTS:VIEW", "PEOPLE:VIEW", "CATALOGS:VIEW", "CLINICAL_RECORDS:VIEW", "ODONTOGRAM:VIEW", "PROFILE:VIEW"]
-            : mock.rol === "RECEPCIONISTA"
-            ? ["APPOINTMENTS:VIEW", "PATIENTS:VIEW", "PATIENTS:CREATE", "PEOPLE:VIEW", "CATALOGS:VIEW", "PROFILE:VIEW"]
-            : ["APPOINTMENTS:VIEW", "PROFILE:VIEW"];
-
-        const userData: User = {
-          id: String(mock.id),
-          personId: `person-${mock.id}`,
-          name: `${mock.nombre} ${mock.apellido}`,
-          nombre: mock.nombre,
-          apellido: mock.apellido,
-          email: mock.email,
-          cedula: mock.cedula,
-          telefono: mock.telefono,
-          direccion: mock.direccion,
-          sexo: mock.sexo,
-          rol: mock.rol,
-          roleIds: [mock.rol],
-          permissions: mockPermissions,
-          avatar: mock.avatar,
-        };
-        setUser(userData);
-        localStorage.setItem('auth_user', JSON.stringify(userData));
-        localStorage.setItem('auth_token', 'mock_dev_token');
-        navigate('/dashboard', { replace: true });
-        return { success: true };
-      }
+      console.error('Error al autenticar contra Backend API .NET:', error);
 
       const errorMessage =
         error.response?.data?.message === 'Invalid email or password.'
           ? 'Usuario o contraseña incorrectos. Verifica tu cédula o correo.'
-          : error.response?.data?.message || 'Usuario o contraseña incorrectos. Verifica tus credenciales.';
+          : error.response?.data?.message || 'Error de conexión con el servidor de autenticación.';
 
       return { success: false, error: errorMessage };
     } finally {

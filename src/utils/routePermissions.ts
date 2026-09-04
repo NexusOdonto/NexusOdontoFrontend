@@ -62,7 +62,6 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
   "/odontograma": "ODONTOGRAM:VIEW",
   "/usuarios": "USERS:VIEW",
   "/roles-permisos": "ROLES:VIEW",
-  "/configuracion": "CATALOGS:VIEW",
   "/perfil": "PROFILE:VIEW",
 };
 
