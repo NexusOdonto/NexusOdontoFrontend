@@ -18,7 +18,7 @@ import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../features/auth/AuthContext";
 import { hasRouteAccess, getUserRole } from "../../utils/routePermissions";
-import logo from "../../assets/nexus-odonto-logo.webp";
+import nexusLogoIcon from "../../assets/nexus-odonto-logo.webp";
 
 interface SidebarProps {
   mobileOpen: boolean;
@@ -123,33 +123,34 @@ export function Sidebar({
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         } lg:translate-x-0`}
       >
-        {/* Logo Section Refinado (Compatible Modo Claro y Oscuro) */}
-        <div className="p-3.5 border-b border-slate-200/80 dark:border-white/10 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="p-1 rounded-lg w-7 h-7 flex items-center justify-center flex-shrink-0 bg-slate-100 dark:bg-slate-900 border border-slate-200/80 dark:border-white/10">
-              <img
-                src={logo}
-                alt="NexusOdonto"
-                className="w-5 h-5 opacity-90"
-              />
-            </div>
+        {/* Header del Sidebar */}
+        <div
+          className={`flex items-center px-3 py-4 border-b border-slate-200/80 dark:border-white/10 transition-all duration-300 ${
+            isCollapsed ? "flex-col gap-3 justify-center" : "justify-between gap-2"
+          }`}
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <img
+              src={nexusLogoIcon}
+              alt="NexusOdonto"
+              className="h-8 w-8 min-h-[32px] min-w-[32px] flex-shrink-0 object-contain"
+            />
+
             {!isCollapsed && (
-              <span className="font-bold text-sm tracking-tight text-slate-900 dark:text-white whitespace-nowrap">
-                NexusOdonto
+              <span className="text-xl font-serif font-bold tracking-tight whitespace-nowrap overflow-hidden">
+                <span className="text-slate-900 dark:text-white">Nexus</span>
+                <span className="text-teal-700 dark:text-teal-400">Odonto</span>
               </span>
             )}
           </div>
+
           <button
             type="button"
             onClick={toggleCollapse}
-            className="hidden lg:flex p-1 rounded-md hover:bg-slate-100 dark:hover:bg-white/10 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
+            className="hidden lg:flex p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex-shrink-0 cursor-pointer"
             aria-label={isCollapsed ? "Expandir menú" : "Colapsar menú"}
           >
-            {isCollapsed ? (
-              <ChevronRight size={16} strokeWidth={1.25} />
-            ) : (
-              <ChevronLeft size={16} strokeWidth={1.25} />
-            )}
+            {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
           </button>
         </div>
 

@@ -1,5 +1,5 @@
 import { Suspense, lazy } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
 
 import ProtectedRoute from "./ProtectedRoute";
 import PublicOnlyRoute from "./PublicOnlyRoute";
@@ -112,6 +112,18 @@ const ConfiguracionView = lazy(() =>
   })),
 );
 
+const ErrorAccessPage = lazy(() =>
+  import("../features/auth/ErrorAccessPage").then((module) => ({
+    default: module.default,
+  })),
+);
+
+const NotFoundPage = lazy(() =>
+  import("../pages/NotFoundPage").then((module) => ({
+    default: module.NotFoundPage,
+  })),
+);
+
 function LoadingFallback() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
@@ -134,6 +146,12 @@ export default function AppRoutes() {
 
         {/* Callback OAuth público */}
         <Route path="/auth/callback" element={<AuthCallback />} />
+
+        {/* Pantallas de Error y Control de Acceso Directas */}
+        <Route path="/401" element={<ErrorAccessPage code={401} />} />
+        <Route path="/403" element={<ErrorAccessPage code={403} />} />
+        <Route path="/404" element={<NotFoundPage />} />
+        <Route path="/unauthorized" element={<ErrorAccessPage code={401} />} />
 
         {/* Rutas Públicas Exclusivas (si ya tiene sesión activa, redirige a /dashboard) */}
         <Route element={<PublicOnlyRoute />}>
@@ -270,7 +288,8 @@ export default function AppRoutes() {
           />
         </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* Catch-all para URLs inexistentes */}
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Suspense>
   );

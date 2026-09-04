@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { ShieldAlert, ArrowLeft, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '../features/auth/AuthContext';
 import { hasRouteAccess, ROUTE_PERMISSIONS } from '../utils/routePermissions';
+
+import { ErrorAccessPage } from '../features/auth/ErrorAccessPage';
 
 interface ProtectedRouteProps {
   requiredRoles?: string[];
@@ -13,23 +14,22 @@ export default function ProtectedRoute({ requiredRoles: _requiredRoles = [] }: P
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Bloqueo estricto del botón 'Atrás' para no salir de la app ni volver al login
+  // Manejo controlado del historial de navegación para evitar volver al login sin cerrar sesión
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    // Anclar la entrada actual en el historial del navegador
-    window.history.pushState(null, '', window.location.href);
-
     const handlePopState = () => {
-      // Si el navegador intenta retroceder fuera de la app o al login, retener en la misma página
-      window.history.pushState(null, '', window.location.href);
+      // Si el navegador intenta retroceder a rutas de login o register, redirigir a dashboard
+      if (window.location.pathname === '/login' || window.location.pathname === '/register') {
+        navigate('/dashboard', { replace: true });
+      }
     };
 
     window.addEventListener('popstate', handlePopState);
     return () => {
       window.removeEventListener('popstate', handlePopState);
     };
-  }, [isAuthenticated, location.pathname]);
+  }, [isAuthenticated, navigate]);
 
   // 1. Mostrar pantalla de carga suave mientras se valida la sesión inicial
   if (isLoading) {
@@ -59,44 +59,12 @@ export default function ProtectedRoute({ requiredRoles: _requiredRoles = [] }: P
   if (!hasRouteAccess(user, location.pathname)) {
     const requiredPermission = ROUTE_PERMISSIONS[location.pathname] || 'Módulo clínico/administrativo';
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
-        <div className="text-center p-8 max-w-md bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-4 animate-fadeIn">
-          <div className="mx-auto w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 flex items-center justify-center font-bold">
-            <ShieldAlert size={28} className="text-red-500" />
-          </div>
-          
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-            Acceso Restringido
-          </h1>
-          
-          <p className="text-sm text-slate-600 dark:text-slate-400">
-            Tu rol no cuenta con los permisos para acceder a esta sección protegida.
-          </p>
-          
-          <div className="text-xs text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/60 py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-800 font-mono">
-            {requiredPermission}
-          </div>
-
-          <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center">
-            <button
-              type="button"
-              onClick={() => navigate('/dashboard')}
-              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-primary-500 text-white rounded-xl hover:bg-primary-600 transition-all font-medium text-sm cursor-pointer shadow-sm active:scale-95"
-            >
-              <LayoutDashboard size={16} />
-              <span>Ir a mi Dashboard</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => window.history.back()}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors font-medium text-sm cursor-pointer"
-            >
-              <ArrowLeft size={16} />
-              <span>Volver</span>
-            </button>
-          </div>
-        </div>
-      </div>
+      <ErrorAccessPage
+        code={403}
+        title="Acceso denegado al módulo"
+        description="Tu rol de usuario actual no cuenta con los privilegios asignados para operar esta sección clínica o administrativa de NexusOdonto."
+        requiredPermission={requiredPermission}
+      />
     );
   }
 

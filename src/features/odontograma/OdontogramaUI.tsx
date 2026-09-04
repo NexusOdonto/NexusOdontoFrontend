@@ -374,7 +374,7 @@ function OdontogramaUI() {
       try {
         await odontogramService.create({
           patientId: selectedPaciente.id,
-          dentitionTypeId: state.dentitionType === "permanent" ? "10000000-0000-0000-0000-000000000001" : "10000000-0000-0000-0000-000000000002",
+          dentitionTypeId: state.dentitionType === "permanent" ? "19000000-0000-0000-0000-000000000001" : "19000000-0000-0000-0000-000000000002",
           notes: notasClinicas,
         });
       } catch (err) {

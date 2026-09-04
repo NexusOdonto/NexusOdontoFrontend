@@ -1,4 +1,5 @@
 import axiosClient from './axiosClient';
+import { personService } from './personService';
 
 export interface PatientResponseDto {
   id: string;
@@ -44,7 +45,32 @@ export interface UpdatePatientDto {
 export const patientService = {
   getAll: async (): Promise<PatientResponseDto[]> => {
     const response = await axiosClient.get('/v1/Patients');
-    return response.data;
+    const rawPatients: any[] = Array.isArray(response.data) ? response.data : (response.data?.items || []);
+
+    try {
+      const persons = await personService.getAll().catch(() => []);
+      if (Array.isArray(persons) && persons.length > 0) {
+        return rawPatients.map((p) => {
+          const matchedPerson = persons.find(
+            (per) => per.id && p.personId && String(per.id).toLowerCase() === String(p.personId).toLowerCase()
+          );
+          return {
+            ...p,
+            firstName: matchedPerson?.firstName || p.firstName,
+            lastName: matchedPerson?.lastName || p.lastName,
+            documentNumber: matchedPerson?.documentNumber || p.documentNumber,
+            email: matchedPerson?.email || p.email,
+            phone: matchedPerson?.phone || p.phone,
+            address: matchedPerson?.address || p.address,
+            dateOfBirth: matchedPerson?.dateOfBirth || p.dateOfBirth,
+          };
+        });
+      }
+    } catch {
+      // Fallback
+    }
+
+    return rawPatients;
   },
 
   getById: async (id: string): Promise<PatientResponseDto> => {

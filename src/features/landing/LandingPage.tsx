@@ -16,7 +16,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
-import logoNexus from "../../assets/nexus-odonto-logo.webp";
+import BrandLogo from "../../components/common/BrandLogo";
 import fondoLight from "../../assets/fondo-ligh.webp";
 import fondoDark from "../../assets/fondo-darck.webp";
 
@@ -45,26 +45,12 @@ export default function LandingPage() {
       <header className="sticky top-0 z-50 w-full bg-white/85 dark:bg-slate-950/85 backdrop-blur-2xl border-b border-slate-200/80 dark:border-white/10 shadow-sm transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           
-          {/* Logo y Nombre con microinteracción */}
+          {/* Logo con microinteracción */}
           <div
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            className="flex items-center gap-3 cursor-pointer group select-none"
+            className="cursor-pointer group select-none transition-transform active:scale-95"
           >
-            <div className="relative flex items-center justify-center h-12 w-12 rounded-2xl bg-gradient-to-br from-teal-500/20 via-cyan-500/20 to-blue-500/20 border border-teal-500/40 shadow-md group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 overflow-hidden">
-              <img
-                src={logoNexus}
-                alt="NexusOdonto Logo"
-                className="h-10 w-10 object-contain drop-shadow"
-              />
-            </div>
-            <div>
-              <span className="text-xl sm:text-2xl font-black tracking-tight bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 dark:from-teal-400 dark:via-cyan-400 dark:to-blue-400 bg-clip-text text-transparent">
-                NexusOdonto
-              </span>
-              <span className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest -mt-1">
-                Centro Odontológico Especializado
-              </span>
-            </div>
+            <BrandLogo />
           </div>
 
           {/* Enlaces de Navegación */}
@@ -480,10 +466,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 pb-8 border-b border-slate-200/80 dark:border-white/10 text-xs">
           
           <div className="space-y-3 md:col-span-1">
-            <div className="flex items-center gap-2">
-              <img src={logoNexus} alt="Logo" className="h-8 w-8 object-contain" />
-              <span className="font-black text-base text-slate-900 dark:text-white">NexusOdonto</span>
-            </div>
+            <BrandLogo imageClassName="h-7 w-auto object-contain" textClassName="text-base" />
             <p className="text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
               Centro de atención odontológica integral y gestión clínica especializada.
             </p>

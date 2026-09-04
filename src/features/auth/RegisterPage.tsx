@@ -26,6 +26,7 @@ import { useAuth } from "./AuthContext";
 import { GoogleAuthButton } from "./components/GoogleAuthButton";
 import fondoLoginLight from "../../assets/fondo-Login-ligh.webp";
 import fondoLoginDark from "../../assets/fondoLogin.webp";
+import logoNexus from "../../assets/nexus-odonto-logo.webp";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -297,9 +298,12 @@ export default function RegisterPage() {
               <span>Volver al Login</span>
             </button>
 
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-400">Portal Clínico</span>
-              <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse" />
+            <div className="flex items-center">
+              <img
+                src={logoNexus}
+                alt="NexusOdonto"
+                className="h-7 w-auto object-contain"
+              />
             </div>
           </div>
 

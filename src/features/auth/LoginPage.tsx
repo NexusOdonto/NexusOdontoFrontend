@@ -8,6 +8,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from './AuthContext';
 import fondoLoginLight from '../../assets/fondo-Login-ligh.webp';
 import fondoLoginDark from '../../assets/fondoLogin.webp';
+import logoNexus from '../../assets/nexus-odonto-logo.webp';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -91,8 +92,17 @@ export default function LoginPage() {
         {/* Tarjeta Principal */}
         <div className="relative z-10 w-full p-8 md:p-10 rounded-3xl bg-slate-950/70 backdrop-blur-xl border border-white/15 shadow-[0_20px_50px_rgba(0,0,0,0.6)] transition-all duration-500 ease-out flex flex-col gap-6 group-hover:scale-[1.02] group-hover:-translate-y-1">
           
+          {/* Logo oficial corporativo */}
+          <div className="flex justify-center select-none -mb-2">
+            <img
+              src={logoNexus}
+              alt="NexusOdonto"
+              className="h-12 w-auto object-contain drop-shadow-md"
+            />
+          </div>
+
           {/* Title with gradient */}
-          <h1 className="bg-gradient-to-r from-white via-slate-100 to-teal-300 bg-clip-text text-transparent font-extrabold text-4xl tracking-tight text-center transition-all duration-300 hover:scale-105 cursor-default select-none">
+          <h1 className="bg-gradient-to-r from-white via-slate-100 to-teal-300 bg-clip-text text-transparent font-extrabold text-3xl tracking-tight text-center transition-all duration-300 hover:scale-105 cursor-default select-none">
             Bienvenido
           </h1>
 
