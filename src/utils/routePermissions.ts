@@ -12,6 +12,7 @@ export const ROLE_ALLOWED_ROUTES: Record<SystemRole, string[]> = {
     "/dashboard",
     "/citas",
     "/agenda",
+    "/atencion-chat",
     "/pacientes",
     "/pacientes/nuevo",
     "/profesionales",
@@ -37,6 +38,7 @@ export const ROLE_ALLOWED_ROUTES: Record<SystemRole, string[]> = {
     "/dashboard",
     "/citas",
     "/agenda",
+    "/atencion-chat",
     "/pacientes",
     "/pacientes/nuevo",
     "/profesionales",
@@ -54,6 +56,7 @@ export const ROLE_ALLOWED_ROUTES: Record<SystemRole, string[]> = {
 export const ROUTE_PERMISSIONS: Record<string, string> = {
   "/citas": "APPOINTMENTS:VIEW",
   "/agenda": "APPOINTMENTS:VIEW",
+  "/atencion-chat": "CHATBOT:VIEW",
   "/pacientes": "PATIENTS:VIEW",
   "/pacientes/nuevo": "PATIENTS:CREATE",
   "/profesionales": "PEOPLE:VIEW",

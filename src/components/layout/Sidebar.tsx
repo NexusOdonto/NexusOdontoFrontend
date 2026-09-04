@@ -12,6 +12,7 @@ import {
   UserCircle,
   Sparkles,
   Settings,
+  MessageSquare,
 } from "lucide-react";
 
 import { useState } from "react";
@@ -50,6 +51,11 @@ export function Sidebar({
       label: "Agenda",
       icon: ClipboardList,
       path: "/agenda",
+    },
+    {
+      label: "Atención WhatsApp",
+      icon: MessageSquare,
+      path: "/atencion-chat",
     },
     {
       label: "Pacientes",
