@@ -24,32 +24,41 @@ export interface ClinicalAttentionResponseDto {
 }
 
 export interface CreateClinicalAttentionRequestDto {
-  clinicalHistoryId: string;
   appointmentId?: string;
-  professionalId: string;
-  attentionDate: string;
-  reasonForConsultation: string;
+  clinicalExam?: string;
+  progressNotes?: string;
+  treatmentPlan?: string;
+  // Compatibilidad con vistas previas
+  clinicalHistoryId?: string;
+  professionalId?: string;
+  attentionDate?: string;
+  reasonForConsultation?: string;
   currentIllness?: string;
   physicalExamination?: string;
   planAndTreatment?: string;
   observations?: string;
 }
 
+
 export interface DiagnosisResponseDto {
   id: string;
   clinicalAttentionId: string;
-  cie10Code: string;
+  code?: string;
+  cie10Code?: string;
   description: string;
-  diagnosisType: string;
-  isPresumptive: boolean;
+  type?: string;
+  diagnosisType?: string;
+  isPresumptive?: boolean;
 }
 
 export interface CreateDiagnosisRequestDto {
   clinicalAttentionId: string;
-  cie10Code: string;
+  code?: string;
+  cie10Code?: string;
   description: string;
-  diagnosisType: string;
-  isPresumptive: boolean;
+  type?: string;
+  diagnosisType?: string;
+  isPresumptive?: boolean;
 }
 
 export interface ProcedurePerformedResponseDto {
@@ -78,18 +87,38 @@ export const clinicalHistoryService = {
   },
 
   createAttention: async (data: CreateClinicalAttentionRequestDto): Promise<ClinicalAttentionResponseDto> => {
-    const response = await axiosClient.post('/v1/ClinicalAttentions', data);
+    const payload = {
+      appointmentId: data.appointmentId || "1e000000-0000-0000-0000-000000000001",
+      clinicalExam: data.clinicalExam || data.physicalExamination || data.reasonForConsultation || null,
+      progressNotes: data.progressNotes || data.observations || data.currentIllness || null,
+      treatmentPlan: data.treatmentPlan || data.planAndTreatment || null,
+    };
+    const response = await axiosClient.post('/v1/ClinicalAttentions', payload);
     return response.data;
   },
 
   getDiagnoses: async (): Promise<DiagnosisResponseDto[]> => {
     const response = await axiosClient.get('/v1/Diagnoses');
-    return response.data;
+    return (response.data || []).map((d: any) => ({
+      ...d,
+      cie10Code: d.code || d.cie10Code || '',
+      diagnosisType: d.type || d.diagnosisType || 'DENTAL',
+    }));
   },
 
   createDiagnosis: async (data: CreateDiagnosisRequestDto): Promise<DiagnosisResponseDto> => {
-    const response = await axiosClient.post('/v1/Diagnoses', data);
-    return response.data;
+    const payload = {
+      clinicalAttentionId: data.clinicalAttentionId,
+      code: data.code || data.cie10Code || 'K02.9',
+      description: data.description || 'Diagnóstico dental',
+      type: data.type || data.diagnosisType || 'DENTAL',
+    };
+    const response = await axiosClient.post('/v1/Diagnoses', payload);
+    return {
+      ...response.data,
+      cie10Code: response.data.code || response.data.cie10Code,
+      diagnosisType: response.data.type || response.data.diagnosisType,
+    };
   },
 
   getProcedures: async (): Promise<ProcedurePerformedResponseDto[]> => {
@@ -97,3 +126,4 @@ export const clinicalHistoryService = {
     return response.data;
   },
 };
+

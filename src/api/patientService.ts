@@ -4,12 +4,15 @@ import { personService } from './personService';
 export interface PatientResponseDto {
   id: string;
   personId: string;
+  emergencyContact?: string;
+  emergencyPhone?: string;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   insuranceProvider?: string;
   insurancePolicyNumber?: string;
   bloodType?: string;
   allergies?: string;
+  isActive?: boolean;
   createdAt: string;
   // Campos enriquecidos de Person
   firstName?: string;
@@ -24,6 +27,8 @@ export interface PatientResponseDto {
 
 export interface CreatePatientDto {
   personId: string;
+  emergencyContact?: string;
+  emergencyPhone?: string;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   insuranceProvider?: string;
@@ -33,14 +38,25 @@ export interface CreatePatientDto {
 }
 
 export interface UpdatePatientDto {
-  personId: string;
+  personId?: string;
+  emergencyContact?: string;
+  emergencyPhone?: string;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   insuranceProvider?: string;
   insurancePolicyNumber?: string;
   bloodType?: string;
   allergies?: string;
+  isActive?: boolean;
 }
+
+const mapPatientResponse = (data: any): PatientResponseDto => ({
+  ...data,
+  emergencyContactName: data?.emergencyContact || data?.emergencyContactName,
+  emergencyContactPhone: data?.emergencyPhone || data?.emergencyContactPhone,
+  emergencyContact: data?.emergencyContact || data?.emergencyContactName,
+  emergencyPhone: data?.emergencyPhone || data?.emergencyContactPhone,
+});
 
 export const patientService = {
   getAll: async (): Promise<PatientResponseDto[]> => {
@@ -54,7 +70,7 @@ export const patientService = {
           const matchedPerson = persons.find(
             (per) => per.id && p.personId && String(per.id).toLowerCase() === String(p.personId).toLowerCase()
           );
-          return {
+          return mapPatientResponse({
             ...p,
             firstName: matchedPerson?.firstName || p.firstName,
             lastName: matchedPerson?.lastName || p.lastName,
@@ -63,29 +79,39 @@ export const patientService = {
             phone: matchedPerson?.phone || p.phone,
             address: matchedPerson?.address || p.address,
             dateOfBirth: matchedPerson?.dateOfBirth || p.dateOfBirth,
-          };
+          });
         });
       }
     } catch {
       // Fallback
     }
 
-    return rawPatients;
+    return rawPatients.map(mapPatientResponse);
   },
 
   getById: async (id: string): Promise<PatientResponseDto> => {
     const response = await axiosClient.get(`/v1/Patients/${id}`);
-    return response.data;
+    return mapPatientResponse(response.data);
   },
 
   create: async (data: CreatePatientDto): Promise<PatientResponseDto> => {
-    const response = await axiosClient.post('/v1/Patients', data);
-    return response.data;
+    const payload = {
+      personId: data.personId,
+      emergencyContact: data.emergencyContact || data.emergencyContactName || null,
+      emergencyPhone: data.emergencyPhone || data.emergencyContactPhone || null,
+    };
+    const response = await axiosClient.post('/v1/Patients', payload);
+    return mapPatientResponse(response.data);
   },
 
   update: async (id: string, data: UpdatePatientDto): Promise<PatientResponseDto> => {
-    const response = await axiosClient.put(`/v1/Patients/${id}`, data);
-    return response.data;
+    const payload = {
+      emergencyContact: data.emergencyContact || data.emergencyContactName || null,
+      emergencyPhone: data.emergencyPhone || data.emergencyContactPhone || null,
+      isActive: data.isActive !== undefined ? data.isActive : true,
+    };
+    const response = await axiosClient.put(`/v1/Patients/${id}`, payload);
+    return mapPatientResponse(response.data);
   },
 
   delete: async (id: string): Promise<void> => {
