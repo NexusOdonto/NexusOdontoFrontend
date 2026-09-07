@@ -252,7 +252,7 @@ export function AtencionAsesorView() {
       ]);
 
       if (convs && convs.length > 0) {
-        const mapped: ChatItemDisplay[] = convs.map((c) => {
+        const mapped: ChatItemDisplay[] = convs.map((c): ChatItemDisplay => {
           const cleanDigits = (str?: string) => (str || "").replace(/\D/g, "");
           const chatDigits = cleanDigits(c.chatIdentifier);
 
