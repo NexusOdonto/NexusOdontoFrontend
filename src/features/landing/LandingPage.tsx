@@ -348,7 +348,7 @@ export default function LandingPage() {
               <div className="space-y-2.5 text-xs text-slate-200">
                 <div className="p-3 rounded-2xl bg-slate-900/60 border border-white/10 flex items-center justify-between">
                   <span>Horarios de Atención:</span>
-                  <strong className="text-teal-300">Lun a Sáb (08:00 - 17:00)</strong>
+                  <strong className="text-teal-300">Lun a Vie: 08:00 - 18:00 | Sáb: 08:00 - 14:00</strong>
                 </div>
                 <div className="p-3 rounded-2xl bg-slate-900/60 border border-white/10 flex items-center justify-between">
                   <span>Especialistas Disponibles:</span>
@@ -477,8 +477,8 @@ export default function LandingPage() {
               <Clock size={14} className="text-teal-500" />
               <span>Horario de Atención</span>
             </p>
-            <p className="text-slate-500 dark:text-slate-400">Lunes a Viernes: 08:00 AM - 05:00 PM</p>
-            <p className="text-slate-500 dark:text-slate-400">Sábados: 08:00 AM - 12:00 PM</p>
+            <p className="text-slate-500 dark:text-slate-400">Lunes a Viernes: 08:00 AM - 06:00 PM</p>
+            <p className="text-slate-500 dark:text-slate-400">Sábados: 08:00 AM - 02:00 PM</p>
             <p className="text-slate-500 dark:text-slate-400">Domingos y Festivos: Cerrado</p>
           </div>
 

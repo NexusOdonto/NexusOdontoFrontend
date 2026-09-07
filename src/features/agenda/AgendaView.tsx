@@ -540,7 +540,12 @@ export function AgendaView() {
 
                     <button
                       type="button"
-                      onClick={() => abrirNuevaCita(new Date(), "09:00")}
+                      onClick={() => {
+                        const now = new Date();
+                        const nextHour = now.getHours() + 1;
+                        const horaStr = nextHour >= 7 && nextHour <= 18 ? `${String(nextHour).padStart(2, "0")}:00` : "09:00";
+                        abrirNuevaCita(now, horaStr);
+                      }}
                       className="flex items-center gap-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 px-4 py-2 text-xs font-bold text-slate-950 transition cursor-pointer shadow-lg shadow-cyan-500/20"
                     >
                       <Plus size={16} />

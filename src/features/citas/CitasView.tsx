@@ -105,15 +105,58 @@ export function CitasView() {
 
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
-  const getNextValidHour = useCallback(() => {
+  const getNextValidHour = useCallback((dateStr?: string) => {
     const now = new Date();
-    now.setMinutes(0, 0, 0);
-    now.setHours(now.getHours() + 1);
-    return now.toTimeString().slice(0, 5); // "HH:mm"
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    
+    // Si la fecha es hoy o no se especificó
+    if (!dateStr || dateStr === today) {
+      const currentHour = now.getHours();
+      const nextHour = currentHour + 1;
+      if (nextHour >= 7 && nextHour <= 18) {
+        return `${String(nextHour).padStart(2, "0")}:00`;
+      } else if (nextHour < 7) {
+        return "08:00";
+      } else {
+        return "09:00";
+      }
+    }
+    return "09:00";
   }, []);
 
+  const normalizeTimeTo24h = useCallback((timeInput: string): string => {
+    if (!timeInput) return getNextValidHour();
+    const trimmed = timeInput.trim().toLowerCase();
+    
+    // Manejo de formatos 12 horas con AM/PM (ej. "03:00 pm", "3:00 p.m.", "09:00 a.m.")
+    const ampmMatch = trimmed.match(/^(\d{1,2}):(\d{2})\s*(a\.?m\.?|p\.?m\.?|am|pm)?$/i);
+    if (ampmMatch) {
+      let hours = parseInt(ampmMatch[1], 10);
+      const minutes = parseInt(ampmMatch[2], 10);
+      const meridian = ampmMatch[3]?.toLowerCase();
+
+      if (meridian && (meridian.includes("p") || meridian === "pm")) {
+        if (hours < 12) hours += 12;
+      } else if (meridian && (meridian.includes("a") || meridian === "am")) {
+        if (hours === 12) hours = 0;
+      }
+      return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+    }
+    
+    // Formato estándar 24h "HH:mm"
+    const standardMatch = trimmed.match(/^(\d{1,2}):(\d{2})/);
+    if (standardMatch) {
+      const hours = parseInt(standardMatch[1], 10);
+      const minutes = parseInt(standardMatch[2], 10);
+      return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+    }
+
+    return "09:00";
+  }, [getNextValidHour]);
+
   const calculateEndDateTime = useCallback((dateStr: string, timeStr: string, durationMinutes: number = 45) => {
-    const parts = (timeStr || "09:00").split(":");
+    const cleanTime = normalizeTimeTo24h(timeStr);
+    const parts = cleanTime.split(":");
     const startH = parseInt(parts[0], 10);
     const startM = parseInt(parts[1], 10);
     const safeH = isNaN(startH) ? 9 : startH;
@@ -133,7 +176,7 @@ export function CitasView() {
       endsAt: `${endYear}-${endMonth}-${endDay}T${endH}:${endM}:00`,
       endsHoraStr: `${endH}:${endM}`,
     };
-  }, []);
+  }, [normalizeTimeTo24h]);
 
   const todayDateString = useMemo(() => {
     const d = new Date();
@@ -155,9 +198,11 @@ export function CitasView() {
   });
   const [formHora, setFormHora] = useState(() => {
     const now = new Date();
-    now.setMinutes(0, 0, 0);
-    now.setHours(now.getHours() + 1);
-    return now.toTimeString().slice(0, 5);
+    const nextHour = now.getHours() + 1;
+    if (nextHour >= 7 && nextHour <= 18) {
+      return `${String(nextHour).padStart(2, "0")}:00`;
+    }
+    return "09:00";
   });
   const [formProfesional, setFormProfesional] = useState("");
   const [formMotivo, setFormMotivo] = useState("");
@@ -496,14 +541,14 @@ export function CitasView() {
       : formPaciente || "Paciente General";
 
     const fechaValida = formFecha || todayDateString;
-    const horaValida = formHora || getNextValidHour();
+    const horaValida = normalizeTimeTo24h(formHora || getNextValidHour(fechaValida));
 
     // Validar restricción de fechas/horas pasadas (BUG-05)
-    if (formFecha && formHora) {
-      const selectedDateTime = new Date(`${formFecha}T${formHora}:00`);
+    if (fechaValida && horaValida) {
+      const selectedDateTime = new Date(`${fechaValida}T${horaValida}:00`);
       const now = new Date();
       if (selectedDateTime < now) {
-        const msg = "No es posible agendar citas en fechas u horas pasadas.";
+        const msg = "No es posible agendar citas en fechas u horas pasadas. Por favor selecciona una hora futura.";
         setFormError(msg);
         setErrorMessage(msg);
         setTimeout(() => setErrorMessage(null), 5000);
@@ -833,7 +878,7 @@ export function CitasView() {
     setAssignFormError(null);
     setSelectedCitaToAssign(cita);
     setFormProfesional(cita.profesional || professionalsList[0] || "");
-    setFormHora(cita.hora || getNextValidHour());
+    setFormHora(cita.hora ? normalizeTimeTo24h(cita.hora) : getNextValidHour(cita.fecha));
     setShowAssignModal(true);
   };
 
@@ -847,7 +892,7 @@ export function CitasView() {
     setEditProfesional(targetCita.profesional || professionalsList[0] || "");
     setEditServicio(targetCita.servicio);
     setEditFecha(targetCita.fecha);
-    setEditHora(targetCita.hora || getNextValidHour());
+    setEditHora(targetCita.hora ? normalizeTimeTo24h(targetCita.hora) : getNextValidHour(targetCita.fecha));
     setEditEstado(targetCita.estado);
     setEditMotivo(targetCita.motivo || "");
     setShowEditModal(true);
@@ -860,12 +905,14 @@ export function CitasView() {
 
     if (!selectedCitaToEdit) return;
 
+    const horaEditValida = normalizeTimeTo24h(editHora || getNextValidHour(editFecha));
+
     // Validar restricción de fechas/horas pasadas (BUG-05)
-    if (editFecha && editHora) {
-      const selectedDateTime = new Date(`${editFecha}T${editHora}:00`);
+    if (editFecha && horaEditValida) {
+      const selectedDateTime = new Date(`${editFecha}T${horaEditValida}:00`);
       const now = new Date();
       if (selectedDateTime < now) {
-        const msg = "No es posible reprogramar citas en fechas u horas pasadas.";
+        const msg = "No es posible reprogramar citas en fechas u horas pasadas. Por favor selecciona una hora futura.";
         setEditFormError(msg);
         setErrorMessage(msg);
         setTimeout(() => setErrorMessage(null), 5000);
@@ -889,7 +936,7 @@ export function CitasView() {
       "Cancelada": "10000000-0000-0000-0000-000000000005",
     };
 
-    const { startsAt, endsAt } = calculateEndDateTime(editFecha, editHora || "09:00", 45);
+    const { startsAt, endsAt } = calculateEndDateTime(editFecha, horaEditValida, 45);
 
     const resolvedProfId = matchedProfId || selectedCitaToEdit.professionalId || (profsEntities[0]?.id || "1d000000-0000-0000-0000-000000000001");
     const resolvedServId = matchedServiceId || selectedCitaToEdit.serviceId || (servicesEntities[0]?.id || "30000000-0000-0000-0000-000000000001");
@@ -1053,10 +1100,13 @@ export function CitasView() {
           <button
             type="button"
             onClick={() => {
+              const defaultDate = todayDateString;
+              const defaultHour = getNextValidHour(defaultDate);
               setFormPaciente(isPaciente ? (user?.name || "Andrés Pérez") : "");
-              setFormFecha(todayDateString);
-              setFormHora("09:00");
+              setFormFecha(defaultDate);
+              setFormHora(defaultHour);
               setFormMotivo("");
+              setFormError(null);
               setShowRequestModal(true);
             }}
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 px-5 py-2.5 text-sm font-semibold text-white dark:text-slate-950 shadow-md dark:shadow-[0_0_25px_rgba(34,211,238,0.3)] transition-all active:scale-95 cursor-pointer"
@@ -1260,10 +1310,17 @@ export function CitasView() {
                     required
                     name="fecha"
                     min={todayDateString}
-                    value={formFecha || todayDateString}
+                    value={formFecha}
                     onChange={(e) => {
-                      const val = e.target.value;
-                      setFormFecha(val);
+                      const newDate = e.target.value;
+                      setFormFecha(newDate);
+                      if (newDate === todayDateString) {
+                        const [currH] = (formHora || "00:00").split(":").map(Number);
+                        const nowH = new Date().getHours();
+                        if (isNaN(currH) || currH <= nowH) {
+                          setFormHora(getNextValidHour(newDate));
+                        }
+                      }
                     }}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all shadow-sm"
                   />
@@ -1277,10 +1334,9 @@ export function CitasView() {
                     type="time"
                     required
                     name="hora"
-                    value={formHora || "09:00"}
+                    value={formHora}
                     onChange={(e) => {
-                      const val = e.target.value;
-                      setFormHora(val);
+                      setFormHora(e.target.value);
                     }}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all shadow-sm"
                   />
@@ -1519,7 +1575,7 @@ export function CitasView() {
                     required
                     name="editFecha"
                     min={todayDateString}
-                    value={editFecha || todayDateString}
+                    value={editFecha}
                     onChange={(e) => {
                       const val = e.target.value;
                       setEditFecha(val);
@@ -1536,7 +1592,7 @@ export function CitasView() {
                     type="time"
                     required
                     name="editHora"
-                    value={editHora || "09:00"}
+                    value={editHora}
                     onChange={(e) => {
                       const val = e.target.value;
                       setEditHora(val);

@@ -18,6 +18,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
   const { theme } = useTheme();
   const { login, isLoading, isAuthenticated } = useAuth();
 
@@ -147,6 +148,7 @@ export default function LoginPage() {
             <div className="text-right">
               <button 
                 type="button"
+                onClick={() => setShowForgotPasswordModal(true)}
                 className="text-xs text-slate-500 hover:text-teal-600 dark:text-slate-400 dark:hover:text-teal-300 transition-colors py-1 px-1 inline-block bg-transparent border-none cursor-pointer"
               >
                 ¿Olvidaste tu contraseña?
@@ -196,6 +198,52 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
+
+      {/* Modal de Recuperación de Contraseña (BUG-26) */}
+      {showForgotPasswordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 animate-fadeIn">
+          <div className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-2xl animate-scaleIn space-y-5 text-slate-900 dark:text-slate-100">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h3 className="font-bold text-base sm:text-lg">Recuperar Acceso a tu Cuenta</h3>
+              <button
+                type="button"
+                onClick={() => setShowForgotPasswordModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs sm:text-sm text-slate-600 dark:text-slate-300">
+              <p className="leading-relaxed">
+                Por políticas de seguridad clínica y protección de datos médicos, el restablecimiento de contraseñas se gestiona a través del administrador del sistema o recepción.
+              </p>
+              <div className="p-4 rounded-2xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800/50 space-y-2">
+                <p className="font-semibold text-teal-800 dark:text-teal-200">Canales de Atención:</p>
+                <p className="text-xs">
+                  📧 Correo: <span className="font-mono font-bold text-teal-700 dark:text-teal-300">soporte@nexusodonto.com</span>
+                </p>
+                <p className="text-xs">
+                  📞 Teléfono: <span className="font-semibold text-teal-700 dark:text-teal-300">+57 (601) 745-9000</span>
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Horario: Lunes a Sábado de 08:00 AM a 06:00 PM.
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowForgotPasswordModal(false)}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 text-slate-950 font-bold text-xs shadow-md transition-transform active:scale-95 cursor-pointer"
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

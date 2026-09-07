@@ -25,6 +25,25 @@ interface NotificationContextType {
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
+const getReadNotifIds = (): Set<string> => {
+  try {
+    const raw = sessionStorage.getItem('nexus_read_notif_ids');
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+};
+
+const saveReadNotifId = (id: string) => {
+  try {
+    const current = getReadNotifIds();
+    current.add(id);
+    sessionStorage.setItem('nexus_read_notif_ids', JSON.stringify(Array.from(current)));
+  } catch {
+    // Ignore
+  }
+};
+
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   const role = getUserRole(user);
@@ -36,6 +55,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     try {
       const isStaff = role === 'RECEPCIONISTA' || role === 'ADMINISTRADOR';
+      const readIds = getReadNotifIds();
 
       // 1. Consultar citas desde backend API o local storage
       const appointments: AppointmentResponseDto[] = await appointmentService.getAll().catch(() => []);
@@ -64,14 +84,15 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
       // 2. Generar lista de notificaciones para recepción / admin
       if (isStaff && pendingList.length > 0) {
+        const notifId = `pending-appointments-alert-${pendingList.length}`;
         const notif: SystemNotification = {
-          id: 'pending-appointments-alert',
+          id: notifId,
           title: 'Solicitudes de Citas Pendientes',
           message: `Tienes ${pendingList.length} ${
             pendingList.length === 1 ? 'nueva solicitud de cita' : 'nuevas solicitudes de citas'
           } por revisar y asignar odontólogo.`,
           time: 'Ahora',
-          read: false,
+          read: readIds.has(notifId) || readIds.has('pending-appointments-alert'),
           type: 'appointment_pending',
           link: '/citas?filtro=Pendiente',
         };
@@ -89,13 +110,14 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           }
         }
         if (ownPending > 0) {
+          const notifId = `patient-pending-alert-${ownPending}`;
           setNotifications([
             {
-              id: 'patient-pending-alert',
+              id: notifId,
               title: 'Cita en Proceso de Aprobación',
               message: `Tu solicitud de cita está siendo evaluada por recepción.`,
               time: 'Reciente',
-              read: false,
+              read: readIds.has(notifId) || readIds.has('patient-pending-alert'),
               type: 'appointment_pending',
               link: '/citas',
             },
@@ -141,13 +163,15 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return () => {
       isSubscribed = false;
     };
-  }, [userId]);
+  }, [userId, refreshNotifications]);
 
   const markAsRead = (id: string) => {
+    saveReadNotifId(id);
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
   };
 
   const markAllAsRead = () => {
+    notifications.forEach((n) => saveReadNotifId(n.id));
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 

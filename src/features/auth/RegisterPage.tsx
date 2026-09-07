@@ -21,6 +21,9 @@ import { useTheme } from "../../context/ThemeContext";
 import { documentTypeService, type DocumentType } from "../../api/documentTypeService";
 import { sexService, type Sex } from "../../api/sexService";
 import { roleService } from "../../api/roleService";
+import { personService } from "../../api/personService";
+import { userService } from "../../api/userService";
+import { patientService } from "../../api/patientService";
 import { authService, type RegisterRequest, type GoogleRegisterRequest } from "../../api/authService";
 import { useAuth } from "./AuthContext";
 import { GoogleAuthButton } from "./components/GoogleAuthButton";
@@ -77,6 +80,31 @@ export default function RegisterPage() {
     if (urlSub) setGoogleSub(urlSub);
   }, [searchParams]);
 
+  const translateDocumentTypeName = (doc: DocumentType): string => {
+    const code = (doc.code || "").toUpperCase();
+    const name = (doc.name || "").toLowerCase();
+    
+    if (code === "CC" || name.includes("citizenship") || name.includes("ciudadanía") || name.includes("ciudadania")) {
+      return "Cédula de Ciudadanía";
+    }
+    if (code === "CE" || name.includes("foreigner") || name.includes("extranjería") || name.includes("extranjeria")) {
+      return "Cédula de Extranjería";
+    }
+    if (code === "TI" || name.includes("identity card") || name.includes("tarjeta de identidad")) {
+      return "Tarjeta de Identidad";
+    }
+    if (code === "PAS" || code === "PP" || name.includes("passport") || name.includes("pasaporte")) {
+      return "Pasaporte";
+    }
+    if (code === "RC" || name.includes("civil registry") || name.includes("registro civil")) {
+      return "Registro Civil";
+    }
+    if (code === "NIT" || name.includes("tax") || name.includes("tributario")) {
+      return "NIT";
+    }
+    return doc.name;
+  };
+
   // Load catalogs on mount
   useEffect(() => {
     const loadCatalogs = async () => {
@@ -89,8 +117,12 @@ export default function RegisterPage() {
         ]);
 
         if (docTypesData.status === "fulfilled" && docTypesData.value.length > 0) {
-          setDocumentTypes(docTypesData.value);
-          const defaultDoc = docTypesData.value.find((dt) => dt.code === "CC") || docTypesData.value[0];
+          const translatedDocs = docTypesData.value.map((dt) => ({
+            ...dt,
+            name: translateDocumentTypeName(dt),
+          }));
+          setDocumentTypes(translatedDocs);
+          const defaultDoc = translatedDocs.find((dt) => dt.code === "CC") || translatedDocs[0];
           setDocumentTypeId(defaultDoc.id);
         } else {
           const fallbackDocs: DocumentType[] = [
@@ -104,7 +136,15 @@ export default function RegisterPage() {
         }
 
         if (sexesData.status === "fulfilled" && sexesData.value.length > 0) {
-          setSexes(sexesData.value);
+          const translatedSexes = sexesData.value.map((s) => {
+            const code = (s.code || s.name || "").toUpperCase();
+            let name = s.name;
+            if (code.includes("FEM") || code === "F") name = "Femenino";
+            else if (code.includes("MASC") || code.includes("MALE") || code === "M") name = "Masculino";
+            else name = "Otro";
+            return { ...s, name };
+          });
+          setSexes(translatedSexes);
         } else {
           setSexes([
             { id: "f0000000-0000-0000-0000-000000000001", code: "FEMENINO", name: "Femenino", isActive: true },
@@ -228,34 +268,92 @@ export default function RegisterPage() {
           roleId: roleIdToAssign,
         };
 
-        await authService.register(payload);
-
-        const patientEntry = {
-          id: Date.now(),
-          nombre: `${cleanFirstName} ${cleanLastName}`.trim(),
-          documento: cleanDocNumber,
-          telefono: cleanPhone || "",
-          estado: "Activo",
-          correo: cleanEmail,
-          fechaNacimiento: dateOfBirth,
-          direccion: address.trim(),
-          rol: "PACIENTE",
-        };
+        // 1. Intentar endpoint directo /auth/register
+        let registerSuccess = false;
         try {
-          const raw = localStorage.getItem("nexusodontopacientes");
-          const list = raw ? JSON.parse(raw) : [];
-          list.unshift(patientEntry);
-          localStorage.setItem("nexusodontopacientes", JSON.stringify(list));
-        } catch {
-          // Ignore
+          await authService.register(payload);
+          registerSuccess = true;
+        } catch (authErr: any) {
+          // Si el endpoint /auth/register no existe (404), ejecutar flujo REST de creación Person -> User -> Patient
+          if (authErr?.response?.status === 404) {
+            console.warn("Endpoint /auth/register no encontrado (404). Ejecutando creación vía Person + User + Patient...");
+            try {
+              const createdPerson = await personService.create({
+                documentTypeId,
+                documentNumber: cleanDocNumber,
+                firstName: cleanFirstName,
+                lastName: cleanLastName,
+                email: cleanEmail,
+                phone: cleanPhone || undefined,
+                dateOfBirth: dateOfBirth || undefined,
+                sexId: sexId || undefined,
+                address: address.trim() || undefined,
+              });
+
+              if (createdPerson && createdPerson.id) {
+                // Crear usuario
+                await userService.create({
+                  personId: createdPerson.id,
+                  password: cleanPassword,
+                  roleId: roleIdToAssign,
+                  roleIds: [roleIdToAssign],
+                }).catch((uErr) => console.warn("User create fallback error:", uErr));
+
+                // Crear registro de paciente clínico
+                await patientService.create({
+                  personId: createdPerson.id,
+                }).catch((pErr) => console.warn("Patient create fallback error:", pErr));
+
+                registerSuccess = true;
+              }
+            } catch (fallbackErr: any) {
+              console.error("Error en flujo alternativo de creación:", fallbackErr);
+              const errMsg = fallbackErr.response?.data?.message || fallbackErr.message;
+              throw new Error(errMsg || "No se pudo registrar la cuenta en el sistema.");
+            }
+          } else {
+            throw authErr;
+          }
+        }
+
+        if (registerSuccess) {
+          const patientEntry = {
+            id: Date.now(),
+            nombre: `${cleanFirstName} ${cleanLastName}`.trim(),
+            documento: cleanDocNumber,
+            telefono: cleanPhone || "",
+            estado: "Activo",
+            correo: cleanEmail,
+            fechaNacimiento: dateOfBirth,
+            direccion: address.trim(),
+            rol: "PACIENTE",
+          };
+          try {
+            const raw = localStorage.getItem("nexusodontopacientes");
+            const list = raw ? JSON.parse(raw) : [];
+            list.unshift(patientEntry);
+            localStorage.setItem("nexusodontopacientes", JSON.stringify(list));
+          } catch {
+            // Ignore
+          }
         }
       }
 
       setIsSuccess(true);
     } catch (err: any) {
       console.error("Error creating account:", err);
-      const serverMsg = err.response?.data?.message || err.message;
-      setError(serverMsg || "Ocurrió un error al procesar el registro. Intenta nuevamente.");
+      const status = err.response?.status;
+      let friendlyMsg = "Ocurrió un error al procesar el registro. Intenta nuevamente.";
+
+      if (status === 409) {
+        friendlyMsg = "El número de documento o correo electrónico ya se encuentra registrado.";
+      } else if (status === 400) {
+        friendlyMsg = err.response?.data?.message || "Verifica que todos los campos obligatorios sean correctos.";
+      } else if (err.message && !err.message.includes("status code")) {
+        friendlyMsg = err.message;
+      }
+
+      setError(friendlyMsg);
     } finally {
       setIsSubmitting(false);
     }
