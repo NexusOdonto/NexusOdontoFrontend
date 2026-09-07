@@ -177,19 +177,6 @@ export function UsuariosView() {
         roleService.getAll().catch(() => []),
       ]);
 
-      // Recuperar estado / cachés locales de usuarios
-      let statusOverrides: Record<string, boolean> = {};
-      try {
-        const rawOverrides = localStorage.getItem("nexus_user_status_overrides");
-        if (rawOverrides) statusOverrides = JSON.parse(rawOverrides);
-      } catch {}
-
-      let cachedUsers: Usuario[] = [];
-      try {
-        const rawCached = localStorage.getItem("nexus_usuarios_cache");
-        if (rawCached) cachedUsers = JSON.parse(rawCached);
-      } catch {}
-
       const isBotUser = (u: any) => {
         const email = (u.email || "").toLowerCase();
         const name = (u.name || (u.person ? `${u.person.firstName} ${u.person.lastName}` : "")).toLowerCase();
@@ -239,7 +226,7 @@ export function UsuariosView() {
           permissions: {},
         };
 
-        // Determine raw active status
+        // Determine raw active status directly from API (F-20)
         let rawActive = u.isActive ?? u.activo ?? u.is_active;
         if (rawActive === undefined && u.status) {
           rawActive = !["inactivo", "inactive", "false", "0"].includes(String(u.status).toLowerCase());
@@ -247,14 +234,7 @@ export function UsuariosView() {
         if (rawActive === undefined && u.state) {
           rawActive = !["inactivo", "inactive", "false", "0"].includes(String(u.state).toLowerCase());
         }
-
-        const isUserActive = statusOverrides[u.id] !== undefined
-          ? statusOverrides[u.id]
-          : (u.personId && statusOverrides[u.personId] !== undefined
-              ? statusOverrides[u.personId]
-              : (userEmail && statusOverrides[userEmail.toLowerCase()] !== undefined
-                  ? statusOverrides[userEmail.toLowerCase()]
-                  : (rawActive !== undefined ? Boolean(rawActive) : true)));
+        const isUserActive = rawActive !== undefined ? Boolean(rawActive) : true;
 
         return {
           id: u.id,
@@ -271,38 +251,6 @@ export function UsuariosView() {
           modulesList: preset.modules,
           permissions: preset.modules,
         };
-      });
-
-      // Si hay usuarios que el backend excluyó porque su isActive es false, fusionarlos desde la caché
-      const existingIds = new Set(mappedUsuarios.map(u => u.id).filter(Boolean));
-      const existingPersonIds = new Set(mappedUsuarios.map(u => u.personId).filter(Boolean));
-      const existingEmails = new Set(mappedUsuarios.map(u => u.email?.toLowerCase()).filter(Boolean));
-
-      cachedUsers.forEach((cu) => {
-        if (isBotUser(cu)) return;
-        const cuIdMatch = cu.id && existingIds.has(cu.id);
-        const cuPersonMatch = cu.personId && existingPersonIds.has(cu.personId);
-        const cuEmailMatch = cu.email && existingEmails.has(cu.email.toLowerCase());
-
-        if (!cuIdMatch && !cuPersonMatch && !cuEmailMatch) {
-          const isCuActive = statusOverrides[cu.id] !== undefined
-            ? statusOverrides[cu.id]
-            : (cu.personId && statusOverrides[cu.personId] !== undefined
-                ? statusOverrides[cu.personId]
-                : (cu.email && statusOverrides[cu.email.toLowerCase()] !== undefined
-                    ? statusOverrides[cu.email.toLowerCase()]
-                    : Boolean(cu.isActive)));
-
-          mappedUsuarios.push({
-            ...cu,
-            isActive: isCuActive,
-            status: isCuActive ? "Activo" : "Inactivo",
-            state: isCuActive ? "Activo" : "Inactivo",
-          });
-          if (cu.id) existingIds.add(cu.id);
-          if (cu.personId) existingPersonIds.add(cu.personId);
-          if (cu.email) existingEmails.add(cu.email.toLowerCase());
-        }
       });
 
       // Inspección de usuarios cargados
@@ -481,11 +429,11 @@ export function UsuariosView() {
     }
 
     const newStatus = !usuario.isActive;
-    console.log("Toggle status usuario:", usuario, "nuevo estado:", newStatus);
+    const previousUsers = [...usuarios];
 
-    // Actualización reactiva e inmediata del estado local y caché
-    setUsuarios((prev) => {
-      const updated = prev.map((u) =>
+    // 1. Mutación optimista en memoria (SIN tocar localStorage)
+    setUsuarios((prev) =>
+      prev.map((u) =>
         u.id === usuario.id || (usuario.personId && u.personId === usuario.personId) || (usuario.email && u.email.toLowerCase() === usuario.email.toLowerCase())
           ? {
               ...u,
@@ -494,28 +442,18 @@ export function UsuariosView() {
               state: newStatus ? "Activo" : "Inactivo",
             }
           : u
-      );
-      try {
-        localStorage.setItem("nexus_usuarios_cache", JSON.stringify(updated));
-        const rawOverrides = localStorage.getItem("nexus_user_status_overrides");
-        const overrides = rawOverrides ? JSON.parse(rawOverrides) : {};
-        if (usuario.id) overrides[usuario.id] = newStatus;
-        if (usuario.personId) overrides[usuario.personId] = newStatus;
-        if (usuario.email) overrides[usuario.email.toLowerCase()] = newStatus;
-        localStorage.setItem("nexus_user_status_overrides", JSON.stringify(overrides));
-      } catch (e) {
-        console.warn("Could not save user status override in localStorage:", e);
-      }
-      return updated;
-    });
+      )
+    );
 
     try {
       await userService.update(usuario.id, { isActive: newStatus });
+      showToast(`Usuario ${usuario.name} ${newStatus ? "reactivado" : "desactivado"} correctamente.`, "success");
     } catch (err: any) {
-      console.warn("Backend API sync warning on user status toggle:", err?.response?.status || err?.message);
+      // 2. Reversión inmediata ante error real de servidor (F-20)
+      setUsuarios(previousUsers);
+      console.error("Fallo al alternar estado en backend API:", err);
+      showToast(err?.response?.data?.message || "No se pudo modificar el estado del usuario en el servidor.", "error");
     }
-
-    showToast(`Usuario ${usuario.name} ${newStatus ? "reactivado" : "desactivado"} correctamente.`, "success");
   };
 
   const handleCrearUsuario = async (e: React.FormEvent) => {

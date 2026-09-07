@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../features/auth/AuthContext";
+import { formatRoleName } from "../../utils/roleUtils";
+import { getUserRole } from "../../utils/routePermissions";
 
 export default function UserProfileDropdown() {
   const [isOpen, setIsOpen] = useState(false);
@@ -56,9 +58,9 @@ export default function UserProfileDropdown() {
     user.email.split("@")[0] ||
     "Usuario";
 
-  const userRole =
-    user.rol ||
-    (user.roleIds && user.roleIds.length > 0 ? user.roleIds[0] : "USUARIO");
+  const userRole = formatRoleName(
+    user.rol || (user.roleIds && user.roleIds.length > 0 ? user.roleIds[0] : getUserRole(user))
+  );
 
   const getInitials = (name: string) => {
     const parts = name.trim().split(" ");
@@ -144,9 +146,11 @@ export default function UserProfileDropdown() {
                 <p className="truncate text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   {user.email}
                 </p>
-                <span className="mt-1 inline-flex items-center rounded-md bg-cyan-500/10 dark:bg-cyan-500/20 px-2 py-0.5 text-[10px] font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider">
-                  {userRole}
-                </span>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-teal-500/10 dark:bg-teal-500/20 text-teal-700 dark:text-teal-300 border border-teal-500/20 dark:border-teal-400/30 uppercase tracking-wider truncate max-w-full" title={userRole}>
+                    {userRole}
+                  </span>
+                </div>
               </div>
             </div>
 

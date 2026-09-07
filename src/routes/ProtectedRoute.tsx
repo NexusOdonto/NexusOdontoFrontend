@@ -9,7 +9,7 @@ interface ProtectedRouteProps {
   requiredRoles?: string[];
 }
 
-export default function ProtectedRoute({ requiredRoles: _requiredRoles = [] }: ProtectedRouteProps) {
+export default function ProtectedRoute(_props: ProtectedRouteProps = {}) {
   const { user, isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();

@@ -36,8 +36,6 @@ import {
   createDefaultToothState,
 } from "./types";
 
-const ODONTOGRAMA_STORAGE_KEY = "nexus_odonto_odontograma";
-
 // Fallback quadrants defined locally to ensure teeth always render
 const FALLBACK_PERMANENT_QUADRANTS: Quadrants = {
   topRight: [18, 17, 16, 15, 14, 13, 12, 11],
@@ -70,22 +68,15 @@ const createFallbackToothState = (toothNumber: number): ToothState => ({
   },
 });
 
-function cargarOdontograma(): {
+function getOdontogramaStorageKey(patientId?: string): string {
+  return patientId ? `nexus_odontograma_${patientId}` : "nexus_odontograma_default";
+}
+
+function createDefaultOdontogramState(): {
   dentitionType: 'permanent' | 'temporary';
   teeth: Record<number, ToothState>;
   selectedDiagnosis: Diagnosis;
 } {
-  const guardado = localStorage.getItem(ODONTOGRAMA_STORAGE_KEY);
-  if (guardado) {
-    try {
-      const data = JSON.parse(guardado);
-      return data;
-    } catch {
-      // Si falla, retornar estado inicial
-    }
-  }
-
-  // Estado inicial con fallback local
   const teeth: Record<number, ToothState> = {};
   const quadrants = FDI_PERMANENT_QUADRANTS || FALLBACK_PERMANENT_QUADRANTS;
   Object.values(quadrants).flat().forEach((toothNumber) => {
@@ -105,12 +96,35 @@ function cargarOdontograma(): {
   };
 }
 
-function guardarOdontograma(data: {
+function cargarOdontograma(patientId?: string): {
   dentitionType: 'permanent' | 'temporary';
   teeth: Record<number, ToothState>;
   selectedDiagnosis: Diagnosis;
-}) {
-  localStorage.setItem(ODONTOGRAMA_STORAGE_KEY, JSON.stringify(data));
+} {
+  const key = getOdontogramaStorageKey(patientId);
+  const guardado = localStorage.getItem(key);
+  if (guardado) {
+    try {
+      const data = JSON.parse(guardado);
+      return data;
+    } catch {
+      // Si falla, retornar estado inicial
+    }
+  }
+
+  return createDefaultOdontogramState();
+}
+
+function guardarOdontograma(
+  data: {
+    dentitionType: 'permanent' | 'temporary';
+    teeth: Record<number, ToothState>;
+    selectedDiagnosis: Diagnosis;
+  },
+  patientId?: string
+) {
+  const key = getOdontogramaStorageKey(patientId);
+  localStorage.setItem(key, JSON.stringify(data));
 }
 
 interface PacienteItem {
@@ -184,6 +198,14 @@ function OdontogramaUI() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Al cambiar de paciente seleccionado, hidratar su odontograma específico o basal
+  useEffect(() => {
+    if (selectedPaciente?.id) {
+      const patientState = cargarOdontograma(selectedPaciente.id);
+      setState(patientState);
+    }
+  }, [selectedPaciente?.id]);
+
   const getCurrentQuadrants = (): Quadrants => {
     if (state.dentitionType === "permanent") {
       return FDI_PERMANENT_QUADRANTS || FALLBACK_PERMANENT_QUADRANTS;
@@ -219,7 +241,7 @@ function OdontogramaUI() {
         teeth: updatedTeeth,
       };
 
-      guardarOdontograma(newState);
+      guardarOdontograma(newState, selectedPaciente?.id);
       return newState;
     });
   };
@@ -255,7 +277,7 @@ function OdontogramaUI() {
         teeth: updatedTeeth,
       };
 
-      guardarOdontograma(newState);
+      guardarOdontograma(newState, selectedPaciente?.id);
       return newState;
     });
 
@@ -287,7 +309,7 @@ function OdontogramaUI() {
         teeth: resetTeeth,
       };
 
-      guardarOdontograma(newState);
+      guardarOdontograma(newState, selectedPaciente?.id);
       return newState;
     });
     setSuccessToast("Odontograma restablecido.");
@@ -346,16 +368,13 @@ function OdontogramaUI() {
             updatedTeeth[toothNumber].isVisible = true;
           });
 
-          setState({
+          const newState = {
             dentitionType: data.dentitionType,
             teeth: updatedTeeth,
             selectedDiagnosis: data.selectedDiagnosis || 'caries',
-          });
-          guardarOdontograma({
-            dentitionType: data.dentitionType,
-            teeth: updatedTeeth,
-            selectedDiagnosis: data.selectedDiagnosis || 'caries',
-          });
+          };
+          setState(newState);
+          guardarOdontograma(newState, selectedPaciente?.id);
           if (data.notasClinicas) setNotasClinicas(data.notasClinicas);
           setSuccessToast("Odontograma importado correctamente.");
           setTimeout(() => setSuccessToast(null), 2500);
@@ -369,7 +388,7 @@ function OdontogramaUI() {
   };
 
   const handleSaveNotes = async () => {
-    guardarOdontograma(state);
+    guardarOdontograma(state, selectedPaciente?.id);
     if (selectedPaciente && selectedPaciente.id) {
       try {
         await odontogramService.create({

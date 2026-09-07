@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../../api/authService';
+import { formatRoleName } from '../../utils/roleUtils';
 
 export interface User {
   id: string;
@@ -79,7 +80,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       permissions: perms,
       avatar: userObj.avatar || userObj.avatarUrl || savedAvatar || fallbackPrev?.avatar || '',
       avatarUrl: userObj.avatar || userObj.avatarUrl || savedAvatar || fallbackPrev?.avatar || '',
-      rol: fallbackPrev?.rol || (userObj.roleIds && userObj.roleIds.length > 0 ? userObj.roleIds[0] : 'PACIENTE'),
+      rol: formatRoleName(userObj.rol || userObj.role || fallbackPrev?.rol || (userObj.roleIds && userObj.roleIds.length > 0 ? userObj.roleIds[0] : 'PACIENTE')),
     };
   };
 

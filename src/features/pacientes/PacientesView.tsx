@@ -15,17 +15,10 @@ import { Plus, RefreshCw, LayoutGrid, List, Download } from "lucide-react";
 const ITEMS_PER_PAGE = 6;
 
 const isSystemOrAdminAccount = (item: { nombre?: string; name?: string; correo?: string; email?: string; rol?: string; role?: string }) => {
-  const name = (item.nombre || item.name || "").toLowerCase().trim();
-  const email = (item.correo || item.email || "").toLowerCase().trim();
   const role = (item.rol || item.role || "").toLowerCase().trim();
 
+  // Descartar exclusivamente por roles explícitos de staff o bot (F-22)
   if (role.includes("admin") || role.includes("recepc") || role.includes("odont") || role.includes("doctor") || role.includes("bot") || role.includes("asistent")) {
-    return true;
-  }
-  if (name.includes("admin sistema") || name === "administrador" || name.includes("administrador del sistema") || name.includes("recepcionista") || name.includes("chatbot") || name.includes("asistente dental")) {
-    return true;
-  }
-  if (email.startsWith("admin@") || email.includes("admin.") || email.includes("odontologo@") || email.includes("recepcion@") || email.includes("bot@") || email.includes("asistente@")) {
     return true;
   }
   return false;
@@ -56,7 +49,7 @@ export function PacientesView() {
       const combinedPacientes: Paciente[] = [];
       const seenIdentifiers = new Set<string>();
 
-      // 1. Mapear Patients de la API
+      // 1. Mapear Patients de la API (entidades clínicas reales)
       if (patientsData && patientsData.length > 0) {
         patientsData.forEach((p, idx) => {
           const person = personsData.find((per) => areGuidsEqual(per.id, p.personId));
@@ -64,10 +57,6 @@ export function PacientesView() {
           const doc = person?.documentNumber || p.documentNumber || "";
           const tel = person?.phone || p.phone || p.emergencyContactPhone || "";
           const email = person?.email || p.email || "";
-
-          if (isSystemOrAdminAccount({ name: fullName, email })) {
-            return;
-          }
 
           const key = (doc || email || fullName).toLowerCase();
 
@@ -86,16 +75,12 @@ export function PacientesView() {
         });
       }
 
-      // 2. Mapear Personas de la API (solo pacientes válidos, descartando cuentas de administración/staff)
+      // 2. Mapear Personas de la API que posean datos válidos
       if (personsData && Array.isArray(personsData)) {
         personsData.forEach((person) => {
           const fullName = `${person.firstName || ""} ${person.lastName || ""}`.trim();
           const doc = person.documentNumber || "";
           const email = person.email || "";
-
-          if (isSystemOrAdminAccount({ name: fullName, email })) {
-            return;
-          }
 
           const key = (doc || email || fullName).toLowerCase();
 

@@ -453,7 +453,7 @@ export function CitasView() {
       : formPaciente || "Paciente General";
 
     const fechaValida = formFecha || todayDateString;
-    const horaValida = formHora || "10:00";
+    const horaValida = formHora || "09:00";
 
     // Validar restricción de fechas/horas pasadas (BUG-05)
     if (formFecha && formHora) {
@@ -466,119 +466,171 @@ export function CitasView() {
       }
     }
 
-    const matchedPatientId =
-      patientsOptions.find((p) => p.label.toLowerCase() === pacienteNombre.toLowerCase() || areGuidsEqual(p.id, pacienteNombre))?.data?.id ||
-      (isPaciente && user?.id ? user.id : "1e000000-0000-0000-0000-000000000001");
+    // 1. Resolver Patient ID (GUID de la entidad Patient en BD)
+    let targetPatientId = "1e000000-0000-0000-0000-000000000001";
+    if (isPaciente) {
+      const foundCurrentPt = patientsEntities.find((pt) => 
+        (user?.id && areGuidsEqual(pt.id, user.id)) || 
+        (user?.personId && areGuidsEqual(pt.personId, user.personId))
+      );
+      if (foundCurrentPt?.id) {
+        targetPatientId = foundCurrentPt.id;
+      } else if (patientsEntities.length > 0) {
+        targetPatientId = patientsEntities[0].id;
+      }
+    } else {
+      const selectedOption = patientsOptions.find((p) => 
+        p.label.toLowerCase() === pacienteNombre.toLowerCase() || 
+        areGuidsEqual(p.id, pacienteNombre)
+      );
+      const patientIdFromOpt = selectedOption?.data?.patientId || selectedOption?.id;
+      const matchedEntity = patientsEntities.find((pt) => 
+        areGuidsEqual(pt.id, patientIdFromOpt) || 
+        (selectedOption?.data?.personId && areGuidsEqual(pt.personId, selectedOption.data.personId))
+      );
+      if (matchedEntity?.id) {
+        targetPatientId = matchedEntity.id;
+      } else if (patientIdFromOpt && patientIdFromOpt.length > 20) {
+        targetPatientId = patientIdFromOpt;
+      } else if (patientsEntities.length > 0) {
+        targetPatientId = patientsEntities[0].id;
+      }
+    }
 
-    const matchedProfId =
-      professionalsOptions.find((d) => d.label.toLowerCase() === formProfesional.toLowerCase() || areGuidsEqual(d.id, formProfesional))?.data?.id ||
-      "1d000000-0000-0000-0000-000000000001";
+    // 2. Resolver Professional ID (GUID)
+    let targetProfId = "1d000000-0000-0000-0000-000000000001";
+    const selectedDocOption = professionalsOptions.find((d) => 
+      d.label.toLowerCase() === formProfesional.toLowerCase() || 
+      areGuidsEqual(d.id, formProfesional)
+    );
+    const docIdFromOpt = selectedDocOption?.data?.professionalId || selectedDocOption?.id;
+    const matchedProfEntity = profsEntities.find((p) => {
+      const pFullName = `Dr(a). ${p.firstName || ""} ${p.lastName || ""}`.trim();
+      return (
+        areGuidsEqual(p.id, docIdFromOpt) ||
+        pFullName.toLowerCase() === formProfesional.toLowerCase() ||
+        p.firstName?.toLowerCase() === formProfesional.toLowerCase()
+      );
+    });
+    if (matchedProfEntity?.id) {
+      targetProfId = matchedProfEntity.id;
+    } else if (docIdFromOpt && docIdFromOpt.length > 20) {
+      targetProfId = docIdFromOpt;
+    } else if (profsEntities.length > 0) {
+      targetProfId = profsEntities[0].id;
+    }
 
-    const matchedServiceId =
-      servicesRaw.find((s) => s.name.toLowerCase() === formServicio.toLowerCase() || areGuidsEqual(s.id, formServicio))?.id ||
-      "30000000-0000-0000-0000-000000000001";
+    // 3. Resolver Service ID (GUID)
+    let targetServiceId = "30000000-0000-0000-0000-000000000001";
+    const matchedService = servicesEntities.find((s) => 
+      s.name.toLowerCase() === formServicio.toLowerCase() ||
+      areGuidsEqual(s.id, formServicio)
+    );
+    if (matchedService?.id) {
+      targetServiceId = matchedService.id;
+    } else if (servicesRaw.length > 0) {
+      const rawMatch = servicesRaw.find((s) => s.name.toLowerCase() === formServicio.toLowerCase() || areGuidsEqual(s.id, formServicio));
+      if (rawMatch?.id) targetServiceId = rawMatch.id;
+    }
+
+    // Validar que no se usen GUIDs dummies o que falten IDs esenciales
+    if (!targetPatientId || !targetProfId || !targetServiceId) {
+      setErrorMessage("Por favor selecciona un paciente, odontólogo y servicio válidos.");
+      setTimeout(() => setErrorMessage(null), 5000);
+      return;
+    }
 
     const nuevaCita: Cita = {
       id: newId,
       paciente: pacienteNombre,
       pacienteEmail: isPaciente ? (user?.email || "paciente@nexusodonto.com") : "",
       pacienteCedula: isPaciente ? (user?.cedula || "1076543210") : "",
-      profesional: isPaciente ? "" : formProfesional,
+      profesional: isPaciente ? "" : (formProfesional || (profsEntities[0] ? `Dr(a). ${profsEntities[0].firstName || ""} ${profsEntities[0].lastName || ""}`.trim() : "Dr. Especialista")),
       servicio: formServicio || servicesList[0] || "Consulta General",
       fecha: fechaValida,
       hora: horaValida,
       estado: isPaciente ? "Pendiente" : "Confirmada",
       motivo: formMotivo || "Solicitud agendada vía portal web",
-      patientId: matchedPatientId,
-      professionalId: matchedProfId,
-      serviceId: matchedServiceId,
+      patientId: targetPatientId,
+      professionalId: targetProfId,
+      serviceId: targetServiceId,
     };
 
-    // Persistir directamente en API backend .NET
-    let createdFromApi: any = null;
+    // Calcular hora de fin (+45 o +60 minutos) para garantizar startsAt !== endsAt (F-07)
+    const horaParts = horaValida.split(":");
+    const startH = parseInt(horaParts[0], 10) || 9;
+    const startM = parseInt(horaParts[1], 10) || 0;
+    const endMTotal = startH * 60 + startM + 45;
+    const endH = Math.floor(endMTotal / 60);
+    const endM = endMTotal % 60;
+    const endsHoraStr = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
+
+    // Persistir en API backend .NET (F-06 & F-23: Erradicar falsos éxitos)
     try {
-      const horaParts = horaValida.split(":");
-      const startH = parseInt(horaParts[0], 10) || 10;
-      const startM = parseInt(horaParts[1], 10) || 0;
-      const endMTotal = startH * 60 + startM + 45;
-      const endH = Math.floor(endMTotal / 60);
-      const endM = endMTotal % 60;
-      const endsHoraStr = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
-
-      const matchedService = servicesEntities.find((s) => s.name === nuevaCita.servicio);
-      const targetServiceId = matchedService?.id || "30000000-0000-0000-0000-000000000001";
-
-      const matchedProf = profsEntities.find((p) => {
-        const pFullName = `Dr(a). ${p.firstName || ""} ${p.lastName || ""}`.trim();
-        return pFullName === nuevaCita.profesional || p.firstName === nuevaCita.profesional;
-      });
-      const targetProfId = matchedProf?.id || "1d000000-0000-0000-0000-000000000001";
-
-      const matchedPatient = patientsEntities.find((pt) => {
-        return pt.id === user?.id || pt.personId === user?.personId;
-      }) || (patientsEntities.length > 0 ? patientsEntities[0] : null);
-      const targetPatientId = matchedPatient?.id || "1e000000-0000-0000-0000-000000000001";
-
-      createdFromApi = await appointmentService.create({
-        patientId: matchedPatientId || targetPatientId,
-        professionalId: matchedProfId || targetProfId,
-        serviceId: matchedServiceId || targetServiceId,
+      const createdFromApi = await appointmentService.create({
+        patientId: targetPatientId,
+        professionalId: targetProfId,
+        serviceId: targetServiceId,
         startsAt: `${fechaValida}T${horaValida}:00`,
         endsAt: `${fechaValida}T${endsHoraStr}:00`,
         appointmentStatusId: isPaciente
-          ? "10000000-0000-0000-0000-000000000001" // AGENDADA
+          ? "10000000-0000-0000-0000-000000000001" // AGENDADA / PENDIENTE
           : "10000000-0000-0000-0000-000000000002", // CONFIRMADA
         appointmentOriginId: "20000000-0000-0000-0000-000000000003", // WEB
         reasonForVisit: nuevaCita.motivo || "Solicitud agendada vía portal web",
         notes: `Servicio: ${nuevaCita.servicio}. Paciente: ${nuevaCita.paciente}`,
       });
+
       if (createdFromApi && createdFromApi.id) {
         nuevaCita.appointmentId = createdFromApi.id;
       }
-      console.log("Cita guardada exitosamente en Backend API .NET:", createdFromApi);
+
+      const updated = [nuevaCita, ...citas];
+      setCitas(updated);
+      localStorage.setItem("nexus_citas", JSON.stringify(updated));
+
+      setShowRequestModal(false);
+      setFormMotivo("");
+      refreshNotifications();
+      await fetchAppointmentsAndCatalogs();
+      setSuccessToast(
+        isPaciente
+          ? "¡Tu cita ha sido solicitada con éxito! Registrada en sistema."
+          : "¡Cita creada y confirmada exitosamente en agenda y base de datos!"
+      );
+      setTimeout(() => setSuccessToast(null), 3500);
     } catch (err: any) {
+      console.error("API appointment creation failed:", err);
       if (err?.response?.status === 409) {
         setErrorMessage("El odontólogo seleccionado ya tiene una cita programada en ese horario. Por favor, elige otra hora o profesional.");
-        setTimeout(() => setErrorMessage(null), 5000);
-        return;
+      } else {
+        setErrorMessage(err?.response?.data?.message || "No se pudo registrar la cita en el servidor. Verifica los datos e inténtalo de nuevo.");
       }
-      console.warn("API appointment creation info:", err?.response?.data || err?.message);
+      setTimeout(() => setErrorMessage(null), 5000);
     }
-
-    const updated = [nuevaCita, ...citas];
-    setCitas(updated);
-    localStorage.setItem("nexus_citas", JSON.stringify(updated));
-
-    setShowRequestModal(false);
-    setFormMotivo("");
-    refreshNotifications();
-    await fetchAppointmentsAndCatalogs();
-    setSuccessToast(
-      isPaciente
-        ? "¡Tu cita ha sido solicitada con éxito! Registrada en sistema."
-        : "¡Cita creada y confirmada exitosamente en agenda y base de datos!"
-    );
-    setTimeout(() => setSuccessToast(null), 3500);
   };
 
   const handleUpdateStatus = async (citaId: number, nuevoEstado: EstadoCita) => {
     const targetCita = citas.find((c) => c.id === citaId);
+    if (!targetCita) return;
 
-    setCitas((prev) => {
-      const updated = prev.map((c) => (c.id === citaId ? { ...c, estado: nuevoEstado } : c));
-      localStorage.setItem("nexus_citas", JSON.stringify(updated));
-      return updated;
-    });
+    const statusMap: Record<EstadoCita, string> = {
+      Pendiente: "10000000-0000-0000-0000-000000000001",
+      Confirmada: "10000000-0000-0000-0000-000000000002",
+      "En Atención": "10000000-0000-0000-0000-000000000003",
+      Completada: "10000000-0000-0000-0000-000000000004",
+      Cancelada: "10000000-0000-0000-0000-000000000005",
+    };
 
-    if (targetCita && targetCita.appointmentId) {
-      const statusMap: Record<EstadoCita, string> = {
-        Pendiente: "10000000-0000-0000-0000-000000000001",
-        Confirmada: "10000000-0000-0000-0000-000000000002",
-        "En Atención": "10000000-0000-0000-0000-000000000003",
-        Completada: "10000000-0000-0000-0000-000000000004",
-        Cancelada: "10000000-0000-0000-0000-000000000005",
-      };
+    const horaParts = (targetCita.hora || "09:00").split(":");
+    const startH = parseInt(horaParts[0], 10) || 9;
+    const startM = parseInt(horaParts[1], 10) || 0;
+    const endMTotal = startH * 60 + startM + 45;
+    const endH = Math.floor(endMTotal / 60);
+    const endM = endMTotal % 60;
+    const endsHoraStr = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
 
+    if (targetCita.appointmentId) {
       const matchedProf = profsEntities.find((p) =>
         `${p.firstName || ""} ${p.lastName || ""}`.toLowerCase().includes(targetCita.profesional?.toLowerCase() || "")
       );
@@ -592,7 +644,7 @@ export function CitasView() {
           professionalId: targetCita.professionalId || matchedProf?.id || "1d000000-0000-0000-0000-000000000001",
           serviceId: targetCita.serviceId || matchedServ?.id || "30000000-0000-0000-0000-000000000001",
           startsAt: `${targetCita.fecha}T${targetCita.hora}:00`,
-          endsAt: `${targetCita.fecha}T${targetCita.hora}:00`,
+          endsAt: `${targetCita.fecha}T${endsHoraStr}:00`,
           appointmentStatusId: statusMap[nuevoEstado] || "10000000-0000-0000-0000-000000000002",
           appointmentOriginId: "20000000-0000-0000-0000-000000000003",
           reasonForVisit: targetCita.motivo,
@@ -600,14 +652,30 @@ export function CitasView() {
           cancelledAt: nuevoEstado === "Cancelada" ? new Date().toISOString() : undefined,
           cancellationReason: nuevoEstado === "Cancelada" ? "Cancelada por el usuario" : undefined,
         });
-      } catch (err) {
-        console.warn("Could not persist appointment status in API:", err);
-      }
-    }
 
-    refreshNotifications();
-    setSuccessToast(`Estado actualizado: Cita ${nuevoEstado}`);
-    setTimeout(() => setSuccessToast(null), 3000);
+        setCitas((prev) => {
+          const updated = prev.map((c) => (c.id === citaId ? { ...c, estado: nuevoEstado } : c));
+          localStorage.setItem("nexus_citas", JSON.stringify(updated));
+          return updated;
+        });
+
+        refreshNotifications();
+        setSuccessToast(`Estado actualizado: Cita ${nuevoEstado}`);
+        setTimeout(() => setSuccessToast(null), 3000);
+      } catch (err: any) {
+        console.error("Failed to update status on server:", err);
+        setErrorMessage("No se pudo actualizar el estado de la cita en el servidor.");
+        setTimeout(() => setErrorMessage(null), 5000);
+      }
+    } else {
+      setCitas((prev) => {
+        const updated = prev.map((c) => (c.id === citaId ? { ...c, estado: nuevoEstado } : c));
+        localStorage.setItem("nexus_citas", JSON.stringify(updated));
+        return updated;
+      });
+      setSuccessToast(`Estado actualizado localmente: Cita ${nuevoEstado}`);
+      setTimeout(() => setSuccessToast(null), 3000);
+    }
   };
 
   const handleAssignDoctor = async (e: React.FormEvent) => {
@@ -625,21 +693,13 @@ export function CitasView() {
       s.name?.toLowerCase().includes(selectedCitaToAssign.servicio?.toLowerCase() || "")
     );
 
-    setCitas((prev) => {
-      const updated: Cita[] = prev.map((c) =>
-        c.id === selectedCitaToAssign.id
-          ? {
-              ...c,
-              profesional: formProfesional,
-              professionalId: matchedProfId,
-              hora: formHora || c.hora,
-              estado: "Confirmada" as EstadoCita,
-            }
-          : c
-      );
-      localStorage.setItem("nexus_citas", JSON.stringify(updated));
-      return updated;
-    });
+    const horaParts = (formHora || selectedCitaToAssign.hora || "09:00").split(":");
+    const startH = parseInt(horaParts[0], 10) || 9;
+    const startM = parseInt(horaParts[1], 10) || 0;
+    const endMTotal = startH * 60 + startM + 45;
+    const endH = Math.floor(endMTotal / 60);
+    const endM = endMTotal % 60;
+    const endsHoraStr = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
 
     if (selectedCitaToAssign.appointmentId) {
       try {
@@ -648,22 +708,61 @@ export function CitasView() {
           professionalId: matchedProfId,
           serviceId: selectedCitaToAssign.serviceId || matchedServ?.id || "30000000-0000-0000-0000-000000000001",
           startsAt: `${selectedCitaToAssign.fecha}T${formHora || selectedCitaToAssign.hora}:00`,
-          endsAt: `${selectedCitaToAssign.fecha}T${formHora || selectedCitaToAssign.hora}:00`,
+          endsAt: `${selectedCitaToAssign.fecha}T${endsHoraStr}:00`,
           appointmentStatusId: "10000000-0000-0000-0000-000000000002", // CONFIRMADA
           appointmentOriginId: "20000000-0000-0000-0000-000000000003",
           reasonForVisit: selectedCitaToAssign.motivo,
           notes: `Odontólogo asignado: ${formProfesional}`,
         });
-      } catch (err) {
-        console.warn("Could not persist assigned doctor in API:", err);
-      }
-    }
 
-    setShowAssignModal(false);
-    setSelectedCitaToAssign(null);
-    refreshNotifications();
-    setSuccessToast("¡Cita aprobada y odontólogo asignado con éxito!");
-    setTimeout(() => setSuccessToast(null), 3500);
+        setCitas((prev) => {
+          const updated: Cita[] = prev.map((c) =>
+            c.id === selectedCitaToAssign.id
+              ? {
+                  ...c,
+                  profesional: formProfesional,
+                  professionalId: matchedProfId,
+                  hora: formHora || c.hora,
+                  estado: "Confirmada" as EstadoCita,
+                }
+              : c
+          );
+          localStorage.setItem("nexus_citas", JSON.stringify(updated));
+          return updated;
+        });
+
+        setShowAssignModal(false);
+        setSelectedCitaToAssign(null);
+        refreshNotifications();
+        await fetchAppointmentsAndCatalogs();
+        setSuccessToast("¡Cita aprobada y odontólogo asignado con éxito!");
+        setTimeout(() => setSuccessToast(null), 3500);
+      } catch (err: any) {
+        console.error("Could not persist assigned doctor in API:", err);
+        setErrorMessage(err?.response?.data?.message || "No se pudo asignar el odontólogo en el servidor.");
+        setTimeout(() => setErrorMessage(null), 5000);
+      }
+    } else {
+      setCitas((prev) => {
+        const updated: Cita[] = prev.map((c) =>
+          c.id === selectedCitaToAssign.id
+            ? {
+                ...c,
+                profesional: formProfesional,
+                professionalId: matchedProfId,
+                hora: formHora || c.hora,
+                estado: "Confirmada" as EstadoCita,
+              }
+            : c
+        );
+        localStorage.setItem("nexus_citas", JSON.stringify(updated));
+        return updated;
+      });
+      setShowAssignModal(false);
+      setSelectedCitaToAssign(null);
+      setSuccessToast("¡Cita asignada localmente con éxito!");
+      setTimeout(() => setSuccessToast(null), 3500);
+    }
   };
 
   const handleOpenAssign = (cita: Cita) => {
@@ -719,26 +818,13 @@ export function CitasView() {
       "Cancelada": "10000000-0000-0000-0000-000000000005",
     };
 
-    setCitas((prev) => {
-      const updated = prev.map((c) =>
-        c.id === selectedCitaToEdit.id
-          ? {
-              ...c,
-              paciente: editPaciente,
-              profesional: editProfesional,
-              professionalId: matchedProfId,
-              servicio: editServicio,
-              serviceId: matchedServiceId,
-              fecha: editFecha,
-              hora: editHora,
-              estado: editEstado,
-              motivo: editMotivo,
-            }
-          : c
-      );
-      localStorage.setItem("nexus_citas", JSON.stringify(updated));
-      return updated;
-    });
+    const horaParts = (editHora || "09:00").split(":");
+    const startH = parseInt(horaParts[0], 10) || 9;
+    const startM = parseInt(horaParts[1], 10) || 0;
+    const endMTotal = startH * 60 + startM + 45;
+    const endH = Math.floor(endMTotal / 60);
+    const endM = endMTotal % 60;
+    const endsHoraStr = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
 
     if (selectedCitaToEdit.appointmentId) {
       try {
@@ -746,28 +832,74 @@ export function CitasView() {
           professionalId: matchedProfId,
           serviceId: matchedServiceId,
           startsAt: `${editFecha}T${editHora}:00`,
-          endsAt: `${editFecha}T${editHora}:00`,
+          endsAt: `${editFecha}T${endsHoraStr}:00`,
           appointmentStatusId: statusMap[editEstado] || "10000000-0000-0000-0000-000000000002",
           appointmentOriginId: "20000000-0000-0000-0000-000000000003",
           reasonForVisit: editMotivo,
           notes: `Editado: ${editPaciente} con ${editProfesional}`,
         });
+
+        setCitas((prev) => {
+          const updated = prev.map((c) =>
+            c.id === selectedCitaToEdit.id
+              ? {
+                  ...c,
+                  paciente: editPaciente,
+                  profesional: editProfesional,
+                  professionalId: matchedProfId,
+                  servicio: editServicio,
+                  serviceId: matchedServiceId,
+                  fecha: editFecha,
+                  hora: editHora,
+                  estado: editEstado,
+                  motivo: editMotivo,
+                }
+              : c
+          );
+          localStorage.setItem("nexus_citas", JSON.stringify(updated));
+          return updated;
+        });
+
+        setShowEditModal(false);
+        setSelectedCitaToEdit(null);
+        refreshNotifications();
+        await fetchAppointmentsAndCatalogs();
+        setSuccessToast("¡Cita modificada y guardada exitosamente en base de datos!");
+        setTimeout(() => setSuccessToast(null), 3500);
       } catch (e: any) {
         if (e?.response?.status === 409) {
           setErrorMessage("Conflicto de horario: El odontólogo ya tiene una cita en ese horario. Por favor selecciona otra franja.");
-          setTimeout(() => setErrorMessage(null), 5000);
-          return;
+        } else {
+          setErrorMessage(e?.response?.data?.message || "No se pudo actualizar la cita en el servidor.");
         }
-        console.warn("API edit error:", e);
+        setTimeout(() => setErrorMessage(null), 5000);
       }
+    } else {
+      setCitas((prev) => {
+        const updated = prev.map((c) =>
+          c.id === selectedCitaToEdit.id
+            ? {
+                ...c,
+                paciente: editPaciente,
+                profesional: editProfesional,
+                professionalId: matchedProfId,
+                servicio: editServicio,
+                serviceId: matchedServiceId,
+                fecha: editFecha,
+                hora: editHora,
+                estado: editEstado,
+                motivo: editMotivo,
+              }
+            : c
+        );
+        localStorage.setItem("nexus_citas", JSON.stringify(updated));
+        return updated;
+      });
+      setShowEditModal(false);
+      setSelectedCitaToEdit(null);
+      setSuccessToast("¡Cita modificada localmente!");
+      setTimeout(() => setSuccessToast(null), 3500);
     }
-
-    setShowEditModal(false);
-    setSelectedCitaToEdit(null);
-    refreshNotifications();
-    await fetchAppointmentsAndCatalogs();
-    setSuccessToast("¡Cita modificada y guardada exitosamente en base de datos!");
-    setTimeout(() => setSuccessToast(null), 3500);
   };
 
   const handleDeleteAppointment = async () => {
@@ -777,25 +909,35 @@ export function CitasView() {
     );
     if (!confirmDelete) return;
 
-    setCitas((prev) => {
-      const updated = prev.filter((c) => c.id !== selectedCitaToEdit.id);
-      localStorage.setItem("nexus_citas", JSON.stringify(updated));
-      return updated;
-    });
-
     if (selectedCitaToEdit.appointmentId) {
       try {
         await appointmentService.delete(selectedCitaToEdit.appointmentId);
-      } catch (e) {
-        console.warn("API delete error:", e);
+        setCitas((prev) => {
+          const updated = prev.filter((c) => c.id !== selectedCitaToEdit.id);
+          localStorage.setItem("nexus_citas", JSON.stringify(updated));
+          return updated;
+        });
+        setShowEditModal(false);
+        setSelectedCitaToEdit(null);
+        refreshNotifications();
+        setSuccessToast("¡Cita eliminada correctamente en base de datos!");
+        setTimeout(() => setSuccessToast(null), 3500);
+      } catch (e: any) {
+        console.error("API delete error:", e);
+        setErrorMessage(e?.response?.data?.message || "No se pudo eliminar la cita en el servidor.");
+        setTimeout(() => setErrorMessage(null), 5000);
       }
+    } else {
+      setCitas((prev) => {
+        const updated = prev.filter((c) => c.id !== selectedCitaToEdit.id);
+        localStorage.setItem("nexus_citas", JSON.stringify(updated));
+        return updated;
+      });
+      setShowEditModal(false);
+      setSelectedCitaToEdit(null);
+      setSuccessToast("¡Cita eliminada correctamente!");
+      setTimeout(() => setSuccessToast(null), 3500);
     }
-
-    setShowEditModal(false);
-    setSelectedCitaToEdit(null);
-    refreshNotifications();
-    setSuccessToast("¡Cita eliminada correctamente!");
-    setTimeout(() => setSuccessToast(null), 3500);
   };
 
   return (

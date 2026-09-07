@@ -194,18 +194,32 @@ export function HistoriaClinicaView() {
   }, [patients, selectedPatientId]);
 
   const loadClinicalData = useCallback(async () => {
-    if (!selectedPatientId) return;
+    if (!selectedPatientId) {
+      setAttentions([]);
+      setDiagnoses([]);
+      setProcedures([]);
+      return;
+    }
 
     try {
-      const apiAttentions = await clinicalHistoryService.getAttentions().catch(() => []);
-      const apiDiagnoses = await clinicalHistoryService.getDiagnoses().catch(() => []);
-      const apiProcedures = await clinicalHistoryService.getProcedures().catch(() => []);
+      const [apiAttentions, apiDiagnoses, apiProcedures] = await Promise.all([
+        clinicalHistoryService.getAttentions().catch(() => []),
+        clinicalHistoryService.getDiagnoses().catch(() => []),
+        clinicalHistoryService.getProcedures().catch(() => []),
+      ]);
 
       setDiagnoses(apiDiagnoses);
       setProcedures(apiProcedures);
 
       if (apiAttentions && apiAttentions.length > 0) {
-        const mapped: LocalAttention[] = apiAttentions.map((a, idx) => ({
+        // Aislamiento estricto por paciente (F-01)
+        const filtered = apiAttentions.filter((a: any) => 
+          a.clinicalHistoryId === selectedPatientId ||
+          a.patientId === selectedPatientId ||
+          (selectedPatient?.personId && a.personId === selectedPatient.personId)
+        );
+
+        const mapped: LocalAttention[] = filtered.map((a, idx) => ({
           id: a.id || `att-api-${idx}`,
           fecha: a.attentionDate ? new Date(a.attentionDate).toLocaleString("es-CO") : "Reciente",
           profesional: "Dr. Asignado",
@@ -225,9 +239,10 @@ export function HistoriaClinicaView() {
       console.warn("API clinical history offline, setting empty attentions list:", err);
       setAttentions([]);
     }
-  }, [selectedPatientId]);
+  }, [selectedPatientId, selectedPatient]);
 
   useEffect(() => {
+    setAttentions([]);
     loadClinicalData();
   }, [loadClinicalData]);
 

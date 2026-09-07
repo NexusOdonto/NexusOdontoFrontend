@@ -71,20 +71,22 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
 /**
  * Obtiene el rol canónico del usuario con soporte resiliente a múltiples formatos
  */
-export function getUserRole(user: any): SystemRole {
-  if (!user) return "PACIENTE";
+export function getUserRole(user: unknown): SystemRole {
+  if (!user || typeof user !== "object") return "PACIENTE";
+  const u = user as Record<string, unknown>;
 
   // 1. Revisar propiedad rol / role directa
-  const roleName = String(user.rol || user.role || "").trim().toUpperCase();
+  const roleName = String(u.rol || u.role || "").trim().toUpperCase();
   if (roleName.includes("ADMIN")) return "ADMINISTRADOR";
   if (roleName.includes("ODONTO") || roleName.includes("DENTIST") || roleName.includes("DOCTOR")) return "ODONTOLOGO";
   if (roleName.includes("RECEPCION") || roleName.includes("RECEPTION")) return "RECEPCIONISTA";
   if (roleName.includes("PACIENTE") || roleName.includes("PATIENT")) return "PACIENTE";
 
   // 2. Revisar arreglo roleIds / roles
-  const rolesArray: any[] = Array.isArray(user.roleIds) ? user.roleIds : Array.isArray(user.roles) ? user.roles : [];
+  const rolesArray: unknown[] = Array.isArray(u.roleIds) ? u.roleIds : Array.isArray(u.roles) ? u.roles : [];
   for (const r of rolesArray) {
-    const val = String(typeof r === "object" ? r?.id || r?.name || r?.code || "" : r).trim().toLowerCase();
+    const rObj = r as Record<string, unknown>;
+    const val = String(typeof r === "object" ? rObj?.id || rObj?.name || rObj?.code || "" : r).trim().toLowerCase();
     for (const [key, guid] of Object.entries(ROLE_GUIDS)) {
       if (val === guid.toLowerCase() || val === key.toLowerCase()) {
         return key as SystemRole;
@@ -93,7 +95,7 @@ export function getUserRole(user: any): SystemRole {
   }
 
   // 3. Revisar permisos asignados como indicador secundario
-  const permissions: string[] = Array.isArray(user.permissions) ? user.permissions : [];
+  const permissions: string[] = Array.isArray(u.permissions) ? (u.permissions as string[]) : [];
   if (permissions.includes("USERS:VIEW") || permissions.includes("ROLES:VIEW")) {
     return "ADMINISTRADOR";
   }
@@ -111,7 +113,7 @@ export function getUserRole(user: any): SystemRole {
  * Valida de forma estricta si un usuario tiene acceso a una ruta específica según su rol.
  * El dashboard y perfil siempre son accesibles para todo usuario autenticado.
  */
-export function hasRouteAccess(user: any, path: string): boolean {
+export function hasRouteAccess(user: unknown, path: string): boolean {
   if (!user) return false;
 
   // Normalizar ruta para evitar discrepancias por query params o barras finales
