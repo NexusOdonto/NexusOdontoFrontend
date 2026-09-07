@@ -220,18 +220,30 @@ export function CitasView() {
         appointmentService.getAll(),
       ]);
 
-      const services = servicesData.status === "fulfilled" && Array.isArray(servicesData.value) ? servicesData.value : [];
-      const profs = profData.status === "fulfilled" && Array.isArray(profData.value) ? profData.value : [];
-      const patients = patientsData.status === "fulfilled" && Array.isArray(patientsData.value) ? patientsData.value : [];
-      const persons = personsData.status === "fulfilled" && Array.isArray(personsData.value) ? personsData.value : [];
-      const appointments: AppointmentResponseDto[] = apiAppointments.status === "fulfilled" && Array.isArray(apiAppointments.value) ? apiAppointments.value : [];
+      const services = servicesData.status === "fulfilled"
+        ? (Array.isArray(servicesData.value) ? servicesData.value : (servicesData.value as any)?.data || [])
+        : [];
+      const profs = profData.status === "fulfilled"
+        ? (Array.isArray(profData.value) ? profData.value : (profData.value as any)?.data || [])
+        : [];
+      const patients = patientsData.status === "fulfilled"
+        ? (Array.isArray(patientsData.value) ? patientsData.value : (patientsData.value as any)?.data || [])
+        : [];
+      const persons = personsData.status === "fulfilled"
+        ? (Array.isArray(personsData.value) ? personsData.value : (personsData.value as any)?.data || [])
+        : [];
+
+      const rawApps = apiAppointments.status === "fulfilled" ? apiAppointments.value : [];
+      const appointments: AppointmentResponseDto[] = Array.isArray(rawApps)
+        ? rawApps
+        : ((rawApps as any)?.data?.items || (rawApps as any)?.data || (rawApps as any)?.items || []);
 
       setServicesEntities(services);
       setProfsEntities(profs);
       setPatientsEntities(patients);
       // Mapas de búsqueda rápida para enriquecer los IDs
       const servicesMap: Record<string, string> = {};
-      services.forEach((s) => {
+      services.forEach((s: any) => {
         if (s.id) servicesMap[String(s.id).toLowerCase()] = s.name;
       });
 
@@ -276,9 +288,9 @@ export function CitasView() {
 
       // Catálogo de servicios
       if (services.length > 0) {
-        const translatedServices = services.map((s) => ({ id: s.id, name: translateServiceName(s.name) }));
+        const translatedServices = services.map((s: any) => ({ id: s.id, name: translateServiceName(s.name) }));
         setServicesRaw(translatedServices);
-        const names = translatedServices.map((s) => s.name);
+        const names = translatedServices.map((s: any) => s.name);
         setServicesList(names);
         setFormServicio(names[0]);
       } else {
@@ -442,7 +454,8 @@ export function CitasView() {
         const saved = localStorage.getItem("nexus_citas");
         if (saved) {
           try {
-            setCitas(JSON.parse(saved));
+            const parsed = JSON.parse(saved);
+            setCitas(Array.isArray(parsed) ? parsed : citasFallback);
           } catch {
             setCitas(citasFallback);
           }
@@ -450,8 +463,9 @@ export function CitasView() {
           setCitas(citasFallback);
         }
       }
-    } catch (error) {
-      console.warn("API appointments offline, using local data:", error);
+    } catch (error: any) {
+      console.error("Fallo crítico al cargar citas en /citas:", error);
+      setErrorMessage("No se pudieron cargar las citas. Intente sincronizar nuevamente.");
       setCitas(citasFallback);
     } finally {
       setLoading(false);

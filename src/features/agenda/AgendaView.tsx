@@ -12,6 +12,7 @@ import {
   CalendarDays,
   Plus,
   RefreshCw,
+  AlertCircle,
 } from "lucide-react";
 
 import {
@@ -54,6 +55,9 @@ export function AgendaView() {
   const [patientOptions, setPatientOptions] = useState<SelectOption[]>([]);
   const [listaOdontologos, setListaOdontologos] = useState(odontologosFallback);
   const [successToast, setSuccessToast] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const [odontologosSeleccionados, setOdontologosSeleccionados] = useState<string[]>([
     "Todos los odontólogos",
@@ -351,6 +355,7 @@ export function AgendaView() {
     const horaNumero = Number(hora.split(":")[0]);
     const horaFin = `${String(horaNumero + 1).padStart(2, "0")}:00`;
 
+    setFormError(null);
     setFechaSeleccionada(formatoFechaInput(fecha));
     setNuevaCita({
       paciente: isPaciente ? (user?.name || "Paciente") : "",
@@ -368,38 +373,71 @@ export function AgendaView() {
     setMostrarModal(true);
   };
 
-  const guardarCita = async () => {
-    if (!nuevaCita.paciente.trim() || !nuevaCita.servicio.trim() || !fechaSeleccionada) {
+  const guardarCita = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    console.log("-> Iniciando guardado de cita en Agenda...");
+    console.log("Paciente seleccionado:", nuevaCita.paciente, "ID:", nuevaCita.patientId);
+    console.log("Formulario:", { fechaSeleccionada, horaInicio: nuevaCita.horaInicio, servicio: nuevaCita.servicio, odontologo: nuevaCita.odontologo });
+
+    if (!nuevaCita.paciente?.trim()) {
+      setFormError("Debes seleccionar o ingresar un paciente válido.");
+      setErrorMessage("Debes seleccionar un paciente válido.");
+      setTimeout(() => setErrorMessage(null), 5000);
+      return;
+    }
+    if (!nuevaCita.servicio?.trim()) {
+      setFormError("Debes seleccionar un servicio o tratamiento.");
+      setErrorMessage("Debes seleccionar un servicio.");
+      setTimeout(() => setErrorMessage(null), 5000);
+      return;
+    }
+    if (!nuevaCita.odontologo?.trim() && !isPaciente) {
+      setFormError("Debes seleccionar un odontólogo.");
+      setErrorMessage("Debes seleccionar un profesional.");
+      setTimeout(() => setErrorMessage(null), 5000);
       return;
     }
 
-    const matchedService = serviciosEntities.find((s) => s.name === nuevaCita.servicio);
-    const serviceIdToUse = matchedService?.id || "30000000-0000-0000-0000-000000000001";
-
-    const matchedProf = profesionalesEntities.find((p) => {
-      const pFullName = `Dr(a). ${p.firstName || ""} ${p.lastName || ""}`.trim();
-      return pFullName === nuevaCita.odontologo || p.firstName === nuevaCita.odontologo;
-    });
-    const profIdToUse =
-      matchedProf?.id ||
-      (profesionalesEntities.length > 0
-        ? profesionalesEntities[0].id
-        : "1d000000-0000-0000-0000-000000000001");
-
-    const matchedPatient =
-      pacientesEntities.find((pt) => {
-        return pt.id === nuevaCita.patientId || pt.id === user?.id || pt.personId === user?.personId;
-      }) || (pacientesEntities.length > 0 ? pacientesEntities[0] : null);
-    const patientIdToUse = nuevaCita.patientId || matchedPatient?.id || "1e000000-0000-0000-0000-000000000001";
-
-    // Persistir en API .NET
     try {
-      await appointmentService.create({
+      setIsSubmitting(true);
+      setFormError(null);
+
+      const matchedService = serviciosEntities.find((s) => s.name === nuevaCita.servicio || areGuidsEqual(s.id, nuevaCita.servicio));
+      const serviceIdToUse = matchedService?.id || (serviciosEntities.length > 0 ? serviciosEntities[0].id : "30000000-0000-0000-0000-000000000001");
+
+      const matchedProf = profesionalesEntities.find((p) => {
+        const pFullName = `Dr(a). ${p.firstName || ""} ${p.lastName || ""}`.trim();
+        return pFullName === nuevaCita.odontologo || p.firstName === nuevaCita.odontologo || areGuidsEqual(p.id, nuevaCita.odontologo);
+      });
+      const profIdToUse =
+        matchedProf?.id ||
+        (profesionalesEntities.length > 0
+          ? profesionalesEntities[0].id
+          : "1d000000-0000-0000-0000-000000000001");
+
+      const matchedPatient =
+        pacientesEntities.find((pt) => {
+          return areGuidsEqual(pt.id, nuevaCita.patientId) || 
+                 areGuidsEqual(pt.personId, nuevaCita.patientId) ||
+                 (user?.id && areGuidsEqual(pt.id, user.id)) ||
+                 (user?.personId && areGuidsEqual(pt.personId, user.personId));
+        }) || (pacientesEntities.length > 0 ? pacientesEntities[0] : null);
+      const patientIdToUse = nuevaCita.patientId || matchedPatient?.id || "1e000000-0000-0000-0000-000000000001";
+
+      const [h, m] = (nuevaCita.horaInicio || "09:00").split(":").map(Number);
+      const start = new Date(fechaSeleccionada);
+      start.setHours(isNaN(h) ? 9 : h, isNaN(m) ? 0 : m, 0, 0);
+
+      const [eh, em] = (nuevaCita.horaFin || "10:00").split(":").map(Number);
+      const end = new Date(fechaSeleccionada);
+      end.setHours(isNaN(eh) ? 10 : eh, isNaN(em) ? 0 : em, 0, 0);
+
+      const payload = {
         patientId: patientIdToUse,
         professionalId: profIdToUse,
         serviceId: serviceIdToUse,
-        startsAt: `${fechaSeleccionada}T${nuevaCita.horaInicio}:00`,
-        endsAt: `${fechaSeleccionada}T${nuevaCita.horaFin}:00`,
+        startsAt: start.toISOString(),
+        endsAt: end.toISOString(),
         appointmentStatusId:
           nuevaCita.estado === "Pendiente"
             ? "10000000-0000-0000-0000-000000000001"
@@ -407,28 +445,27 @@ export function AgendaView() {
         appointmentOriginId: "20000000-0000-0000-0000-000000000003",
         reasonForVisit: `Agendado desde agenda interactiva para ${nuevaCita.paciente}`,
         notes: `Servicio: ${nuevaCita.servicio}. Odontólogo: ${nuevaCita.odontologo}`,
-      });
-      setSuccessToast("¡Cita agendada y guardada exitosamente en el backend!");
+      };
+
+      console.log("Payload enviado a la API:", payload);
+      const res = await appointmentService.create(payload);
+      console.log("Respuesta backend:", res);
+
+      setSuccessToast("¡Cita agendada exitosamente en el servidor!");
       setTimeout(() => setSuccessToast(null), 3500);
-    } catch (err) {
-      console.warn("No se pudo guardar la cita en la API REST:", err);
-      setSuccessToast("Cita registrada en calendario interactivo.");
-      setTimeout(() => setSuccessToast(null), 3000);
+
+      // Cierre del modal y refresco de agenda
+      setMostrarModal(false);
+      await fetchAgendaData();
+    } catch (error: any) {
+      console.error("Error capturado al guardar cita en /agenda:", error.response?.data || error);
+      const errorMsg = error?.response?.data?.message || error?.message || "No se pudo registrar la cita en el servidor.";
+      setFormError(errorMsg);
+      setErrorMessage(errorMsg);
+      setTimeout(() => setErrorMessage(null), 6000);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    const cita: Cita = {
-      id: citas.length > 0 ? Math.max(...citas.map((item) => item.id)) + 1 : 1,
-      paciente: nuevaCita.paciente,
-      servicio: nuevaCita.servicio,
-      odontologo: nuevaCita.odontologo,
-      fecha: fechaSeleccionada,
-      horaInicio: nuevaCita.horaInicio,
-      horaFin: nuevaCita.horaFin,
-      estado: nuevaCita.estado,
-    };
-
-    setCitas((actuales) => [...actuales, cita]);
-    setMostrarModal(false);
   };
 
   const eliminarCita = (id: number) => {
@@ -472,8 +509,16 @@ export function AgendaView() {
       {/* Toast Notificación (CAPA SUPERIOR ABSOLUTA z-99999) */}
       {successToast && (
         <div className="fixed top-6 right-6 z-99999 flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-slate-900/95 text-cyan-300 border border-cyan-500/40 shadow-2xl backdrop-blur-xl animate-slideDown">
-          <Check size={18} className="text-cyan-400" />
+          <Check size={18} className="text-cyan-400 shrink-0" />
           <span className="text-xs font-bold">{successToast}</span>
+        </div>
+      )}
+
+      {/* Toast Error Notificación */}
+      {errorMessage && (
+        <div className="fixed top-6 right-6 z-99999 flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-rose-950/95 text-rose-300 border border-rose-500/40 shadow-2xl backdrop-blur-xl animate-slideDown">
+          <AlertCircle size={18} className="text-rose-400 shrink-0" />
+          <span className="text-xs font-bold">{errorMessage}</span>
         </div>
       )}
 
@@ -893,6 +938,13 @@ export function AgendaView() {
               </button>
             </div>
 
+            {formError && (
+              <div className="mt-4 flex items-center gap-2 rounded-xl bg-rose-500/10 border border-rose-500/30 p-3 text-xs text-rose-600 dark:text-rose-400">
+                <AlertCircle size={16} className="shrink-0" />
+                <span>{formError}</span>
+              </div>
+            )}
+
             <div className="mt-5 space-y-4">
               <div>
                 <label className="mb-1.5 block text-xs font-semibold text-slate-700 dark:text-slate-300">
@@ -1061,10 +1113,11 @@ export function AgendaView() {
               <button
                 type="button"
                 onClick={guardarCita}
-                className="flex items-center gap-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 px-5 py-2.5 text-sm font-bold text-slate-950 transition cursor-pointer shadow-lg shadow-cyan-500/20"
+                disabled={isSubmitting}
+                className="flex items-center gap-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 px-5 py-2.5 text-sm font-bold text-slate-950 transition cursor-pointer shadow-lg shadow-cyan-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Save size={16} />
-                Guardar Cita
+                {isSubmitting ? "Guardando..." : "Guardar Cita"}
               </button>
             </div>
           </div>
