@@ -94,52 +94,10 @@ const translateService = (item: { name?: string; description?: string; category?
   };
 };
 
-const serviciosFallback: Servicio[] = [
-  {
-    id: "30000000-0000-0000-0000-000000000001",
-    codigo: "SRV-001",
-    nombre: "Valoración General Odontológica",
-    categoria: "Higiene y Prevención",
-    descripcion: "Evaluación clínica integral, diagnóstico odontológico y formulación de plan de tratamiento personalizado.",
-    duracion: 30,
-    precio: 60000,
-    activo: true,
-  },
-  {
-    id: "30000000-0000-0000-0000-000000000002",
-    codigo: "SRV-002",
-    nombre: "Profilaxis y Limpieza Dental",
-    categoria: "Higiene y Prevención",
-    descripcion: "Eliminación de placa bacteriana, remoción de cálculo supragingival con ultrasonido y pulido coronario.",
-    duracion: 45,
-    precio: 120000,
-    activo: true,
-  },
-  {
-    id: "30000000-0000-0000-0000-000000000003",
-    codigo: "SRV-003",
-    nombre: "Restauración en Resina Compuesta",
-    categoria: "Operatoria / Resinas",
-    descripcion: "Reconstrucción estética y funcional de piezas dentales afectadas por caries con resina fotocurable.",
-    duracion: 60,
-    precio: 180000,
-    activo: true,
-  },
-  {
-    id: "30000000-0000-0000-0000-000000000004",
-    codigo: "SRV-004",
-    nombre: "Blanqueamiento Dental Clínico",
-    categoria: "Estética Dental",
-    descripcion: "Aclaramiento dental profesional en consultorio con fotoactivación y gel de peróxido de alta pureza.",
-    duracion: 60,
-    precio: 350000,
-    activo: true,
-  },
-];
-
 export function ServiciosView() {
   const [servicios, setServicios] = useState<Servicio[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorCarga, setErrorCarga] = useState<string | null>(null);
 
   // Filtros y Búsqueda
   const [busqueda, setBusqueda] = useState("");
@@ -155,10 +113,11 @@ export function ServiciosView() {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [servicioAEditar, setServicioAEditar] = useState<Servicio | null>(null);
 
-  // Carga de catálogo con sincronización a localStorage y backend
+  // Carga de catálogo con sincronización a localStorage y backend (Sección 3.14)
   const fetchServicios = useCallback(async () => {
     try {
       setLoading(true);
+      setErrorCarga(null);
       const data = await serviceCatalogService.getAll();
       if (data && data.length > 0) {
         const mapped: Servicio[] = data.map((item, idx) => {
@@ -182,24 +141,24 @@ export function ServiciosView() {
           try {
             setServicios(JSON.parse(guardados));
           } catch {
-            setServicios(serviciosFallback);
+            setServicios([]);
           }
         } else {
-          setServicios(serviciosFallback);
-          localStorage.setItem("nexus_servicios", JSON.stringify(serviciosFallback));
+          setServicios([]);
         }
       }
-    } catch (err) {
-      console.warn("API Service Catalog no disponible, usando almacenamiento local:", err);
+    } catch (err: any) {
+      console.warn("API Service Catalog no disponible:", err);
       const guardados = localStorage.getItem("nexus_servicios");
       if (guardados) {
         try {
           setServicios(JSON.parse(guardados));
         } catch {
-          setServicios(serviciosFallback);
+          setServicios([]);
         }
       } else {
-        setServicios(serviciosFallback);
+        setServicios([]);
+        setErrorCarga("No fue posible cargar el catálogo de servicios clínicos.");
       }
     } finally {
       setLoading(false);
@@ -441,6 +400,21 @@ export function ServiciosView() {
           </button>
         </div>
       </div>
+
+      {errorCarga && (
+        <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs sm:text-sm flex items-center justify-between gap-3 animate-fadeIn backdrop-blur-md">
+          <div className="flex items-center gap-2.5">
+            <span className="font-bold">{errorCarga}</span>
+          </div>
+          <button
+            type="button"
+            onClick={fetchServicios}
+            className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs cursor-pointer shadow-sm transition-all"
+          >
+            Reintentar
+          </button>
+        </div>
+      )}
 
       {/* Métricas Clínicas Rápidas (KPIs) adaptables para Claro y Oscuro */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-slideDown">

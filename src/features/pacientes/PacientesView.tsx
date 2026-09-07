@@ -14,11 +14,18 @@ import { Plus, RefreshCw, LayoutGrid, List, Download } from "lucide-react";
 
 const ITEMS_PER_PAGE = 6;
 
-const isSystemOrAdminAccount = (item: { nombre?: string; name?: string; correo?: string; email?: string; rol?: string; role?: string }) => {
+const isSystemOrAdminAccount = (item: { nombre?: string; name?: string; correo?: string; email?: string; rol?: string; role?: string; documento?: string; documentNumber?: string; cedula?: string; isPatient?: boolean }) => {
   const role = (item.rol || item.role || "").toLowerCase().trim();
+  const email = (item.correo || item.email || "").toLowerCase().trim();
+  const doc = (item.documento || item.documentNumber || item.cedula || "").toUpperCase().trim();
+  const name = (item.nombre || item.name || "").toLowerCase().trim();
 
-  // Descartar exclusivamente por roles explícitos de staff o bot (F-22)
-  if (role.includes("admin") || role.includes("recepc") || role.includes("odont") || role.includes("doctor") || role.includes("bot") || role.includes("asistent")) {
+  // Exclusión absoluta de roles administrativos, clínicos de staff o bots técnicos (BUG-12)
+  const esStaffOBot = ["administrator", "admin", "dentist", "odontologo", "receptionist", "recepcionista", "bot service", "botservice", "asistente"].some(r => role.includes(r));
+  const esDocBot = doc.startsWith("BOT-") || email.startsWith("bot@") || email.includes("service-01") || name.includes("bot-service");
+  const esEmailStaff = email.startsWith("admin@") || email.startsWith("recepcion@") || email.startsWith("reception@");
+
+  if (esStaffOBot || esDocBot || esEmailStaff) {
     return true;
   }
   return false;
@@ -58,6 +65,10 @@ export function PacientesView() {
           const tel = person?.phone || p.phone || p.emergencyContactPhone || "";
           const email = person?.email || p.email || "";
 
+          if (isSystemOrAdminAccount({ nombre: fullName, email, documento: doc })) {
+            return;
+          }
+
           const key = (doc || email || fullName).toLowerCase();
 
           if (!seenIdentifiers.has(key)) {
@@ -75,37 +86,12 @@ export function PacientesView() {
         });
       }
 
-      // 2. Mapear Personas de la API que posean datos válidos
-      if (personsData && Array.isArray(personsData)) {
-        personsData.forEach((person) => {
-          const fullName = `${person.firstName || ""} ${person.lastName || ""}`.trim();
-          const doc = person.documentNumber || "";
-          const email = person.email || "";
-
-          const key = (doc || email || fullName).toLowerCase();
-
-          if (fullName && !seenIdentifiers.has(key)) {
-            seenIdentifiers.add(key);
-            combinedPacientes.push({
-              id: combinedPacientes.length + 1,
-              nombre: fullName,
-              documento: doc,
-              telefono: person.phone || "",
-              estado: "Activo",
-              correo: email,
-              fechaNacimiento: person.dateOfBirth,
-            });
-          }
-        });
-      }
-
-      // 3. Inspeccionar fuentes de almacenamiento local descartando staff / admin
+      // 2. Inspeccionar fuentes de almacenamiento local descartando staff / admin
       const storageKeys = [
         PACIENTES_STORAGE_KEY,
         "pacientes",
         "nexus_pacientes",
         "nexus_pacientes_v1",
-        "nexus_users",
       ];
 
       storageKeys.forEach((k) => {
@@ -120,7 +106,7 @@ export function PacientesView() {
               const tel = item.telefono || item.phone || item.mobile || "";
               const email = item.correo || item.email || "";
 
-              if (isSystemOrAdminAccount({ name: fullName, email, rol: item.rol, role: item.role })) {
+              if (isSystemOrAdminAccount({ nombre: fullName, email, rol: item.rol, role: item.role, documento: doc })) {
                 return;
               }
 
@@ -145,24 +131,11 @@ export function PacientesView() {
         }
       });
 
-      // 4. Si la lista está vacía, incluir seeders de pacientes reales
-      if (combinedPacientes.length === 0) {
-        const seedDefaults: Paciente[] = [
-          { id: 1, nombre: "Andrés Pérez", documento: "1076543210", telefono: "+573101234567", correo: "paciente@nexusodonto.com", estado: "Activo" },
-          { id: 2, nombre: "Camila López", documento: "1098765436", telefono: "+573112345678", correo: "camila.lopez@correo.com", estado: "Activo" },
-          { id: 3, nombre: "Felipe Torres", documento: "1098765437", telefono: "+573123456789", correo: "felipe.torres@correo.com", estado: "Activo" },
-          { id: 4, nombre: "Valentina Mendoza", documento: "1098765438", telefono: "+573134567890", correo: "valentina.mendoza@correo.com", estado: "Activo" },
-        ];
-        setPacientes(seedDefaults);
-      } else {
-        setPacientes(combinedPacientes);
-      }
+      // 3. Establecer pacientes combinados reales sin inventar mocks ficticios (Sección 3.9)
+      setPacientes(combinedPacientes);
     } catch (err) {
       console.warn("API Patients unavailable, using unified records:", err);
-      const seedDefaults: Paciente[] = [
-        { id: 1, nombre: "Andrés Pérez", documento: "1076543210", telefono: "+573101234567", correo: "paciente@nexusodonto.com", estado: "Activo" },
-      ];
-      setPacientes(seedDefaults);
+      setPacientes([]);
     } finally {
       setLoading(false);
     }

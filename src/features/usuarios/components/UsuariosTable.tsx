@@ -254,14 +254,14 @@ export function UsuariosTable({
                         onClick={() => !isSelf && onToggleStatus?.(usuario)}
                         className={`p-2 rounded-xl border transition-all shadow-sm ${
                           isSelf
-                            ? "opacity-30 cursor-not-allowed border-slate-200 dark:border-white/10 bg-slate-100/50 dark:bg-slate-900/30 text-slate-400"
+                            ? "opacity-30 cursor-not-allowed pointer-events-none border-slate-200 dark:border-white/10 bg-slate-100/50 dark:bg-slate-900/30 text-slate-400"
                             : usuario.isActive
                             ? "border-slate-200 dark:border-white/10 bg-white/80 dark:bg-slate-900/60 hover:bg-rose-500/10 text-slate-400 hover:text-rose-500 hover:border-rose-500/30 cursor-pointer"
                             : "border-emerald-500/40 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25 hover:border-emerald-500 shadow-sm cursor-pointer"
                         }`}
                         title={
                           isSelf
-                            ? "No puedes desactivar tu propia cuenta"
+                            ? "No puedes desactivar tu propia cuenta de administrador"
                             : usuario.isActive
                             ? "Desactivar usuario"
                             : "Reactivar usuario"
@@ -344,14 +344,14 @@ export function UsuariosTable({
                     onClick={() => !isSelf && onToggleStatus?.(usuario)}
                     className={`p-1.5 rounded-xl border transition-all ${
                       isSelf
-                        ? "opacity-30 cursor-not-allowed border-slate-200 text-slate-400"
+                        ? "opacity-30 cursor-not-allowed pointer-events-none border-slate-200 text-slate-400"
                         : usuario.isActive
                         ? "border-slate-200 dark:border-white/10 text-slate-400 hover:text-rose-500 hover:border-rose-500/30"
                         : "border-emerald-500/40 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                     }`}
                     title={
                       isSelf
-                        ? "No puedes desactivar tu propia cuenta"
+                        ? "No puedes desactivar tu propia cuenta de administrador"
                         : usuario.isActive
                         ? "Desactivar usuario"
                         : "Reactivar usuario"

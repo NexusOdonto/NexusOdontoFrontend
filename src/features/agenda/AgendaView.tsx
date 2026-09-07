@@ -60,7 +60,6 @@ export function AgendaView() {
 
   const [mostrarModal, setMostrarModal] = useState(false);
   const [fechaSeleccionada, setFechaSeleccionada] = useState("");
-  const [horaSeleccionada, setHoraSeleccionada] = useState("");
   const [horaActual, setHoraActual] = useState(new Date());
 
   useEffect(() => {
@@ -261,22 +260,22 @@ export function AgendaView() {
 
   const citasHoy = useMemo(() => {
     const hoy = formatoFechaInput(new Date());
-    return citas.filter((cita) => cita.fecha === hoy).length;
-  }, [citas]);
+    return citasFiltradas.filter((cita) => cita.fecha === hoy).length;
+  }, [citasFiltradas]);
 
   const confirmadas = useMemo(() => {
-    return citas.filter((cita) => cita.estado === "Confirmada").length;
-  }, [citas]);
+    return citasFiltradas.filter((cita) => (cita.estado || "").toLowerCase() === "confirmada" || (cita.estado || "").toLowerCase() === "confirmed").length;
+  }, [citasFiltradas]);
 
   const pendientes = useMemo(() => {
-    return citas.filter((cita) => cita.estado === "Pendiente").length;
-  }, [citas]);
+    return citasFiltradas.filter((cita) => (cita.estado || "").toLowerCase() === "pendiente" || (cita.estado || "").toLowerCase() === "pending").length;
+  }, [citasFiltradas]);
 
   const espaciosDisponibles = useMemo(() => {
     return (
-      citas.filter((cita) => cita.estado === "Disponible").length + 20
+      citasFiltradas.filter((cita) => (cita.estado || "").toLowerCase() === "disponible").length + 20
     );
-  }, [citas]);
+  }, [citasFiltradas]);
 
   const cambiarSemana = (direccion: number) => {
     setFechaActual((fecha) => sumarDias(fecha, direccion * 7));
@@ -318,7 +317,6 @@ export function AgendaView() {
     const horaFin = `${String(horaNumero + 1).padStart(2, "0")}:00`;
 
     setFechaSeleccionada(formatoFechaInput(fecha));
-    setHoraSeleccionada(hora);
     setNuevaCita({
       paciente: isPaciente ? (user?.name || "Paciente") : "",
       patientId: isPaciente ? (user?.id || "") : "",
@@ -436,96 +434,96 @@ export function AgendaView() {
 
   return (
     <>
-      {/* Toast Notificación */}
+      {/* Toast Notificación (CAPA SUPERIOR ABSOLUTA z-[99999]) */}
       {successToast && (
-        <div className="fixed top-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-slate-900/95 text-cyan-300 border border-cyan-500/40 shadow-2xl backdrop-blur-xl animate-slideDown">
+        <div className="fixed top-6 right-6 z-[99999] flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-slate-900/95 text-cyan-300 border border-cyan-500/40 shadow-2xl backdrop-blur-xl animate-slideDown">
           <Check size={18} className="text-cyan-400" />
           <span className="text-xs font-bold">{successToast}</span>
         </div>
       )}
 
-      <div className="min-h-full w-full overflow-hidden px-4 pb-6 pt-4 text-slate-100 sm:px-6 lg:px-8">
+      <div className="min-h-full w-full overflow-hidden px-4 pb-6 pt-4 text-slate-900 dark:text-slate-100 sm:px-6 lg:px-8">
         <div className="mx-auto w-full max-w-[1700px]">
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_240px]">
             <main className="min-w-0 space-y-4">
               {/* Tarjetas KPI Superiores */}
               <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-700/70 bg-slate-950/85 px-4 py-4 shadow-lg backdrop-blur-sm">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan-400/20 bg-cyan-500/10">
-                    <CalendarDays size={20} className="text-cyan-400" />
+                <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 px-4 py-4 shadow-sm backdrop-blur-sm">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400">
+                    <CalendarDays size={20} />
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-slate-400">Citas hoy</p>
-                    <p className="mt-1 text-2xl font-bold text-white">{citasHoy}</p>
-                    <p className="mt-1 text-[11px] text-slate-500">Total programadas</p>
+                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Citas hoy</p>
+                    <p className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">{citasHoy}</p>
+                    <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">Total programadas</p>
                   </div>
                 </div>
 
-                <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-700/70 bg-slate-950/85 px-4 py-4 shadow-lg backdrop-blur-sm">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan-400/20 bg-cyan-500/10">
-                    <Clock3 size={20} className="text-cyan-400" />
+                <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 px-4 py-4 shadow-sm backdrop-blur-sm">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400">
+                    <Clock3 size={20} />
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-slate-400">Espacios disponibles</p>
-                    <p className="mt-1 text-2xl font-bold text-white">{espaciosDisponibles}</p>
-                    <p className="mt-1 text-[11px] text-slate-500">Para agendar</p>
+                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Espacios disponibles</p>
+                    <p className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">{espaciosDisponibles}</p>
+                    <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">Para agendar</p>
                   </div>
                 </div>
 
-                <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-700/70 bg-slate-950/85 px-4 py-4 shadow-lg backdrop-blur-sm">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-blue-400/20 bg-blue-500/10">
-                    <CheckCircle2 size={20} className="text-blue-400" />
+                <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 px-4 py-4 shadow-sm backdrop-blur-sm">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                    <CheckCircle2 size={20} />
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-slate-400">Confirmadas</p>
-                    <p className="mt-1 text-2xl font-bold text-white">{confirmadas}</p>
-                    <p className="mt-1 text-[11px] text-slate-500">Citas confirmadas</p>
+                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Confirmadas</p>
+                    <p className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">{confirmadas}</p>
+                    <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">Citas confirmadas</p>
                   </div>
                 </div>
 
-                <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-700/70 bg-slate-950/85 px-4 py-4 shadow-lg backdrop-blur-sm">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-amber-400/20 bg-amber-500/10">
-                    <Hourglass size={20} className="text-amber-400" />
+                <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 px-4 py-4 shadow-sm backdrop-blur-sm">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                    <Hourglass size={20} />
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-slate-400">Pendientes</p>
-                    <p className="mt-1 text-2xl font-bold text-white">{pendientes}</p>
-                    <p className="mt-1 text-[11px] text-slate-500">Por confirmar</p>
+                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Pendientes</p>
+                    <p className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">{pendientes}</p>
+                    <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">Por confirmar</p>
                   </div>
                 </div>
               </section>
 
               {/* Calendario Principal */}
-              <section className="rounded-2xl border border-slate-700/80 bg-slate-950/90 p-3 shadow-xl backdrop-blur-sm">
+              <section className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white/95 dark:bg-slate-900/90 p-4 shadow-md backdrop-blur-sm">
                 {/* Cabecera y Controles */}
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
                       onClick={irHoy}
-                      className="rounded-xl border border-slate-700 bg-slate-900/90 px-3.5 py-2 text-xs font-bold text-slate-200 transition hover:border-cyan-500/50 hover:bg-slate-800 hover:text-white cursor-pointer"
+                      className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3.5 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 transition hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white cursor-pointer"
                     >
                       Hoy
                     </button>
 
-                    <div className="flex items-center rounded-xl border border-slate-700 bg-slate-900/90 p-0.5">
+                    <div className="flex items-center rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 p-0.5">
                       <button
                         type="button"
                         onClick={() => cambiarSemana(-1)}
-                        className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-white cursor-pointer"
+                        className="rounded-lg p-1.5 text-slate-600 dark:text-slate-400 transition hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white cursor-pointer"
                       >
                         <ChevronLeft size={16} />
                       </button>
                       <button
                         type="button"
                         onClick={() => cambiarSemana(1)}
-                        className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-white cursor-pointer"
+                        className="rounded-lg p-1.5 text-slate-600 dark:text-slate-400 transition hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white cursor-pointer"
                       >
                         <ChevronRight size={16} />
                       </button>
                     </div>
 
-                    <p className="text-sm font-bold text-white">
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">
                       {obtenerRangoSemana(inicioSemana)}
                     </p>
                   </div>
@@ -534,7 +532,7 @@ export function AgendaView() {
                     <button
                       type="button"
                       onClick={fetchAgendaData}
-                      className="rounded-xl border border-slate-700 bg-slate-900/90 p-2 text-slate-400 transition hover:text-cyan-400 cursor-pointer"
+                      className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 p-2 text-slate-600 dark:text-slate-400 transition hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
                       title="Sincronizar con backend"
                     >
                       <RefreshCw size={16} />
@@ -562,8 +560,8 @@ export function AgendaView() {
                         onClick={() => cambiarOdontologo(doc.nombre)}
                         className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 font-medium transition cursor-pointer whitespace-nowrap ${
                           seleccionado
-                            ? "border-cyan-500/60 bg-cyan-500/15 text-cyan-300"
-                            : "border-slate-800 bg-slate-900/50 text-slate-400 hover:border-slate-700 hover:text-slate-200"
+                            ? "border-cyan-500/60 bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 font-semibold"
+                            : "border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700 hover:text-slate-900 dark:hover:text-slate-200"
                         }`}
                       >
                         <span className={`h-2 w-2 rounded-full ${doc.color}`} />
@@ -574,14 +572,14 @@ export function AgendaView() {
                 </div>
 
                 {/* Matriz Calendario */}
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/60">
                   <div className="min-w-[760px]">
                     {/* Encabezado Columnas Días */}
                     <div
-                      className="grid border-b border-slate-800 text-center"
+                      className="grid border-b border-slate-200 dark:border-slate-800 text-center bg-slate-50/80 dark:bg-slate-900/60"
                       style={{ gridTemplateColumns }}
                     >
-                      <div className="py-2.5 text-[11px] font-bold text-slate-500">
+                      <div className="py-2.5 text-[11px] font-bold text-slate-500 dark:text-slate-400">
                         GMT-5
                       </div>
 
@@ -591,18 +589,18 @@ export function AgendaView() {
                         return (
                           <div
                             key={idx}
-                            className={`py-2 text-center border-l border-slate-800/60 ${
-                              esHoy ? "bg-cyan-500/10" : ""
+                            className={`py-2 text-center border-l border-slate-200 dark:border-slate-800/60 ${
+                              esHoy ? "bg-cyan-500/10 dark:bg-cyan-500/15" : ""
                             }`}
                           >
-                            <p className="text-[11px] font-semibold text-slate-400">
+                            <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                               {nombresDias[dia.getDay()]}
                             </p>
                             <p
                               className={`mt-0.5 text-sm font-bold inline-flex items-center justify-center h-6 w-6 rounded-full ${
                                 esHoy
-                                  ? "bg-cyan-500 text-slate-950"
-                                  : "text-slate-200"
+                                  ? "bg-cyan-500 text-slate-950 shadow-sm"
+                                  : "text-slate-800 dark:text-slate-200"
                               }`}
                             >
                               {dia.getDate()}
@@ -614,7 +612,7 @@ export function AgendaView() {
 
                     {/* Cuerpo de Horas y Eventos */}
                     <div
-                      className="relative grid"
+                      className="relative grid bg-white/70 dark:bg-slate-900/40"
                       style={{
                         gridTemplateColumns,
                         height: "720px",
@@ -632,13 +630,13 @@ export function AgendaView() {
                       )}
 
                       {/* Columna Horas Eje Y */}
-                      <div className="relative border-r border-slate-800 text-right pr-2">
+                      <div className="relative border-r border-slate-200 dark:border-slate-800 text-right pr-2 bg-slate-50/50 dark:bg-slate-900/30">
                         {Array.from({ length: 12 }, (_, i) => {
                           const hora = i + 7;
                           return (
                             <div
                               key={hora}
-                              className="absolute right-2 text-[11px] font-mono font-medium text-slate-500"
+                              className="absolute right-2 text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400"
                               style={{ top: `${i * 60 - 7}px` }}
                             >
                               {`${String(hora).padStart(2, "0")}:00`}
@@ -656,8 +654,8 @@ export function AgendaView() {
                         return (
                           <div
                             key={idx}
-                            className={`relative border-r border-slate-800/60 ${
-                              esHoy ? "bg-cyan-500/[0.02]" : ""
+                            className={`relative border-r border-slate-200 dark:border-slate-800/60 ${
+                              esHoy ? "bg-cyan-500/[0.03] dark:bg-cyan-500/[0.02]" : ""
                             }`}
                           >
                             {/* Líneas Horarias */}
@@ -670,7 +668,7 @@ export function AgendaView() {
                                     `${String(i + 7).padStart(2, "0")}:00`
                                   )
                                 }
-                                className="absolute left-0 right-0 border-b border-slate-800/40 hover:bg-slate-800/20 cursor-pointer transition-colors"
+                                className="absolute left-0 right-0 border-b border-slate-200/70 dark:border-slate-800/40 hover:bg-cyan-500/10 dark:hover:bg-slate-800/20 cursor-pointer transition-colors"
                                 style={{
                                   top: `${i * 60}px`,
                                   height: "60px",
@@ -690,7 +688,7 @@ export function AgendaView() {
                                     top: posicion.top,
                                     height: posicion.height,
                                   }}
-                                  className={`group absolute left-1 right-1 z-20 overflow-hidden rounded-xl border p-2 shadow-md transition hover:scale-[1.01] hover:z-30 cursor-pointer ${colorEvento.contenedor}`}
+                                  className={`group absolute left-1 right-1 z-20 overflow-hidden rounded-xl border p-2 shadow-sm transition hover:scale-[1.01] hover:z-30 cursor-pointer ${colorEvento.contenedor}`}
                                 >
                                   <div className="flex items-start justify-between gap-1">
                                     <p className="truncate text-xs font-bold leading-tight">
@@ -702,7 +700,7 @@ export function AgendaView() {
                                         e.stopPropagation();
                                         eliminarCita(cita.id);
                                       }}
-                                      className="opacity-0 group-hover:opacity-100 transition p-0.5 hover:text-rose-400"
+                                      className="opacity-0 group-hover:opacity-100 transition p-0.5 hover:text-rose-500"
                                       title="Eliminar cita"
                                     >
                                       <Trash2 size={12} />
@@ -729,9 +727,9 @@ export function AgendaView() {
             {/* Barra Lateral Derecha */}
             <aside className="space-y-4">
               {/* Calendario Miniatura */}
-              <section className="rounded-2xl border border-slate-700/80 bg-slate-950/90 p-4 shadow-xl backdrop-blur-sm">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                  <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+              <section className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white/95 dark:bg-slate-900/90 p-4 shadow-md backdrop-blur-sm">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+                  <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                     {obtenerNombreMes(fechaActual)} {fechaActual.getFullYear()}
                   </h3>
                   <div className="flex items-center gap-1">
@@ -746,7 +744,7 @@ export function AgendaView() {
                           )
                         )
                       }
-                      className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 cursor-pointer"
+                      className="p-1 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                     >
                       <ChevronLeft size={14} />
                     </button>
@@ -761,7 +759,7 @@ export function AgendaView() {
                           )
                         )
                       }
-                      className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 cursor-pointer"
+                      className="p-1 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                     >
                       <ChevronRight size={14} />
                     </button>
@@ -771,7 +769,7 @@ export function AgendaView() {
                 {/* Días Mini Calendario */}
                 <div className="mt-3 grid grid-cols-7 gap-1 text-center text-[11px]">
                   {["D", "L", "M", "M", "J", "V", "S"].map((d, i) => (
-                    <span key={i} className="font-semibold text-slate-500">
+                    <span key={i} className="font-semibold text-slate-400 dark:text-slate-500">
                       {d}
                     </span>
                   ))}
@@ -794,7 +792,7 @@ export function AgendaView() {
                         className={`h-6 w-6 rounded-full flex items-center justify-center transition cursor-pointer mx-auto ${
                           esSeleccionado
                             ? "bg-cyan-500 font-bold text-slate-950 shadow-sm"
-                            : "text-slate-300 hover:bg-slate-800"
+                            : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                         }`}
                       >
                         {diaNum}
@@ -805,27 +803,27 @@ export function AgendaView() {
               </section>
 
               {/* Convenciones y Leyenda */}
-              <section className="rounded-2xl border border-slate-700/80 bg-slate-950/90 p-4 shadow-xl backdrop-blur-sm space-y-3 text-xs">
-                <h3 className="font-bold text-white uppercase tracking-wider text-[11px] pb-2 border-b border-slate-800">
+              <section className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white/95 dark:bg-slate-900/90 p-4 shadow-md backdrop-blur-sm space-y-3 text-xs">
+                <h3 className="font-bold text-slate-900 dark:text-white uppercase tracking-wider text-[11px] pb-2 border-b border-slate-200 dark:border-slate-800">
                   Estados de Cita
                 </h3>
 
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="h-3 w-3 rounded-full bg-cyan-400" />
-                    <span className="text-slate-300">Confirmada</span>
+                    <span className="text-slate-700 dark:text-slate-300 font-medium">Confirmada</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="h-3 w-3 rounded-full bg-blue-400" />
-                    <span className="text-slate-300">En Atención</span>
+                    <span className="text-slate-700 dark:text-slate-300 font-medium">En Atención</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="h-3 w-3 rounded-full bg-amber-400" />
-                    <span className="text-slate-300">Pendiente</span>
+                    <span className="text-slate-700 dark:text-slate-300 font-medium">Pendiente</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="h-3 w-3 rounded-full bg-emerald-400" />
-                    <span className="text-slate-300">Disponible</span>
+                    <span className="text-slate-700 dark:text-slate-300 font-medium">Disponible</span>
                   </div>
                 </div>
               </section>
@@ -836,26 +834,39 @@ export function AgendaView() {
 
       {/* Modal Agendar Cita */}
       {mostrarModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-950 p-5 shadow-2xl animate-scaleIn">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xl animate-scaleIn text-slate-900 dark:text-white">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
               <div>
-                <h2 className="text-lg font-bold text-white">Agendar Cita en Agenda</h2>
-                <p className="mt-1 text-xs text-slate-400">
-                  {fechaSeleccionada} · {horaSeleccionada}
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">Agendar Cita en Agenda</h2>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  {fechaSeleccionada} · {nuevaCita.horaInicio}
                 </p>
               </div>
 
               <button
                 type="button"
                 onClick={() => setMostrarModal(false)}
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-900 hover:text-white cursor-pointer"
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
               >
                 <X size={19} />
               </button>
             </div>
 
             <div className="mt-5 space-y-4">
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Fecha de la Cita *
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={fechaSeleccionada}
+                  onChange={(e) => setFechaSeleccionada(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2.5 text-sm text-slate-900 dark:text-white outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-cyan-500 transition-all"
+                />
+              </div>
+
               <SelectOrWriteInput
                 label="Paciente"
                 required
@@ -873,7 +884,7 @@ export function AgendaView() {
               />
 
               <div>
-                <label className="mb-1.5 block text-xs font-semibold text-slate-400">
+                <label className="mb-1.5 block text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Tratamiento / Servicio *
                 </label>
                 {serviciosEntities.length > 0 ? (
@@ -885,7 +896,7 @@ export function AgendaView() {
                         servicio: event.target.value,
                       }))
                     }
-                    className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3.5 py-2.5 text-sm text-white outline-none focus:border-cyan-400 cursor-pointer"
+                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2.5 text-sm text-slate-900 dark:text-white outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-cyan-500 cursor-pointer transition-all"
                   >
                     {serviciosEntities.map((s) => (
                       <option key={s.id} value={s.name}>
@@ -903,13 +914,13 @@ export function AgendaView() {
                       }))
                     }
                     placeholder="Ej: Limpieza dental y valoración"
-                    className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3.5 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-400"
+                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2.5 text-sm text-slate-900 dark:text-white outline-none transition placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-800 focus:border-cyan-500"
                   />
                 )}
               </div>
 
               <div>
-                <label className="mb-1.5 block text-xs font-semibold text-slate-400">
+                <label className="mb-1.5 block text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Odontólogo *
                 </label>
                 <select
@@ -920,7 +931,7 @@ export function AgendaView() {
                       odontologo: event.target.value,
                     }))
                   }
-                  className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3.5 py-2.5 text-sm text-white outline-none focus:border-cyan-400 cursor-pointer"
+                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2.5 text-sm text-slate-900 dark:text-white outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-cyan-500 cursor-pointer transition-all"
                 >
                   {listaOdontologos
                     .filter((o) => o.nombre !== "Todos los odontólogos")
@@ -934,28 +945,37 @@ export function AgendaView() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1.5 block text-xs font-semibold text-slate-400">
-                    Hora Inicio
+                  <label className="mb-1.5 block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Hora Inicio *
                   </label>
                   <input
                     type="time"
+                    required
                     value={nuevaCita.horaInicio}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      const val = event.target.value;
+                      const [h, m] = val.split(":").map(Number);
+                      const endMinutesTotal = (isNaN(h) ? 9 : h) * 60 + (isNaN(m) ? 0 : m) + 45;
+                      const endH = Math.floor(endMinutesTotal / 60) % 24;
+                      const endM = endMinutesTotal % 60;
+                      const endStr = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
                       setNuevaCita((actual) => ({
                         ...actual,
-                        horaInicio: event.target.value,
-                      }))
-                    }
-                    className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3.5 py-2.5 text-sm text-white outline-none focus:border-cyan-400"
+                        horaInicio: val,
+                        horaFin: endStr,
+                      }));
+                    }}
+                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2.5 text-sm text-slate-900 dark:text-white outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-cyan-500 transition-all"
                   />
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-xs font-semibold text-slate-400">
-                    Hora Finalización
+                  <label className="mb-1.5 block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Hora Finalización *
                   </label>
                   <input
                     type="time"
+                    required
                     value={nuevaCita.horaFin}
                     onChange={(event) =>
                       setNuevaCita((actual) => ({
@@ -963,13 +983,13 @@ export function AgendaView() {
                         horaFin: event.target.value,
                       }))
                     }
-                    className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3.5 py-2.5 text-sm text-white outline-none focus:border-cyan-400"
+                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2.5 text-sm text-slate-900 dark:text-white outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-cyan-500 transition-all"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="mb-1.5 block text-xs font-semibold text-slate-400">
+                <label className="mb-1.5 block text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Estado de la Cita
                 </label>
                 <select
@@ -980,7 +1000,7 @@ export function AgendaView() {
                       estado: event.target.value as EstadoCita,
                     }))
                   }
-                  className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3.5 py-2.5 text-sm text-white outline-none focus:border-cyan-400 cursor-pointer"
+                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2.5 text-sm text-slate-900 dark:text-white outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-cyan-500 cursor-pointer transition-all"
                 >
                   <option value="Confirmada">Confirmada</option>
                   <option value="Pendiente">Pendiente</option>
@@ -989,11 +1009,11 @@ export function AgendaView() {
               </div>
             </div>
 
-            <div className="mt-6 flex justify-end gap-3 border-t border-slate-800 pt-4">
+            <div className="mt-6 flex justify-end gap-3 border-t border-slate-200 dark:border-slate-800 pt-4">
               <button
                 type="button"
                 onClick={() => setMostrarModal(false)}
-                className="rounded-xl border border-slate-700 px-4 py-2.5 text-sm font-semibold text-slate-300 transition hover:bg-slate-900 cursor-pointer"
+                className="rounded-xl border border-slate-300 dark:border-slate-700 px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-300 transition hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
               >
                 Cancelar
               </button>

@@ -72,6 +72,10 @@ function getOdontogramaStorageKey(patientId?: string): string {
   return patientId ? `nexus_odontograma_${patientId}` : "nexus_odontograma_default";
 }
 
+function getNotasStorageKey(patientId?: string): string {
+  return patientId ? `nexus_odontograma_notas_${patientId}` : "nexus_odontograma_notas_default";
+}
+
 function createDefaultOdontogramState(): {
   dentitionType: 'permanent' | 'temporary';
   teeth: Record<number, ToothState>;
@@ -136,23 +140,17 @@ interface PacienteItem {
 function OdontogramaUI() {
   const { theme } = useTheme();
   const isDarkMode = theme === "dark";
-
   const [state, setState] = useState(cargarOdontograma);
   const [selectedSurface, setSelectedSurface] = useState<{
     toothNumber: number;
     surface: Surface;
   } | null>(null);
   const [selectedTooth, setSelectedTooth] = useState<number | null>(null);
-  const [pacientesList, setPacientesList] = useState<PacienteItem[]>([
-    { id: "1", nombre: "Andrés Pérez", cedula: "1076543210" },
-    { id: "2", nombre: "María Fernanda López", cedula: "1087654321" },
-    { id: "3", nombre: "Carlos Andrés Pérez", cedula: "1098761234" },
-  ]);
-  const [selectedPaciente, setSelectedPaciente] = useState<PacienteItem>(pacientesList[0]);
-  const [notasClinicas, setNotasClinicas] = useState(
-    "Paciente presenta buena higiene bucal. Se detecta lesión cariosa inicial en cara oclusal de pieza #16 y cálculo supragingival leve en sector anteroinferior."
-  );
+  const [pacientesList, setPacientesList] = useState<PacienteItem[]>([]);
+  const [selectedPaciente, setSelectedPaciente] = useState<PacienteItem | null>(null);
+  const [notasClinicas, setNotasClinicas] = useState("");
   const [successToast, setSuccessToast] = useState<string | null>(null);
+  const [errorToast, setErrorToast] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isPatientDropdownOpen, setIsPatientDropdownOpen] = useState(false);
   const patientDropdownRef = useRef<HTMLDivElement>(null);
@@ -172,7 +170,7 @@ function OdontogramaUI() {
         });
         setPacientesList(mapped);
         if (mapped.length > 0) {
-          setSelectedPaciente(mapped[0]);
+          setSelectedPaciente((prev) => prev || mapped[0]);
         }
       }
     } catch (err) {
@@ -198,12 +196,20 @@ function OdontogramaUI() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Al cambiar de paciente seleccionado, hidratar su odontograma específico o basal
+  // Al cambiar de paciente seleccionado, hidratar su odontograma específico y sus notas clínicas aisladas (Sección 3.2 y 3.3)
   useEffect(() => {
     if (selectedPaciente?.id) {
       const patientState = cargarOdontograma(selectedPaciente.id);
       setState(patientState);
+      const keyNotas = getNotasStorageKey(selectedPaciente.id);
+      const savedNotas = localStorage.getItem(keyNotas);
+      setNotasClinicas(savedNotas || "");
+    } else {
+      setState(createDefaultOdontogramState());
+      setNotasClinicas("");
     }
+    setSelectedSurface(null);
+    setSelectedTooth(null);
   }, [selectedPaciente?.id]);
 
   const getCurrentQuadrants = (): Quadrants => {
@@ -317,6 +323,7 @@ function OdontogramaUI() {
   };
 
   const handleExport = () => {
+    if (!selectedPaciente) return;
     const data = {
       paciente: selectedPaciente,
       dentitionType: state.dentitionType,
@@ -388,20 +395,31 @@ function OdontogramaUI() {
   };
 
   const handleSaveNotes = async () => {
-    guardarOdontograma(state, selectedPaciente?.id);
-    if (selectedPaciente && selectedPaciente.id) {
-      try {
-        await odontogramService.create({
-          patientId: selectedPaciente.id,
-          dentitionTypeId: state.dentitionType === "permanent" ? "19000000-0000-0000-0000-000000000001" : "19000000-0000-0000-0000-000000000002",
-          notes: notasClinicas,
-        });
-      } catch (err) {
-        console.warn("Could not sync odontogram with backend API directly:", err);
-      }
+    if (!selectedPaciente?.id) {
+      setErrorToast("Por favor selecciona un paciente para guardar el odontograma.");
+      setTimeout(() => setErrorToast(null), 4000);
+      return;
     }
-    setSuccessToast("¡Odontograma y notas clínicas guardadas con éxito!");
-    setTimeout(() => setSuccessToast(null), 3500);
+
+    // 1. Guardar estado y notas de forma aislada por paciente (Sección 3.2 y 3.3)
+    guardarOdontograma(state, selectedPaciente.id);
+    const keyNotas = getNotasStorageKey(selectedPaciente.id);
+    localStorage.setItem(keyNotas, notasClinicas);
+
+    try {
+      await odontogramService.create({
+        patientId: selectedPaciente.id,
+        dentitionTypeId: state.dentitionType === "permanent" ? "19000000-0000-0000-0000-000000000001" : "19000000-0000-0000-0000-000000000002",
+        notes: notasClinicas || undefined,
+      });
+
+      setSuccessToast("¡Odontograma y notas clínicas guardadas con éxito!");
+      setTimeout(() => setSuccessToast(null), 3500);
+    } catch (err: any) {
+      console.error("Error al persistir odontograma en API:", err);
+      setErrorToast(err?.response?.data?.message || "Error al guardar odontograma clínico en el servidor.");
+      setTimeout(() => setErrorToast(null), 5000);
+    }
   };
 
   const currentQuadrants = getCurrentQuadrants();
@@ -478,11 +496,18 @@ function OdontogramaUI() {
 
   return (
     <div className="space-y-6 text-slate-900 dark:text-slate-100 pb-8">
-      {/* Toast */}
+      {/* Toasts (CAPA SUPERIOR ABSOLUTA z-[99999]) */}
       {successToast && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 px-5 py-3 rounded-2xl shadow-2xl border border-teal-500/30 animate-scaleIn">
+        <div className="fixed top-6 right-6 z-[99999] flex items-center gap-2.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 px-5 py-3.5 rounded-2xl shadow-2xl border border-teal-500/40 animate-scaleIn backdrop-blur-md">
           <CheckCircle2 size={18} className="text-teal-400 dark:text-teal-600 flex-shrink-0" />
           <span className="text-xs font-semibold">{successToast}</span>
+        </div>
+      )}
+
+      {errorToast && (
+        <div className="fixed top-6 right-6 z-[99999] flex items-center gap-2.5 bg-rose-950 text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-rose-500/50 animate-scaleIn backdrop-blur-md">
+          <AlertTriangle size={18} className="text-rose-400 flex-shrink-0" />
+          <span className="text-xs font-semibold">{errorToast}</span>
         </div>
       )}
 
@@ -537,7 +562,7 @@ function OdontogramaUI() {
                   Seleccionar Paciente
                 </div>
                 {pacientesList.map((pac) => {
-                  const isSelected = pac.id === selectedPaciente.id;
+                  const isSelected = selectedPaciente ? pac.id === selectedPaciente.id : false;
                   return (
                     <button
                       key={pac.id}
@@ -784,7 +809,7 @@ function OdontogramaUI() {
               </div>
 
               <span className="text-[11px] text-slate-600 dark:text-slate-300 font-mono font-bold bg-slate-100 dark:bg-white/[0.04] px-3 py-1 rounded-xl border border-slate-200 dark:border-white/10 self-start sm:self-auto">
-                Paciente: {selectedPaciente.nombre}
+                Paciente: {selectedPaciente?.nombre || "Sin seleccionar"}
               </span>
             </div>
 

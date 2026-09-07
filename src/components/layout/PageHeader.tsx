@@ -28,14 +28,19 @@ export function PageHeader({
   const { theme, toggleTheme } = useTheme();
   const { notifications, unreadCount, pendingAppointmentsCount, markAsRead, markAllAsRead } = useNotifications();
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
+  const helpRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
-  // Cerrar panel de notificaciones al hacer clic fuera
+  // Cerrar panel de notificaciones y ayuda al hacer clic fuera
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
         setShowNotifications(false);
+      }
+      if (helpRef.current && !helpRef.current.contains(e.target as Node)) {
+        setShowHelpModal(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -124,14 +129,47 @@ export function PageHeader({
           />
         </button>
 
-        {/* AYUDA */}
-        <button
-          type="button"
-          className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-600 dark:text-slate-400 cursor-pointer"
-          aria-label="Ayuda"
-        >
-          <CircleHelp size={19} />
-        </button>
+        {/* AYUDA / SOPORTE (BUG-18) */}
+        <div className="relative" ref={helpRef}>
+          <button
+            type="button"
+            onClick={() => setShowHelpModal(!showHelpModal)}
+            className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-600 dark:text-slate-400 cursor-pointer"
+            aria-label="Ayuda y Soporte"
+            title="Centro de ayuda y soporte técnico"
+          >
+            <CircleHelp size={19} />
+          </button>
+
+          {showHelpModal && (
+            <div className="absolute right-0 mt-2 w-80 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl z-50 p-4 animate-scaleIn text-slate-900 dark:text-slate-100">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-2 font-bold text-sm text-teal-600 dark:text-teal-400">
+                  <CircleHelp size={17} />
+                  <span>Mesa de Ayuda NexusOdonto</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowHelpModal(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="mt-3 space-y-2.5 text-xs">
+                <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                  Para reportes de incidencias técnicas, gestión de licencias o dudas del sistema:
+                </p>
+                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 space-y-1">
+                  <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Contacto Técnico Oficial:</p>
+                  <p className="font-mono font-bold text-teal-600 dark:text-teal-400 select-all">soporte@nexusodonto.local</p>
+                  <p className="text-[10px] text-slate-400">Horario: Lun - Sáb (07:00 - 19:00)</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* NOTIFICACIONES CON INDICADOR Y PANEL DESPLEGABLE */}
         <div className="relative" ref={notifRef}>

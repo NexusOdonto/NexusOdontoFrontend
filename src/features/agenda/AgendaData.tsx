@@ -207,46 +207,46 @@ export function obtenerColorEvento(
     case "Confirmada":
       return {
         contenedor:
-          "border-cyan-400/40 bg-cyan-500/10 hover:bg-cyan-500/20",
-        punto: "bg-cyan-400",
-        titulo: "text-cyan-100",
-        texto: "text-slate-400",
+          "border-cyan-500/40 bg-cyan-500/15 dark:bg-cyan-500/10 text-cyan-900 dark:text-cyan-100 hover:bg-cyan-500/25 dark:hover:bg-cyan-500/20",
+        punto: "bg-cyan-500",
+        titulo: "text-cyan-950 dark:text-cyan-100",
+        texto: "text-cyan-800/80 dark:text-slate-400",
       };
 
     case "En Atención":
       return {
         contenedor:
-          "border-blue-400/40 bg-blue-500/10 hover:bg-blue-500/20",
-        punto: "bg-blue-400",
-        titulo: "text-blue-100",
-        texto: "text-slate-400",
+          "border-blue-500/40 bg-blue-500/15 dark:bg-blue-500/10 text-blue-900 dark:text-blue-100 hover:bg-blue-500/25 dark:hover:bg-blue-500/20",
+        punto: "bg-blue-500",
+        titulo: "text-blue-950 dark:text-blue-100",
+        texto: "text-blue-800/80 dark:text-slate-400",
       };
 
     case "Pendiente":
       return {
         contenedor:
-          "border-amber-400/40 bg-amber-500/10 hover:bg-amber-500/20",
-        punto: "bg-amber-400",
-        titulo: "text-amber-100",
-        texto: "text-slate-400",
+          "border-amber-500/40 bg-amber-500/15 dark:bg-amber-500/10 text-amber-900 dark:text-amber-100 hover:bg-amber-500/25 dark:hover:bg-amber-500/20",
+        punto: "bg-amber-500",
+        titulo: "text-amber-950 dark:text-amber-100",
+        texto: "text-amber-800/80 dark:text-slate-400",
       };
 
     case "Disponible":
       return {
         contenedor:
-          "border-emerald-400/40 bg-emerald-500/10 hover:bg-emerald-500/20",
-        punto: "bg-emerald-400",
-        titulo: "text-emerald-200",
-        texto: "text-slate-400",
+          "border-emerald-500/40 bg-emerald-500/15 dark:bg-emerald-500/10 text-emerald-900 dark:text-emerald-100 hover:bg-emerald-500/25 dark:hover:bg-emerald-500/20",
+        punto: "bg-emerald-500",
+        titulo: "text-emerald-950 dark:text-emerald-200",
+        texto: "text-emerald-800/80 dark:text-slate-400",
       };
 
     default:
       return {
         contenedor:
-          "border-slate-600 bg-slate-800/50 hover:bg-slate-800",
+          "border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800/50 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200",
         punto: "bg-slate-400",
-        titulo: "text-slate-200",
-        texto: "text-slate-400",
+        titulo: "text-slate-900 dark:text-slate-200",
+        texto: "text-slate-600 dark:text-slate-400",
       };
   }
 }

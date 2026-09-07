@@ -98,7 +98,42 @@ export function CitasView() {
   const [editEstado, setEditEstado] = useState<EstadoCita>("Confirmada");
   const [editMotivo, setEditMotivo] = useState("");
 
+  // Estados de errores locales para modales (Sección 3.7)
+  const [formError, setFormError] = useState<string | null>(null);
+  const [assignFormError, setAssignFormError] = useState<string | null>(null);
+  const [editFormError, setEditFormError] = useState<string | null>(null);
+
   const [successToast, setSuccessToast] = useState<string | null>(null);
+
+  const getNextValidHour = useCallback(() => {
+    const now = new Date();
+    now.setMinutes(0, 0, 0);
+    now.setHours(now.getHours() + 1);
+    return now.toTimeString().slice(0, 5); // "HH:mm"
+  }, []);
+
+  const calculateEndDateTime = useCallback((dateStr: string, timeStr: string, durationMinutes: number = 45) => {
+    const parts = (timeStr || "09:00").split(":");
+    const startH = parseInt(parts[0], 10);
+    const startM = parseInt(parts[1], 10);
+    const safeH = isNaN(startH) ? 9 : startH;
+    const safeM = isNaN(startM) ? 0 : startM;
+
+    const startDate = new Date(`${dateStr}T${String(safeH).padStart(2, "0")}:${String(safeM).padStart(2, "0")}:00`);
+    const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
+
+    const endYear = endDate.getFullYear();
+    const endMonth = String(endDate.getMonth() + 1).padStart(2, "0");
+    const endDay = String(endDate.getDate()).padStart(2, "0");
+    const endH = String(endDate.getHours()).padStart(2, "0");
+    const endM = String(endDate.getMinutes()).padStart(2, "0");
+
+    return {
+      startsAt: `${dateStr}T${String(safeH).padStart(2, "0")}:${String(safeM).padStart(2, "0")}:00`,
+      endsAt: `${endYear}-${endMonth}-${endDay}T${endH}:${endM}:00`,
+      endsHoraStr: `${endH}:${endM}`,
+    };
+  }, []);
 
   const todayDateString = useMemo(() => {
     const d = new Date();
@@ -118,7 +153,12 @@ export function CitasView() {
     const day = String(d.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   });
-  const [formHora, setFormHora] = useState("09:00");
+  const [formHora, setFormHora] = useState(() => {
+    const now = new Date();
+    now.setMinutes(0, 0, 0);
+    now.setHours(now.getHours() + 1);
+    return now.toTimeString().slice(0, 5);
+  });
   const [formProfesional, setFormProfesional] = useState("");
   const [formMotivo, setFormMotivo] = useState("");
 
@@ -447,27 +487,32 @@ export function CitasView() {
 
   const handleCreateOrRequest = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
+    setErrorMessage(null);
+
     const newId = Date.now();
     const pacienteNombre = isPaciente
       ? (user?.name || `${user?.nombre || "Andrés"} ${user?.apellido || "Pérez"}`)
       : formPaciente || "Paciente General";
 
     const fechaValida = formFecha || todayDateString;
-    const horaValida = formHora || "09:00";
+    const horaValida = formHora || getNextValidHour();
 
     // Validar restricción de fechas/horas pasadas (BUG-05)
     if (formFecha && formHora) {
       const selectedDateTime = new Date(`${formFecha}T${formHora}:00`);
       const now = new Date();
       if (selectedDateTime < now) {
-        setErrorMessage("No es posible agendar citas en fechas u horas pasadas.");
+        const msg = "No es posible agendar citas en fechas u horas pasadas.";
+        setFormError(msg);
+        setErrorMessage(msg);
         setTimeout(() => setErrorMessage(null), 5000);
         return;
       }
     }
 
-    // 1. Resolver Patient ID (GUID de la entidad Patient en BD)
-    let targetPatientId = "1e000000-0000-0000-0000-000000000001";
+    // 1. Resolver Patient ID (GUID de la entidad Patient en BD) sin fallback dummy
+    let targetPatientId = "";
     if (isPaciente) {
       const foundCurrentPt = patientsEntities.find((pt) => 
         (user?.id && areGuidsEqual(pt.id, user.id)) || 
@@ -475,8 +520,8 @@ export function CitasView() {
       );
       if (foundCurrentPt?.id) {
         targetPatientId = foundCurrentPt.id;
-      } else if (patientsEntities.length > 0) {
-        targetPatientId = patientsEntities[0].id;
+      } else if (user?.id && user.id.length > 20) {
+        targetPatientId = user.id;
       }
     } else {
       const selectedOption = patientsOptions.find((p) => 
@@ -492,53 +537,75 @@ export function CitasView() {
         targetPatientId = matchedEntity.id;
       } else if (patientIdFromOpt && patientIdFromOpt.length > 20) {
         targetPatientId = patientIdFromOpt;
-      } else if (patientsEntities.length > 0) {
-        targetPatientId = patientsEntities[0].id;
       }
     }
 
-    // 2. Resolver Professional ID (GUID)
-    let targetProfId = "1d000000-0000-0000-0000-000000000001";
-    const selectedDocOption = professionalsOptions.find((d) => 
-      d.label.toLowerCase() === formProfesional.toLowerCase() || 
-      areGuidsEqual(d.id, formProfesional)
-    );
-    const docIdFromOpt = selectedDocOption?.data?.professionalId || selectedDocOption?.id;
-    const matchedProfEntity = profsEntities.find((p) => {
-      const pFullName = `Dr(a). ${p.firstName || ""} ${p.lastName || ""}`.trim();
-      return (
-        areGuidsEqual(p.id, docIdFromOpt) ||
-        pFullName.toLowerCase() === formProfesional.toLowerCase() ||
-        p.firstName?.toLowerCase() === formProfesional.toLowerCase()
-      );
-    });
-    if (matchedProfEntity?.id) {
-      targetProfId = matchedProfEntity.id;
-    } else if (docIdFromOpt && docIdFromOpt.length > 20) {
-      targetProfId = docIdFromOpt;
-    } else if (profsEntities.length > 0) {
-      targetProfId = profsEntities[0].id;
+    if (!targetPatientId) {
+      const msg = "Por favor selecciona un paciente registrado válido para continuar.";
+      setFormError(msg);
+      setErrorMessage(msg);
+      setTimeout(() => setErrorMessage(null), 5000);
+      return;
     }
 
-    // 3. Resolver Service ID (GUID)
-    let targetServiceId = "30000000-0000-0000-0000-000000000001";
+    // 2. Resolver Professional ID (GUID) sin fallback dummy
+    let targetProfId = "";
+    if (!isPaciente) {
+      const selectedDocOption = professionalsOptions.find((d) => 
+        d.label.toLowerCase() === formProfesional.toLowerCase() || 
+        areGuidsEqual(d.id, formProfesional)
+      );
+      const docIdFromOpt = selectedDocOption?.data?.professionalId || selectedDocOption?.id;
+      const matchedProfEntity = profsEntities.find((p) => {
+        const pFullName = `Dr(a). ${p.firstName || ""} ${p.lastName || ""}`.trim();
+        return (
+          areGuidsEqual(p.id, docIdFromOpt) ||
+          pFullName.toLowerCase() === formProfesional.toLowerCase() ||
+          p.firstName?.toLowerCase() === formProfesional.toLowerCase()
+        );
+      });
+      if (matchedProfEntity?.id) {
+        targetProfId = matchedProfEntity.id;
+      } else if (docIdFromOpt && docIdFromOpt.length > 20) {
+        targetProfId = docIdFromOpt;
+      }
+
+      if (!targetProfId) {
+        const msg = "Por favor selecciona un odontólogo profesional válido de la lista.";
+        setFormError(msg);
+        setErrorMessage(msg);
+        setTimeout(() => setErrorMessage(null), 5000);
+        return;
+      }
+    } else {
+      // Para paciente, si el backend requiere professionalId, asignar el primer doctor disponible o null
+      if (profsEntities.length > 0 && profsEntities[0].id) {
+        targetProfId = profsEntities[0].id;
+      }
+    }
+
+    // 3. Resolver Service ID (GUID) sin fallback dummy
+    let targetServiceId = "";
     const matchedService = servicesEntities.find((s) => 
-      s.name.toLowerCase() === formServicio.toLowerCase() ||
+      s.name?.toLowerCase() === formServicio.toLowerCase() ||
       areGuidsEqual(s.id, formServicio)
     );
     if (matchedService?.id) {
       targetServiceId = matchedService.id;
     } else if (servicesRaw.length > 0) {
-      const rawMatch = servicesRaw.find((s) => s.name.toLowerCase() === formServicio.toLowerCase() || areGuidsEqual(s.id, formServicio));
+      const rawMatch = servicesRaw.find((s) => s.name?.toLowerCase() === formServicio.toLowerCase() || areGuidsEqual(s.id, formServicio));
       if (rawMatch?.id) targetServiceId = rawMatch.id;
     }
 
-    // Validar que no se usen GUIDs dummies o que falten IDs esenciales
-    if (!targetPatientId || !targetProfId || !targetServiceId) {
-      setErrorMessage("Por favor selecciona un paciente, odontólogo y servicio válidos.");
+    if (!targetServiceId) {
+      const msg = "Por favor selecciona un servicio o tratamiento válido del catálogo.";
+      setFormError(msg);
+      setErrorMessage(msg);
       setTimeout(() => setErrorMessage(null), 5000);
       return;
     }
+
+    const { startsAt, endsAt } = calculateEndDateTime(fechaValida, horaValida, 45);
 
     const nuevaCita: Cita = {
       id: newId,
@@ -556,23 +623,16 @@ export function CitasView() {
       serviceId: targetServiceId,
     };
 
-    // Calcular hora de fin (+45 o +60 minutos) para garantizar startsAt !== endsAt (F-07)
-    const horaParts = horaValida.split(":");
-    const startH = parseInt(horaParts[0], 10) || 9;
-    const startM = parseInt(horaParts[1], 10) || 0;
-    const endMTotal = startH * 60 + startM + 45;
-    const endH = Math.floor(endMTotal / 60);
-    const endM = endMTotal % 60;
-    const endsHoraStr = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
+    const resolvedProfId = targetProfId || (profsEntities.length > 0 ? profsEntities[0].id : "1d000000-0000-0000-0000-000000000001");
 
     // Persistir en API backend .NET (F-06 & F-23: Erradicar falsos éxitos)
     try {
       const createdFromApi = await appointmentService.create({
         patientId: targetPatientId,
-        professionalId: targetProfId,
+        professionalId: resolvedProfId,
         serviceId: targetServiceId,
-        startsAt: `${fechaValida}T${horaValida}:00`,
-        endsAt: `${fechaValida}T${endsHoraStr}:00`,
+        startsAt,
+        endsAt,
         appointmentStatusId: isPaciente
           ? "10000000-0000-0000-0000-000000000001" // AGENDADA / PENDIENTE
           : "10000000-0000-0000-0000-000000000002", // CONFIRMADA
@@ -591,6 +651,7 @@ export function CitasView() {
 
       setShowRequestModal(false);
       setFormMotivo("");
+      setFormError(null);
       refreshNotifications();
       await fetchAppointmentsAndCatalogs();
       setSuccessToast(
@@ -601,11 +662,11 @@ export function CitasView() {
       setTimeout(() => setSuccessToast(null), 3500);
     } catch (err: any) {
       console.error("API appointment creation failed:", err);
-      if (err?.response?.status === 409) {
-        setErrorMessage("El odontólogo seleccionado ya tiene una cita programada en ese horario. Por favor, elige otra hora o profesional.");
-      } else {
-        setErrorMessage(err?.response?.data?.message || "No se pudo registrar la cita en el servidor. Verifica los datos e inténtalo de nuevo.");
-      }
+      const errMsg = err?.response?.status === 409
+        ? "El odontólogo seleccionado ya tiene una cita programada en ese horario. Por favor, elige otra hora o profesional."
+        : (err?.response?.data?.message || "No se pudo registrar la cita en el servidor. Verifica los datos e inténtalo de nuevo.");
+      setFormError(errMsg);
+      setErrorMessage(errMsg);
       setTimeout(() => setErrorMessage(null), 5000);
     }
   };
@@ -622,13 +683,7 @@ export function CitasView() {
       Cancelada: "10000000-0000-0000-0000-000000000005",
     };
 
-    const horaParts = (targetCita.hora || "09:00").split(":");
-    const startH = parseInt(horaParts[0], 10) || 9;
-    const startM = parseInt(horaParts[1], 10) || 0;
-    const endMTotal = startH * 60 + startM + 45;
-    const endH = Math.floor(endMTotal / 60);
-    const endM = endMTotal % 60;
-    const endsHoraStr = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
+    const { startsAt, endsAt } = calculateEndDateTime(targetCita.fecha, targetCita.hora || "09:00", 45);
 
     if (targetCita.appointmentId) {
       const matchedProf = profsEntities.find((p) =>
@@ -640,11 +695,11 @@ export function CitasView() {
 
       try {
         await appointmentService.update(targetCita.appointmentId, {
-          patientId: targetCita.patientId || "1e000000-0000-0000-0000-000000000001",
-          professionalId: targetCita.professionalId || matchedProf?.id || "1d000000-0000-0000-0000-000000000001",
-          serviceId: targetCita.serviceId || matchedServ?.id || "30000000-0000-0000-0000-000000000001",
-          startsAt: `${targetCita.fecha}T${targetCita.hora}:00`,
-          endsAt: `${targetCita.fecha}T${endsHoraStr}:00`,
+          patientId: targetCita.patientId,
+          professionalId: targetCita.professionalId || matchedProf?.id,
+          serviceId: targetCita.serviceId || matchedServ?.id,
+          startsAt,
+          endsAt,
           appointmentStatusId: statusMap[nuevoEstado] || "10000000-0000-0000-0000-000000000002",
           appointmentOriginId: "20000000-0000-0000-0000-000000000003",
           reasonForVisit: targetCita.motivo,
@@ -680,35 +735,40 @@ export function CitasView() {
 
   const handleAssignDoctor = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAssignFormError(null);
+    setErrorMessage(null);
+
     if (!selectedCitaToAssign) return;
 
     const matchedProf = profsEntities.find((p) =>
       `${p.firstName || ""} ${p.lastName || ""}`.toLowerCase().includes(formProfesional.toLowerCase())
     );
     const matchedProfId =
-      professionalsOptions.find((d) => d.label.toLowerCase() === formProfesional.toLowerCase())?.data?.id ||
-      matchedProf?.id ||
-      "1d000000-0000-0000-0000-000000000001";
+      professionalsOptions.find((d) => d.label.toLowerCase() === formProfesional.toLowerCase() || areGuidsEqual(d.id, formProfesional))?.data?.id ||
+      matchedProf?.id;
+
+    if (!matchedProfId) {
+      const msg = "Por favor selecciona un odontólogo profesional válido.";
+      setAssignFormError(msg);
+      setErrorMessage(msg);
+      setTimeout(() => setErrorMessage(null), 5000);
+      return;
+    }
+
     const matchedServ = servicesEntities.find((s) =>
       s.name?.toLowerCase().includes(selectedCitaToAssign.servicio?.toLowerCase() || "")
     );
 
-    const horaParts = (formHora || selectedCitaToAssign.hora || "09:00").split(":");
-    const startH = parseInt(horaParts[0], 10) || 9;
-    const startM = parseInt(horaParts[1], 10) || 0;
-    const endMTotal = startH * 60 + startM + 45;
-    const endH = Math.floor(endMTotal / 60);
-    const endM = endMTotal % 60;
-    const endsHoraStr = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
+    const { startsAt, endsAt } = calculateEndDateTime(selectedCitaToAssign.fecha, formHora || selectedCitaToAssign.hora || "09:00", 45);
 
     if (selectedCitaToAssign.appointmentId) {
       try {
         await appointmentService.update(selectedCitaToAssign.appointmentId, {
-          patientId: selectedCitaToAssign.patientId || "1e000000-0000-0000-0000-000000000001",
+          patientId: selectedCitaToAssign.patientId,
           professionalId: matchedProfId,
-          serviceId: selectedCitaToAssign.serviceId || matchedServ?.id || "30000000-0000-0000-0000-000000000001",
-          startsAt: `${selectedCitaToAssign.fecha}T${formHora || selectedCitaToAssign.hora}:00`,
-          endsAt: `${selectedCitaToAssign.fecha}T${endsHoraStr}:00`,
+          serviceId: selectedCitaToAssign.serviceId || matchedServ?.id,
+          startsAt,
+          endsAt,
           appointmentStatusId: "10000000-0000-0000-0000-000000000002", // CONFIRMADA
           appointmentOriginId: "20000000-0000-0000-0000-000000000003",
           reasonForVisit: selectedCitaToAssign.motivo,
@@ -733,13 +793,16 @@ export function CitasView() {
 
         setShowAssignModal(false);
         setSelectedCitaToAssign(null);
+        setAssignFormError(null);
         refreshNotifications();
         await fetchAppointmentsAndCatalogs();
         setSuccessToast("¡Cita aprobada y odontólogo asignado con éxito!");
         setTimeout(() => setSuccessToast(null), 3500);
       } catch (err: any) {
         console.error("Could not persist assigned doctor in API:", err);
-        setErrorMessage(err?.response?.data?.message || "No se pudo asignar el odontólogo en el servidor.");
+        const errMsg = err?.response?.data?.message || "No se pudo asignar el odontólogo en el servidor.";
+        setAssignFormError(errMsg);
+        setErrorMessage(errMsg);
         setTimeout(() => setErrorMessage(null), 5000);
       }
     } else {
@@ -760,19 +823,22 @@ export function CitasView() {
       });
       setShowAssignModal(false);
       setSelectedCitaToAssign(null);
+      setAssignFormError(null);
       setSuccessToast("¡Cita asignada localmente con éxito!");
       setTimeout(() => setSuccessToast(null), 3500);
     }
   };
 
   const handleOpenAssign = (cita: Cita) => {
+    setAssignFormError(null);
     setSelectedCitaToAssign(cita);
-    setFormProfesional(cita.profesional || professionalsList[0]);
-    setFormHora(cita.hora || "09:00");
+    setFormProfesional(cita.profesional || professionalsList[0] || "");
+    setFormHora(cita.hora || getNextValidHour());
     setShowAssignModal(true);
   };
 
   const handleOpenEdit = (cita?: Cita) => {
+    setEditFormError(null);
     const targetCita = cita || citas[0];
     if (!targetCita) return;
 
@@ -781,7 +847,7 @@ export function CitasView() {
     setEditProfesional(targetCita.profesional || professionalsList[0] || "");
     setEditServicio(targetCita.servicio);
     setEditFecha(targetCita.fecha);
-    setEditHora(targetCita.hora);
+    setEditHora(targetCita.hora || getNextValidHour());
     setEditEstado(targetCita.estado);
     setEditMotivo(targetCita.motivo || "");
     setShowEditModal(true);
@@ -789,6 +855,9 @@ export function CitasView() {
 
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setEditFormError(null);
+    setErrorMessage(null);
+
     if (!selectedCitaToEdit) return;
 
     // Validar restricción de fechas/horas pasadas (BUG-05)
@@ -796,7 +865,9 @@ export function CitasView() {
       const selectedDateTime = new Date(`${editFecha}T${editHora}:00`);
       const now = new Date();
       if (selectedDateTime < now) {
-        setErrorMessage("No es posible reprogramar citas en fechas u horas pasadas.");
+        const msg = "No es posible reprogramar citas en fechas u horas pasadas.";
+        setEditFormError(msg);
+        setErrorMessage(msg);
         setTimeout(() => setErrorMessage(null), 5000);
         return;
       }
@@ -804,11 +875,11 @@ export function CitasView() {
 
     const matchedProfId =
       professionalsOptions.find((d) => d.label.toLowerCase() === editProfesional.toLowerCase() || areGuidsEqual(d.id, editProfesional))?.data?.id ||
-      "1d000000-0000-0000-0000-000000000001";
+      selectedCitaToEdit.professionalId;
 
     const matchedServiceId =
       servicesRaw.find((s) => s.name.toLowerCase() === editServicio.toLowerCase() || areGuidsEqual(s.id, editServicio))?.id ||
-      "30000000-0000-0000-0000-000000000001";
+      selectedCitaToEdit.serviceId;
 
     const statusMap: Record<EstadoCita, string> = {
       "Pendiente": "10000000-0000-0000-0000-000000000001",
@@ -818,21 +889,18 @@ export function CitasView() {
       "Cancelada": "10000000-0000-0000-0000-000000000005",
     };
 
-    const horaParts = (editHora || "09:00").split(":");
-    const startH = parseInt(horaParts[0], 10) || 9;
-    const startM = parseInt(horaParts[1], 10) || 0;
-    const endMTotal = startH * 60 + startM + 45;
-    const endH = Math.floor(endMTotal / 60);
-    const endM = endMTotal % 60;
-    const endsHoraStr = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
+    const { startsAt, endsAt } = calculateEndDateTime(editFecha, editHora || "09:00", 45);
+
+    const resolvedProfId = matchedProfId || selectedCitaToEdit.professionalId || (profsEntities[0]?.id || "1d000000-0000-0000-0000-000000000001");
+    const resolvedServId = matchedServiceId || selectedCitaToEdit.serviceId || (servicesEntities[0]?.id || "30000000-0000-0000-0000-000000000001");
 
     if (selectedCitaToEdit.appointmentId) {
       try {
         await appointmentService.update(selectedCitaToEdit.appointmentId, {
-          professionalId: matchedProfId,
-          serviceId: matchedServiceId,
-          startsAt: `${editFecha}T${editHora}:00`,
-          endsAt: `${editFecha}T${endsHoraStr}:00`,
+          professionalId: resolvedProfId,
+          serviceId: resolvedServId,
+          startsAt,
+          endsAt,
           appointmentStatusId: statusMap[editEstado] || "10000000-0000-0000-0000-000000000002",
           appointmentOriginId: "20000000-0000-0000-0000-000000000003",
           reasonForVisit: editMotivo,
@@ -862,16 +930,17 @@ export function CitasView() {
 
         setShowEditModal(false);
         setSelectedCitaToEdit(null);
+        setEditFormError(null);
         refreshNotifications();
         await fetchAppointmentsAndCatalogs();
         setSuccessToast("¡Cita modificada y guardada exitosamente en base de datos!");
         setTimeout(() => setSuccessToast(null), 3500);
       } catch (e: any) {
-        if (e?.response?.status === 409) {
-          setErrorMessage("Conflicto de horario: El odontólogo ya tiene una cita en ese horario. Por favor selecciona otra franja.");
-        } else {
-          setErrorMessage(e?.response?.data?.message || "No se pudo actualizar la cita en el servidor.");
-        }
+        const errMsg = e?.response?.status === 409
+          ? "Conflicto de horario: El odontólogo ya tiene una cita en ese horario. Por favor selecciona otra franja."
+          : (e?.response?.data?.message || "No se pudo actualizar la cita en el servidor.");
+        setEditFormError(errMsg);
+        setErrorMessage(errMsg);
         setTimeout(() => setErrorMessage(null), 5000);
       }
     } else {
@@ -897,6 +966,7 @@ export function CitasView() {
       });
       setShowEditModal(false);
       setSelectedCitaToEdit(null);
+      setEditFormError(null);
       setSuccessToast("¡Cita modificada localmente!");
       setTimeout(() => setSuccessToast(null), 3500);
     }
@@ -942,16 +1012,16 @@ export function CitasView() {
 
   return (
     <div className="space-y-6 text-slate-900 dark:text-slate-100">
-      {/* TOASTS DE CONFIRMACIÓN Y ERROR */}
+      {/* TOASTS DE CONFIRMACIÓN Y ERROR (CAPA SUPERIOR ABSOLUTA z-[99999]) */}
       {successToast && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 px-5 py-3 rounded-2xl shadow-2xl border border-teal-500/30 animate-scaleIn">
+        <div className="fixed top-6 right-6 z-[99999] flex items-center gap-2.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 px-5 py-3.5 rounded-2xl shadow-2xl border border-teal-500/40 animate-scaleIn backdrop-blur-md">
           <CheckCircle2 size={18} className="text-teal-400 dark:text-teal-600 flex-shrink-0" />
           <span className="text-xs font-semibold">{successToast}</span>
         </div>
       )}
 
       {errorMessage && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 bg-rose-950 text-white px-5 py-3 rounded-2xl shadow-2xl border border-rose-500/40 animate-scaleIn">
+        <div className="fixed top-6 right-6 z-[99999] flex items-center gap-2.5 bg-rose-950 text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-rose-500/50 animate-scaleIn backdrop-blur-md">
           <AlertCircle size={18} className="text-rose-400 flex-shrink-0" />
           <span className="text-xs font-semibold">{errorMessage}</span>
         </div>
@@ -1242,6 +1312,13 @@ export function CitasView() {
                 />
               </div>
 
+              {formError && (
+                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-300 text-xs flex items-center gap-2 animate-fadeIn">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-500 dark:text-rose-400" />
+                  <span>{formError}</span>
+                </div>
+              )}
+
               <div className="pt-2 flex items-center justify-end gap-2.5 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
@@ -1318,9 +1395,16 @@ export function CitasView() {
                   required
                   value={formHora}
                   onChange={(e) => setFormHora(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all shadow-sm [color-scheme:dark]"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all shadow-sm"
                 />
               </div>
+
+              {assignFormError && (
+                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-300 text-xs flex items-center gap-2 animate-fadeIn">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-500 dark:text-rose-400" />
+                  <span>{assignFormError}</span>
+                </div>
+              )}
 
               <div className="pt-2 flex items-center justify-end gap-2.5 border-t border-slate-100 dark:border-slate-800">
                 <button
@@ -1493,6 +1577,13 @@ export function CitasView() {
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 resize-none outline-none transition-all shadow-sm"
                 />
               </div>
+
+              {editFormError && (
+                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-300 text-xs flex items-center gap-2 animate-fadeIn">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-500 dark:text-rose-400" />
+                  <span>{editFormError}</span>
+                </div>
+              )}
 
               <div className="pt-3 flex items-center justify-between border-t border-slate-100 dark:border-slate-800">
                 {!isPaciente && (

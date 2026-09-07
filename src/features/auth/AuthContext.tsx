@@ -195,22 +195,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const login = async (identifier: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    setIsLoading(true);
     const cleanIdentifier = identifier.trim();
     const cleanPassword = password.trim();
-    
-    // Si el identificador es un correo conocido de los roles, mapear a su número de documento en la BD
-    let resolvedLoginId = cleanIdentifier;
-    const lower = cleanIdentifier.toLowerCase();
-    if (lower.includes("admin")) resolvedLoginId = "1234567890";
-    else if (lower.includes("odonto") || lower.includes("doctor") || lower.includes("laura")) resolvedLoginId = "1098765432";
-    else if (lower.includes("recep") || lower.includes("maria")) resolvedLoginId = "1087654321";
-    else if (lower.includes("paciente") || lower.includes("andres")) resolvedLoginId = "1076543210";
 
     try {
       // 1. Autenticación directa contra el endpoint REST del backend .NET (/api/auth/login)
       const response = await authService.login({
-        loginId: resolvedLoginId,
+        loginId: cleanIdentifier,
         password: cleanPassword
       });
       
@@ -256,8 +247,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       return { success: false, error: errorMessage };
-    } finally {
-      setIsLoading(false);
     }
   };
 

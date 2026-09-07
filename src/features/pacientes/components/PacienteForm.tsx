@@ -254,6 +254,7 @@ export function PacienteForm() {
     const resolvedSexId =
       sexMap[data.genero?.toUpperCase()] || "f0000000-0000-0000-0000-000000000002";
 
+    let createdPersonId: string | null = null;
     try {
       const createdPerson = await personService.create({
         documentTypeId: resolvedDocTypeId,
@@ -265,16 +266,25 @@ export function PacienteForm() {
         dateOfBirth: data.fechaNacimiento,
         sexId: resolvedSexId,
       });
+      createdPersonId = createdPerson?.id || null;
+    } catch (personErr: any) {
+      console.error("Error al registrar persona:", personErr);
+      setSubmitError(personErr?.response?.data?.message || "No se pudo registrar los datos personales en el servidor.");
+      return;
+    }
 
-      if (createdPerson?.id) {
+    if (createdPersonId) {
+      try {
         await patientService.create({
-          personId: createdPerson.id,
+          personId: createdPersonId,
           emergencyContactName: tutorEnabled ? "Tutor Legal" : undefined,
           emergencyContactPhone: tutorEnabled ? data.telefono.trim() : undefined,
         });
+      } catch (patientErr: any) {
+        console.error("Error al vincular registro clínico de paciente:", patientErr);
+        setSubmitError("Persona registrada, pero falló la vinculación del registro clínico de paciente.");
+        return;
       }
-    } catch (apiErr) {
-      console.warn("Backend API sync failed, stored in local cache:", apiErr);
     }
 
     const pacientesActualizados = [nuevoPaciente, ...pacientes];

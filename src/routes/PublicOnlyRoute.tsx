@@ -4,7 +4,7 @@ import { useAuth } from "../features/auth/AuthContext";
 export default function PublicOnlyRoute() {
   const { isAuthenticated, isLoading } = useAuth();
 
-  if (isLoading) {
+  if (isLoading && !isAuthenticated) {
     return null;
   }
 

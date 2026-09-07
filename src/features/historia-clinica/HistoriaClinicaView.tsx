@@ -24,14 +24,11 @@ import {
   Trash2,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import {
-  clinicalHistoryService,
-  type DiagnosisResponseDto,
-  type ProcedurePerformedResponseDto,
-  type CreateClinicalAttentionRequestDto,
-} from "../../api/clinicalHistoryService";
+import { clinicalHistoryService, type DiagnosisResponseDto, type ProcedurePerformedResponseDto, type CreateClinicalAttentionRequestDto } from "../../api/clinicalHistoryService";
 import { patientService, type PatientResponseDto } from "../../api/patientService";
 import { personService } from "../../api/personService";
+import { professionalService } from "../../api/professionalService";
+import { appointmentService } from "../../api/appointmentService";
 import { useAuth } from "../auth/AuthContext";
 import { getUserRole } from "../../utils/routePermissions";
 
@@ -48,11 +45,21 @@ interface LocalAttention {
   observaciones?: string;
 }
 
+const LICENSED_DENTISTS_FALLBACK = [
+  "Dra. Laura Gómez",
+  "Dr. Roberto Silva Morales",
+  "Dra. Valentina Mendoza Gómez",
+  "Dr. Camilo Rincón Casas",
+  "Dr. Juan Martínez",
+  "Dra. Patricia Silva",
+];
+
 export function HistoriaClinicaView() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const role = getUserRole(user);
   const isPaciente = role === "PACIENTE";
+  const isDentist = role === "ODONTOLOGO";
 
   const [patients, setPatients] = useState<PatientResponseDto[]>([]);
   const [selectedPatientId, setSelectedPatientId] = useState<string>("");
@@ -61,6 +68,8 @@ export function HistoriaClinicaView() {
   const [attentions, setAttentions] = useState<LocalAttention[]>([]);
   const [diagnoses, setDiagnoses] = useState<DiagnosisResponseDto[]>([]);
   const [procedures, setProcedures] = useState<ProcedurePerformedResponseDto[]>([]);
+  const [nextAppointment, setNextAppointment] = useState<{ servicio: string; profesional: string; fecha: string; hora: string } | null>(null);
+  const [dentistsList, setDentistsList] = useState<string[]>(LICENSED_DENTISTS_FALLBACK);
   const [activeTab, setActiveTab] = useState<"evoluciones" | "diagnosticos" | "procedimientos" | "antecedentes">("evoluciones");
 
   // Modal Nueva Evolución
@@ -75,7 +84,7 @@ export function HistoriaClinicaView() {
   const [formCie10, setFormCie10] = useState("K02.1");
   const [formPlan, setFormPlan] = useState("");
   const [formObservaciones, setFormObservaciones] = useState("");
-  const [formProfesional, setFormProfesional] = useState(user?.name || "Dr. Roberto Silva");
+  const [formProfesional, setFormProfesional] = useState(isDentist ? (user?.name || "Dra. Laura Gómez") : "Dra. Laura Gómez");
 
   // Modales adicionales
   const [showAntecedentesModal, setShowAntecedentesModal] = useState(false);
@@ -202,22 +211,97 @@ export function HistoriaClinicaView() {
     }
 
     try {
-      const [apiAttentions, apiDiagnoses, apiProcedures] = await Promise.all([
+      const [apiAttentions, apiDiagnoses, apiProcedures, apiAppointments, apiProfessionals] = await Promise.all([
         clinicalHistoryService.getAttentions().catch(() => []),
         clinicalHistoryService.getDiagnoses().catch(() => []),
         clinicalHistoryService.getProcedures().catch(() => []),
+        appointmentService.getAll().catch(() => []),
+        professionalService.getAll().catch(() => []),
       ]);
 
       setDiagnoses(apiDiagnoses);
       setProcedures(apiProcedures);
 
-      if (apiAttentions && apiAttentions.length > 0) {
-        // Aislamiento estricto por paciente (F-01)
-        const filtered = apiAttentions.filter((a: any) => 
-          a.clinicalHistoryId === selectedPatientId ||
-          a.patientId === selectedPatientId ||
-          (selectedPatient?.personId && a.personId === selectedPatient.personId)
+      // 1. Cargar odontólogos licenciados
+      if (apiProfessionals && Array.isArray(apiProfessionals) && apiProfessionals.length > 0) {
+        const mappedDocs = apiProfessionals
+          .filter((p: any) => p.firstName || p.lastName)
+          .map((p: any) => `Dr(a). ${p.firstName || ""} ${p.lastName || ""}`.trim());
+        if (mappedDocs.length > 0) {
+          setDentistsList(mappedDocs);
+          if (!isDentist) {
+            setFormProfesional(mappedDocs[0]);
+          }
+        }
+      }
+
+      // 2. Cargar Próxima Cita Real del paciente activo y resolver IDs de citas del paciente (BUG-14 & F-01)
+      const rawCitasLocal = localStorage.getItem("nexus_citas");
+      let allApps: any[] = Array.isArray(apiAppointments) ? [...apiAppointments] : [];
+      if (rawCitasLocal) {
+        try {
+          const parsed = JSON.parse(rawCitasLocal);
+          if (Array.isArray(parsed)) {
+            allApps = [...allApps, ...parsed];
+          }
+        } catch {
+          // Ignore
+        }
+      }
+
+      const patientFullName = selectedPatient ? `${selectedPatient.firstName || ""} ${selectedPatient.lastName || ""}`.toLowerCase().trim() : "";
+      const patientDoc = selectedPatient?.documentNumber || "";
+
+      // Filtrar citas exclusivas de este paciente
+      const patientAppointments = allApps.filter((a: any) => {
+        const appPtId = a.patientId || a.patientIdFromOpt || "";
+        const appPtName = (a.patientName || a.paciente || "").toLowerCase().trim();
+        const appPtDoc = a.pacienteCedula || a.documentNumber || "";
+        return (
+          (selectedPatientId && appPtId === selectedPatientId) ||
+          (selectedPatient?.id && appPtId === selectedPatient.id) ||
+          (patientFullName && appPtName.includes(patientFullName)) ||
+          (patientDoc && appPtDoc === patientDoc)
         );
+      });
+
+      const patientAppointmentIds = new Set(patientAppointments.map((a: any) => a.id || a.appointmentId).filter(Boolean));
+
+      const todayStr = new Date().toISOString().split("T")[0];
+      const futureApps = patientAppointments.filter((a: any) => {
+        const appDate = a.startsAt ? a.startsAt.split("T")[0] : a.fecha || "";
+        const isFutureOrToday = appDate >= todayStr;
+        const isNotCancelled = !a.cancelledAt && a.estado !== "Cancelada";
+        return isFutureOrToday && isNotCancelled;
+      });
+
+      if (futureApps.length > 0) {
+        const next = futureApps[0];
+        const nextDate = next.startsAt ? next.startsAt.split("T")[0] : next.fecha || todayStr;
+        const nextHour = next.startsAt && next.startsAt.includes("T") ? next.startsAt.split("T")[1].substring(0, 5) : next.hora || "09:00";
+        setNextAppointment({
+          servicio: next.serviceName || next.servicio || "Consulta Odontológica",
+          profesional: next.professionalName || next.profesional || "Dr(a). Especialista",
+          fecha: nextDate,
+          hora: nextHour,
+        });
+      } else {
+        setNextAppointment(null);
+      }
+
+      if (apiAttentions && apiAttentions.length > 0) {
+        // Aislamiento estricto por paciente (Sección 3.1)
+        const filtered = apiAttentions.filter((a: any) => {
+          const matchesDirectPatient =
+            (selectedPatientId && (a.patientId === selectedPatientId || a.pacienteId === selectedPatientId)) ||
+            (selectedPatient?.id && (a.patientId === selectedPatient.id || a.pacienteId === selectedPatient.id)) ||
+            (selectedPatient?.personId && a.personId === selectedPatient.personId);
+
+          const matchesAppointment = a.appointmentId && patientAppointmentIds.has(a.appointmentId);
+          const matchesHistory = (selectedPatient as any)?.clinicalHistoryId && a.clinicalHistoryId === (selectedPatient as any).clinicalHistoryId;
+
+          return matchesDirectPatient || matchesAppointment || matchesHistory;
+        });
 
         const mapped: LocalAttention[] = filtered.map((a, idx) => ({
           id: a.id || `att-api-${idx}`,
@@ -238,11 +322,13 @@ export function HistoriaClinicaView() {
     } catch (err) {
       console.warn("API clinical history offline, setting empty attentions list:", err);
       setAttentions([]);
+      setNextAppointment(null);
     }
-  }, [selectedPatientId, selectedPatient]);
+  }, [selectedPatientId, selectedPatient, isDentist]);
 
   useEffect(() => {
     setAttentions([]);
+    setNextAppointment(null);
     loadClinicalData();
   }, [loadClinicalData]);
 
@@ -517,20 +603,32 @@ export function HistoriaClinicaView() {
                 </p>
               </div>
 
-              {/* Próxima Cita Widget */}
+              {/* Próxima Cita Widget (BUG-14) */}
               <div className="p-3.5 rounded-xl bg-cyan-500/10 dark:bg-cyan-500/15 border border-cyan-500/30 space-y-1.5">
                 <div className="flex items-center justify-between text-[11px] font-bold text-cyan-800 dark:text-cyan-300">
                   <span className="flex items-center gap-1.5">
                     <Clock size={13} /> Próxima Cita Programada
                   </span>
-                  <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-[10px] text-cyan-700 dark:text-cyan-200 font-bold">Mañana</span>
+                  {nextAppointment && (
+                    <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-[10px] text-cyan-700 dark:text-cyan-200 font-bold">
+                      {nextAppointment.fecha}
+                    </span>
+                  )}
                 </div>
-                <p className="text-xs font-bold text-slate-900 dark:text-white">
-                  Limpieza & Control Periódico
-                </p>
-                <p className="text-[11px] text-slate-700 dark:text-slate-200 font-medium">
-                  Dr. Roberto Silva — 10:30 AM (Consultorio 2)
-                </p>
+                {nextAppointment ? (
+                  <>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white">
+                      {nextAppointment.servicio}
+                    </p>
+                    <p className="text-[11px] text-slate-700 dark:text-slate-200 font-medium">
+                      {nextAppointment.profesional} — {nextAppointment.hora}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 italic">
+                    Sin citas programadas
+                  </p>
+                )}
               </div>
 
               {/* Piezas Dentales en Tratamiento Activo */}
@@ -1004,15 +1102,20 @@ export function HistoriaClinicaView() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Profesional Tratante *
+                    Odontólogo Tratante Colegiado *
                   </label>
-                  <input
-                    type="text"
+                  <select
                     required
                     value={formProfesional}
                     onChange={(e) => setFormProfesional(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500"
-                  />
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 cursor-pointer"
+                  >
+                    {dentistsList.map((doc) => (
+                      <option key={doc} value={doc}>
+                        {doc}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>

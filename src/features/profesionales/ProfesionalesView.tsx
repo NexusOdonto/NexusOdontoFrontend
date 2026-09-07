@@ -58,14 +58,27 @@ interface ProfessionalFull extends ProfessionalResponseDto {
   };
 }
 
-const DIAS_SEMANA_DEFAULT = [
-  { dia: "Lunes", horaInicio: "08:00", horaFin: "17:00", sillon: "Sillón 1 - Principal", activo: true },
-  { dia: "Martes", horaInicio: "08:00", horaFin: "17:00", sillon: "Sillón 1 - Principal", activo: true },
-  { dia: "Miércoles", horaInicio: "08:00", horaFin: "17:00", sillon: "Sillón 2 - Quirúrgico", activo: true },
-  { dia: "Jueves", horaInicio: "08:00", horaFin: "17:00", sillon: "Sillón 1 - Principal", activo: true },
-  { dia: "Viernes", horaInicio: "08:00", horaFin: "16:00", sillon: "Sillón 3 - Estética", activo: true },
-  { dia: "Sábado", horaInicio: "08:00", horaFin: "13:00", sillon: "Sillón 1 - Principal", activo: false },
+const SILLONES_DISPONIBLES = [
+  "Sillón 1 - Principal",
+  "Sillón 2 - Quirúrgico",
+  "Sillón 3 - Estética Dental",
 ];
+
+const getTurnosForDoctor = (idx: number, customSillon?: string): TurnoDisponibilidad[] => {
+  const mainSillon = customSillon || SILLONES_DISPONIBLES[idx % SILLONES_DISPONIBLES.length];
+  const secondarySillon = SILLONES_DISPONIBLES[(idx + 1) % SILLONES_DISPONIBLES.length];
+
+  return [
+    { dia: "Lunes", horaInicio: "08:00", horaFin: "17:00", sillon: mainSillon, activo: true },
+    { dia: "Martes", horaInicio: "08:00", horaFin: "17:00", sillon: mainSillon, activo: true },
+    { dia: "Miércoles", horaInicio: "08:00", horaFin: "17:00", sillon: secondarySillon, activo: true },
+    { dia: "Jueves", horaInicio: "08:00", horaFin: "17:00", sillon: mainSillon, activo: true },
+    { dia: "Viernes", horaInicio: "08:00", horaFin: "16:00", sillon: mainSillon, activo: true },
+    { dia: "Sábado", horaInicio: "08:00", horaFin: "13:00", sillon: mainSillon, activo: idx % 2 === 0 },
+  ];
+};
+
+const DIAS_SEMANA_DEFAULT = getTurnosForDoctor(0);
 
 const ESPECIALIDADES_CATALOGO = [
   "Todas",
@@ -268,7 +281,7 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
             email,
             phone,
             bio,
-            turnos: DIAS_SEMANA_DEFAULT,
+            turnos: getTurnosForDoctor(idx),
             rating: fallback.rating,
             pacientesAtendidos: fallback.pacientesAtendidos + (idx * 35),
             experienciaAnios: fallback.experienciaAnios,
@@ -290,7 +303,7 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
           especialidad: f.especialidad,
           email: f.email,
           phone: f.phone,
-          turnos: DIAS_SEMANA_DEFAULT,
+          turnos: getTurnosForDoctor(idx),
           rating: f.rating,
           pacientesAtendidos: f.pacientesAtendidos,
           experienciaAnios: f.experienciaAnios,
@@ -462,7 +475,7 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
       )}
 
       {/* BANNER PRINCIPAL / HERO ELEGANTE */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-slate-950 to-cyan-950 border border-slate-200/20 dark:border-white/10 p-6 sm:p-8 shadow-2xl text-white">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-teal-700 to-emerald-800 text-white border border-teal-600/30 shadow-2xl p-6 sm:p-8 dark:from-slate-900 dark:via-slate-950 dark:to-cyan-950 dark:border-white/10 transition-all">
         <div className="absolute -right-12 -top-12 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute right-1/4 -bottom-16 w-80 h-80 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
 

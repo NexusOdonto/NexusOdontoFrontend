@@ -799,7 +799,7 @@ export function AtencionAsesorView() {
                     }`}
                   >
                     <Bot size={13} />
-                    <span>NexusBot (Camuflaje IA)</span>
+                    <span>Respuesta Automática Asistida</span>
                   </button>
                   <button
                     type="button"
@@ -844,7 +844,7 @@ export function AtencionAsesorView() {
                 type="text"
                 placeholder={
                   sendIdentity === "CHATBOT"
-                    ? "Escribe como NexusBot... el paciente verá la respuesta oficial del bot en WhatsApp"
+                    ? "Escribe como respuesta automática asistida... el paciente recibirá el mensaje oficial en WhatsApp"
                     : "Escribe tu respuesta personalizada como asesor de recepción..."
                 }
                 value={inputText}

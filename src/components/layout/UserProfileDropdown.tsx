@@ -164,17 +164,20 @@ export default function UserProfileDropdown() {
             </button>
           </div>
 
-          {/* ESTABLECER ESTADO (ESTILO GITHUB) */}
-          <button
-            type="button"
-            onClick={() => handleNavigation("/perfil")}
-            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70 transition-colors cursor-pointer mb-1 border border-transparent hover:border-slate-200/50 dark:hover:border-slate-700/50"
-          >
-            <Smile size={16} className="text-amber-500" />
-            <span>Establecer estado clínico...</span>
-          </button>
-
-          <div className="border-t border-slate-100 dark:border-slate-800/80 my-1" />
+          {/* ESTABLECER ESTADO (SOLO PACIENTES) */}
+          {getUserRole(user) === "PACIENTE" && (
+            <>
+              <button
+                type="button"
+                onClick={() => handleNavigation("/perfil")}
+                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70 transition-colors cursor-pointer mb-1 border border-transparent hover:border-slate-200/50 dark:hover:border-slate-700/50"
+              >
+                <Smile size={16} className="text-amber-500" />
+                <span>Establecer estado clínico...</span>
+              </button>
+              <div className="border-t border-slate-100 dark:border-slate-800/80 my-1" />
+            </>
+          )}
 
           {/* SECCIÓN DE NAVEGACIÓN Y ACCIONES */}
           <div className="space-y-0.5">
@@ -187,23 +190,25 @@ export default function UserProfileDropdown() {
               <span>Mi Perfil</span>
             </button>
 
-            <button
-              type="button"
-              onClick={() => handleNavigation("/pacientes")}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/70 transition-colors cursor-pointer group"
-            >
-              <Users size={16} className="text-slate-400 group-hover:text-cyan-500 transition-colors" />
-              <span>Directorio de Pacientes</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleNavigation("/citas")}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/70 transition-colors cursor-pointer group"
-            >
-              <Calendar size={16} className="text-slate-400 group-hover:text-cyan-500 transition-colors" />
-              <span>Mis Citas</span>
-            </button>
+            {getUserRole(user) !== "PACIENTE" ? (
+              <button
+                type="button"
+                onClick={() => handleNavigation("/pacientes")}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/70 transition-colors cursor-pointer group"
+              >
+                <Users size={16} className="text-slate-400 group-hover:text-cyan-500 transition-colors" />
+                <span>Directorio de Pacientes</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleNavigation("/citas")}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/70 transition-colors cursor-pointer group"
+              >
+                <Calendar size={16} className="text-slate-400 group-hover:text-cyan-500 transition-colors" />
+                <span>Mis Citas</span>
+              </button>
+            )}
           </div>
 
           <div className="border-t border-slate-100 dark:border-slate-800/80 my-1" />
