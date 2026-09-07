@@ -163,7 +163,8 @@ export const chatbotService = {
   // Conversaciones
   getConversations: async (): Promise<ChatbotConversation[]> => {
     const response = await axiosClient.get('/v1/ChatbotConversations');
-    return response.data || [];
+    const raw = response.data;
+    return Array.isArray(raw) ? raw : raw?.items || [];
   },
 
   getConversationById: async (id: string): Promise<ChatbotConversation> => {
@@ -180,6 +181,16 @@ export const chatbotService = {
   },
 
   // Mensajes
+  getAllMessages: async (): Promise<ChatbotMessage[]> => {
+    try {
+      const response = await axiosClient.get('/v1/ChatbotMessages');
+      const raw = response.data;
+      return Array.isArray(raw) ? raw : raw?.items || [];
+    } catch {
+      return [];
+    }
+  },
+
   getConversationMessages: async (conversationId: string): Promise<ChatbotMessage[]> => {
     try {
       const response = await axiosClient.get(`/v1/ChatbotConversations/${conversationId}/messages`);
@@ -199,11 +210,27 @@ export const chatbotService = {
   // Tickets de Soporte
   getSupportTickets: async (): Promise<SupportTicket[]> => {
     const response = await axiosClient.get('/v1/SupportTickets');
-    return response.data || [];
+    const raw = response.data;
+    return Array.isArray(raw) ? raw : raw?.items || [];
   },
 
   updateSupportTicket: async (id: string, data: UpdateSupportTicketDto): Promise<SupportTicket> => {
     const response = await axiosClient.put(`/v1/SupportTickets/${id}`, data);
+    return response.data;
+  },
+
+  // Responder a ticket (despacha por .NET y FastAPI directo a WhatsApp)
+  replyToTicket: async (ticketId: string, content: string, messageRoleId?: string): Promise<any> => {
+    const response = await axiosClient.post(`/v1/SupportTickets/${ticketId}/reply`, {
+      content,
+      ...(messageRoleId ? { messageRoleId } : {}),
+    });
+    return response.data;
+  },
+
+  // Resolver ticket y devolver la conversación al bot (reactiva el bot en FastAPI)
+  resolveTicket: async (ticketId: string, resolution?: string): Promise<any> => {
+    const response = await axiosClient.post(`/v1/SupportTickets/${ticketId}/resolve`, { resolution });
     return response.data;
   },
 
