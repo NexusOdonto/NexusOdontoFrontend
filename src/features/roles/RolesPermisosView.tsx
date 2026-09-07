@@ -124,6 +124,38 @@ export function RolesPermisosView() {
   const [nuevoCodigo, setNuevoCodigo] = useState("");
   const [nuevaDescripcion, setNuevaDescripcion] = useState("");
 
+  const translateRoleName = (code?: string, name?: string): string => {
+    const c = (code || "").toUpperCase();
+    const n = (name || "").toLowerCase();
+    if (c.includes("ADMIN") || n.includes("admin")) return "Administrador del Sistema";
+    if (c.includes("ODONT") || c.includes("DENTIST") || n.includes("dentist") || n.includes("odont")) return "Odontólogo Especialista";
+    if (c.includes("RECEPC") || c.includes("RECEPT") || n.includes("reception")) return "Recepcionista / Admisiones";
+    if (c.includes("ASIST") || c.includes("ASSIST") || n.includes("assistant") || n.includes("auxil")) return "Asistente Dental";
+    if (c.includes("PACIENT") || c.includes("PATIENT") || n.includes("patient") || n.includes("paciente")) return "Paciente (Portal Web)";
+    return name || "Rol del Sistema";
+  };
+
+  const translateRoleDescription = (desc?: string, fallbackDesc?: string): string => {
+    if (!desc) return fallbackDesc || "Rol con permisos asignados para el uso del sistema.";
+    const lower = desc.toLowerCase();
+    if (lower.includes("full access") || lower.includes("every module") || lower.includes("admin")) {
+      return "Acceso total para configurar el sistema, gestionar usuarios, roles, catálogo y reportes.";
+    }
+    if (lower.includes("clinical") || lower.includes("dentist") || lower.includes("odont") || lower.includes("odontogram")) {
+      return "Atención clínica de pacientes, registro de odontograma, evolución clínica y consulta de agenda.";
+    }
+    if (lower.includes("reception") || lower.includes("admission") || lower.includes("appointment")) {
+      return "Agendamiento, recepción de pacientes, validación de citas y control de admisiones.";
+    }
+    if (lower.includes("assist") || lower.includes("support")) {
+      return "Apoyo en procedimientos clínicos, preparación de instrumental y visualización de agenda.";
+    }
+    if (lower.includes("patient") || lower.includes("own appointment")) {
+      return "Solicitud y consulta de citas propias, historial de atenciones y visualización de odontograma.";
+    }
+    return desc;
+  };
+
   const fetchRoles = async () => {
     setLoading(true);
     try {
@@ -137,8 +169,8 @@ export function RolesPermisosView() {
           return {
             id: r.id,
             code: r.code,
-            name: r.name,
-            description: r.description || fallbackMatch?.description || "Rol del sistema",
+            name: translateRoleName(r.code, r.name),
+            description: translateRoleDescription(r.description, fallbackMatch?.description),
             isActive: r.isActive,
             permisos: fallbackMatch?.permisos || {},
           };

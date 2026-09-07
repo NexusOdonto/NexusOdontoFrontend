@@ -77,20 +77,72 @@ const SERVICE_TRANSLATIONS: Record<string, { name: string; description: string; 
   },
 };
 
+const translateDescription = (desc?: string): string => {
+  if (!desc) return "Procedimiento odontológico especializado realizado con altos estándares de calidad y bioseguridad.";
+  const lower = desc.toLowerCase();
+  if (lower.includes("professional treatment to improve the color") || lower.includes("color of the teeth") || lower.includes("whitening")) {
+    return "Tratamiento profesional en consultorio para mejorar el tono, brillo y estética natural de los dientes.";
+  }
+  if (lower.includes("assessment of the oral cavity") || lower.includes("teeth and gums") || lower.includes("complete assessment")) {
+    return "Evaluación clínica integral de la cavidad oral, diagnóstico de piezas dentales, encías y formulación de plan de tratamiento.";
+  }
+  if (lower.includes("deep cleaning") || lower.includes("supragingival") || lower.includes("plaque and tartar")) {
+    return "Eliminación de placa bacteriana, remoción de cálculo supragingival con ultrasonido y pulido coronario preventivo.";
+  }
+  if (lower.includes("composite resin") || lower.includes("resin restoration") || lower.includes("filling")) {
+    return "Reconstrucción estética y funcional de piezas dentales afectadas por caries o fracturas mediante resina fotocurable.";
+  }
+  if (lower.includes("orthodontic") || lower.includes("alignment") || lower.includes("brackets")) {
+    return "Control y ajuste periódico de aparatología fija o alineadores para corrección oclusal y estética de la mordida.";
+  }
+  if (lower.includes("extraction") || lower.includes("tooth removal") || lower.includes("surgery")) {
+    return "Procedimiento quirúrgico de exodoncia bajo anestesia local con técnicas mínimamente invasivas.";
+  }
+  if (lower.includes("root canal") || lower.includes("pulp") || lower.includes("endodontic")) {
+    return "Tratamiento de conductos radiculares para salvar la pieza dental eliminando infección, dolor y protegiendo el tejido periapical.";
+  }
+  return desc;
+};
+
+const translateCategory = (cat?: string): string => {
+  if (!cat) return "Odontología General";
+  const lower = cat.toLowerCase();
+  if (lower.includes("prevent") || lower.includes("hygiene") || lower.includes("clean")) return "Higiene y Prevención";
+  if (lower.includes("esthet") || lower.includes("white") || lower.includes("cosmetic")) return "Estética Dental";
+  if (lower.includes("ortho")) return "Ortodoncia";
+  if (lower.includes("surg") || lower.includes("extract")) return "Cirugía Oral";
+  if (lower.includes("endo")) return "Endodoncia";
+  if (lower.includes("restor") || lower.includes("operat") || lower.includes("resin")) return "Operatoria / Resinas";
+  if (lower.includes("pediat") || lower.includes("child")) return "Odontopediatría";
+  if (lower.includes("periodon") || lower.includes("gum")) return "Periodoncia";
+  return cat;
+};
+
 const translateService = (item: { name?: string; description?: string; category?: string }) => {
   const nameLower = (item.name || "").trim().toLowerCase();
   const found = SERVICE_TRANSLATIONS[nameLower];
   if (found) {
     return {
       name: found.name,
-      description: item.description && !item.description.toLowerCase().includes("assessment") && !item.description.toLowerCase().includes("filling") && !item.description.toLowerCase().includes("prophylaxis") && !item.description.toLowerCase().includes("whitening") ? item.description : found.description,
-      category: item.category && item.category !== "Odontología General" ? item.category : found.category,
+      description: translateDescription(item.description || found.description),
+      category: translateCategory(item.category || found.category),
     };
   }
+
+  // Traducción por patrones si el nombre no coincide exactamente
+  let resolvedName = item.name || "Servicio Odontológico";
+  if (nameLower.includes("whitening")) resolvedName = "Blanqueamiento Dental Clínico";
+  else if (nameLower.includes("assessment") || nameLower.includes("evaluation")) resolvedName = "Valoración General Odontológica";
+  else if (nameLower.includes("prophylaxis") || nameLower.includes("cleaning")) resolvedName = "Profilaxis y Limpieza Dental";
+  else if (nameLower.includes("filling") || nameLower.includes("resin")) resolvedName = "Restauración en Resina Compuesta";
+  else if (nameLower.includes("orthodontic")) resolvedName = "Control de Ortodoncia";
+  else if (nameLower.includes("extraction")) resolvedName = "Extracción Dental Simple";
+  else if (nameLower.includes("root canal")) resolvedName = "Endodoncia / Tratamiento de Conductos";
+
   return {
-    name: item.name || "Servicio Odontológico",
-    description: item.description || "Procedimiento clínico odontológico.",
-    category: item.category || "Odontología General",
+    name: resolvedName,
+    description: translateDescription(item.description),
+    category: translateCategory(item.category),
   };
 };
 

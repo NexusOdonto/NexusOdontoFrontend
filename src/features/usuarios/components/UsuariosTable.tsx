@@ -27,46 +27,46 @@ interface UsuariosTableProps {
 
 function getRoleBadge(roleCode?: string, roleName?: string) {
   const code = (roleCode || "").toUpperCase();
-  const name = roleName || "Usuario";
+  const rawName = (roleName || "").toLowerCase();
 
-  if (code.includes("ADMIN")) {
+  if (code.includes("ADMIN") || rawName.includes("admin")) {
     return {
-      label: name || "Administrador",
+      label: "Administrador",
       className: "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30",
       dot: "bg-purple-500",
     };
   }
-  if (code.includes("ODONTO") || code.includes("DOCTOR")) {
+  if (code.includes("ODONTO") || code.includes("DOCTOR") || code.includes("DENTIST") || rawName.includes("dentist") || rawName.includes("odont")) {
     return {
-      label: name || "Odontólogo",
+      label: "Odontólogo",
       className: "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-cyan-500/30",
       dot: "bg-cyan-500",
     };
   }
-  if (code.includes("RECEPC")) {
+  if (code.includes("RECEPC") || code.includes("RECEPT") || rawName.includes("reception")) {
     return {
-      label: name || "Recepcionista",
+      label: "Recepcionista",
       className: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
       dot: "bg-emerald-500",
     };
   }
-  if (code.includes("PACIENTE")) {
+  if (code.includes("PACIENTE") || code.includes("PATIENT") || rawName.includes("patient")) {
     return {
-      label: name || "Paciente",
+      label: "Paciente",
       className: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30",
       dot: "bg-amber-500",
     };
   }
-  if (code.includes("ASISTENT")) {
+  if (code.includes("ASISTENT") || code.includes("ASSIST") || rawName.includes("assistant") || rawName.includes("auxil")) {
     return {
-      label: name || "Asistente Dental",
+      label: "Asistente Dental",
       className: "bg-teal-500/15 text-teal-700 dark:text-teal-300 border-teal-500/30",
       dot: "bg-teal-500",
     };
   }
 
   return {
-    label: name || "Personal",
+    label: roleName || "Personal",
     className: "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30",
     dot: "bg-blue-500",
   };

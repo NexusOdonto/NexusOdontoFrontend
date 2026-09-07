@@ -36,6 +36,7 @@ import { serviceCatalogService, type ServiceResponseDto } from "../../api/servic
 import { patientService } from "../../api/patientService";
 import { personService } from "../../api/personService";
 import { SelectOrWriteInput, type SelectOption } from "../../components/common/SelectOrWriteInput";
+import { areGuidsEqual } from "../../utils/roleUtils";
 
 export function AgendaView() {
   const { user } = useAuth();
@@ -196,16 +197,50 @@ export function AgendaView() {
             const fin =
               a.endsAt && a.endsAt.includes("T") ? a.endsAt.split("T")[1].substring(0, 5) : "10:00";
 
+            // Enriquecimiento de nombres reales a partir de los catálogos y entidades
+            let resolvedPatientName = a.patientName;
+            if (!resolvedPatientName || resolvedPatientName === "Paciente Agendado") {
+              const ptEntity = ptsList.find((p: any) => areGuidsEqual(p.id, a.patientId));
+              const perEntity = persList.find((per: any) => 
+                (ptEntity && areGuidsEqual(per.id, ptEntity.personId)) ||
+                areGuidsEqual(per.id, a.patientId)
+              );
+              if (perEntity) {
+                resolvedPatientName = `${perEntity.firstName || ""} ${perEntity.lastName || ""}`.trim();
+              } else if (ptEntity?.firstName || ptEntity?.lastName) {
+                resolvedPatientName = `${ptEntity.firstName || ""} ${ptEntity.lastName || ""}`.trim();
+              }
+            }
+
+            let resolvedProfName = a.professionalName;
+            if (!resolvedProfName || resolvedProfName.includes("Especialista")) {
+              const profsList = profs.status === "fulfilled" && Array.isArray(profs.value) ? profs.value : [];
+              const profEntity = profsList.find((pr: any) => areGuidsEqual(pr.id, a.professionalId));
+              if (profEntity) {
+                resolvedProfName = `Dr(a). ${profEntity.firstName || ""} ${profEntity.lastName || ""}`.trim();
+              }
+            }
+
+            let resolvedServiceName = a.serviceName;
+            if (!resolvedServiceName || resolvedServiceName === "Consulta Odontológica") {
+              const srvsList = srvs.status === "fulfilled" && Array.isArray(srvs.value) ? srvs.value : [];
+              const srvEntity = srvsList.find((s: any) => areGuidsEqual(s.id, a.serviceId));
+              if (srvEntity?.name) {
+                resolvedServiceName = srvEntity.name;
+              }
+            }
+
             let estadoMapeado: EstadoCita = "Confirmada";
-            if (a.statusName === "En Atención" || a.statusName === "En Atencion") estadoMapeado = "En Atención";
-            else if (a.statusName === "Pendiente" || a.statusName === "Agendada") estadoMapeado = "Pendiente";
-            else if (a.statusName === "Cancelada") estadoMapeado = "No disponible";
+            const sn = (a.statusName || "").toUpperCase();
+            if (sn.includes("ATEN") || sn.includes("ATTEND")) estadoMapeado = "En Atención";
+            else if (sn.includes("PEND") || sn.includes("AGEN")) estadoMapeado = "Pendiente";
+            else if (sn.includes("CANCEL")) estadoMapeado = "No disponible";
 
             return {
               id: idx + 1000,
-              paciente: a.patientName || "Paciente Agendado",
-              servicio: a.serviceName || "Consulta Odontológica",
-              odontologo: a.professionalName || "Dra. Laura Gómez",
+              paciente: resolvedPatientName || "Paciente Registrado",
+              servicio: resolvedServiceName || "Consulta Odontológica",
+              odontologo: resolvedProfName || (listaOdontologos[1] ? listaOdontologos[1].nombre : "Dra. Laura Gómez"),
               fecha: fechaStr,
               horaInicio: inicio,
               horaFin: fin,

@@ -29,8 +29,10 @@ import { patientService, type PatientResponseDto } from "../../api/patientServic
 import { personService } from "../../api/personService";
 import { professionalService } from "../../api/professionalService";
 import { appointmentService } from "../../api/appointmentService";
+import { serviceCatalogService } from "../../api/serviceCatalogService";
 import { useAuth } from "../auth/AuthContext";
 import { getUserRole } from "../../utils/routePermissions";
+import { areGuidsEqual } from "../../utils/roleUtils";
 
 interface LocalAttention {
   id: string;
@@ -211,20 +213,22 @@ export function HistoriaClinicaView() {
     }
 
     try {
-      const [apiAttentions, apiDiagnoses, apiProcedures, apiAppointments, apiProfessionals] = await Promise.all([
+      const [apiAttentions, apiDiagnoses, apiProcedures, apiAppointments, apiProfessionals, apiServices] = await Promise.all([
         clinicalHistoryService.getAttentions().catch(() => []),
         clinicalHistoryService.getDiagnoses().catch(() => []),
         clinicalHistoryService.getProcedures().catch(() => []),
         appointmentService.getAll().catch(() => []),
         professionalService.getAll().catch(() => []),
+        serviceCatalogService.getAll().catch(() => []),
       ]);
 
       setDiagnoses(apiDiagnoses);
       setProcedures(apiProcedures);
 
       // 1. Cargar odontólogos licenciados
-      if (apiProfessionals && Array.isArray(apiProfessionals) && apiProfessionals.length > 0) {
-        const mappedDocs = apiProfessionals
+      const profsList = Array.isArray(apiProfessionals) ? apiProfessionals : [];
+      if (profsList.length > 0) {
+        const mappedDocs = profsList
           .filter((p: any) => p.firstName || p.lastName)
           .map((p: any) => `Dr(a). ${p.firstName || ""} ${p.lastName || ""}`.trim());
         if (mappedDocs.length > 0) {
@@ -258,8 +262,8 @@ export function HistoriaClinicaView() {
         const appPtName = (a.patientName || a.paciente || "").toLowerCase().trim();
         const appPtDoc = a.pacienteCedula || a.documentNumber || "";
         return (
-          (selectedPatientId && appPtId === selectedPatientId) ||
-          (selectedPatient?.id && appPtId === selectedPatient.id) ||
+          (selectedPatientId && areGuidsEqual(appPtId, selectedPatientId)) ||
+          (selectedPatient?.id && areGuidsEqual(appPtId, selectedPatient.id)) ||
           (patientFullName && appPtName.includes(patientFullName)) ||
           (patientDoc && appPtDoc === patientDoc)
         );
@@ -279,9 +283,29 @@ export function HistoriaClinicaView() {
         const next = futureApps[0];
         const nextDate = next.startsAt ? next.startsAt.split("T")[0] : next.fecha || todayStr;
         const nextHour = next.startsAt && next.startsAt.includes("T") ? next.startsAt.split("T")[1].substring(0, 5) : next.hora || "09:00";
+
+        // Resolver nombre real del servicio
+        let resolvedServName = next.serviceName || next.servicio;
+        if (!resolvedServName || resolvedServName === "Consulta Odontológica") {
+          const srvList = Array.isArray(apiServices) ? apiServices : [];
+          const matchedSrv = srvList.find((s: any) => areGuidsEqual(s.id, next.serviceId));
+          if (matchedSrv?.name) resolvedServName = matchedSrv.name;
+        }
+        if (!resolvedServName) resolvedServName = "Consulta Odontológica";
+
+        // Resolver nombre real del profesional
+        let resolvedDocName = next.professionalName || next.profesional;
+        if (!resolvedDocName || resolvedDocName.includes("Especialista")) {
+          const matchedProf = profsList.find((p: any) => areGuidsEqual(p.id, next.professionalId));
+          if (matchedProf) {
+            resolvedDocName = `Dr(a). ${matchedProf.firstName || ""} ${matchedProf.lastName || ""}`.trim();
+          }
+        }
+        if (!resolvedDocName) resolvedDocName = (dentistsList[0] || "Dr(a). Especialista");
+
         setNextAppointment({
-          servicio: next.serviceName || next.servicio || "Consulta Odontológica",
-          profesional: next.professionalName || next.profesional || "Dr(a). Especialista",
+          servicio: resolvedServName,
+          profesional: resolvedDocName,
           fecha: nextDate,
           hora: nextHour,
         });

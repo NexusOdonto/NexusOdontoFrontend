@@ -21,7 +21,10 @@ import { useAuth } from "../auth/AuthContext";
 import { getUserRole } from "../../utils/routePermissions";
 import { appointmentService } from "../../api/appointmentService";
 import { patientService } from "../../api/patientService";
+import { personService } from "../../api/personService";
+import { professionalService } from "../../api/professionalService";
 import { serviceCatalogService } from "../../api/serviceCatalogService";
+import { areGuidsEqual } from "../../utils/roleUtils";
 
 interface CitaItem {
   id: string;
@@ -74,17 +77,25 @@ export default function DashboardPage() {
   const loadRealData = useCallback(async () => {
     setLoading(true);
     try {
-      const [citasRes, pacientesRes, serviciosRes] = await Promise.allSettled([
+      const [citasRes, pacientesRes, personasRes, profesionalesRes, serviciosRes] = await Promise.allSettled([
         appointmentService.getAll(),
         patientService.getAll(),
+        personService.getAll(),
+        professionalService.getAll(),
         serviceCatalogService.getAll(),
       ]);
 
-      if (pacientesRes.status === "fulfilled" && pacientesRes.value.length > 0) {
-        setTotalPacientes(pacientesRes.value.length);
+      const pacientesList = pacientesRes.status === "fulfilled" && Array.isArray(pacientesRes.value) ? pacientesRes.value : [];
+      const personasList = personasRes.status === "fulfilled" && Array.isArray(personasRes.value) ? personasRes.value : [];
+      const profesionalesList = profesionalesRes.status === "fulfilled" && Array.isArray(profesionalesRes.value) ? profesionalesRes.value : [];
+      const servicesCatalog = serviciosRes.status === "fulfilled" && Array.isArray(serviciosRes.value) ? serviciosRes.value : [];
+
+      if (pacientesList.length > 0) {
+        setTotalPacientes(pacientesList.length);
+      } else if (personasList.length > 0) {
+        setTotalPacientes(personasList.length);
       }
 
-      const servicesCatalog = serviciosRes.status === "fulfilled" && Array.isArray(serviciosRes.value) ? serviciosRes.value : [];
       const servicePriceMap: Record<string, number> = {};
       servicesCatalog.forEach((s) => {
         if (s.id && s.price) servicePriceMap[String(s.id).toLowerCase()] = s.price;
@@ -109,16 +120,48 @@ export default function DashboardPage() {
         return 80000;
       };
 
-      if (citasRes.status === "fulfilled" && citasRes.value.length > 0) {
-        // Mapear citas reales al formato de vista operativa
+      if (citasRes.status === "fulfilled" && Array.isArray(citasRes.value) && citasRes.value.length > 0) {
+        // Mapear citas reales al formato de vista operativa con resolución de nombres reales
         const mapped: CitaItem[] = citasRes.value.map((dto: any, idx) => {
-          const servName = dto.serviceName || dto.servicio || "Consulta Odontológica";
+          // Resolver nombre del paciente
+          let resolvedPatientName = dto.patientName;
+          if (!resolvedPatientName || resolvedPatientName === "Paciente Registrado") {
+            const pt = pacientesList.find((p: any) => areGuidsEqual(p.id, dto.patientId));
+            const per = personasList.find((p: any) => 
+              (pt && areGuidsEqual(p.id, pt.personId)) ||
+              areGuidsEqual(p.id, dto.patientId)
+            );
+            if (per) {
+              resolvedPatientName = `${per.firstName || ""} ${per.lastName || ""}`.trim();
+            } else if (pt?.firstName || pt?.lastName) {
+              resolvedPatientName = `${pt.firstName || ""} ${pt.lastName || ""}`.trim();
+            }
+          }
+
+          // Resolver nombre del profesional
+          let resolvedDoctorName = dto.professionalName;
+          if (!resolvedDoctorName || resolvedDoctorName === "Dr(a). Especialista" || resolvedDoctorName === "Dr. Especialista") {
+            const prof = profesionalesList.find((pr: any) => areGuidsEqual(pr.id, dto.professionalId));
+            if (prof) {
+              resolvedDoctorName = `Dr(a). ${prof.firstName || ""} ${prof.lastName || ""}`.trim();
+            }
+          }
+
+          // Resolver nombre del servicio
+          let servName = dto.serviceName || dto.servicio;
+          if (!servName || servName === "Consulta Odontológica") {
+            const srv = servicesCatalog.find((s: any) => areGuidsEqual(s.id, dto.serviceId));
+            if (srv?.name) servName = srv.name;
+          }
+          if (!servName) servName = "Consulta Odontológica";
+
           const servPrice = getEstimatedPrice(dto.serviceId, servName);
+
           return {
             id: dto.id || `c-${idx}`,
             hora: dto.hora || (dto.startsAt && dto.startsAt.includes("T") ? dto.startsAt.split("T")[1].substring(0, 5) : "09:00 AM"),
-            paciente: dto.patientName || dto.paciente || "Paciente Registrado",
-            doctor: dto.professionalName || dto.profesional || "Dra. Laura Gómez",
+            paciente: resolvedPatientName || "Paciente Registrado",
+            doctor: resolvedDoctorName || "Dra. Laura Gómez",
             servicio: servName,
             sillon: `Sillón ${(idx % 3) + 1}`,
             estado: (dto.status || dto.estado || "Confirmada") as any,

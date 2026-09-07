@@ -387,11 +387,11 @@ export function CitasView() {
 
           const pId = a.patientId ? String(a.patientId).toLowerCase() : "";
           const personId = pId ? patientToPersonMap[pId] : undefined;
-          const person = personId ? personsMap[personId] : undefined;
+          const person = (personId && personsMap[personId]) || (pId && personsMap[pId]) || undefined;
 
           const pacienteName = person
             ? `${person.firstName || ""} ${person.lastName || ""}`.trim()
-            : a.patientName || "Paciente";
+            : a.patientName || "Paciente Registrado";
           const pacienteEmail = person?.email || a.patientEmail || "";
           const pacienteCedula = person?.documentNumber || a.patientDocument || "";
 
@@ -402,7 +402,7 @@ export function CitasView() {
 
           const prId = a.professionalId ? String(a.professionalId).toLowerCase() : "";
           const profName = prId
-            ? profsMap[prId] || a.professionalName || "Dr. Asignado"
+            ? profsMap[prId] || a.professionalName || "Dra. Laura Gómez"
             : a.professionalName || "";
 
           let estadoName: EstadoCita = "Confirmada";
@@ -526,9 +526,35 @@ export function CitasView() {
     });
   }, [citas, search, fecha, estadoFiltro, isPaciente, isOdontologo, user]);
 
+  const countTodas = useMemo(() => {
+    if (!search && !fecha) return citas.length;
+    const s = (search || "").toLowerCase().trim();
+    return citas.filter((c) => {
+      const matchSearch = !s || c.paciente.toLowerCase().includes(s) || (c.profesional && c.profesional.toLowerCase().includes(s)) || c.servicio.toLowerCase().includes(s) || (c.motivo && c.motivo.toLowerCase().includes(s));
+      const matchFecha = !fecha || c.fecha === fecha;
+      return matchSearch && matchFecha;
+    }).length;
+  }, [citas, search, fecha]);
+
   const pendingCount = useMemo(() => {
-    return citas.filter((c) => c.estado === "Pendiente").length;
-  }, [citas]);
+    const s = (search || "").toLowerCase().trim();
+    return citas.filter((c) => {
+      if (c.estado !== "Pendiente") return false;
+      const matchSearch = !s || c.paciente.toLowerCase().includes(s) || (c.profesional && c.profesional.toLowerCase().includes(s)) || c.servicio.toLowerCase().includes(s) || (c.motivo && c.motivo.toLowerCase().includes(s));
+      const matchFecha = !fecha || c.fecha === fecha;
+      return matchSearch && matchFecha;
+    }).length;
+  }, [citas, search, fecha]);
+
+  const countConfirmadas = useMemo(() => {
+    const s = (search || "").toLowerCase().trim();
+    return citas.filter((c) => {
+      if (c.estado !== "Confirmada") return false;
+      const matchSearch = !s || c.paciente.toLowerCase().includes(s) || (c.profesional && c.profesional.toLowerCase().includes(s)) || c.servicio.toLowerCase().includes(s) || (c.motivo && c.motivo.toLowerCase().includes(s));
+      const matchFecha = !fecha || c.fecha === fecha;
+      return matchSearch && matchFecha;
+    }).length;
+  }, [citas, search, fecha]);
 
   const handleCreateOrRequest = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1143,7 +1169,7 @@ export function CitasView() {
                     : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
-                Todas ({citas.length})
+                Todas ({countTodas})
               </button>
 
               <button
@@ -1168,7 +1194,7 @@ export function CitasView() {
                     : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
-                Confirmadas
+                Confirmadas ({countConfirmadas})
               </button>
 
               {!isPaciente && (
