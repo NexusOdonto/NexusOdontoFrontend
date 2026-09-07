@@ -469,9 +469,9 @@ export function AgendaView() {
 
   return (
     <>
-      {/* Toast Notificación (CAPA SUPERIOR ABSOLUTA z-[99999]) */}
+      {/* Toast Notificación (CAPA SUPERIOR ABSOLUTA z-99999) */}
       {successToast && (
-        <div className="fixed top-6 right-6 z-[99999] flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-slate-900/95 text-cyan-300 border border-cyan-500/40 shadow-2xl backdrop-blur-xl animate-slideDown">
+        <div className="fixed top-6 right-6 z-99999 flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-slate-900/95 text-cyan-300 border border-cyan-500/40 shadow-2xl backdrop-blur-xl animate-slideDown">
           <Check size={18} className="text-cyan-400" />
           <span className="text-xs font-bold">{successToast}</span>
         </div>
@@ -613,7 +613,7 @@ export function AgendaView() {
 
                 {/* Matriz Calendario */}
                 <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/60">
-                  <div className="min-w-[760px]">
+                  <div className="min-w-190">
                     {/* Encabezado Columnas Días */}
                     <div
                       className="grid border-b border-slate-200 dark:border-slate-800 text-center bg-slate-50/80 dark:bg-slate-900/60"
@@ -695,7 +695,7 @@ export function AgendaView() {
                           <div
                             key={idx}
                             className={`relative border-r border-slate-200 dark:border-slate-800/60 ${
-                              esHoy ? "bg-cyan-500/[0.03] dark:bg-cyan-500/[0.02]" : ""
+                              esHoy ? "bg-cyan-500/3 dark:bg-cyan-500/2" : ""
                             }`}
                           >
                             {/* Líneas Horarias */}
@@ -874,7 +874,7 @@ export function AgendaView() {
 
       {/* Modal Agendar Cita */}
       {mostrarModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm animate-fadeIn">
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm animate-fadeIn">
           <div className="w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xl animate-scaleIn text-slate-900 dark:text-white">
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
               <div>

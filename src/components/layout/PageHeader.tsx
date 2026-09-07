@@ -181,7 +181,7 @@ export function PageHeader({
           >
             <Bell size={19} />
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full animate-pulse shadow-sm">
+              <span className="absolute top-1 right-1 flex items-center justify-center min-w-4.5 h-4.5 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full animate-pulse shadow-sm">
                 {pendingAppointmentsCount || unreadCount}
               </span>
             )}
@@ -230,7 +230,7 @@ export function PageHeader({
                           : "bg-teal-500/10 hover:bg-teal-500/15 border border-teal-500/20 text-slate-900 dark:text-slate-100"
                       }`}
                     >
-                      <div className="p-2 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5">
+                      <div className="p-2 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
                         <CalendarDays size={16} />
                       </div>
                       <div className="flex-1 min-w-0">

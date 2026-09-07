@@ -139,7 +139,7 @@ export function CitasTable({
   if (citas.length === 0) {
     return (
       <div className="flex min-h-60 w-full flex-col items-center justify-center py-16 text-center">
-        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500/20 to-cyan-500/20 border border-teal-500/30 text-teal-600 dark:text-teal-400">
+        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-linear-to-br from-teal-500/20 to-cyan-500/20 border border-teal-500/30 text-teal-600 dark:text-teal-400">
           <CalendarDays size={24} />
         </div>
         <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
@@ -157,7 +157,7 @@ export function CitasTable({
   return (
     <div className="w-full overflow-x-auto">
       {/* TABLA ESCRITORIO */}
-      <div className="hidden min-w-[950px] md:block">
+      <div className="hidden min-w-237.5 md:block">
         {/* CABECERA */}
         <div className="grid grid-cols-[1.3fr_1.1fr_1.1fr_1.1fr_120px_160px] border-b border-slate-200/80 dark:border-white/15 bg-slate-100/75 dark:bg-slate-900/60 px-5 py-3 text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
           <div>Paciente</div>
@@ -179,7 +179,7 @@ export function CitasTable({
             >
               {/* PACIENTE */}
               <div className="flex items-center gap-3 min-w-0 pr-2">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500/20 via-cyan-500/20 to-blue-500/20 dark:from-teal-400/30 dark:via-cyan-400/30 dark:to-blue-500/30 border border-cyan-500/40 dark:border-cyan-400/50 text-cyan-800 dark:text-cyan-200 font-extrabold shadow-sm group-hover:scale-105 transition-transform">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-teal-500/20 via-cyan-500/20 to-blue-500/20 dark:from-teal-400/30 dark:via-cyan-400/30 dark:to-blue-500/30 border border-cyan-500/40 dark:border-cyan-400/50 text-cyan-800 dark:text-cyan-200 font-extrabold shadow-sm group-hover:scale-105 transition-transform">
                   <UserRound size={16} className="text-teal-600 dark:text-teal-400" />
                 </div>
                 <div className="min-w-0">
@@ -259,7 +259,7 @@ export function CitasTable({
                           e.stopPropagation();
                           onOpenAssignModal(cita);
                         }}
-                        className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-400 hover:to-cyan-400 text-white dark:text-slate-950 font-bold transition-all cursor-pointer shadow-sm active:scale-95 text-xs"
+                        className="px-3 py-1.5 rounded-xl bg-linear-to-r from-teal-500 to-cyan-500 hover:from-teal-400 hover:to-cyan-400 text-white dark:text-slate-950 font-bold transition-all cursor-pointer shadow-sm active:scale-95 text-xs"
                       >
                         Asignar / Aprobar
                       </button>
@@ -289,7 +289,7 @@ export function CitasTable({
                           e.stopPropagation();
                           onUpdateStatus(cita.id, "En Atención");
                         }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold transition-all cursor-pointer shadow-sm active:scale-95 text-xs"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold transition-all cursor-pointer shadow-sm active:scale-95 text-xs"
                       >
                         <PlayCircle size={14} />
                         <span>Atender</span>
@@ -369,7 +369,7 @@ export function CitasTable({
                   e.stopPropagation();
                   onOpenAssignModal(cita);
                 }}
-                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 text-white dark:text-slate-950 font-bold text-xs text-center shadow-md active:scale-95"
+                className="w-full py-2.5 rounded-xl bg-linear-to-r from-teal-500 to-cyan-500 text-white dark:text-slate-950 font-bold text-xs text-center shadow-md active:scale-95"
               >
                 Aprobar y Asignar Doctor
               </button>
@@ -382,7 +382,7 @@ export function CitasTable({
                   e.stopPropagation();
                   onUpdateStatus(cita.id, "En Atención");
                 }}
-                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold text-xs text-center shadow-md active:scale-95"
+                className="w-full py-2.5 rounded-xl bg-linear-to-r from-blue-600 to-cyan-600 text-white font-bold text-xs text-center shadow-md active:scale-95"
               >
                 Iniciar Consulta
               </button>

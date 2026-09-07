@@ -99,7 +99,7 @@ export default function UserProfileDropdown() {
               className="h-8 w-8 rounded-full object-cover border border-slate-200 dark:border-slate-700 shadow-sm"
             />
           ) : (
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-teal-500 text-white font-bold text-xs shadow-sm">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-linear-to-br from-cyan-500 to-teal-500 text-white font-bold text-xs shadow-sm">
               {getInitials(fullName)}
             </div>
           )}
@@ -107,7 +107,7 @@ export default function UserProfileDropdown() {
           <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-950 shadow-sm" />
         </div>
 
-        <span className="hidden text-sm font-semibold text-slate-800 dark:text-slate-100 sm:block max-w-[140px] truncate">
+        <span className="hidden text-sm font-semibold text-slate-800 dark:text-slate-100 sm:block max-w-35 truncate">
           {fullName}
         </span>
 
@@ -131,10 +131,10 @@ export default function UserProfileDropdown() {
                   src={user.avatar}
                   alt={fullName}
                   onError={() => setImageError(true)}
-                  className="h-10 w-10 rounded-full object-cover border-2 border-cyan-500/80 shadow-md flex-shrink-0"
+                  className="h-10 w-10 rounded-full object-cover border-2 border-cyan-500/80 shadow-md shrink-0"
                 />
               ) : (
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-teal-500 text-white font-bold text-sm shadow-md flex-shrink-0">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-linear-to-br from-cyan-500 to-teal-500 text-white font-bold text-sm shadow-md shrink-0">
                   {getInitials(fullName)}
                 </div>
               )}

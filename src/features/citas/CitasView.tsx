@@ -1085,17 +1085,17 @@ export function CitasView() {
 
   return (
     <div className="space-y-6 text-slate-900 dark:text-slate-100">
-      {/* TOASTS DE CONFIRMACIÓN Y ERROR (CAPA SUPERIOR ABSOLUTA z-[99999]) */}
+      {/* TOASTS DE CONFIRMACIÓN Y ERROR (CAPA SUPERIOR ABSOLUTA z-99999) */}
       {successToast && (
-        <div className="fixed top-6 right-6 z-[99999] flex items-center gap-2.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 px-5 py-3.5 rounded-2xl shadow-2xl border border-teal-500/40 animate-scaleIn backdrop-blur-md">
-          <CheckCircle2 size={18} className="text-teal-400 dark:text-teal-600 flex-shrink-0" />
+        <div className="fixed top-6 right-6 z-99999 flex items-center gap-2.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 px-5 py-3.5 rounded-2xl shadow-2xl border border-teal-500/40 animate-scaleIn backdrop-blur-md">
+          <CheckCircle2 size={18} className="text-teal-400 dark:text-teal-600 shrink-0" />
           <span className="text-xs font-semibold">{successToast}</span>
         </div>
       )}
 
       {errorMessage && (
-        <div className="fixed top-6 right-6 z-[99999] flex items-center gap-2.5 bg-rose-950 text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-rose-500/50 animate-scaleIn backdrop-blur-md">
-          <AlertCircle size={18} className="text-rose-400 flex-shrink-0" />
+        <div className="fixed top-6 right-6 z-99999 flex items-center gap-2.5 bg-rose-950 text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-rose-500/50 animate-scaleIn backdrop-blur-md">
+          <AlertCircle size={18} className="text-rose-400 shrink-0" />
           <span className="text-xs font-semibold">{errorMessage}</span>
         </div>
       )}
@@ -1135,7 +1135,7 @@ export function CitasView() {
               setFormError(null);
               setShowRequestModal(true);
             }}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 px-5 py-2.5 text-sm font-semibold text-white dark:text-slate-950 shadow-md dark:shadow-[0_0_25px_rgba(34,211,238,0.3)] transition-all active:scale-95 cursor-pointer"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-linear-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 px-5 py-2.5 text-sm font-semibold text-white dark:text-slate-950 shadow-md dark:shadow-[0_0_25px_rgba(34,211,238,0.3)] transition-all active:scale-95 cursor-pointer"
           >
             <Plus size={18} />
             <span>{isPaciente ? "Solicitar Cita" : "Nueva Cita Directa"}</span>
@@ -1234,7 +1234,7 @@ export function CitasView() {
             type="date"
             value={fecha || ""}
             onChange={(e) => setFecha(e.target.value)}
-            className="px-3.5 py-2 bg-white/90 dark:bg-slate-950/65 border border-slate-200 dark:border-white/20 rounded-2xl text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all backdrop-blur-xl shadow-md [color-scheme:dark]"
+            className="px-3.5 py-2 bg-white/90 dark:bg-slate-950/65 border border-slate-200 dark:border-white/20 rounded-2xl text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all backdrop-blur-xl shadow-md scheme-dark"
           />
 
           {(search || fecha || estadoFiltro !== "Todos") && (
@@ -1292,7 +1292,7 @@ export function CitasView() {
             <form onSubmit={handleCreateOrRequest} className="p-6 space-y-4">
               {isPaciente ? (
                 <div className="p-3 rounded-xl bg-teal-50 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800/50 text-xs text-teal-800 dark:text-teal-200 flex items-center gap-2.5">
-                  <Stethoscope size={16} className="text-teal-600 dark:text-teal-400 flex-shrink-0" />
+                  <Stethoscope size={16} className="text-teal-600 dark:text-teal-400 shrink-0" />
                   <p className="leading-relaxed">
                     El <strong>Odontólogo Especialista</strong> y el horario exacto serán confirmados por el equipo clínico.
                   </p>
