@@ -239,10 +239,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (error: any) {
       console.error('Error al autenticar contra Backend API .NET:', error);
 
-      const errorMessage =
-        error.response?.data?.message === 'Invalid email or password.'
-          ? 'Usuario o contraseña incorrectos. Verifica tu cédula o correo.'
-          : error.response?.data?.message || 'Error de conexión con el servidor de autenticación.';
+      const status = error.response?.status;
+      let errorMessage = 'Error de conexión con el servidor. Inténtalo más tarde.';
+
+      if (status === 401) {
+        errorMessage = 'Credenciales incorrectas. Verifica tu usuario y contraseña.';
+      } else if (status === 403) {
+        errorMessage = 'Esta cuenta se encuentra desactivada. Contacta al soporte o administrador.';
+      } else if (error.response?.data?.message) {
+        if (error.response.data.message === 'Invalid email or password.') {
+          errorMessage = 'Credenciales incorrectas. Verifica tu usuario y contraseña.';
+        } else {
+          errorMessage = error.response.data.message;
+        }
+      }
 
       return { success: false, error: errorMessage };
     } finally {

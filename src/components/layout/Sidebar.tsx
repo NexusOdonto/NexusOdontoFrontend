@@ -8,7 +8,6 @@ import {
   ShieldCheck,
   Smile,
   ChevronLeft,
-  ChevronRight,
   UserCircle,
   Sparkles,
   Settings,
@@ -103,9 +102,7 @@ export function Sidebar({
     ? menuItems.filter(item => hasRouteAccess(user, item.path))
     : [];
 
-  const toggleCollapse = () => {
-    setIsCollapsed(!isCollapsed);
-  };
+
 
   return (
     <>
@@ -117,40 +114,42 @@ export function Sidebar({
       )}
 
       <aside
-        className={`fixed lg:sticky lg:top-0 z-30 h-screen bg-white/90 dark:bg-slate-950/95 backdrop-blur-2xl border-r border-slate-200/80 dark:border-white/10 flex flex-col transition-all duration-300 ease-in-out overflow-x-hidden ${
-          isCollapsed ? "w-16 lg:w-20" : "w-64"
+        className={`fixed lg:sticky lg:top-0 z-30 h-screen bg-white/90 dark:bg-slate-950/95 backdrop-blur-2xl border-r border-slate-200/80 dark:border-white/10 flex flex-col transition-all duration-300 ease-in-out ${
+          isCollapsed ? "w-20" : "w-64"
         } ${
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         } lg:translate-x-0`}
       >
-        {/* Header del Sidebar */}
-        <div
-          className={`flex items-center px-3 py-4 border-b border-slate-200/80 dark:border-white/10 transition-all duration-300 ${
-            isCollapsed ? "flex-col gap-3 justify-center" : "justify-between gap-2"
-          }`}
-        >
-          <div className="flex items-center gap-2.5 min-w-0">
+        {/* Cabecera del Sidebar */}
+        <div className={`flex items-center h-16 px-3 border-b border-slate-200 dark:border-slate-800 transition-all duration-300 ${isCollapsed ? 'justify-center relative' : 'justify-between'}`}>
+          {/* Logo + Título */}
+          <div className="flex items-center gap-3 overflow-hidden min-w-0">
             <img
               src={nexusLogoIcon}
               alt="NexusOdonto"
-              className="h-8 w-8 min-h-[32px] min-w-[32px] flex-shrink-0 object-contain"
+              style={{ width: '38px', height: '38px', minWidth: '38px', minHeight: '38px' }}
+              className="object-contain flex-shrink-0 transition-transform hover:scale-105 cursor-pointer drop-shadow-sm"
+              onClick={() => isCollapsed && setIsCollapsed(false)}
             />
-
             {!isCollapsed && (
-              <span className="text-xl font-serif font-bold tracking-tight whitespace-nowrap overflow-hidden">
+              <span className="text-xl font-serif font-bold tracking-tight whitespace-nowrap select-none">
                 <span className="text-slate-900 dark:text-white">Nexus</span>
                 <span className="text-teal-700 dark:text-teal-400">Odonto</span>
               </span>
             )}
           </div>
 
+          {/* Botón de alternar / colapsar */}
           <button
             type="button"
-            onClick={toggleCollapse}
-            className="hidden lg:flex p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex-shrink-0 cursor-pointer"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className={`p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors cursor-pointer ${
+              isCollapsed ? 'hidden' : 'block'
+            }`}
+            title={isCollapsed ? "Expandir menú" : "Colapsar menú"}
             aria-label={isCollapsed ? "Expandir menú" : "Colapsar menú"}
           >
-            {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+            <ChevronLeft className="w-5 h-5" />
           </button>
         </div>
 

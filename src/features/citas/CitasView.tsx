@@ -108,6 +108,14 @@ export function CitasView() {
 
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
+  const todayDateString = useMemo(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }, []);
+
   // Carga inicial y sincronización con API REST enriqueciendo entidades
   const fetchAppointmentsAndCatalogs = useCallback(async () => {
     setLoading(true);
@@ -436,8 +444,19 @@ export function CitasView() {
       ? (user?.name || `${user?.nombre || "Andrés"} ${user?.apellido || "Pérez"}`)
       : formPaciente || "Paciente General";
 
-    const fechaValida = formFecha || "2026-09-16";
+    const fechaValida = formFecha || todayDateString;
     const horaValida = formHora || "10:00";
+
+    // Validar restricción de fechas/horas pasadas (BUG-05)
+    if (formFecha && formHora) {
+      const selectedDateTime = new Date(`${formFecha}T${formHora}:00`);
+      const now = new Date();
+      if (selectedDateTime < now) {
+        setErrorMessage("No es posible agendar citas en fechas u horas pasadas.");
+        setTimeout(() => setErrorMessage(null), 5000);
+        return;
+      }
+    }
 
     const matchedPatientId =
       patientsOptions.find((p) => p.label.toLowerCase() === pacienteNombre.toLowerCase() || areGuidsEqual(p.id, pacienteNombre))?.data?.id ||
@@ -525,6 +544,7 @@ export function CitasView() {
     setShowRequestModal(false);
     setFormMotivo("");
     refreshNotifications();
+    await fetchAppointmentsAndCatalogs();
     setSuccessToast(
       isPaciente
         ? "¡Tu cita ha sido solicitada con éxito! Registrada en sistema."
@@ -664,6 +684,17 @@ export function CitasView() {
     e.preventDefault();
     if (!selectedCitaToEdit) return;
 
+    // Validar restricción de fechas/horas pasadas (BUG-05)
+    if (editFecha && editHora) {
+      const selectedDateTime = new Date(`${editFecha}T${editHora}:00`);
+      const now = new Date();
+      if (selectedDateTime < now) {
+        setErrorMessage("No es posible reprogramar citas en fechas u horas pasadas.");
+        setTimeout(() => setErrorMessage(null), 5000);
+        return;
+      }
+    }
+
     const matchedProfId =
       professionalsOptions.find((d) => d.label.toLowerCase() === editProfesional.toLowerCase() || areGuidsEqual(d.id, editProfesional))?.data?.id ||
       "1d000000-0000-0000-0000-000000000001";
@@ -726,6 +757,7 @@ export function CitasView() {
     setShowEditModal(false);
     setSelectedCitaToEdit(null);
     refreshNotifications();
+    await fetchAppointmentsAndCatalogs();
     setSuccessToast("¡Cita modificada y guardada exitosamente en base de datos!");
     setTimeout(() => setSuccessToast(null), 3500);
   };
@@ -901,7 +933,7 @@ export function CitasView() {
         <div className="flex items-center gap-2 self-end md:self-auto">
           <input
             type="date"
-            value={fecha}
+            value={fecha || ""}
             onChange={(e) => setFecha(e.target.value)}
             className="px-3.5 py-2 bg-white/90 dark:bg-slate-950/65 border border-slate-200 dark:border-white/20 rounded-2xl text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all backdrop-blur-xl shadow-md [color-scheme:dark]"
           />
@@ -1003,7 +1035,8 @@ export function CitasView() {
                   <input
                     type="date"
                     required
-                    value={formFecha}
+                    min={todayDateString}
+                    value={formFecha || ""}
                     onChange={(e) => setFormFecha(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all shadow-sm [color-scheme:dark]"
                   />
@@ -1239,7 +1272,8 @@ export function CitasView() {
                   <input
                     type="date"
                     required
-                    value={editFecha}
+                    min={todayDateString}
+                    value={editFecha || ""}
                     onChange={(e) => setEditFecha(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all shadow-sm [color-scheme:dark]"
                   />

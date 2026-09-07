@@ -358,6 +358,10 @@ export function PacientesView() {
           <PacientesGrid
             pacientes={paginatedPacientes}
             loading={loading}
+            totalItems={pacientesFiltrados.length}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
             onSelectPaciente={(p) => setSelectedPaciente(p)}
           />
         ) : (

@@ -8,12 +8,18 @@ import {
 } from "lucide-react";
 
 import type { Usuario } from "../../../types/usuarios";
+import { areGuidsEqual } from "../../../utils/roleUtils";
 
 interface UsuariosTableProps {
   usuarios: Usuario[];
   loading?: boolean;
   currentPage: number;
   totalPages: number;
+  currentUser?: {
+    id?: string;
+    personId?: string;
+    email?: string;
+  } | null;
   onPageChange: (page: number) => void;
   onManagePermissions?: (usuario: Usuario) => void;
   onToggleStatus?: (usuario: Usuario) => void;
@@ -99,6 +105,7 @@ export function UsuariosTable({
   loading = false,
   currentPage,
   totalPages,
+  currentUser,
   onPageChange,
   onManagePermissions,
   onToggleStatus,
@@ -154,6 +161,11 @@ export function UsuariosTable({
             {usuarios.map((usuario) => {
               const roleInfo = getRoleBadge(usuario.roleCode, usuario.roleName);
               const modulesCount = usuario.modulesList?.length || usuario.permissionsCount || 0;
+              const isSelf = Boolean(
+                (currentUser?.id && areGuidsEqual(currentUser.id, usuario.id)) ||
+                (currentUser?.personId && areGuidsEqual(currentUser.personId, usuario.personId)) ||
+                (currentUser?.email && usuario.email && currentUser.email.toLowerCase() === usuario.email.toLowerCase())
+              );
 
               return (
                 <tr
@@ -238,13 +250,22 @@ export function UsuariosTable({
 
                       <button
                         type="button"
-                        onClick={() => onToggleStatus?.(usuario)}
-                        className={`p-2 rounded-xl border transition-all cursor-pointer shadow-sm ${
-                          usuario.isActive
-                            ? "border-slate-200 dark:border-white/10 bg-white/80 dark:bg-slate-900/60 hover:bg-rose-500/10 text-slate-400 hover:text-rose-500 hover:border-rose-500/30"
-                            : "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
+                        disabled={isSelf}
+                        onClick={() => !isSelf && onToggleStatus?.(usuario)}
+                        className={`p-2 rounded-xl border transition-all shadow-sm ${
+                          isSelf
+                            ? "opacity-30 cursor-not-allowed border-slate-200 dark:border-white/10 bg-slate-100/50 dark:bg-slate-900/30 text-slate-400"
+                            : usuario.isActive
+                            ? "border-slate-200 dark:border-white/10 bg-white/80 dark:bg-slate-900/60 hover:bg-rose-500/10 text-slate-400 hover:text-rose-500 hover:border-rose-500/30 cursor-pointer"
+                            : "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 cursor-pointer"
                         }`}
-                        title={usuario.isActive ? "Desactivar usuario" : "Activar usuario"}
+                        title={
+                          isSelf
+                            ? "No puedes desactivar tu propia cuenta de administrador"
+                            : usuario.isActive
+                            ? "Desactivar usuario"
+                            : "Activar usuario"
+                        }
                       >
                         <Power size={15} />
                       </button>

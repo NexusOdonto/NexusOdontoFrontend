@@ -12,17 +12,16 @@ import {
   Smile,
   FileText,
   ShieldCheck,
-  TrendingUp,
-  DollarSign,
   AlertCircle,
   Calendar,
   Layers,
+  DollarSign,
 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { getUserRole } from "../../utils/routePermissions";
 import { appointmentService } from "../../api/appointmentService";
 import { patientService } from "../../api/patientService";
-import { formatCurrency } from "../../utils/currency";
+import { serviceCatalogService } from "../../api/serviceCatalogService";
 
 interface CitaItem {
   id: string;
@@ -75,27 +74,57 @@ export default function DashboardPage() {
   const loadRealData = useCallback(async () => {
     setLoading(true);
     try {
-      const [citasRes, pacientesRes] = await Promise.allSettled([
+      const [citasRes, pacientesRes, serviciosRes] = await Promise.allSettled([
         appointmentService.getAll(),
         patientService.getAll(),
+        serviceCatalogService.getAll(),
       ]);
 
       if (pacientesRes.status === "fulfilled" && pacientesRes.value.length > 0) {
         setTotalPacientes(pacientesRes.value.length);
       }
 
+      const servicesCatalog = serviciosRes.status === "fulfilled" && Array.isArray(serviciosRes.value) ? serviciosRes.value : [];
+      const servicePriceMap: Record<string, number> = {};
+      servicesCatalog.forEach((s) => {
+        if (s.id && s.price) servicePriceMap[String(s.id).toLowerCase()] = s.price;
+        if (s.name && s.price) servicePriceMap[s.name.toLowerCase().trim()] = s.price;
+      });
+
+      const getEstimatedPrice = (serviceId?: string, serviceName?: string): number => {
+        if (serviceId && servicePriceMap[String(serviceId).toLowerCase()]) {
+          return servicePriceMap[String(serviceId).toLowerCase()];
+        }
+        if (serviceName) {
+          const lower = serviceName.toLowerCase().trim();
+          if (servicePriceMap[lower]) return servicePriceMap[lower];
+          if (lower.includes("evaluaci") || lower.includes("valoraci") || lower.includes("assessment") || lower.includes("general")) return 60000;
+          if (lower.includes("limpieza") || lower.includes("profilaxis") || lower.includes("cleaning")) return 120000;
+          if (lower.includes("blanquea") || lower.includes("whitening")) return 350000;
+          if (lower.includes("resina") || lower.includes("calza") || lower.includes("resin") || lower.includes("restoration")) return 180000;
+          if (lower.includes("ortodoncia") || lower.includes("orthodontic") || lower.includes("control")) return 90000;
+          if (lower.includes("extracci") || lower.includes("cordal") || lower.includes("extraction")) return 220000;
+          if (lower.includes("endodoncia") || lower.includes("conducto") || lower.includes("root canal")) return 450000;
+        }
+        return 80000;
+      };
+
       if (citasRes.status === "fulfilled" && citasRes.value.length > 0) {
         // Mapear citas reales al formato de vista operativa
-        const mapped: CitaItem[] = citasRes.value.slice(0, 5).map((dto: any, idx) => ({
-          id: dto.id || `c-${idx}`,
-          hora: dto.hora || (dto.startsAt && dto.startsAt.includes("T") ? dto.startsAt.split("T")[1].substring(0, 5) : "09:00 AM"),
-          paciente: dto.patientName || dto.paciente || "Paciente Registrado",
-          doctor: dto.professionalName || dto.profesional || "Dra. Laura Gómez",
-          servicio: dto.serviceName || dto.servicio || "Consulta Odontológica",
-          sillon: `Sillón ${(idx % 3) + 1}`,
-          estado: (dto.status || dto.estado || "Confirmada") as any,
-          valor: 60000 + idx * 15000,
-        }));
+        const mapped: CitaItem[] = citasRes.value.map((dto: any, idx) => {
+          const servName = dto.serviceName || dto.servicio || "Consulta Odontológica";
+          const servPrice = getEstimatedPrice(dto.serviceId, servName);
+          return {
+            id: dto.id || `c-${idx}`,
+            hora: dto.hora || (dto.startsAt && dto.startsAt.includes("T") ? dto.startsAt.split("T")[1].substring(0, 5) : "09:00 AM"),
+            paciente: dto.patientName || dto.paciente || "Paciente Registrado",
+            doctor: dto.professionalName || dto.profesional || "Dra. Laura Gómez",
+            servicio: servName,
+            sillon: `Sillón ${(idx % 3) + 1}`,
+            estado: (dto.status || dto.estado || "Confirmada") as any,
+            valor: servPrice,
+          };
+        });
         setCitasHoy(mapped);
       }
     } catch (err) {
@@ -109,25 +138,20 @@ export default function DashboardPage() {
     loadRealData();
   }, [loadRealData]);
 
-  // Cálculos de métricas operativas
+  // Cálculos de métricas operativas y de aranceles
   const citasAtendidasCount = citasHoy.filter((c) => c.estado === "Completada" || c.estado === "En Atención").length;
   const citasPendientesCount = citasHoy.filter((c) => c.estado === "Pendiente").length;
-  const totalIngresosHoy = citasHoy.reduce((acc, curr) => acc + curr.valor, 0);
   const tasaOcupacion = Math.min(100, Math.round((citasHoy.length / 8) * 100));
+  const totalEstimado = useMemo(() => {
+    return citasHoy.reduce((acc, c) => acc + (c.valor || 0), 0);
+  }, [citasHoy]);
+  const cantidadTratamientos = citasHoy.length;
 
   return (
     <div className="space-y-6 text-slate-900 dark:text-slate-100 pb-10">
       {/* 1. HEADER EJECUTIVO DEL CONSULTORIO */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-200/80 dark:border-white/10 pb-5">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Clínica Operativa
-            </span>
-            <span className="text-xs text-slate-500 dark:text-slate-400">• Sillones 1, 2 y 3 Habilitados</span>
-          </div>
-
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-slate-900 dark:text-white">
             Panel de Control Clínico
           </h1>
@@ -175,10 +199,10 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* 2. CUADRÍCULA DE 4 KPIs OPERATIVOS CLAVE */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* 2. CUADRÍCULA DE 4 KPIs OPERATIVOS Y VALOR ESTIMADO */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
         {/* KPI 1: Citas del Día */}
-        <div className="p-5 rounded-2xl border border-slate-200/90 dark:border-white/15 bg-white/95 dark:bg-slate-950/65 backdrop-blur-xl shadow-sm hover:shadow-md transition-all">
+        <div className="p-5 rounded-2xl border border-slate-200/90 dark:border-white/15 bg-white/95 dark:bg-slate-950/65 backdrop-blur-xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               Citas Agendadas Hoy
@@ -196,7 +220,7 @@ export default function DashboardPage() {
             </span>
           </div>
           <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-white/10 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-            <span>{citasPendientesCount} pendientes de confirmar</span>
+            <span>{citasPendientesCount} pendientes</span>
             <span className="font-bold text-teal-600 dark:text-teal-400 cursor-pointer hover:underline" onClick={() => navigate("/citas")}>
               Ver lista →
             </span>
@@ -204,7 +228,7 @@ export default function DashboardPage() {
         </div>
 
         {/* KPI 2: Pacientes Totales */}
-        <div className="p-5 rounded-2xl border border-slate-200/90 dark:border-white/15 bg-white/95 dark:bg-slate-950/65 backdrop-blur-xl shadow-sm hover:shadow-md transition-all">
+        <div className="p-5 rounded-2xl border border-slate-200/90 dark:border-white/15 bg-white/95 dark:bg-slate-950/65 backdrop-blur-xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               Pacientes Activos
@@ -218,7 +242,7 @@ export default function DashboardPage() {
               {totalPacientes}
             </span>
             <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
-              +4 este mes
+              Expedientes
             </span>
           </div>
           <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-white/10 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
@@ -229,31 +253,34 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* KPI 3: Facturación Estimada */}
-        <div className="p-5 rounded-2xl border border-slate-200/90 dark:border-white/15 bg-white/95 dark:bg-slate-950/65 backdrop-blur-xl shadow-sm hover:shadow-md transition-all">
+        {/* KPI 3: Valor Estimado / Presupuesto Agendado (Tarjeta Reincorporada) */}
+        <div className="p-5 rounded-2xl border border-slate-200/90 dark:border-white/15 bg-white/95 dark:bg-slate-950/65 backdrop-blur-xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              Producción / Ingresos Estimados
+              Valor Estimado / Servicios
             </span>
-            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+            <div className="p-2 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400">
               <DollarSign size={18} />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono truncate">
-              {formatCurrency(totalIngresosHoy)}
+            <span className="text-3xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
+              ${totalEstimado.toLocaleString("es-CO")}
             </span>
           </div>
           <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-white/10 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-            <span>5 tratamientos agendados</span>
-            <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-0.5">
-              <TrendingUp size={13} /> +12%
+            <span>{cantidadTratamientos} tratamientos</span>
+            <span
+              className="font-bold text-teal-600 dark:text-teal-400 cursor-pointer hover:underline"
+              onClick={() => navigate("/catalogo-servicios")}
+            >
+              Tarifas catálogo →
             </span>
           </div>
         </div>
 
-        {/* KPI 4: Ocupación de Sillones */}
-        <div className="p-5 rounded-2xl border border-slate-200/90 dark:border-white/15 bg-white/95 dark:bg-slate-950/65 backdrop-blur-xl shadow-sm hover:shadow-md transition-all">
+        {/* KPI 4: Ocupación de Consultorio */}
+        <div className="p-5 rounded-2xl border border-slate-200/90 dark:border-white/15 bg-white/95 dark:bg-slate-950/65 backdrop-blur-xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               Ocupación de Consultorio

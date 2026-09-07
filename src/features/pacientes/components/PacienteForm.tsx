@@ -41,7 +41,8 @@ const pacienteSchema = z.object({
   numeroDocumento: z
     .string()
     .trim()
-    .min(1, "El número de documento es obligatorio."),
+    .min(1, "El número de documento es obligatorio.")
+    .regex(/^[0-9]{6,10}$/, "El documento debe contener entre 6 y 10 dígitos numéricos."),
 
   fechaNacimiento: z
     .string()
@@ -391,7 +392,14 @@ export function PacienteForm() {
                     <input
                       id="numeroDocumento"
                       type="text"
-                      {...register("numeroDocumento")}
+                      inputMode="numeric"
+                      maxLength={10}
+                      placeholder="Ej: 1076543210"
+                      {...register("numeroDocumento", {
+                        onChange: (e) => {
+                          e.target.value = e.target.value.replace(/\D/g, "").slice(0, 10);
+                        },
+                      })}
                       className="w-full pl-10 pr-4 py-2.5 bg-slate-50/70 dark:bg-slate-900/80 border border-slate-300 dark:border-white/15 rounded-xl text-sm font-mono text-slate-900 dark:text-white outline-none focus:border-cyan-500 dark:focus:border-cyan-400 focus:bg-white dark:focus:bg-slate-900 focus:ring-1 focus:ring-cyan-500/30 transition-all shadow-sm"
                     />
                   </div>

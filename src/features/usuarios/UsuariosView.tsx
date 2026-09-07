@@ -6,11 +6,14 @@ import {
   RefreshCw,
   ShieldCheck,
   CheckCircle2,
+  AlertCircle,
   Check,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { UsuariosTable } from "./components/UsuariosTable";
+import { useAuth } from "../auth/AuthContext";
+import { areGuidsEqual } from "../../utils/roleUtils";
 
 import type {
   Usuario,
@@ -123,6 +126,7 @@ const ROLE_PRESETS: Record<string, { name: string; code: string; modules: string
 };
 
 export function UsuariosView() {
+  const { user } = useAuth();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [documentTypes, setDocumentTypes] = useState<any[]>([]);
@@ -150,11 +154,11 @@ export function UsuariosView() {
   const [selectedUserForPermissions, setSelectedUserForPermissions] = useState<Usuario | null>(null);
   const [selectedRoleIdForUser, setSelectedRoleIdForUser] = useState<string>("");
   const [isSavingRole, setIsSavingRole] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ text: string; type: "success" | "error" } | null>(null);
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3500);
+  const showToast = (msg: string, type: "success" | "error" = "success") => {
+    setToast({ text: msg, type });
+    setTimeout(() => setToast(null), 3500);
   };
 
   const fetchCatalogs = async () => {
@@ -356,11 +360,11 @@ export function UsuariosView() {
         })
       );
 
-      showToast(`¡Rol y permisos actualizados para ${selectedUserForPermissions.name}!`);
+      showToast(`¡Rol y permisos actualizados para ${selectedUserForPermissions.name}!`, "success");
       setSelectedUserForPermissions(null);
     } catch (err) {
       console.warn("Could not persist role in backend:", err);
-      showToast("No se pudo actualizar el rol en el servidor.");
+      showToast("No se pudo actualizar el rol en el servidor.", "error");
     } finally {
       setIsSavingRole(false);
     }
@@ -368,16 +372,28 @@ export function UsuariosView() {
 
   // Toggle de Estado Activo/Inactivo
   const handleToggleStatus = async (usuario: Usuario) => {
+    // Guard clause: Prevención de auto-desactivación de la cuenta propia (BUG-01)
+    const isSelf = Boolean(
+      (user?.id && areGuidsEqual(user.id, usuario.id)) ||
+      (user?.personId && areGuidsEqual(user.personId, usuario.personId)) ||
+      (user?.email && usuario.email && user.email.toLowerCase() === usuario.email.toLowerCase())
+    );
+
+    if (isSelf) {
+      showToast("No puedes desactivar tu propia cuenta de administrador.", "error");
+      return;
+    }
+
     const newStatus = !usuario.isActive;
     try {
       await userService.update(usuario.id, { isActive: newStatus });
       setUsuarios((prev) =>
         prev.map((u) => (u.id === usuario.id ? { ...u, isActive: newStatus } : u))
       );
-      showToast(`Usuario ${usuario.name} ${newStatus ? "activado" : "desactivado"}.`);
+      showToast(`Usuario ${usuario.name} ${newStatus ? "activado" : "desactivado"}.`, "success");
     } catch (err) {
       console.warn("Error updating user status:", err);
-      showToast("Error al cambiar estado del usuario.");
+      showToast("Error al cambiar estado del usuario.", "error");
     }
   };
 
@@ -427,7 +443,7 @@ export function UsuariosView() {
 
       setUsuarios((prev) => [nuevoUsuario, ...prev]);
       cerrarModal();
-      showToast("¡Usuario y credenciales creados exitosamente!");
+      showToast("¡Usuario y credenciales creados exitosamente!", "success");
     } catch (err: any) {
       console.error("Error creating user:", err);
       setErrorForm(err.response?.data?.message || "No se pudo registrar el usuario en el backend.");
@@ -440,11 +456,21 @@ export function UsuariosView() {
 
   return (
     <div className="space-y-6">
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 px-5 py-3 rounded-2xl shadow-2xl border border-cyan-500/30 animate-slideUp">
-          <CheckCircle2 size={18} className="text-cyan-400 dark:text-cyan-600 shrink-0" />
-          <span className="text-xs font-semibold">{toastMessage}</span>
+      {/* Toast Notification (BUG-06: Error vs Success styling & icon) */}
+      {toast && (
+        <div
+          className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl animate-slideUp backdrop-blur-xl ${
+            toast.type === "error"
+              ? "bg-rose-950/90 text-rose-100 border border-rose-500/50 shadow-rose-950/50"
+              : "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 border border-cyan-500/30 shadow-cyan-950/50"
+          }`}
+        >
+          {toast.type === "error" ? (
+            <AlertCircle size={18} className="text-rose-400 shrink-0" />
+          ) : (
+            <CheckCircle2 size={18} className="text-cyan-400 dark:text-cyan-600 shrink-0" />
+          )}
+          <span className="text-xs font-semibold">{toast.text}</span>
         </div>
       )}
 
@@ -537,6 +563,7 @@ export function UsuariosView() {
           loading={loading}
           currentPage={currentPage}
           totalPages={totalPages}
+          currentUser={user}
           onPageChange={setCurrentPage}
           onManagePermissions={handleOpenPermissionsModal}
           onToggleStatus={handleToggleStatus}

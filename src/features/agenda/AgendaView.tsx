@@ -34,6 +34,8 @@ import { appointmentService, type AppointmentResponseDto } from "../../api/appoi
 import { professionalService } from "../../api/professionalService";
 import { serviceCatalogService, type ServiceResponseDto } from "../../api/serviceCatalogService";
 import { patientService } from "../../api/patientService";
+import { personService } from "../../api/personService";
+import { SelectOrWriteInput, type SelectOption } from "../../components/common/SelectOrWriteInput";
 
 export function AgendaView() {
   const { user } = useAuth();
@@ -42,13 +44,13 @@ export function AgendaView() {
 
   // Citas locales y de la base de datos
   const [citas, setCitas] = useState<Cita[]>(citasIniciales);
-  const [vista, setVista] = useState<"Día" | "Semana" | "Mes">("Semana");
   const [fechaActual, setFechaActual] = useState(new Date());
 
   // Catálogos reales del backend
   const [profesionalesEntities, setProfesionalesEntities] = useState<any[]>([]);
   const [serviciosEntities, setServiciosEntities] = useState<ServiceResponseDto[]>([]);
   const [pacientesEntities, setPacientesEntities] = useState<any[]>([]);
+  const [patientOptions, setPatientOptions] = useState<SelectOption[]>([]);
   const [listaOdontologos, setListaOdontologos] = useState(odontologosFallback);
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
@@ -74,6 +76,7 @@ export function AgendaView() {
 
   const [nuevaCita, setNuevaCita] = useState({
     paciente: isPaciente ? (user?.name || "Paciente") : "",
+    patientId: isPaciente ? (user?.id || "") : "",
     servicio: "Valoración General",
     odontologo: "Dra. Laura Gómez",
     horaInicio: "09:00",
@@ -84,11 +87,12 @@ export function AgendaView() {
   // Cargar citas reales y catálogos de backend
   const fetchAgendaData = useCallback(async () => {
     try {
-      const [apiApps, profs, srvs, pts] = await Promise.allSettled([
+      const [apiApps, profs, srvs, pts, pers] = await Promise.allSettled([
         appointmentService.getAll(),
         professionalService.getAll(),
         serviceCatalogService.getAll(),
         patientService.getAll(),
+        personService.getAll(),
       ]);
 
       // 1. Odontólogos
@@ -130,10 +134,57 @@ export function AgendaView() {
         setNuevaCita((prev) => ({ ...prev, servicio: srvs.value[0].name }));
       }
 
-      // 3. Pacientes
-      if (pts.status === "fulfilled" && Array.isArray(pts.value)) {
-        setPacientesEntities(pts.value);
+      // 3. Pacientes y Personas (Autocomplete interactivo)
+      const ptsList = pts.status === "fulfilled" && Array.isArray(pts.value) ? pts.value : [];
+      const persList = pers.status === "fulfilled" && Array.isArray(pers.value) ? pers.value : [];
+      setPacientesEntities(ptsList);
+
+      const personsMap: Record<string, any> = {};
+      persList.forEach((p: any) => {
+        if (p.id) personsMap[String(p.id).toLowerCase()] = p;
+      });
+
+      const opts: SelectOption[] = [];
+      const seenNames = new Set<string>();
+
+      ptsList.forEach((pt: any) => {
+        const person = pt.personId ? personsMap[String(pt.personId).toLowerCase()] : undefined;
+        const name = person ? `${person.firstName || ""} ${person.lastName || ""}`.trim() : (pt.name || "Paciente Registrado");
+        const doc = person?.documentNumber || pt.documentNumber || "";
+        const email = person?.email || pt.email || "";
+        if (name && !seenNames.has(name.toLowerCase())) {
+          seenNames.add(name.toLowerCase());
+          opts.push({
+            id: pt.id,
+            label: name,
+            subLabel: doc ? `Cédula: ${doc}${email ? ` • ${email}` : ""}` : email,
+            data: { patientId: pt.id, personId: pt.personId, doc, email },
+          });
+        }
+      });
+
+      persList.forEach((per: any) => {
+        const name = `${per.firstName || ""} ${per.lastName || ""}`.trim();
+        if (name && !seenNames.has(name.toLowerCase())) {
+          seenNames.add(name.toLowerCase());
+          opts.push({
+            id: per.id,
+            label: name,
+            subLabel: per.documentNumber ? `Cédula: ${per.documentNumber}${per.email ? ` • ${per.email}` : ""}` : per.email,
+            data: { personId: per.id, doc: per.documentNumber, email: per.email },
+          });
+        }
+      });
+
+      if (opts.length === 0) {
+        opts.push(
+          { label: "Andrés Pérez", subLabel: "Cédula: 1076543210 • paciente@nexusodonto.com", id: "1e000000-0000-0000-0000-000000000001", data: { patientId: "1e000000-0000-0000-0000-000000000001" } },
+          { label: "Camila López", subLabel: "Cédula: 1098765436", id: "1e000000-0000-0000-0000-000000000002", data: { patientId: "1e000000-0000-0000-0000-000000000002" } },
+          { label: "Felipe Torres", subLabel: "Cédula: 1098765437", id: "1e000000-0000-0000-0000-000000000003", data: { patientId: "1e000000-0000-0000-0000-000000000003" } },
+          { label: "Valentina Mendoza", subLabel: "Cédula: 1098765438", id: "1e000000-0000-0000-0000-000000000004", data: { patientId: "1e000000-0000-0000-0000-000000000004" } }
+        );
       }
+      setPatientOptions(opts);
 
       // 4. Citas guardadas en API backend
       if (apiApps.status === "fulfilled" && Array.isArray(apiApps.value) && apiApps.value.length > 0) {
@@ -270,6 +321,7 @@ export function AgendaView() {
     setHoraSeleccionada(hora);
     setNuevaCita({
       paciente: isPaciente ? (user?.name || "Paciente") : "",
+      patientId: isPaciente ? (user?.id || "") : "",
       servicio: serviciosEntities.length > 0 ? serviciosEntities[0].name : "Valoración General",
       odontologo:
         listaOdontologos.length > 1
@@ -303,9 +355,9 @@ export function AgendaView() {
 
     const matchedPatient =
       pacientesEntities.find((pt) => {
-        return pt.id === user?.id || pt.personId === user?.personId;
+        return pt.id === nuevaCita.patientId || pt.id === user?.id || pt.personId === user?.personId;
       }) || (pacientesEntities.length > 0 ? pacientesEntities[0] : null);
-    const patientIdToUse = matchedPatient?.id || "1e000000-0000-0000-0000-000000000001";
+    const patientIdToUse = nuevaCita.patientId || matchedPatient?.id || "1e000000-0000-0000-0000-000000000001";
 
     // Persistir en API .NET
     try {
@@ -487,23 +539,6 @@ export function AgendaView() {
                     >
                       <RefreshCw size={16} />
                     </button>
-
-                    <div className="flex rounded-xl border border-slate-700 bg-slate-900/90 p-0.5">
-                      {(["Día", "Semana", "Mes"] as const).map((modo) => (
-                        <button
-                          key={modo}
-                          type="button"
-                          onClick={() => setVista(modo)}
-                          className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition cursor-pointer ${
-                            vista === modo
-                              ? "bg-cyan-500 text-slate-950 font-bold"
-                              : "text-slate-400 hover:text-white"
-                          }`}
-                        >
-                          {modo}
-                        </button>
-                      ))}
-                    </div>
 
                     <button
                       type="button"
@@ -821,22 +856,21 @@ export function AgendaView() {
             </div>
 
             <div className="mt-5 space-y-4">
-              <div>
-                <label className="mb-1.5 block text-xs font-semibold text-slate-400">
-                  Paciente *
-                </label>
-                <input
-                  value={nuevaCita.paciente}
-                  onChange={(event) =>
-                    setNuevaCita((actual) => ({
-                      ...actual,
-                      paciente: event.target.value,
-                    }))
-                  }
-                  placeholder="Nombre del paciente"
-                  className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3.5 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-400"
-                />
-              </div>
+              <SelectOrWriteInput
+                label="Paciente"
+                required
+                value={nuevaCita.paciente}
+                onChange={(val, opt) =>
+                  setNuevaCita((actual) => ({
+                    ...actual,
+                    paciente: val,
+                    patientId: opt?.data?.patientId || opt?.id || actual.patientId,
+                  }))
+                }
+                options={patientOptions}
+                placeholder="Escribe o busca por nombre o documento..."
+                type="paciente"
+              />
 
               <div>
                 <label className="mb-1.5 block text-xs font-semibold text-slate-400">

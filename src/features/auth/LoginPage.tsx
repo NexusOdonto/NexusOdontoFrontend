@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, AlertCircle } from 'lucide-react';
 import { LoginInput } from './components/LoginInput';
 import { LoginButton } from './components/LoginButton';
 import { GoogleAuthButton } from './components/GoogleAuthButton';
@@ -109,8 +109,9 @@ export default function LoginPage() {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-xl text-red-300 text-sm text-center animate-fadeIn" role="alert">
-                {error}
+              <div className="flex items-center gap-2.5 p-3.5 bg-rose-500/20 border border-rose-500/50 rounded-2xl text-rose-200 text-xs sm:text-sm font-semibold animate-fadeIn shadow-lg shadow-rose-950/40" role="alert">
+                <AlertCircle size={18} className="text-rose-400 shrink-0" />
+                <span>{error}</span>
               </div>
             )}
 

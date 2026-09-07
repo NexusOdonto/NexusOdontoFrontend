@@ -86,6 +86,28 @@
   }
 }
 
+/* Scrollbar personalizado para toda la aplicación */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(2, 6, 23, 0.4); /* slate-950/40 */
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(15, 118, 110, 0.4); /* teal-700/40 */
+  border-radius: 9999px;
+  transition: background 0.2s ease;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(13, 148, 136, 0.8); /* teal-600/80 */
+}
+/* Compatibilidad Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(15, 118, 110, 0.4) rgba(2, 6, 23, 0.4);
+}
+
 /* ANIMACIONES SUAVES Y ESCALONADAS NEXUSODONTO */
 @keyframes fadeIn {
   from {
