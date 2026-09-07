@@ -29,7 +29,113 @@ const CATEGORIAS_FILTRO = [
   { id: "Ortodoncia", label: "Ortodoncia" },
 ];
 
-const serviciosFallback: Servicio[] = [];
+const SERVICE_TRANSLATIONS: Record<string, { name: string; description: string; category: string }> = {
+  "general assessment": {
+    name: "Valoración General Odontológica",
+    description: "Evaluación clínica integral, diagnóstico odontológico y formulación de plan de tratamiento personalizado.",
+    category: "Higiene y Prevención",
+  },
+  "dental prophylaxis": {
+    name: "Profilaxis y Limpieza Dental",
+    description: "Eliminación de placa bacteriana, remoción de cálculo supragingival con ultrasonido y pulido coronario.",
+    category: "Higiene y Prevención",
+  },
+  "composite resin filling": {
+    name: "Restauración en Resina Compuesta",
+    description: "Reconstrucción estética y funcional de piezas dentales afectadas por caries con resina fotocurable.",
+    category: "Operatoria / Resinas",
+  },
+  "teeth whitening": {
+    name: "Blanqueamiento Dental Clínico",
+    description: "Aclaramiento dental profesional en consultorio con fotoactivación y gel de peróxido de alta pureza.",
+    category: "Estética Dental",
+  },
+  "dental cleaning": {
+    name: "Profilaxis y Limpieza Dental",
+    description: "Higiene dental profunda, eliminación de manchas y pulido preventivo.",
+    category: "Higiene y Prevención",
+  },
+  "resin restoration": {
+    name: "Restauración en Resina Compuesta",
+    description: "Restauración dental estética con resinas compuestas de alta resistencia.",
+    category: "Operatoria / Resinas",
+  },
+  "orthodontic control": {
+    name: "Control de Ortodoncia",
+    description: "Ajuste de aparatología fija, recambio de arcos y evaluación de avance en alineación dental.",
+    category: "Ortodoncia",
+  },
+  "tooth extraction": {
+    name: "Extracción Dental Simple",
+    description: "Procedimiento quirúrgico ambulatorio de exodoncia simple bajo anestesia local.",
+    category: "Cirugía Oral",
+  },
+  "root canal": {
+    name: "Endodoncia / Tratamiento de Conductos",
+    description: "Biopulpectomía, instrumentación rotatoria, desinfección y sellado hermético radicular.",
+    category: "Endodoncia",
+  },
+};
+
+const translateService = (item: { name?: string; description?: string; category?: string }) => {
+  const nameLower = (item.name || "").trim().toLowerCase();
+  const found = SERVICE_TRANSLATIONS[nameLower];
+  if (found) {
+    return {
+      name: found.name,
+      description: item.description && !item.description.toLowerCase().includes("assessment") && !item.description.toLowerCase().includes("filling") && !item.description.toLowerCase().includes("prophylaxis") && !item.description.toLowerCase().includes("whitening") ? item.description : found.description,
+      category: item.category && item.category !== "Odontología General" ? item.category : found.category,
+    };
+  }
+  return {
+    name: item.name || "Servicio Odontológico",
+    description: item.description || "Procedimiento clínico odontológico.",
+    category: item.category || "Odontología General",
+  };
+};
+
+const serviciosFallback: Servicio[] = [
+  {
+    id: "30000000-0000-0000-0000-000000000001",
+    codigo: "SRV-001",
+    nombre: "Valoración General Odontológica",
+    categoria: "Higiene y Prevención",
+    descripcion: "Evaluación clínica integral, diagnóstico odontológico y formulación de plan de tratamiento personalizado.",
+    duracion: 30,
+    precio: 60000,
+    activo: true,
+  },
+  {
+    id: "30000000-0000-0000-0000-000000000002",
+    codigo: "SRV-002",
+    nombre: "Profilaxis y Limpieza Dental",
+    categoria: "Higiene y Prevención",
+    descripcion: "Eliminación de placa bacteriana, remoción de cálculo supragingival con ultrasonido y pulido coronario.",
+    duracion: 45,
+    precio: 120000,
+    activo: true,
+  },
+  {
+    id: "30000000-0000-0000-0000-000000000003",
+    codigo: "SRV-003",
+    nombre: "Restauración en Resina Compuesta",
+    categoria: "Operatoria / Resinas",
+    descripcion: "Reconstrucción estética y funcional de piezas dentales afectadas por caries con resina fotocurable.",
+    duracion: 60,
+    precio: 180000,
+    activo: true,
+  },
+  {
+    id: "30000000-0000-0000-0000-000000000004",
+    codigo: "SRV-004",
+    nombre: "Blanqueamiento Dental Clínico",
+    categoria: "Estética Dental",
+    descripcion: "Aclaramiento dental profesional en consultorio con fotoactivación y gel de peróxido de alta pureza.",
+    duracion: 60,
+    precio: 350000,
+    activo: true,
+  },
+];
 
 export function ServiciosView() {
   const [servicios, setServicios] = useState<Servicio[]>([]);
@@ -55,16 +161,19 @@ export function ServiciosView() {
       setLoading(true);
       const data = await serviceCatalogService.getAll();
       if (data && data.length > 0) {
-        const mapped: Servicio[] = data.map((item, idx) => ({
-          id: item.id || (idx + 1),
-          codigo: item.code || `SRV-${String(idx + 1).padStart(3, "0")}`,
-          nombre: item.name,
-          categoria: (item as any).category || "Odontología General",
-          descripcion: item.description || "Procedimiento clínico odontológico.",
-          duracion: item.durationMinutes || 45,
-          precio: item.price ?? 50000,
-          activo: item.isActive ?? true,
-        }));
+        const mapped: Servicio[] = data.map((item, idx) => {
+          const t = translateService(item);
+          return {
+            id: item.id || (idx + 1),
+            codigo: item.code || `SRV-${String(idx + 1).padStart(3, "0")}`,
+            nombre: t.name,
+            categoria: t.category,
+            descripcion: t.description,
+            duracion: item.durationMinutes || 45,
+            precio: item.price ?? 50000,
+            activo: item.isActive ?? true,
+          };
+        });
         setServicios(mapped);
         localStorage.setItem("nexus_servicios", JSON.stringify(mapped));
       } else {

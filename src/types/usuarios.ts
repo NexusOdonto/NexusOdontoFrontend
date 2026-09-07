@@ -21,6 +21,8 @@ export interface Usuario {
   modulesList?: string[];
   permissions: string[];
   isActive: boolean;
+  status?: string;
+  state?: string;
 }
 
 export interface Role {

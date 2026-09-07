@@ -14,6 +14,23 @@ import { Plus, RefreshCw, LayoutGrid, List, Download } from "lucide-react";
 
 const ITEMS_PER_PAGE = 6;
 
+const isSystemOrAdminAccount = (item: { nombre?: string; name?: string; correo?: string; email?: string; rol?: string; role?: string }) => {
+  const name = (item.nombre || item.name || "").toLowerCase().trim();
+  const email = (item.correo || item.email || "").toLowerCase().trim();
+  const role = (item.rol || item.role || "").toLowerCase().trim();
+
+  if (role.includes("admin") || role.includes("recepc") || role.includes("odont") || role.includes("doctor") || role.includes("bot") || role.includes("asistent")) {
+    return true;
+  }
+  if (name.includes("admin sistema") || name === "administrador" || name.includes("administrador del sistema") || name.includes("recepcionista") || name.includes("chatbot") || name.includes("asistente dental")) {
+    return true;
+  }
+  if (email.startsWith("admin@") || email.includes("admin.") || email.includes("odontologo@") || email.includes("recepcion@") || email.includes("bot@") || email.includes("asistente@")) {
+    return true;
+  }
+  return false;
+};
+
 export function PacientesView() {
   const navigate = useNavigate();
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
@@ -47,6 +64,11 @@ export function PacientesView() {
           const doc = person?.documentNumber || p.documentNumber || "";
           const tel = person?.phone || p.phone || p.emergencyContactPhone || "";
           const email = person?.email || p.email || "";
+
+          if (isSystemOrAdminAccount({ name: fullName, email })) {
+            return;
+          }
+
           const key = (doc || email || fullName).toLowerCase();
 
           if (!seenIdentifiers.has(key)) {
@@ -64,12 +86,17 @@ export function PacientesView() {
         });
       }
 
-      // 2. Mapear Personas de la API (incluyendo usuarios registrados por Google o por endpoint)
+      // 2. Mapear Personas de la API (solo pacientes válidos, descartando cuentas de administración/staff)
       if (personsData && Array.isArray(personsData)) {
         personsData.forEach((person) => {
           const fullName = `${person.firstName || ""} ${person.lastName || ""}`.trim();
           const doc = person.documentNumber || "";
           const email = person.email || "";
+
+          if (isSystemOrAdminAccount({ name: fullName, email })) {
+            return;
+          }
+
           const key = (doc || email || fullName).toLowerCase();
 
           if (fullName && !seenIdentifiers.has(key)) {
@@ -87,14 +114,13 @@ export function PacientesView() {
         });
       }
 
-      // 3. Inspeccionar todas las fuentes de almacenamiento local (Google Auth, usuarios registrados, formularios)
+      // 3. Inspeccionar fuentes de almacenamiento local descartando staff / admin
       const storageKeys = [
         PACIENTES_STORAGE_KEY,
         "pacientes",
         "nexus_pacientes",
         "nexus_pacientes_v1",
         "nexus_users",
-        "auth_user",
       ];
 
       storageKeys.forEach((k) => {
@@ -108,10 +134,14 @@ export function PacientesView() {
               const doc = item.documento || item.documentNumber || item.cedula || "";
               const tel = item.telefono || item.phone || item.mobile || "";
               const email = item.correo || item.email || "";
+
+              if (isSystemOrAdminAccount({ name: fullName, email, rol: item.rol, role: item.role })) {
+                return;
+              }
+
               const key = (doc || email || fullName).toLowerCase();
 
-              // Si es un paciente (o usuario con rol paciente/registrado) y no está en la lista
-              if (fullName && !seenIdentifiers.has(key) && item.rol !== "ODONTOLOGO" && item.rol !== "ADMINISTRADOR") {
+              if (fullName && !seenIdentifiers.has(key)) {
                 seenIdentifiers.add(key);
                 combinedPacientes.unshift({
                   id: combinedPacientes.length + 1,
@@ -130,7 +160,7 @@ export function PacientesView() {
         }
       });
 
-      // 4. Si la lista está vacía, incluir seeders de Oracle
+      // 4. Si la lista está vacía, incluir seeders de pacientes reales
       if (combinedPacientes.length === 0) {
         const seedDefaults: Paciente[] = [
           { id: 1, nombre: "Andrés Pérez", documento: "1076543210", telefono: "+573101234567", correo: "paciente@nexusodonto.com", estado: "Activo" },
@@ -166,8 +196,12 @@ export function PacientesView() {
     return () => clearTimeout(timer);
   }, [search]);
 
+  const clinicalPatients = useMemo(() => {
+    return pacientes.filter((p) => !isSystemOrAdminAccount(p));
+  }, [pacientes]);
+
   const pacientesFiltrados = useMemo(() => {
-    let result = pacientes;
+    let result = clinicalPatients;
 
     // Filtro por tab activo
     if (activeTab === "activos") {
@@ -185,7 +219,7 @@ export function PacientesView() {
         paciente.documento.includes(query) ||
         paciente.telefono.includes(query)
     );
-  }, [pacientes, debouncedSearch, activeTab]);
+  }, [clinicalPatients, debouncedSearch, activeTab]);
 
   const totalPages = Math.max(1, Math.ceil(pacientesFiltrados.length / ITEMS_PER_PAGE));
 
@@ -291,7 +325,7 @@ export function PacientesView() {
                   : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
               }`}
             >
-              Todos ({pacientes.length})
+              Todos ({clinicalPatients.length})
             </button>
 
             <button

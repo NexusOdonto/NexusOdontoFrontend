@@ -18,8 +18,8 @@ export interface CreateUserRequest {
 }
 
 export const userService = {
-  getAll: async (): Promise<User[]> => {
-    const response = await axiosClient.get('/v1/Users');
+  getAll: async (params?: Record<string, any>): Promise<User[]> => {
+    const response = await axiosClient.get('/v1/Users', { params });
     return response.data;
   },
   

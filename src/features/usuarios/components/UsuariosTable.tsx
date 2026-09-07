@@ -57,11 +57,11 @@ function getRoleBadge(roleCode?: string, roleName?: string) {
       dot: "bg-amber-500",
     };
   }
-  if (code.includes("BOT") || code.includes("CHATBOT") || code.includes("SERVICE")) {
+  if (code.includes("ASISTENT")) {
     return {
-      label: name || "Servicio API",
-      className: "bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-500/30",
-      dot: "bg-slate-500",
+      label: name || "Asistente Dental",
+      className: "bg-teal-500/15 text-teal-700 dark:text-teal-300 border-teal-500/30",
+      dot: "bg-teal-500",
     };
   }
 
@@ -257,14 +257,14 @@ export function UsuariosTable({
                             ? "opacity-30 cursor-not-allowed border-slate-200 dark:border-white/10 bg-slate-100/50 dark:bg-slate-900/30 text-slate-400"
                             : usuario.isActive
                             ? "border-slate-200 dark:border-white/10 bg-white/80 dark:bg-slate-900/60 hover:bg-rose-500/10 text-slate-400 hover:text-rose-500 hover:border-rose-500/30 cursor-pointer"
-                            : "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 cursor-pointer"
+                            : "border-emerald-500/40 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25 hover:border-emerald-500 shadow-sm cursor-pointer"
                         }`}
                         title={
                           isSelf
-                            ? "No puedes desactivar tu propia cuenta de administrador"
+                            ? "No puedes desactivar tu propia cuenta"
                             : usuario.isActive
                             ? "Desactivar usuario"
-                            : "Activar usuario"
+                            : "Reactivar usuario"
                         }
                       >
                         <Power size={15} />
@@ -283,6 +283,11 @@ export function UsuariosTable({
         {usuarios.map((usuario) => {
           const roleInfo = getRoleBadge(usuario.roleCode, usuario.roleName);
           const modulesCount = usuario.modulesList?.length || usuario.permissionsCount || 0;
+          const isSelf = Boolean(
+            (currentUser?.id && areGuidsEqual(currentUser.id, usuario.id)) ||
+            (currentUser?.personId && areGuidsEqual(currentUser.personId, usuario.personId)) ||
+            (currentUser?.email && usuario.email && currentUser.email.toLowerCase() === usuario.email.toLowerCase())
+          );
 
           return (
             <article
@@ -323,14 +328,38 @@ export function UsuariosTable({
                   {roleInfo.label}
                 </span>
 
-                <button
-                  type="button"
-                  onClick={() => onManagePermissions?.(usuario)}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/25"
-                >
-                  <ShieldCheck size={13} />
-                  <span>{modulesCount > 0 ? `${modulesCount} módulos` : "Permisos"}</span>
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => onManagePermissions?.(usuario)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/25"
+                  >
+                    <ShieldCheck size={13} />
+                    <span>{modulesCount > 0 ? `${modulesCount} módulos` : "Permisos"}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isSelf}
+                    onClick={() => !isSelf && onToggleStatus?.(usuario)}
+                    className={`p-1.5 rounded-xl border transition-all ${
+                      isSelf
+                        ? "opacity-30 cursor-not-allowed border-slate-200 text-slate-400"
+                        : usuario.isActive
+                        ? "border-slate-200 dark:border-white/10 text-slate-400 hover:text-rose-500 hover:border-rose-500/30"
+                        : "border-emerald-500/40 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                    }`}
+                    title={
+                      isSelf
+                        ? "No puedes desactivar tu propia cuenta"
+                        : usuario.isActive
+                        ? "Desactivar usuario"
+                        : "Reactivar usuario"
+                    }
+                  >
+                    <Power size={13} />
+                  </button>
+                </div>
               </div>
             </article>
           );

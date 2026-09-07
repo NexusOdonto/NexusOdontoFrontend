@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 
 import { Sidebar } from "../components/layout/Sidebar.tsx";
 import { PageHeader } from "../components/layout/PageHeader.tsx";
-import ChatBotWidget from "../components/chatbot/ChatBotWidget.tsx";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../features/auth/AuthContext";
 
@@ -74,9 +73,6 @@ export function DashboardLayout({
           </div>
         </main>
       </div>
-
-      {/* ASISTENTE VIRTUAL FLOTANTE */}
-      <ChatBotWidget />
     </div>
   );
 }

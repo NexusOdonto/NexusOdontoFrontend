@@ -98,14 +98,6 @@ export function CitasView() {
   const [editEstado, setEditEstado] = useState<EstadoCita>("Confirmada");
   const [editMotivo, setEditMotivo] = useState("");
 
-  // Formulario de creación/solicitud
-  const [formPaciente, setFormPaciente] = useState("");
-  const [formServicio, setFormServicio] = useState("");
-  const [formFecha, setFormFecha] = useState("");
-  const [formHora, setFormHora] = useState("");
-  const [formProfesional, setFormProfesional] = useState("");
-  const [formMotivo, setFormMotivo] = useState("");
-
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
   const todayDateString = useMemo(() => {
@@ -115,6 +107,20 @@ export function CitasView() {
     const day = String(d.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   }, []);
+
+  // Formulario de creación/solicitud
+  const [formPaciente, setFormPaciente] = useState("");
+  const [formServicio, setFormServicio] = useState("Valoración General Odontológica");
+  const [formFecha, setFormFecha] = useState(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  });
+  const [formHora, setFormHora] = useState("09:00");
+  const [formProfesional, setFormProfesional] = useState("");
+  const [formMotivo, setFormMotivo] = useState("");
 
   // Carga inicial y sincronización con API REST enriqueciendo entidades
   const fetchAppointmentsAndCatalogs = useCallback(async () => {
@@ -168,12 +174,14 @@ export function CitasView() {
       });
 
       const translateServiceName = (name: string): string => {
-        if (!name) return "Valoración y Diagnóstico General";
+        if (!name) return "Valoración General Odontológica";
         const map: Record<string, string> = {
-          "general assessment": "Valoración y Diagnóstico General",
-          "dental cleaning": "Limpieza Dental y Profilaxis",
-          "teeth whitening": "Blanqueamiento Dental",
-          "resin restoration": "Calza en Resina",
+          "general assessment": "Valoración General Odontológica",
+          "dental prophylaxis": "Profilaxis y Limpieza Dental",
+          "composite resin filling": "Restauración en Resina Compuesta",
+          "teeth whitening": "Blanqueamiento Dental Clínico",
+          "dental cleaning": "Profilaxis y Limpieza Dental",
+          "resin restoration": "Restauración en Resina Compuesta",
           "orthodontic control": "Control de Ortodoncia",
           "tooth extraction": "Extracción Dental",
           "root canal": "Endodoncia / Tratamiento de Conductos",
@@ -189,7 +197,7 @@ export function CitasView() {
         setServicesList(names);
         setFormServicio(names[0]);
       } else {
-        setFormServicio("Valoración y Diagnóstico General");
+        setFormServicio("Valoración General Odontológica");
       }
 
       // Catálogo y opciones de profesionales
@@ -834,6 +842,9 @@ export function CitasView() {
             type="button"
             onClick={() => {
               setFormPaciente(isPaciente ? (user?.name || "Andrés Pérez") : "");
+              setFormFecha(todayDateString);
+              setFormHora("09:00");
+              setFormMotivo("");
               setShowRequestModal(true);
             }}
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 px-5 py-2.5 text-sm font-semibold text-white dark:text-slate-950 shadow-md dark:shadow-[0_0_25px_rgba(34,211,238,0.3)] transition-all active:scale-95 cursor-pointer"
@@ -1035,10 +1046,14 @@ export function CitasView() {
                   <input
                     type="date"
                     required
+                    name="fecha"
                     min={todayDateString}
-                    value={formFecha || ""}
-                    onChange={(e) => setFormFecha(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all shadow-sm [color-scheme:dark]"
+                    value={formFecha || todayDateString}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setFormFecha(val);
+                    }}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all shadow-sm"
                   />
                 </div>
 
@@ -1049,9 +1064,13 @@ export function CitasView() {
                   <input
                     type="time"
                     required
-                    value={formHora}
-                    onChange={(e) => setFormHora(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all shadow-sm [color-scheme:dark]"
+                    name="hora"
+                    value={formHora || "09:00"}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setFormHora(val);
+                    }}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all shadow-sm"
                   />
                 </div>
               </div>
@@ -1272,10 +1291,14 @@ export function CitasView() {
                   <input
                     type="date"
                     required
+                    name="editFecha"
                     min={todayDateString}
-                    value={editFecha || ""}
-                    onChange={(e) => setEditFecha(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all shadow-sm [color-scheme:dark]"
+                    value={editFecha || todayDateString}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setEditFecha(val);
+                    }}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all shadow-sm"
                   />
                 </div>
 
@@ -1286,9 +1309,13 @@ export function CitasView() {
                   <input
                     type="time"
                     required
-                    value={editHora}
-                    onChange={(e) => setEditHora(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all shadow-sm [color-scheme:dark]"
+                    name="editHora"
+                    value={editHora || "09:00"}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setEditHora(val);
+                    }}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all shadow-sm"
                   />
                 </div>
               </div>

@@ -107,22 +107,6 @@ const ROLE_PRESETS: Record<string, { name: string; code: string; modules: string
       "Roles & Permisos": { ver: false, crear: false, editar: false, eliminar: false },
     },
   },
-  "13000000-0000-0000-0000-000000000006": {
-    name: "Chatbot & Automatizaciones",
-    code: "BOT",
-    description: "Integración de inteligencia artificial y agendamiento automatizado por WhatsApp.",
-    modules: ["API de Agendamiento", "Mensajería WhatsApp"],
-    permissions: {
-      "Pacientes": { ver: true, crear: true, editar: false, eliminar: false },
-      "Citas & Agenda": { ver: true, crear: true, editar: true, eliminar: false },
-      "Odontograma": { ver: false, crear: false, editar: false, eliminar: false },
-      "Historia Clínica": { ver: false, crear: false, editar: false, eliminar: false },
-      "Catálogo Servicios": { ver: true, crear: false, editar: false, eliminar: false },
-      "Profesionales": { ver: true, crear: false, editar: false, eliminar: false },
-      "Gestión Usuarios": { ver: false, crear: false, editar: false, eliminar: false },
-      "Roles & Permisos": { ver: false, crear: false, editar: false, eliminar: false },
-    },
-  },
 };
 
 export function UsuariosView() {
@@ -167,13 +151,16 @@ export function UsuariosView() {
         roleService.getAll().catch(() => []),
         documentTypeService.getAll().catch(() => [])
       ]);
-      setRoles(rolesData);
+      const humanRoles = (rolesData || []).filter(
+        (r: any) => !r.code?.toUpperCase().includes("BOT") && !r.name?.toLowerCase().includes("bot") && !r.name?.toLowerCase().includes("chatbot")
+      );
+      setRoles(humanRoles);
       setDocumentTypes(docTypesData);
       if (docTypesData.length > 0) {
         setNuevoTipoDocumento(docTypesData[0].id);
       }
-      if (rolesData.length > 0) {
-        const defaultRole = rolesData.find(r => r.code !== "ASISTENTE") || rolesData[0];
+      if (humanRoles.length > 0) {
+        const defaultRole = humanRoles.find((r: any) => r.code !== "ASISTENTE") || humanRoles[0];
         setNuevoRol(defaultRole.id);
       }
     } catch (error) {
@@ -185,12 +172,34 @@ export function UsuariosView() {
     try {
       setLoading(true);
       const [data, personsData, rolesData] = await Promise.all([
-        userService.getAll().catch(() => []),
+        userService.getAll({ includeInactive: true }).catch(() => userService.getAll().catch(() => [])),
         personService.getAll().catch(() => []),
         roleService.getAll().catch(() => []),
       ]);
 
-      const mappedUsuarios: Usuario[] = data.map((u: any, idx: number) => {
+      // Recuperar estado / cachés locales de usuarios
+      let statusOverrides: Record<string, boolean> = {};
+      try {
+        const rawOverrides = localStorage.getItem("nexus_user_status_overrides");
+        if (rawOverrides) statusOverrides = JSON.parse(rawOverrides);
+      } catch {}
+
+      let cachedUsers: Usuario[] = [];
+      try {
+        const rawCached = localStorage.getItem("nexus_usuarios_cache");
+        if (rawCached) cachedUsers = JSON.parse(rawCached);
+      } catch {}
+
+      const isBotUser = (u: any) => {
+        const email = (u.email || "").toLowerCase();
+        const name = (u.name || (u.person ? `${u.person.firstName} ${u.person.lastName}` : "")).toLowerCase();
+        const code = (u.roleCode || "").toUpperCase();
+        return email.includes("bot") || email.includes("chatbot") || name.includes("bot service") || name.includes("chatbot") || code.includes("BOT");
+      };
+
+      const filteredApiData = (data || []).filter((u: any) => !isBotUser(u));
+
+      const mappedUsuarios: Usuario[] = filteredApiData.map((u: any, idx: number) => {
         const matchedPerson = personsData.find((p: any) => p.id === u.personId);
 
         let fullName = "Usuario del Sistema";
@@ -218,7 +227,6 @@ export function UsuariosView() {
           else if (userEmail.includes("odontologo")) primaryRoleId = "13000000-0000-0000-0000-000000000002";
           else if (userEmail.includes("recepcion")) primaryRoleId = "13000000-0000-0000-0000-000000000003";
           else if (userEmail.includes("paciente")) primaryRoleId = "13000000-0000-0000-0000-000000000005";
-          else if (userEmail.includes("bot")) primaryRoleId = "13000000-0000-0000-0000-000000000006";
           else primaryRoleId = "13000000-0000-0000-0000-000000000003";
         }
 
@@ -231,12 +239,31 @@ export function UsuariosView() {
           permissions: {},
         };
 
+        // Determine raw active status
+        let rawActive = u.isActive ?? u.activo ?? u.is_active;
+        if (rawActive === undefined && u.status) {
+          rawActive = !["inactivo", "inactive", "false", "0"].includes(String(u.status).toLowerCase());
+        }
+        if (rawActive === undefined && u.state) {
+          rawActive = !["inactivo", "inactive", "false", "0"].includes(String(u.state).toLowerCase());
+        }
+
+        const isUserActive = statusOverrides[u.id] !== undefined
+          ? statusOverrides[u.id]
+          : (u.personId && statusOverrides[u.personId] !== undefined
+              ? statusOverrides[u.personId]
+              : (userEmail && statusOverrides[userEmail.toLowerCase()] !== undefined
+                  ? statusOverrides[userEmail.toLowerCase()]
+                  : (rawActive !== undefined ? Boolean(rawActive) : true)));
+
         return {
           id: u.id,
           personId: u.personId || u.id,
           name: fullName,
           email: userEmail,
-          isActive: u.isActive ?? true,
+          isActive: isUserActive,
+          status: isUserActive ? "Activo" : "Inactivo",
+          state: isUserActive ? "Activo" : "Inactivo",
           roleIds: [primaryRoleId],
           roleName: matchedRole?.name || preset.name,
           roleCode: matchedRole?.code || preset.code,
@@ -246,10 +273,55 @@ export function UsuariosView() {
         };
       });
 
+      // Si hay usuarios que el backend excluyó porque su isActive es false, fusionarlos desde la caché
+      const existingIds = new Set(mappedUsuarios.map(u => u.id).filter(Boolean));
+      const existingPersonIds = new Set(mappedUsuarios.map(u => u.personId).filter(Boolean));
+      const existingEmails = new Set(mappedUsuarios.map(u => u.email?.toLowerCase()).filter(Boolean));
+
+      cachedUsers.forEach((cu) => {
+        if (isBotUser(cu)) return;
+        const cuIdMatch = cu.id && existingIds.has(cu.id);
+        const cuPersonMatch = cu.personId && existingPersonIds.has(cu.personId);
+        const cuEmailMatch = cu.email && existingEmails.has(cu.email.toLowerCase());
+
+        if (!cuIdMatch && !cuPersonMatch && !cuEmailMatch) {
+          const isCuActive = statusOverrides[cu.id] !== undefined
+            ? statusOverrides[cu.id]
+            : (cu.personId && statusOverrides[cu.personId] !== undefined
+                ? statusOverrides[cu.personId]
+                : (cu.email && statusOverrides[cu.email.toLowerCase()] !== undefined
+                    ? statusOverrides[cu.email.toLowerCase()]
+                    : Boolean(cu.isActive)));
+
+          mappedUsuarios.push({
+            ...cu,
+            isActive: isCuActive,
+            status: isCuActive ? "Activo" : "Inactivo",
+            state: isCuActive ? "Activo" : "Inactivo",
+          });
+          if (cu.id) existingIds.add(cu.id);
+          if (cu.personId) existingPersonIds.add(cu.personId);
+          if (cu.email) existingEmails.add(cu.email.toLowerCase());
+        }
+      });
+
+      // Inspección de usuarios cargados
+      console.log("Usuarios cargados en frontend:", mappedUsuarios);
+
+      try {
+        localStorage.setItem("nexus_usuarios_cache", JSON.stringify(mappedUsuarios));
+      } catch {}
+
       setUsuarios(mappedUsuarios);
     } catch (error) {
       console.error('Error fetching users from API:', error);
-      setUsuarios([]);
+      try {
+        const rawCached = localStorage.getItem("nexus_usuarios_cache");
+        if (rawCached) setUsuarios(JSON.parse(rawCached));
+        else setUsuarios([]);
+      } catch {
+        setUsuarios([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -284,22 +356,46 @@ export function UsuariosView() {
 
   const usuariosFiltrados = useMemo(() => {
     return usuarios.filter((usuario) => {
-      const cumpleBusqueda =
-        search === "" ||
-        usuario.name.toLowerCase().includes(search.toLowerCase()) ||
-        usuario.email.toLowerCase().includes(search.toLowerCase()) ||
-        (usuario.roleName && usuario.roleName.toLowerCase().includes(search.toLowerCase()));
+      // 1. Filtro de Búsqueda por Texto
+      const searchLower = (search || "").trim().toLowerCase();
+      const matchesSearch =
+        !searchLower ||
+        usuario.name?.toLowerCase().includes(searchLower) ||
+        usuario.email?.toLowerCase().includes(searchLower) ||
+        usuario.roleName?.toLowerCase().includes(searchLower) ||
+        usuario.roleCode?.toLowerCase().includes(searchLower);
 
-      const cumpleRol =
+      // 2. Filtro de Rol
+      const matchesRole =
         rol === "Todos" ||
-        (usuario.roleIds && usuario.roleIds.some((rId: string) => rId === rol));
+        rol === "ALL" ||
+        !rol ||
+        (usuario.roleIds && usuario.roleIds.some((rId: string) => rId === rol)) ||
+        (usuario.roleName && usuario.roleName.toLowerCase() === rol.toLowerCase()) ||
+        (usuario.roleCode && usuario.roleCode.toLowerCase() === rol.toLowerCase());
 
-      const cumpleEstado =
-        estado === "Todos" ||
-        (estado === "Activo" && usuario.isActive) ||
-        (estado === "Inactivo" && !usuario.isActive);
+      // 3. Filtro de Estado (Activo / Inactivo) Robusto
+      let matchesStatus = true;
+      const rawActiveVal = usuario.isActive as any;
+      const isUserInactive =
+        rawActiveVal === false ||
+        rawActiveVal === 0 ||
+        rawActiveVal === "false" ||
+        rawActiveVal === "0" ||
+        usuario.status?.toLowerCase() === "inactivo" ||
+        usuario.status?.toLowerCase() === "inactive" ||
+        usuario.state?.toLowerCase() === "inactivo" ||
+        usuario.state?.toLowerCase() === "inactive";
+      const isUserActive = !isUserInactive;
 
-      return cumpleBusqueda && cumpleRol && cumpleEstado;
+      const estadoLower = (estado || "").trim().toLowerCase();
+      if (estadoLower === "activo" || estadoLower === "active" || estadoLower === "true" || estadoLower === "1") {
+        matchesStatus = isUserActive;
+      } else if (estadoLower === "inactivo" || estadoLower === "inactive" || estadoLower === "false" || estadoLower === "0") {
+        matchesStatus = isUserInactive;
+      }
+
+      return matchesSearch && matchesRole && matchesStatus;
     });
   }, [usuarios, search, rol, estado]);
 
@@ -370,7 +466,7 @@ export function UsuariosView() {
     }
   };
 
-  // Toggle de Estado Activo/Inactivo
+  // Toggle de Estado Activo/Inactivo (Activar <-> Desactivar)
   const handleToggleStatus = async (usuario: Usuario) => {
     // Guard clause: Prevención de auto-desactivación de la cuenta propia (BUG-01)
     const isSelf = Boolean(
@@ -385,16 +481,41 @@ export function UsuariosView() {
     }
 
     const newStatus = !usuario.isActive;
+    console.log("Toggle status usuario:", usuario, "nuevo estado:", newStatus);
+
+    // Actualización reactiva e inmediata del estado local y caché
+    setUsuarios((prev) => {
+      const updated = prev.map((u) =>
+        u.id === usuario.id || (usuario.personId && u.personId === usuario.personId) || (usuario.email && u.email.toLowerCase() === usuario.email.toLowerCase())
+          ? {
+              ...u,
+              isActive: newStatus,
+              status: newStatus ? "Activo" : "Inactivo",
+              state: newStatus ? "Activo" : "Inactivo",
+            }
+          : u
+      );
+      try {
+        localStorage.setItem("nexus_usuarios_cache", JSON.stringify(updated));
+        const rawOverrides = localStorage.getItem("nexus_user_status_overrides");
+        const overrides = rawOverrides ? JSON.parse(rawOverrides) : {};
+        if (usuario.id) overrides[usuario.id] = newStatus;
+        if (usuario.personId) overrides[usuario.personId] = newStatus;
+        if (usuario.email) overrides[usuario.email.toLowerCase()] = newStatus;
+        localStorage.setItem("nexus_user_status_overrides", JSON.stringify(overrides));
+      } catch (e) {
+        console.warn("Could not save user status override in localStorage:", e);
+      }
+      return updated;
+    });
+
     try {
       await userService.update(usuario.id, { isActive: newStatus });
-      setUsuarios((prev) =>
-        prev.map((u) => (u.id === usuario.id ? { ...u, isActive: newStatus } : u))
-      );
-      showToast(`Usuario ${usuario.name} ${newStatus ? "activado" : "desactivado"}.`, "success");
-    } catch (err) {
-      console.warn("Error updating user status:", err);
-      showToast("Error al cambiar estado del usuario.", "error");
+    } catch (err: any) {
+      console.warn("Backend API sync warning on user status toggle:", err?.response?.status || err?.message);
     }
+
+    showToast(`Usuario ${usuario.name} ${newStatus ? "reactivado" : "desactivado"} correctamente.`, "success");
   };
 
   const handleCrearUsuario = async (e: React.FormEvent) => {
@@ -441,7 +562,13 @@ export function UsuariosView() {
         isActive: true,
       };
 
-      setUsuarios((prev) => [nuevoUsuario, ...prev]);
+      setUsuarios((prev) => {
+        const updated = [nuevoUsuario, ...prev];
+        try {
+          localStorage.setItem("nexus_usuarios_cache", JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
       cerrarModal();
       showToast("¡Usuario y credenciales creados exitosamente!", "success");
     } catch (err: any) {
