@@ -118,11 +118,7 @@ const ConfiguracionView = lazy(() =>
   })),
 );
 
-const ErrorAccessPage = lazy(() =>
-  import("../features/auth/ErrorAccessPage").then((module) => ({
-    default: module.default,
-  })),
-);
+import { ErrorAccessPage } from "../features/auth/ErrorAccessPage";
 
 const NotFoundPage = lazy(() =>
   import("../pages/NotFoundPage").then((module) => ({
