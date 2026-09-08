@@ -115,7 +115,45 @@ export function HistoriaClinicaView() {
     "Mantener higiene bucal cuidadosa con cepillo de cerdas suaves. Evitar alimentos irritantes, duros o muy calientes durante las próximas 48 horas."
   );
 
-  // 1. Cargar Pacientes
+  const [professionalsEntities, setProfessionalsEntities] = useState<any[]>([]);
+  const [servicesEntities, setServicesEntities] = useState<any[]>([]);
+
+  // 1. Cargar Catálogos Iniciales de forma desacoplada (F-01)
+  useEffect(() => {
+    let isCancelled = false;
+    async function fetchCatalogs() {
+      try {
+        const [profs, srvs] = await Promise.all([
+          professionalService.getAll().catch(() => []),
+          serviceCatalogService.getAll().catch(() => []),
+        ]);
+        if (isCancelled) return;
+        const profsList = Array.isArray(profs) ? profs : [];
+        setProfessionalsEntities(profsList);
+        setServicesEntities(Array.isArray(srvs) ? srvs : []);
+
+        if (profsList.length > 0) {
+          const mappedDocs = profsList
+            .filter((p: any) => p.firstName || p.lastName)
+            .map((p: any) => `Dr(a). ${p.firstName || ""} ${p.lastName || ""}`.trim());
+          if (mappedDocs.length > 0) {
+            setDentistsList(mappedDocs);
+            if (!isDentist) {
+              setFormProfesional(mappedDocs[0]);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("No se pudieron cargar catálogos iniciales:", err);
+      }
+    }
+    fetchCatalogs();
+    return () => {
+      isCancelled = true;
+    };
+  }, [isDentist]);
+
+  // 2. Cargar Pacientes
   const fetchPatients = useCallback(async () => {
     setLoading(true);
     try {
@@ -166,33 +204,17 @@ export function HistoriaClinicaView() {
     }
 
     try {
-      const [apiAttentions, apiDiagnoses, apiProcedures, apiAppointments, apiProfessionals, apiServices] = await Promise.all([
+      const [apiAttentions, apiDiagnoses, apiProcedures, apiAppointments] = await Promise.all([
         clinicalHistoryService.getAttentions().catch(() => []),
         clinicalHistoryService.getDiagnoses().catch(() => []),
         clinicalHistoryService.getProcedures().catch(() => []),
         appointmentService.getAll().catch(() => []),
-        professionalService.getAll().catch(() => []),
-        serviceCatalogService.getAll().catch(() => []),
       ]);
 
       setDiagnoses(apiDiagnoses);
       setProcedures(apiProcedures);
 
-      // 1. Cargar odontólogos licenciados
-      const profsList = Array.isArray(apiProfessionals) ? apiProfessionals : [];
-      if (profsList.length > 0) {
-        const mappedDocs = profsList
-          .filter((p: any) => p.firstName || p.lastName)
-          .map((p: any) => `Dr(a). ${p.firstName || ""} ${p.lastName || ""}`.trim());
-        if (mappedDocs.length > 0) {
-          setDentistsList(mappedDocs);
-          if (!isDentist) {
-            setFormProfesional(mappedDocs[0]);
-          }
-        }
-      }
-
-      // 2. Cargar Próxima Cita Real del paciente activo y resolver IDs de citas del paciente (BUG-14 & F-01)
+      // Cargar Próxima Cita Real del paciente activo y resolver IDs de citas del paciente (BUG-14 & F-01)
       const rawCitasLocal = localStorage.getItem("nexus_citas");
       let allApps: any[] = Array.isArray(apiAppointments) ? [...apiAppointments] : [];
       if (rawCitasLocal) {
@@ -259,8 +281,7 @@ export function HistoriaClinicaView() {
         // Resolver nombre real del servicio
         let resolvedServName = next.serviceName || next.servicio;
         if (!resolvedServName || resolvedServName === "Consulta Odontológica") {
-          const srvList = Array.isArray(apiServices) ? apiServices : [];
-          const matchedSrv = srvList.find((s: any) => areGuidsEqual(s.id, next.serviceId));
+          const matchedSrv = servicesEntities.find((s: any) => areGuidsEqual(s.id, next.serviceId));
           if (matchedSrv?.name) resolvedServName = matchedSrv.name;
         }
         if (!resolvedServName) resolvedServName = "Consulta Odontológica";
@@ -268,12 +289,12 @@ export function HistoriaClinicaView() {
         // Resolver nombre real del profesional
         let resolvedDocName = next.professionalName || next.profesional;
         if (!resolvedDocName || resolvedDocName.includes("Especialista")) {
-          const matchedProf = profsList.find((p: any) => areGuidsEqual(p.id, next.professionalId));
+          const matchedProf = professionalsEntities.find((p: any) => areGuidsEqual(p.id, next.professionalId));
           if (matchedProf) {
             resolvedDocName = `Dr(a). ${matchedProf.firstName || ""} ${matchedProf.lastName || ""}`.trim();
           }
         }
-        if (!resolvedDocName) resolvedDocName = (dentistsList[0] || "Dr(a). Especialista");
+        if (!resolvedDocName) resolvedDocName = "Dr(a). Especialista";
 
         setNextAppointment({
           servicio: resolvedServName,
@@ -300,17 +321,20 @@ export function HistoriaClinicaView() {
         });
 
         const mapped: LocalAttention[] = filtered.map((a, idx) => {
-          let profName = "Dr(a). Profesional";
+          let profName = "Profesional no especificado";
           if (a.professionalId) {
-            const matchedProf = profsList.find((p: any) => areGuidsEqual(p.id, a.professionalId));
+            const matchedProf = professionalsEntities.find((p: any) => areGuidsEqual(p.id, a.professionalId));
             if (matchedProf) {
               profName = `Dr(a). ${matchedProf.firstName || ""} ${matchedProf.lastName || ""}`.trim();
             }
           } else if ((a as any).professionalName) {
             profName = (a as any).professionalName;
-          } else if (dentistsList && dentistsList.length > 0) {
-            profName = dentistsList[0];
           }
+
+          // F-04: Buscar diagnóstico real vinculado a esta atención
+          const matchedDiag = Array.isArray(apiDiagnoses)
+            ? apiDiagnoses.find((d: any) => areGuidsEqual(d.clinicalAttentionId, a.id))
+            : null;
 
           return {
             id: a.id || `att-api-${idx}`,
@@ -318,10 +342,10 @@ export function HistoriaClinicaView() {
             profesional: profName,
             motivo: a.reasonForConsultation || "Consulta odontológica",
             enfermedadActual: a.currentIllness || "Sin registros",
-            examenFisico: a.physicalExamination || "Sin hallazgos patológicos",
-            diagnostico: "Evaluación clínica",
-            cie10: "K02.1",
-            planTratamiento: a.planAndTreatment || "Control posterior",
+            examenFisico: a.physicalExamination || "Sin registro de examen físico",
+            diagnostico: matchedDiag?.description || "Evaluación clínica",
+            cie10: matchedDiag?.cie10Code || matchedDiag?.code || "No registrado",
+            planTratamiento: a.planAndTreatment || "Sin plan registrado",
             observaciones: a.observations,
           };
         });
@@ -334,9 +358,10 @@ export function HistoriaClinicaView() {
       setAttentions([]);
       setNextAppointment(null);
     }
-  }, [selectedPatientId, selectedPatient, isDentist, dentistsList]);
+  }, [selectedPatientId, selectedPatient, professionalsEntities, servicesEntities]);
 
   useEffect(() => {
+    setFormAppointmentId(""); // F-03: Limpiar selección de cita previa al cambiar de paciente
     setAttentions([]);
     setNextAppointment(null);
     loadClinicalData();
@@ -370,31 +395,68 @@ export function HistoriaClinicaView() {
       return;
     }
 
+    // F-03: Validación estricta de pertenencia de la cita al paciente actual
+    const matchedApp = patientAppointmentsList.find((a: any) =>
+      areGuidsEqual(a.id || a.appointmentId, formAppointmentId)
+    );
+    if (!matchedApp) {
+      setModalErrorMessage("La cita seleccionada no pertenece al paciente actual o no es válida.");
+      return;
+    }
+
+    // F-04: Resolver professionalId real del profesional seleccionado o autenticado
+    let profIdToUse = "";
+    if (formProfesional) {
+      const matchedProf = professionalsEntities.find(
+        (p: any) => `Dr(a). ${p.firstName || ""} ${p.lastName || ""}`.trim() === formProfesional
+      );
+      if (matchedProf?.id) profIdToUse = matchedProf.id;
+    }
+    if (!profIdToUse && matchedApp.professionalId) {
+      profIdToUse = matchedApp.professionalId;
+    }
+    if (!profIdToUse && user?.personId) {
+      profIdToUse = user.personId;
+    }
+    if (!profIdToUse && user?.id) {
+      profIdToUse = user.id;
+    }
+    if (!profIdToUse) {
+      setModalErrorMessage("No se pudo determinar el profesional responsable. Por favor seleccione un odontólogo válido.");
+      return;
+    }
+
     try {
       const payload: CreateClinicalAttentionRequestDto = {
         appointmentId: formAppointmentId,
         clinicalHistoryId: selectedPatientId,
-        professionalId: user?.personId || user?.id || "12000000-0000-0000-0000-000000000001",
+        professionalId: profIdToUse,
         attentionDate: new Date().toISOString(),
         reasonForConsultation: formMotivo,
-        currentIllness: formEnfermedad,
-        physicalExamination: formExamen,
-        planAndTreatment: formPlan,
+        currentIllness: formEnfermedad || "Sin registros",
+        physicalExamination: formExamen || "Sin hallazgos patológicos",
+        planAndTreatment: formPlan || "Control posterior",
         observations: formObservaciones,
       };
       const createdAttention = await clinicalHistoryService.createAttention(payload);
 
-      // A-02: Persistir diagnóstico estructurado vinculado a la atención clínica creada
+      // F-02: Persistir diagnóstico estructurado y reportar estado real
+      let diagnosisSaved = false;
+      let diagnosisWarning = "";
       if (formDiagnostico.trim() && createdAttention?.id) {
-        await clinicalHistoryService
-          .createDiagnosis({
+        try {
+          await clinicalHistoryService.createDiagnosis({
             clinicalAttentionId: createdAttention.id,
             code: formCie10 || "K02.1",
             cie10Code: formCie10 || "K02.1",
             description: formDiagnostico,
             type: "DENTAL",
-          })
-          .catch((dErr) => console.warn("Advertencia al persistir diagnóstico estructurado:", dErr));
+          });
+          diagnosisSaved = true;
+        } catch (dErr: any) {
+          console.warn("Advertencia al persistir diagnóstico estructurado:", dErr);
+          diagnosisWarning = dErr?.response?.data?.message || dErr?.message || "No se pudo registrar el diagnóstico estructurado.";
+        }
       }
 
       const newAtt: LocalAttention = {
@@ -408,11 +470,11 @@ export function HistoriaClinicaView() {
         }),
         profesional: formProfesional,
         motivo: formMotivo,
-        enfermedadActual: formEnfermedad || "Paciente acude a consulta por síntomas expresados.",
-        examenFisico: formExamen || "Examen físico intrabucal realizado.",
+        enfermedadActual: formEnfermedad || "Sin registros",
+        examenFisico: formExamen || "Sin registro de examen físico",
         diagnostico: formDiagnostico,
-        cie10: formCie10 || "K02.1",
-        planTratamiento: formPlan || "Tratamiento realizado de acuerdo a protocolo clínico.",
+        cie10: formCie10 || (diagnosisSaved ? "K02.1" : "No registrado"),
+        planTratamiento: formPlan || "Sin plan registrado",
         observaciones: formObservaciones,
       };
 
@@ -426,8 +488,14 @@ export function HistoriaClinicaView() {
       setFormPlan("");
       setFormObservaciones("");
 
-      setToastMessage("Evolución clínica y diagnóstico guardados exitosamente.");
-      setTimeout(() => setToastMessage(null), 3500);
+      if (diagnosisSaved) {
+        setToastMessage("Evolución clínica y diagnóstico guardados exitosamente.");
+      } else if (diagnosisWarning) {
+        setToastMessage(`Atención clínica registrada con éxito, pero el diagnóstico presentó un aviso: ${diagnosisWarning}`);
+      } else {
+        setToastMessage("Evolución clínica registrada exitosamente.");
+      }
+      setTimeout(() => setToastMessage(null), 4500);
     } catch (err: any) {
       console.error("Error al registrar evolución clínica:", err);
       const errMsg = err?.response?.data?.message || err?.message || "No se pudo registrar la evolución clínica en el servidor.";

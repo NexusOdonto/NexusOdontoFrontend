@@ -234,6 +234,8 @@ export function AtencionAsesorView() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const waDeliveredRef = useRef<Map<string, boolean>>(new Map());
+
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 4000);
@@ -470,6 +472,7 @@ export function AtencionAsesorView() {
     const formattedNow = formatTime(currentTimeIso);
 
     setSendingMessage(true);
+    const dispatchKey = `${selectedChat.id}:${text}`;
 
     try {
       let sentToBackend = false;
@@ -484,15 +487,19 @@ export function AtencionAsesorView() {
       }
 
       if (!sentToBackend) {
-        const cleanPhone = selectedChat.chatIdentifier.replace(/@.*$/, "").replace(/\D/g, "");
-        const waRes = await chatbotService.sendWhatsAppMessage({
-          destinationPhone: cleanPhone || selectedChat.chatIdentifier,
-          content: text,
-          patientId: selectedChat.patientId,
-        });
+        const alreadyDeliveredWa = waDeliveredRef.current.get(dispatchKey);
+        if (!alreadyDeliveredWa) {
+          const cleanPhone = selectedChat.chatIdentifier.replace(/@.*$/, "").replace(/\D/g, "");
+          const waRes = await chatbotService.sendWhatsAppMessage({
+            destinationPhone: cleanPhone || selectedChat.chatIdentifier,
+            content: text,
+            patientId: selectedChat.patientId,
+          });
 
-        if (!waRes && waRes !== undefined) {
-          throw new Error("Respuesta inválida del servidor al despachar mensaje de WhatsApp.");
+          if (!waRes && waRes !== undefined) {
+            throw new Error("Respuesta inválida del servidor al despachar mensaje de WhatsApp.");
+          }
+          waDeliveredRef.current.set(dispatchKey, true);
         }
 
         await chatbotService.sendMessage({
@@ -500,6 +507,9 @@ export function AtencionAsesorView() {
           messageRoleId: roleId,
           content: text,
         });
+
+        // Completado con éxito: limpiar marcador de despacho pendiente
+        waDeliveredRef.current.delete(dispatchKey);
       }
 
       // Inserción segura solo después de confirmar la entrega en servidor
@@ -540,8 +550,13 @@ export function AtencionAsesorView() {
       setTimeout(scrollToBottom, 50);
     } catch (err: any) {
       console.error("Error al enviar mensaje:", err);
-      const errMsg = err?.response?.data?.message || err?.message || "No se pudo entregar el mensaje. Error de conexión con el servidor.";
-      showErrorToast(errMsg);
+      const isWaDelivered = waDeliveredRef.current.get(dispatchKey);
+      if (isWaDelivered) {
+        showErrorToast("El mensaje fue entregado por WhatsApp, pero ocurrió un problema al registrarlo en el historial de la conversación. Puede reintentar registrarlo.");
+      } else {
+        const errMsg = err?.response?.data?.message || err?.message || "No se pudo entregar el mensaje. Error de conexión con el servidor.";
+        showErrorToast(errMsg);
+      }
     } finally {
       setSendingMessage(false);
     }

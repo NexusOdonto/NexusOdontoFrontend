@@ -27,6 +27,7 @@ import {
   Shield,
   Move,
   ChevronDown,
+  RefreshCw,
 } from "lucide-react";
 import type {
   ToothState,
@@ -163,6 +164,7 @@ function OdontogramaUI() {
   const [profesionalesList, setProfesionalesList] = useState<ProfesionalItem[]>([]);
   const [selectedProfessionalId, setSelectedProfessionalId] = useState<string>("");
   const [notasClinicas, setNotasClinicas] = useState("");
+  const [isSyncingServer, setIsSyncingServer] = useState(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
   const [errorToast, setErrorToast] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -186,15 +188,15 @@ function OdontogramaUI() {
         });
         setProfesionalesList(mappedProfs);
 
+        // F-08: Pre-seleccionar únicamente si existe coincidencia comprobada de identidad con el usuario autenticado
         const matched = mappedProfs.find((pr) =>
           (user?.personId && areGuidsEqual(pr.id, user.personId)) ||
-          (user?.id && areGuidsEqual(pr.id, user.id)) ||
-          (user?.name && pr.nombre.toLowerCase().includes(user.name.toLowerCase()))
+          (user?.id && areGuidsEqual(pr.id, user.id))
         );
         if (matched) {
           setSelectedProfessionalId(matched.id);
-        } else if (mappedProfs.length > 0) {
-          setSelectedProfessionalId(mappedProfs[0].id);
+        } else {
+          setSelectedProfessionalId("");
         }
       }
 
@@ -231,10 +233,12 @@ function OdontogramaUI() {
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, []);
 
-  // Al cambiar de paciente seleccionado, hidratar odontograma desde LocalStorage y desde el servidor API (A-03)
+  // Al cambiar de paciente seleccionado, hidratar odontograma desde LocalStorage y desde el servidor API (A-03, F-05, F-06, F-07)
   useEffect(() => {
     let isCancelled = false;
     async function loadPatientOdontogram() {
@@ -251,7 +255,8 @@ function OdontogramaUI() {
       setState(localState);
       setNotasClinicas(savedNotas);
 
-      // 2. A-03: Sincronización e hidratación desde el servidor
+      // 2. Sincronización e hidratación desde el servidor con orden cronológico (F-05, F-07)
+      setIsSyncingServer(true);
       try {
         const [allOdontograms, histories] = await Promise.all([
           odontogramService.getAll().catch(() => []),
@@ -263,10 +268,19 @@ function OdontogramaUI() {
         const hist = histories.find((h: any) => areGuidsEqual(h.patientId, selectedPaciente.id));
         const histId = hist?.id || selectedPaciente.clinicalHistoryId;
 
-        const serverOdontogram = allOdontograms.find((o: any) =>
-          (histId && areGuidsEqual(o.clinicalHistoryId, histId)) ||
-          (o.patientId && areGuidsEqual(o.patientId, selectedPaciente.id))
-        );
+        // F-05: Ordenar cronológicamente de forma descendente para tomar la versión más reciente
+        const matchingOdontograms = (Array.isArray(allOdontograms) ? allOdontograms : [])
+          .filter((o: any) =>
+            (histId && areGuidsEqual(o.clinicalHistoryId, histId)) ||
+            (o.patientId && areGuidsEqual(o.patientId, selectedPaciente.id))
+          )
+          .sort((a: any, b: any) => {
+            const timeA = new Date(a.createdAt || a.creationDate || a.attentionDate || 0).getTime();
+            const timeB = new Date(b.createdAt || b.creationDate || b.attentionDate || 0).getTime();
+            return timeB - timeA;
+          });
+
+        const serverOdontogram = matchingOdontograms[0];
 
         if (serverOdontogram && serverOdontogram.notes) {
           const marker = "ODONTOGRAM_STATE:";
@@ -284,10 +298,21 @@ function OdontogramaUI() {
               }
             }
           }
-          const cleanNotes = serverOdontogram.notes
-            .split("ODONTOGRAM_STATE:")[0]
-            .replace(/^Notas Clínicas:\s*/, "")
-            .trim();
+
+          // F-06: Delimitación inequívoca de notas clínicas para evitar duplicación recursiva de resúmenes
+          let cleanNotes = "";
+          if (serverOdontogram.notes.includes("=== NOTAS_CLINICAS ===")) {
+            const match = serverOdontogram.notes.match(/=== NOTAS_CLINICAS ===\s*([\s\S]*?)\s*=== FIN_NOTAS_CLINICAS ===/);
+            cleanNotes = match ? match[1].trim() : "";
+          } else {
+            cleanNotes = serverOdontogram.notes
+              .split("ODONTOGRAM_STATE:")[0]
+              .split("Hallazgos Odontograma:")[0]
+              .split("Dentición:")[0]
+              .replace(/^Notas Clínicas:\s*/i, "")
+              .trim();
+          }
+
           if (cleanNotes) {
             setNotasClinicas(cleanNotes);
             localStorage.setItem(keyNotas, cleanNotes);
@@ -295,6 +320,10 @@ function OdontogramaUI() {
         }
       } catch (err) {
         console.warn("No se pudo sincronizar odontograma con API:", err);
+      } finally {
+        if (!isCancelled) {
+          setIsSyncingServer(false);
+        }
       }
     }
 
@@ -514,21 +543,20 @@ function OdontogramaUI() {
       return;
     }
 
-    // 3. A-04: Resolver y validar profesional seleccionado responsable
-    const profs = await professionalService.getAll().catch(() => []);
-    const matchedProf = profs.find((pr: any) =>
-      (selectedProfessionalId && areGuidsEqual(pr.id, selectedProfessionalId)) ||
-      (user?.personId && areGuidsEqual(pr.id, user.personId)) ||
-      (user?.id && areGuidsEqual(pr.id, user.id)) ||
-      (user?.name && `${pr.firstName || ""} ${pr.lastName || ""}`.toLowerCase().includes(user.name.toLowerCase()))
-    );
-    const professionalIdToUse = selectedProfessionalId || matchedProf?.id;
-
-    if (!professionalIdToUse) {
+    // 3. F-08: Resolver y validar profesional seleccionado responsable
+    if (!selectedProfessionalId) {
       setErrorToast("Por favor selecciona el profesional odontólogo responsable antes de guardar el odontograma.");
       setTimeout(() => setErrorToast(null), 5000);
       return;
     }
+
+    const matchedProf = profesionalesList.find((pr) => areGuidsEqual(pr.id, selectedProfessionalId));
+    if (!matchedProf) {
+      setErrorToast("El profesional seleccionado no es válido o no está activo en el sistema.");
+      setTimeout(() => setErrorToast(null), 5000);
+      return;
+    }
+    const professionalIdToUse = selectedProfessionalId;
 
     // 4. A-03: Serializar hallazgos del odontograma y estado estructurado completo
     const findingsList: string[] = [];
@@ -552,8 +580,9 @@ function OdontogramaUI() {
       selectedDiagnosis: state.selectedDiagnosis,
     });
 
+    // F-06: Delimitación de notas clínicas para evitar mezclar y duplicar resúmenes generados
     const fullClinicalNotes = [
-      notasClinicas ? `Notas Clínicas: ${notasClinicas}` : null,
+      notasClinicas.trim() ? `=== NOTAS_CLINICAS ===\n${notasClinicas.trim()}\n=== FIN_NOTAS_CLINICAS ===` : null,
       findingsList.length > 0 ? `Hallazgos Odontograma: ${findingsList.join('; ')}` : "Sin hallazgos patológicos activos en el odontograma",
       `Dentición: ${state.dentitionType === "permanent" ? "Permanente" : "Temporal"}`,
       `ODONTOGRAM_STATE:${serializedStatePayload}`,
@@ -749,7 +778,7 @@ function OdontogramaUI() {
             )}
           </div>
 
-          {/* Selector de Profesional Responsable (A-04) */}
+          {/* Selector de Profesional Responsable (A-04, F-08) */}
           <div className="flex items-center gap-2 px-3.5 py-2 bg-white/80 dark:bg-slate-900/70 border border-slate-200/80 dark:border-white/10 rounded-2xl backdrop-blur-2xl shadow-lg shadow-slate-900/5 dark:shadow-[0_12px_36px_rgba(0,0,0,0.5)]">
             <ShieldCheck size={16} className="text-teal-600 dark:text-teal-400 flex-shrink-0" />
             <div className="flex flex-col">
@@ -761,6 +790,9 @@ function OdontogramaUI() {
                 onChange={(e) => setSelectedProfessionalId(e.target.value)}
                 className="bg-transparent text-xs font-black text-slate-900 dark:text-white outline-none cursor-pointer border-none p-0 pr-2"
               >
+                <option value="" className="bg-white dark:bg-slate-900 text-slate-500">
+                  -- Seleccionar Odontólogo --
+                </option>
                 {profesionalesList.map((pr) => (
                   <option key={pr.id} value={pr.id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
                     {pr.nombre} ({pr.specialty})
@@ -770,11 +802,20 @@ function OdontogramaUI() {
             </div>
           </div>
 
+          {/* Indicador de Sincronización en Tiempo Real (F-07) */}
+          {isSyncingServer && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 rounded-xl text-xs font-bold animate-pulse">
+              <RefreshCw size={13} className="animate-spin" />
+              <span>Sincronizando...</span>
+            </div>
+          )}
+
           {/* Botón de Acción Principal Guardar */}
           <button
             type="button"
             onClick={handleSaveNotes}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 px-6 py-3 text-xs sm:text-sm font-black text-white dark:text-slate-950 shadow-lg shadow-cyan-500/25 dark:shadow-[0_0_25px_rgba(34,211,238,0.4)] transition-all active:scale-95 cursor-pointer transform hover:-translate-y-0.5"
+            disabled={isSyncingServer}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3 text-xs sm:text-sm font-black text-white dark:text-slate-950 shadow-lg shadow-cyan-500/25 dark:shadow-[0_0_25px_rgba(34,211,238,0.4)] transition-all active:scale-95 cursor-pointer transform hover:-translate-y-0.5"
             title="Guardar estado del odontograma y notas clínicas"
           >
             <Save size={17} strokeWidth={2.4} />

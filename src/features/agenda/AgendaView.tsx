@@ -355,18 +355,31 @@ export function AgendaView() {
   }, [citasSemana]);
 
   const espaciosDisponibles = useMemo(() => {
-    // Franjas horarias por día (7:00 a 18:00 = 11 franjas) escaladas por cantidad de profesionales filtrados
-    const numOdontologos = odontologosSeleccionados.includes("Todos los odontólogos")
-      ? Math.max(1, listaOdontologos.filter((o) => o.nombre !== "Todos los odontólogos").length)
-      : Math.max(1, odontologosSeleccionados.length);
-    const totalSlotsSemana = diasSemana.length * 11 * numOdontologos;
-    // Solo cuentan como ocupadas las citas activas vigentes (no canceladas)
+    const activeProfs = odontologosSeleccionados.includes("Todos los odontólogos")
+      ? listaOdontologos.filter((o) => o.nombre !== "Todos los odontólogos")
+      : listaOdontologos.filter((o) => odontologosSeleccionados.includes(o.nombre));
+    const numOdontologos = activeProfs.length;
+    if (numOdontologos === 0) return 0;
+
+    // F-09: Calcular franjas laborales reales por semana (L-V: 10 franjas útiles, Sáb: 5 franjas, Dom: 0)
+    let totalSlotsSemana = 0;
+    diasSemana.forEach((d) => {
+      const dayOfWeek = d.getDay(); // 0 = Domingo, 6 = Sábado
+      if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+        totalSlotsSemana += 10 * numOdontologos;
+      } else if (dayOfWeek === 6) {
+        totalSlotsSemana += 5 * numOdontologos;
+      }
+    });
+
+    // Citas activas de la semana que ocupan franjas
     const ocupadasSemana = citasSemana.filter((cita) => {
       const st = (cita.estado || "").toLowerCase();
       return st !== "cancelada" && st !== "no disponible" && st !== "cancelled";
     }).length;
+
     return Math.max(0, totalSlotsSemana - ocupadasSemana);
-  }, [diasSemana.length, citasSemana, odontologosSeleccionados, listaOdontologos]);
+  }, [diasSemana, citasSemana, odontologosSeleccionados, listaOdontologos]);
 
   const cambiarSemana = (direccion: number) => {
     setFechaActual((fecha) => sumarDias(fecha, direccion * 7));
