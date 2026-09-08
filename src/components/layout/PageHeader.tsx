@@ -5,6 +5,7 @@ import {
   Bell,
   X,
   CalendarDays,
+  MessageSquare,
   CheckCheck,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -231,7 +232,7 @@ export function PageHeader({
                       }`}
                     >
                       <div className="p-2 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
-                        <CalendarDays size={16} />
+                        {n.type === "whatsapp_escalated" ? <MessageSquare size={16} /> : <CalendarDays size={16} />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-1">
