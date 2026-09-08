@@ -33,25 +33,6 @@ export default function LandingPage() {
   const isDark = theme === "dark";
   const backgroundImage = isDark ? fondoDark : fondoLight;
 
-  const heroBackgroundStyle = {
-    backgroundImage: isDark
-      ? `linear-gradient(
-          90deg,
-          rgba(1, 25, 46, 0.78) 0%,
-          rgba(1, 25, 46, 0.62) 45%,
-          rgba(1, 25, 46, 0.35) 100%
-        ), url(${cuadroLandingDark})`
-      : `linear-gradient(
-          90deg,
-          rgba(249, 246, 235, 0.32) 0%,
-          rgba(249, 246, 235, 0.18) 45%,
-          rgba(249, 246, 235, 0.06) 100%
-        ), url(${cuadroLandingDark})`,
-    backgroundSize: "cover",
-    backgroundPosition: "center",
-    backgroundRepeat: "no-repeat",
-  };
-
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-[#F9F6EB] text-[#0A0A0A] transition-colors duration-500 selection:bg-[#437C76] selection:text-white dark:bg-[#01192E] dark:text-slate-100">
       {/* FONDO GENERAL */}
@@ -78,6 +59,10 @@ export default function LandingPage() {
               <img
                 src={logoNexus}
                 alt="NexusOdonto Logo"
+                width={40}
+                height={40}
+                fetchPriority="high"
+                decoding="async"
                 className="h-10 w-10 object-contain drop-shadow"
               />
             </div>
@@ -197,20 +182,31 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* HERO */}
-      <section className="relative z-10 min-h-[calc(100vh-80px)] overflow-hidden px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
+      {/* MAIN CONTENT LANDMARK */}
+      <main id="main-content" className="relative z-10">
+        {/* HERO */}
+        <section className="relative z-10 min-h-[calc(100vh-80px)] overflow-hidden px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
         <div className="relative mx-auto flex min-h-[650px] max-w-[1600px] items-center justify-center">
           {/* CUADRO PRINCIPAL */}
           <div
             className="relative z-20 w-full max-w-[1550px] overflow-hidden rounded-[24px] bg-transparent shadow-[0_30px_100px_rgba(0,0,0,0.18)] transition-all duration-500 dark:bg-[#01192E] dark:shadow-[0_30px_100px_rgba(0,0,0,0.28)]"
-            style={heroBackgroundStyle}
           >
+            {/* HERO LCP BACKGROUND IMAGE */}
+            <img
+              src={cuadroLandingDark}
+              alt=""
+              role="presentation"
+              fetchPriority="high"
+              decoding="async"
+              className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
+            />
+
             {/* CAPA DE PROFUNDIDAD */}
             <div
               className={`pointer-events-none absolute inset-0 ${
                 isDark
-                  ? "bg-gradient-to-br from-[#01192E]/15 via-transparent to-[#022337]/25"
-                  : "bg-gradient-to-br from-[#F9F6EB]/8 via-transparent to-[#F9F6EB]/10"
+                  ? "bg-gradient-to-r from-[#01192E]/78 via-[#01192E]/62 to-[#01192E]/35"
+                  : "bg-gradient-to-r from-[#F9F6EB]/40 via-[#F9F6EB]/25 to-[#F9F6EB]/10"
               }`}
             />
 
@@ -883,6 +879,7 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+      </main>
 
       {/* FOOTER */}
       <footer
@@ -895,6 +892,10 @@ export default function LandingPage() {
               <img
                 src={logoNexus}
                 alt="Logo NexusOdonto"
+                width={40}
+                height={40}
+                loading="lazy"
+                decoding="async"
                 className="h-10 w-10 object-contain"
               />
 
