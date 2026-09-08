@@ -235,12 +235,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       let errorMessage = 'Error de conexión con el servidor. Inténtalo más tarde.';
 
       if (status === 401) {
-        errorMessage = 'Credenciales incorrectas. Verifica tu usuario y contraseña.';
+        if (cleanIdentifier.includes('@')) {
+          errorMessage = 'Credenciales incorrectas. Si estás ingresando con correo, intenta con tu número de cédula/documento.';
+        } else {
+          errorMessage = 'Credenciales incorrectas. Verifica tu número de documento y contraseña.';
+        }
       } else if (status === 403) {
         errorMessage = 'Esta cuenta se encuentra desactivada. Contacta al soporte o administrador.';
       } else if (error.response?.data?.message) {
-        if (error.response.data.message === 'Invalid email or password.') {
-          errorMessage = 'Credenciales incorrectas. Verifica tu usuario y contraseña.';
+        if (error.response.data.message === 'Invalid email or password.' || error.response.data.message === 'Invalid login ID or password.') {
+          if (cleanIdentifier.includes('@')) {
+            errorMessage = 'Credenciales incorrectas. Si estás ingresando con correo, intenta con tu número de cédula/documento.';
+          } else {
+            errorMessage = 'Credenciales incorrectas. Verifica tu usuario y contraseña.';
+          }
         } else {
           errorMessage = error.response.data.message;
         }
