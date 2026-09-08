@@ -5,6 +5,10 @@ import { ConvencionesToolbar } from "./components/ConvencionesToolbar";
 import { patientService } from "../../api/patientService";
 import { personService } from "../../api/personService";
 import { odontogramService } from "../../api/odontogramService";
+import { clinicalHistoryService } from "../../api/clinicalHistoryService";
+import { professionalService } from "../../api/professionalService";
+import { useAuth } from "../auth/AuthContext";
+import { areGuidsEqual } from "../../utils/roleUtils";
 import {
   User,
   X,
@@ -135,9 +139,11 @@ interface PacienteItem {
   id: string;
   nombre: string;
   cedula: string;
+  clinicalHistoryId?: string;
 }
 
 function OdontogramaUI() {
+  const { user } = useAuth();
   const { theme } = useTheme();
   const isDarkMode = theme === "dark";
   const [state, setState] = useState(cargarOdontograma);
@@ -158,15 +164,19 @@ function OdontogramaUI() {
   // Cargar lista dinámica de pacientes desde API
   const fetchPacientes = useCallback(async () => {
     try {
-      const patientsData = await patientService.getAll().catch(() => []);
-      const personsData = await personService.getAll().catch(() => []);
+      const [patientsData, personsData, historiesData] = await Promise.all([
+        patientService.getAll().catch(() => []),
+        personService.getAll().catch(() => []),
+        clinicalHistoryService.getAll().catch(() => []),
+      ]);
 
       if (patientsData && patientsData.length > 0) {
         const mapped: PacienteItem[] = patientsData.map((p, idx) => {
           const person = personsData.find((per) => per.id === p.personId);
           const fullName = person ? `${person.firstName} ${person.lastName}` : (p.firstName ? `${p.firstName} ${p.lastName}` : `Paciente #${idx + 1}`);
           const doc = person?.documentNumber || p.documentNumber || `10${idx}8765432`;
-          return { id: p.id, nombre: fullName, cedula: doc };
+          const history = historiesData.find((h: any) => areGuidsEqual(h.patientId, p.id));
+          return { id: p.id, nombre: fullName, cedula: doc, clinicalHistoryId: history?.id };
         });
         setPacientesList(mapped);
         if (mapped.length > 0) {
@@ -406,18 +416,70 @@ function OdontogramaUI() {
     const keyNotas = getNotasStorageKey(selectedPaciente.id);
     localStorage.setItem(keyNotas, notasClinicas);
 
+    // 2. Obtener o resolver clinicalHistoryId real
+    let historyId = selectedPaciente.clinicalHistoryId;
+    if (!historyId) {
+      const histories = await clinicalHistoryService.getAll().catch(() => []);
+      const matched = histories.find((h) => areGuidsEqual(h.patientId, selectedPaciente.id));
+      historyId = matched?.id;
+    }
+
+    if (!historyId) {
+      setErrorToast("No se encontró el expediente de historia clínica del paciente en el servidor.");
+      setTimeout(() => setErrorToast(null), 5000);
+      return;
+    }
+
+    // 3. Resolver profesional activo
+    const profs = await professionalService.getAll().catch(() => []);
+    const matchedProf = profs.find((pr: any) =>
+      (user?.personId && areGuidsEqual(pr.personId, user.personId)) ||
+      (user?.id && areGuidsEqual(pr.id, user.id)) ||
+      (user?.name && `${pr.firstName || ""} ${pr.lastName || ""}`.toLowerCase().includes(user.name.toLowerCase()))
+    );
+    const professionalIdToUse = matchedProf?.id || (profs.length > 0 ? profs[0].id : null);
+
+    if (!professionalIdToUse) {
+      setErrorToast("No se encontró un profesional odontólogo activo para registrar el odontograma.");
+      setTimeout(() => setErrorToast(null), 5000);
+      return;
+    }
+
+    // 4. Serializar hallazgos del odontograma por pieza dental
+    const findingsList: string[] = [];
+    Object.entries(state.teeth).forEach(([toothNum, t]) => {
+      if (!t || !t.isVisible) return;
+      if (t.isAbsent || t.isExtracted) {
+        findingsList.push(`Pieza ${toothNum}: Ausente/Extraída`);
+        return;
+      }
+      const activeFaces = Object.entries(t.faces || {})
+        .filter(([_, f]) => f?.diagnosis && f.diagnosis !== 'none')
+        .map(([face, f]) => `${face} (${f.diagnosis})`);
+      if (activeFaces.length > 0) {
+        findingsList.push(`Pieza ${toothNum}: ${activeFaces.join(', ')}`);
+      }
+    });
+
+    const fullClinicalNotes = [
+      notasClinicas ? `Notas Clínicas: ${notasClinicas}` : null,
+      findingsList.length > 0 ? `Hallazgos Odontograma: ${findingsList.join('; ')}` : "Sin hallazgos patológicos activos en el odontograma",
+      `Dentición: ${state.dentitionType === "permanent" ? "Permanente" : "Temporal"}`
+    ].filter(Boolean).join('\n\n');
+
     try {
       await odontogramService.create({
-        patientId: selectedPaciente.id,
+        clinicalHistoryId: historyId,
+        professionalId: professionalIdToUse,
         dentitionTypeId: state.dentitionType === "permanent" ? "19000000-0000-0000-0000-000000000001" : "19000000-0000-0000-0000-000000000002",
-        notes: notasClinicas || undefined,
+        notes: fullClinicalNotes,
       });
 
-      setSuccessToast("¡Odontograma y notas clínicas guardadas con éxito!");
+      setSuccessToast("¡Odontograma, hallazgos dentales y notas guardadas con éxito!");
       setTimeout(() => setSuccessToast(null), 3500);
     } catch (err: any) {
       console.error("Error al persistir odontograma en API:", err);
-      setErrorToast(err?.response?.data?.message || "Error al guardar odontograma clínico en el servidor.");
+      setErrorToast(err?.response?.data?.message || err?.message || "Error al guardar odontograma clínico en el servidor.");
       setTimeout(() => setErrorToast(null), 5000);
     }
   };

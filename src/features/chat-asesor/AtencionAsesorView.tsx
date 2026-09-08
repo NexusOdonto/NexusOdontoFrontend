@@ -18,6 +18,7 @@ import {
   X,
   Inbox,
   Bell,
+  AlertCircle,
 } from "lucide-react";
 import {
   chatbotService,
@@ -224,6 +225,7 @@ export function AtencionAsesorView() {
 
   const [sendIdentity, setSendIdentity] = useState<"CHATBOT" | "AGENTE_HUMANO">("CHATBOT");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastErrorMessage, setToastErrorMessage] = useState<string | null>(null);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
 
   const readSetRef = useRef<Set<string>>(new Set());
@@ -235,6 +237,11 @@ export function AtencionAsesorView() {
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 4000);
+  }, []);
+
+  const showErrorToast = useCallback((msg: string) => {
+    setToastErrorMessage(msg);
+    setTimeout(() => setToastErrorMessage(null), 5000);
   }, []);
 
   const scrollToBottom = useCallback(() => {
@@ -452,7 +459,7 @@ export function AtencionAsesorView() {
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const text = inputText.trim();
-    if (!text || !selectedChat) return;
+    if (!text || !selectedChat || sendingMessage) return;
 
     const roleId =
       sendIdentity === "CHATBOT"
@@ -462,36 +469,7 @@ export function AtencionAsesorView() {
     const currentTimeIso = new Date().toISOString();
     const formattedNow = formatTime(currentTimeIso);
 
-    const newMsgObj: ChatbotMessage = {
-      id: `local-msg-${Date.now()}`,
-      chatbotConversationId: selectedChat.id,
-      messageRoleId: roleId,
-      content: text,
-      createdAt: currentTimeIso,
-    };
-
-    setMessages((prev) => deduplicateMessages([...prev, newMsgObj]));
-    setInputText("");
     setSendingMessage(true);
-
-    readSetRef.current.add(selectedChat.id);
-
-    setChats((prev) => {
-      const updated = prev.map((c) =>
-        c.id === selectedChat.id
-          ? {
-              ...c,
-              lastMessage: text,
-              lastMessageTime: formattedNow,
-              rawTimestamp: currentTimeIso,
-              status: "ATENDIDA_HUMANO" as const,
-              unread: false,
-              unreadCount: 0,
-            }
-          : c
-      );
-      return updated.sort((a, b) => parseTimestamp(b.rawTimestamp) - parseTimestamp(a.rawTimestamp));
-    });
 
     try {
       let sentToBackend = false;
@@ -510,27 +488,62 @@ export function AtencionAsesorView() {
           chatbotConversationId: selectedChat.id,
           messageRoleId: roleId,
           content: text,
-        }).catch(() => null);
+        });
 
         const cleanPhone = selectedChat.chatIdentifier.replace(/@.*$/, "").replace(/\D/g, "");
-        await chatbotService.sendWhatsAppMessage({
+        const waRes = await chatbotService.sendWhatsAppMessage({
           destinationPhone: cleanPhone || selectedChat.chatIdentifier,
           content: text,
           patientId: selectedChat.patientId,
         });
+
+        if (!waRes && waRes !== undefined) {
+          throw new Error("Respuesta inválida del servidor al despachar mensaje de WhatsApp.");
+        }
       }
+
+      // Inserción segura solo después de confirmar la entrega en servidor
+      const newMsgObj: ChatbotMessage = {
+        id: `msg-${Date.now()}`,
+        chatbotConversationId: selectedChat.id,
+        messageRoleId: roleId,
+        content: text,
+        createdAt: currentTimeIso,
+      };
+
+      setMessages((prev) => deduplicateMessages([...prev, newMsgObj]));
+      setInputText("");
+      readSetRef.current.add(selectedChat.id);
+
+      setChats((prev) => {
+        const updated = prev.map((c) =>
+          c.id === selectedChat.id
+            ? {
+                ...c,
+                lastMessage: text,
+                lastMessageTime: formattedNow,
+                rawTimestamp: currentTimeIso,
+                status: "ATENDIDA_HUMANO" as const,
+                unread: false,
+                unreadCount: 0,
+              }
+            : c
+        );
+        return updated.sort((a, b) => parseTimestamp(b.rawTimestamp) - parseTimestamp(a.rawTimestamp));
+      });
 
       showToast(
         sendIdentity === "CHATBOT"
           ? "Mensaje enviado a WhatsApp haciéndose pasar por NexusBot (Camuflaje IA)."
           : "Mensaje enviado a WhatsApp como Asesor Humano de Recepción."
       );
-    } catch (err) {
-      console.warn("Could not sync message to backend directly:", err);
-      showToast("Mensaje registrado localmente en la sesión activa.");
+      setTimeout(scrollToBottom, 50);
+    } catch (err: any) {
+      console.error("Error al enviar mensaje:", err);
+      const errMsg = err?.response?.data?.message || err?.message || "No se pudo entregar el mensaje. Error de conexión con el servidor.";
+      showErrorToast(errMsg);
     } finally {
       setSendingMessage(false);
-      setTimeout(scrollToBottom, 50);
     }
   };
 
@@ -599,6 +612,16 @@ export function AtencionAsesorView() {
             <Bell size={18} className="animate-bounce" />
           </div>
           <span className="text-xs font-semibold tracking-wide">{toastMessage}</span>
+        </div>
+      )}
+
+      {/* TOAST DE ERROR FLOTANTE */}
+      {toastErrorMessage && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-rose-950/95 text-rose-200 px-5 py-3.5 rounded-2xl shadow-2xl border border-rose-500/50 backdrop-blur-md animate-in fade-in slide-in-from-bottom-5 duration-200">
+          <div className="w-8 h-8 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center border border-rose-500/30">
+            <AlertCircle size={18} />
+          </div>
+          <span className="text-xs font-semibold tracking-wide">{toastErrorMessage}</span>
         </div>
       )}
 

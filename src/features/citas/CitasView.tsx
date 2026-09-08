@@ -312,7 +312,7 @@ export function CitasView() {
             id: p.id,
             label: name,
             subLabel: `Especialidad: ${spec}`,
-            data: { professionalId: p.id, specialty: spec }
+            data: { professionalId: p.id, id: p.id, specialty: spec }
           };
         });
         setProfessionalsOptions(profOpts);
@@ -828,8 +828,13 @@ export function CitasView() {
     const matchedProf = profsEntities.find((p) =>
       `${p.firstName || ""} ${p.lastName || ""}`.toLowerCase().includes(formProfesional.toLowerCase())
     );
+    const matchedProfOption = professionalsOptions.find(
+      (d) => d.label.toLowerCase() === formProfesional.toLowerCase() || areGuidsEqual(d.id, formProfesional)
+    );
     const matchedProfId =
-      professionalsOptions.find((d) => d.label.toLowerCase() === formProfesional.toLowerCase() || areGuidsEqual(d.id, formProfesional))?.data?.id ||
+      matchedProfOption?.data?.professionalId ||
+      matchedProfOption?.data?.id ||
+      matchedProfOption?.id ||
       matchedProf?.id;
 
     if (!matchedProfId) {
@@ -960,8 +965,13 @@ export function CitasView() {
       }
     }
 
+    const matchedEditProfOption = professionalsOptions.find(
+      (d) => d.label.toLowerCase() === editProfesional.toLowerCase() || areGuidsEqual(d.id, editProfesional)
+    );
     const matchedProfId =
-      professionalsOptions.find((d) => d.label.toLowerCase() === editProfesional.toLowerCase() || areGuidsEqual(d.id, editProfesional))?.data?.id ||
+      matchedEditProfOption?.data?.professionalId ||
+      matchedEditProfOption?.data?.id ||
+      matchedEditProfOption?.id ||
       selectedCitaToEdit.professionalId;
 
     const matchedServiceId =

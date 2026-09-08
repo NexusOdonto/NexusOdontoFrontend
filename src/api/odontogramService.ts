@@ -94,11 +94,15 @@ export const odontogramService = {
   },
 
   create: async (data: CreateOdontogramRequestDto): Promise<OdontogramResponseDto> => {
-    const historyId = data.clinicalHistoryId || data.patientId || "20000000-0000-0000-0000-000000000001";
-    const profId = data.professionalId || "1c000000-0000-0000-0000-000000000001";
+    if (!data.clinicalHistoryId) {
+      throw new Error("Se requiere la historia clínica del paciente para registrar el odontograma.");
+    }
+    if (!data.professionalId) {
+      throw new Error("Se requiere el identificador del profesional para registrar el odontograma.");
+    }
     const payload = {
-      clinicalHistoryId: historyId,
-      professionalId: profId,
+      clinicalHistoryId: data.clinicalHistoryId,
+      professionalId: data.professionalId,
       clinicalAttentionId: data.clinicalAttentionId || null,
       notes: data.notes || null,
     };

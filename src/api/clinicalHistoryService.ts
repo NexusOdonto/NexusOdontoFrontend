@@ -87,8 +87,11 @@ export const clinicalHistoryService = {
   },
 
   createAttention: async (data: CreateClinicalAttentionRequestDto): Promise<ClinicalAttentionResponseDto> => {
+    if (!data.appointmentId || data.appointmentId.trim() === '') {
+      throw new Error("Se requiere una cita vinculada activa para registrar la atención clínica.");
+    }
     const payload = {
-      appointmentId: data.appointmentId || "1e000000-0000-0000-0000-000000000001",
+      appointmentId: data.appointmentId,
       clinicalExam: data.clinicalExam || data.physicalExamination || data.reasonForConsultation || null,
       progressNotes: data.progressNotes || data.observations || data.currentIllness || null,
       treatmentPlan: data.treatmentPlan || data.planAndTreatment || null,

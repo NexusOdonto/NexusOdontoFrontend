@@ -236,22 +236,17 @@ export const chatbotService = {
 
   // Notificación WhatsApp saliente
   sendWhatsAppMessage: async (data: SendWhatsAppNotificationDto): Promise<any> => {
-    try {
-      const payload = {
-        destinationPhone: data.destinationPhone,
-        content: data.content,
-        patientId: data.patientId || null,
-        appointmentId: data.appointmentId || null,
-        whatsAppNotificationTypeId:
-          data.whatsAppNotificationTypeId || '70000000-0000-0000-0000-000000000001',
-        scheduledFor: new Date().toISOString(),
-      };
-      const response = await axiosClient.post('/v1/WhatsAppNotifications', payload);
-      return response.data;
-    } catch (err) {
-      console.warn('Could not register in WhatsAppNotifications:', err);
-      return null;
-    }
+    const payload = {
+      destinationPhone: data.destinationPhone,
+      content: data.content,
+      patientId: data.patientId || null,
+      appointmentId: data.appointmentId || null,
+      whatsAppNotificationTypeId:
+        data.whatsAppNotificationTypeId || '70000000-0000-0000-0000-000000000001',
+      scheduledFor: new Date().toISOString(),
+    };
+    const response = await axiosClient.post('/v1/WhatsAppNotifications', payload);
+    return response.data;
   },
 
   // Catálogos

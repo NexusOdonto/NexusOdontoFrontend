@@ -22,6 +22,7 @@ import {
   Printer,
   Edit3,
   Trash2,
+  AlertCircle,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { clinicalHistoryService, type DiagnosisResponseDto, type ProcedurePerformedResponseDto, type CreateClinicalAttentionRequestDto } from "../../api/clinicalHistoryService";
@@ -72,11 +73,13 @@ export function HistoriaClinicaView() {
   const [procedures, setProcedures] = useState<ProcedurePerformedResponseDto[]>([]);
   const [nextAppointment, setNextAppointment] = useState<{ servicio: string; profesional: string; fecha: string; hora: string } | null>(null);
   const [dentistsList, setDentistsList] = useState<string[]>(LICENSED_DENTISTS_FALLBACK);
+  const [patientAppointmentsList, setPatientAppointmentsList] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<"evoluciones" | "diagnosticos" | "procedimientos" | "antecedentes">("evoluciones");
 
   // Modal Nueva Evolución
   const [showNewAttentionModal, setShowNewAttentionModal] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Form State para nueva atención
   const [formMotivo, setFormMotivo] = useState("");
@@ -269,20 +272,29 @@ export function HistoriaClinicaView() {
         );
       });
 
+      setPatientAppointmentsList(patientAppointments);
+
       const patientAppointmentIds = new Set(patientAppointments.map((a: any) => a.id || a.appointmentId).filter(Boolean));
 
-      const todayStr = new Date().toISOString().split("T")[0];
-      const futureApps = patientAppointments.filter((a: any) => {
-        const appDate = a.startsAt ? a.startsAt.split("T")[0] : a.fecha || "";
-        const isFutureOrToday = appDate >= todayStr;
-        const isNotCancelled = !a.cancelledAt && a.estado !== "Cancelada";
-        return isFutureOrToday && isNotCancelled;
-      });
+      // FRONT-06: Ordenar cronológicamente citas futuras y filtrar las pasadas
+      const now = new Date();
+      const futureApps = patientAppointments
+        .map((a: any) => {
+          const datePart = a.startsAt ? a.startsAt.split("T")[0] : a.fecha || "";
+          const timePart = (a.startsAt && a.startsAt.includes("T")) ? a.startsAt.split("T")[1].substring(0, 5) : a.hora || "00:00";
+          const parsedTime = datePart ? new Date(`${datePart}T${timePart}:00`).getTime() : 0;
+          return { ...a, _parsedTime: parsedTime, _datePart: datePart, _timePart: timePart };
+        })
+        .filter((a: any) => {
+          const isNotCancelled = !a.cancelledAt && a.estado !== "Cancelada";
+          return a._parsedTime >= now.getTime() && isNotCancelled;
+        })
+        .sort((a: any, b: any) => a._parsedTime - b._parsedTime);
 
       if (futureApps.length > 0) {
         const next = futureApps[0];
-        const nextDate = next.startsAt ? next.startsAt.split("T")[0] : next.fecha || todayStr;
-        const nextHour = next.startsAt && next.startsAt.includes("T") ? next.startsAt.split("T")[1].substring(0, 5) : next.hora || "09:00";
+        const nextDate = next._datePart || new Date().toISOString().split("T")[0];
+        const nextHour = next._timePart || "09:00";
 
         // Resolver nombre real del servicio
         let resolvedServName = next.serviceName || next.servicio;
@@ -372,30 +384,25 @@ export function HistoriaClinicaView() {
   const handleSaveNewAttention = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formMotivo || !formDiagnostico) return;
+    setErrorMessage(null);
 
-    const newAtt: LocalAttention = {
-      id: `att-${Date.now()}`,
-      fecha: new Date().toLocaleString("es-CO", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-      profesional: formProfesional,
-      motivo: formMotivo,
-      enfermedadActual: formEnfermedad || "Paciente acude a consulta por síntomas expresados.",
-      examenFisico: formExamen || "Examen físico intrabucal realizado.",
-      diagnostico: formDiagnostico,
-      cie10: formCie10 || "K02.1",
-      planTratamiento: formPlan || "Tratamiento realizado de acuerdo a protocolo clínico.",
-      observaciones: formObservaciones,
-    };
+    const linkedAppointment =
+      patientAppointmentsList.find((a: any) => !a.cancelledAt && a.estado !== "Cancelada") ||
+      patientAppointmentsList[0];
+    const appointmentIdToUse = linkedAppointment?.id || linkedAppointment?.appointmentId;
+
+    if (!appointmentIdToUse) {
+      const msg = "Se requiere una cita vinculada activa del paciente para registrar la atención clínica.";
+      setErrorMessage(msg);
+      setTimeout(() => setErrorMessage(null), 5000);
+      return;
+    }
 
     try {
       const payload: CreateClinicalAttentionRequestDto = {
+        appointmentId: appointmentIdToUse,
         clinicalHistoryId: selectedPatientId,
-        professionalId: user?.personId || "12000000-0000-0000-0000-000000000001",
+        professionalId: user?.personId || user?.id || "12000000-0000-0000-0000-000000000001",
         attentionDate: new Date().toISOString(),
         reasonForConsultation: formMotivo,
         currentIllness: formEnfermedad,
@@ -404,21 +411,43 @@ export function HistoriaClinicaView() {
         observations: formObservaciones,
       };
       await clinicalHistoryService.createAttention(payload);
-    } catch (err) {
-      console.warn("Could not save attention to backend API directly, added to UI state:", err);
+
+      const newAtt: LocalAttention = {
+        id: `att-${Date.now()}`,
+        fecha: new Date().toLocaleString("es-CO", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        profesional: formProfesional,
+        motivo: formMotivo,
+        enfermedadActual: formEnfermedad || "Paciente acude a consulta por síntomas expresados.",
+        examenFisico: formExamen || "Examen físico intrabucal realizado.",
+        diagnostico: formDiagnostico,
+        cie10: formCie10 || "K02.1",
+        planTratamiento: formPlan || "Tratamiento realizado de acuerdo a protocolo clínico.",
+        observaciones: formObservaciones,
+      };
+
+      setAttentions((prev) => [newAtt, ...prev]);
+      setShowNewAttentionModal(false);
+      setFormMotivo("");
+      setFormEnfermedad("");
+      setFormExamen("");
+      setFormDiagnostico("");
+      setFormPlan("");
+      setFormObservaciones("");
+
+      setToastMessage("Evolución clínica registrada correctamente.");
+      setTimeout(() => setToastMessage(null), 3500);
+    } catch (err: any) {
+      console.error("Error al registrar evolución clínica:", err);
+      const errMsg = err?.response?.data?.message || err?.message || "No se pudo registrar la evolución clínica en el servidor.";
+      setErrorMessage(errMsg);
+      setTimeout(() => setErrorMessage(null), 6000);
     }
-
-    setAttentions((prev) => [newAtt, ...prev]);
-    setShowNewAttentionModal(false);
-    setFormMotivo("");
-    setFormEnfermedad("");
-    setFormExamen("");
-    setFormDiagnostico("");
-    setFormPlan("");
-    setFormObservaciones("");
-
-    setToastMessage("Evolución clínica registrada correctamente.");
-    setTimeout(() => setToastMessage(null), 3500);
   };
 
   const handleOpenAntecedentes = () => {
@@ -482,6 +511,14 @@ export function HistoriaClinicaView() {
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 px-5 py-3 rounded-2xl shadow-2xl border border-cyan-500/30 animate-slideUp">
           <CheckCircle2 size={18} className="text-cyan-400 dark:text-cyan-600 shrink-0" />
           <span className="text-xs font-semibold">{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Toast Error Notificación */}
+      {errorMessage && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-rose-950/95 text-rose-200 px-5 py-3.5 rounded-2xl shadow-2xl border border-rose-500/40 animate-slideUp">
+          <AlertCircle size={18} className="text-rose-400 shrink-0" />
+          <span className="text-xs font-semibold">{errorMessage}</span>
         </div>
       )}
 

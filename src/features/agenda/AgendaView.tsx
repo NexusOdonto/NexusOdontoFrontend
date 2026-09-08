@@ -242,6 +242,7 @@ export function AgendaView() {
 
             return {
               id: idx + 1000,
+              rawGuid: a.id,
               paciente: resolvedPatientName || "Paciente Registrado",
               servicio: resolvedServiceName || "Consulta Odontológica",
               odontologo: resolvedProfName || (listaOdontologos[1] ? listaOdontologos[1].nombre : "Dra. Laura Gómez"),
@@ -297,24 +298,43 @@ export function AgendaView() {
     );
   }, [citas, odontologosSeleccionados]);
 
+  const fechasSemanaStr = useMemo(() => {
+    return diasSemana.map((d) => formatoFechaInput(d));
+  }, [diasSemana]);
+
+  const citasSemana = useMemo(() => {
+    return citasFiltradas.filter((cita) => fechasSemanaStr.includes(cita.fecha));
+  }, [citasFiltradas, fechasSemanaStr]);
+
   const citasHoy = useMemo(() => {
     const hoy = formatoFechaInput(new Date());
     return citasFiltradas.filter((cita) => cita.fecha === hoy).length;
   }, [citasFiltradas]);
 
   const confirmadas = useMemo(() => {
-    return citasFiltradas.filter((cita) => (cita.estado || "").toLowerCase() === "confirmada" || (cita.estado || "").toLowerCase() === "confirmed").length;
-  }, [citasFiltradas]);
+    return citasSemana.filter(
+      (cita) =>
+        (cita.estado || "").toLowerCase() === "confirmada" ||
+        (cita.estado || "").toLowerCase() === "confirmed"
+    ).length;
+  }, [citasSemana]);
 
   const pendientes = useMemo(() => {
-    return citasFiltradas.filter((cita) => (cita.estado || "").toLowerCase() === "pendiente" || (cita.estado || "").toLowerCase() === "pending").length;
-  }, [citasFiltradas]);
+    return citasSemana.filter(
+      (cita) =>
+        (cita.estado || "").toLowerCase() === "pendiente" ||
+        (cita.estado || "").toLowerCase() === "pending"
+    ).length;
+  }, [citasSemana]);
 
   const espaciosDisponibles = useMemo(() => {
-    return (
-      citasFiltradas.filter((cita) => (cita.estado || "").toLowerCase() === "disponible").length + 20
-    );
-  }, [citasFiltradas]);
+    // 11 franjas horarias por día (7:00 a 18:00) a lo largo de la semana visualizada
+    const totalSlotsSemana = diasSemana.length * 11;
+    const ocupadasSemana = citasSemana.filter(
+      (cita) => (cita.estado || "").toLowerCase() !== "disponible"
+    ).length;
+    return Math.max(0, totalSlotsSemana - ocupadasSemana);
+  }, [diasSemana.length, citasSemana]);
 
   const cambiarSemana = (direccion: number) => {
     setFechaActual((fecha) => sumarDias(fecha, direccion * 7));
@@ -424,13 +444,12 @@ export function AgendaView() {
         }) || (pacientesEntities.length > 0 ? pacientesEntities[0] : null);
       const patientIdToUse = nuevaCita.patientId || matchedPatient?.id || "1e000000-0000-0000-0000-000000000001";
 
+      const [year, month, day] = fechaSeleccionada.split('-').map(Number);
       const [h, m] = (nuevaCita.horaInicio || "09:00").split(":").map(Number);
-      const start = new Date(fechaSeleccionada);
-      start.setHours(isNaN(h) ? 9 : h, isNaN(m) ? 0 : m, 0, 0);
+      const start = new Date(year, month - 1, day, isNaN(h) ? 9 : h, isNaN(m) ? 0 : m, 0, 0);
 
       const [eh, em] = (nuevaCita.horaFin || "10:00").split(":").map(Number);
-      const end = new Date(fechaSeleccionada);
-      end.setHours(isNaN(eh) ? 10 : eh, isNaN(em) ? 0 : em, 0, 0);
+      const end = new Date(year, month - 1, day, isNaN(eh) ? 10 : eh, isNaN(em) ? 0 : em, 0, 0);
 
       const payload = {
         patientId: patientIdToUse,
@@ -468,8 +487,21 @@ export function AgendaView() {
     }
   };
 
-  const eliminarCita = (id: number) => {
-    setCitas((actuales) => actuales.filter((cita) => cita.id !== id));
+  const eliminarCita = async (id: number, rawGuid?: string) => {
+    try {
+      if (rawGuid && rawGuid.length > 10) {
+        await appointmentService.delete(rawGuid);
+      }
+      setCitas((actuales) => actuales.filter((cita) => cita.id !== id && cita.rawGuid !== rawGuid));
+      setSuccessToast("Cita eliminada correctamente");
+      setTimeout(() => setSuccessToast(null), 3500);
+      await fetchAgendaData();
+    } catch (error: any) {
+      console.error("Error al eliminar cita:", error);
+      const errorMsg = error?.response?.data?.message || "No se pudo eliminar la cita en el servidor";
+      setErrorMessage(errorMsg);
+      setTimeout(() => setErrorMessage(null), 5000);
+    }
   };
 
   const obtenerPosicionEvento = (cita: Cita) => {
@@ -783,7 +815,7 @@ export function AgendaView() {
                                       type="button"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        eliminarCita(cita.id);
+                                        eliminarCita(cita.id, cita.rawGuid);
                                       }}
                                       className="opacity-0 group-hover:opacity-100 transition p-0.5 hover:text-rose-500"
                                       title="Eliminar cita"
