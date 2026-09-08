@@ -17,6 +17,9 @@ import {
   CircleCheck,
   ClipboardCheck,
   HeartPulse,
+  Search,
+  FileText,
+  ScanLine,
 } from "lucide-react";
 
 import { useTheme } from "../../context/ThemeContext";
@@ -35,16 +38,16 @@ export default function LandingPage() {
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-[#F9F6EB] text-[#0A0A0A] transition-colors duration-500 selection:bg-[#437C76] selection:text-white dark:bg-[#01192E] dark:text-slate-100">
-      {/* FONDO GENERAL */}
       <div
-        className="fixed inset-0 pointer-events-none bg-cover bg-center opacity-30 transition-opacity duration-700 dark:opacity-35"
+        className="fixed inset-0 pointer-events-none bg-cover bg-center opacity-20 transition-opacity duration-700 dark:opacity-25"
         style={{
           backgroundImage: `url(${backgroundImage})`,
         }}
       />
 
-      {/* NAVBAR */}
-      <header className="sticky top-0 z-50 w-full border-b border-[#D4DACD]/70 bg-[#F9F6EB]/85 shadow-sm backdrop-blur-2xl transition-all dark:border-white/10 dark:bg-[#01192E]/85">
+      <div className="fixed inset-0 pointer-events-none bg-gradient-to-b from-[#F9F6EB]/20 via-transparent to-[#F4F0E6]/40 dark:from-[#01192E]/30 dark:via-[#01192E]/10 dark:to-[#01192E]/50" />
+
+      <header className="sticky top-0 z-50 w-full border-b border-[#D4DACD]/70 bg-[#F9F6EB]/90 shadow-sm backdrop-blur-2xl transition-all dark:border-white/10 dark:bg-[#01192E]/90">
         <div className="mx-auto flex h-20 max-w-[1400px] items-center justify-between px-4 sm:px-6 lg:px-8">
           <div
             onClick={() =>
@@ -63,7 +66,7 @@ export default function LandingPage() {
                 height={40}
                 fetchPriority="high"
                 decoding="async"
-                className="h-10 w-10 object-contain drop-shadow"
+                className="h-10 w-10 object-contain"
               />
             </div>
 
@@ -87,6 +90,13 @@ export default function LandingPage() {
             </a>
 
             <a
+              href="#proceso"
+              className="transition-colors hover:text-[#1F3F3B] dark:hover:text-[#A7BFB7]"
+            >
+              Atención
+            </a>
+
+            <a
               href="#compromiso"
               className="transition-colors hover:text-[#1F3F3B] dark:hover:text-[#A7BFB7]"
             >
@@ -104,7 +114,7 @@ export default function LandingPage() {
               href="#contacto"
               className="transition-colors hover:text-[#1F3F3B] dark:hover:text-[#A7BFB7]"
             >
-              Ubicación & Contacto
+              Contacto
             </a>
           </nav>
 
@@ -114,8 +124,8 @@ export default function LandingPage() {
               onClick={toggleTheme}
               className={`relative inline-flex h-8 w-16 cursor-pointer items-center overflow-hidden rounded-full border p-1 shadow-inner transition-all duration-300 ${
                 theme === "dark"
-                  ? "border-[#437C76]/60 bg-[#022337] shadow-[#01192E]/30"
-                  : "border-[#9FC1B8] bg-[#E5E9E2] shadow-[#7DADAA]/15"
+                  ? "border-[#437C76]/60 bg-[#022337]"
+                  : "border-[#9FC1B8] bg-[#E5E9E2]"
               }`}
               title={
                 theme === "dark"
@@ -131,7 +141,7 @@ export default function LandingPage() {
                     : "pointer-events-none scale-75 opacity-0"
                 }`}
               >
-                <svg className="h-4 w-4 drop-shadow" viewBox="0 0 24 24">
+                <svg className="h-4 w-4" viewBox="0 0 24 24">
                   <path
                     d="M7 2C4.8 2 3 3.8 3 6c0 3.2 1.2 7.5 2.5 11.5.7 2.1 2.2 2.5 3 1 .6-1.2 1.2-3 1.5-4.2.3 1.2.9 3 1.5 4.2.8 1.5 2.3 1.1 3-1C15.8 13.5 17 9.2 17 6c0-2.2-1.8-4-4-4-1.2 0-2.2.5-3 1.3C9.2 2.5 8.2 2 7 2z"
                     fill="#A7BFB7"
@@ -149,7 +159,7 @@ export default function LandingPage() {
                 }`}
               >
                 <svg
-                  className="h-4 w-4 text-[#65958E] drop-shadow-sm"
+                  className="h-4 w-4 text-[#65958E]"
                   viewBox="0 0 24 24"
                   fill="currentColor"
                 >
@@ -173,7 +183,7 @@ export default function LandingPage() {
             <button
               type="button"
               onClick={() => navigate("/login")}
-              className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-gradient-to-r from-[#437C76] via-[#2F5E58] to-[#1F3F3B] px-5 py-2.5 text-xs font-bold text-white shadow-md transition-all duration-200 hover:scale-105 hover:from-[#2F5E58] hover:to-[#1F3F3B] active:scale-95 sm:text-sm dark:text-[#01192E]"
+              className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-gradient-to-r from-[#437C76] via-[#2F5E58] to-[#1F3F3B] px-5 py-2.5 text-xs font-bold text-white shadow-md transition-all duration-200 hover:scale-105 active:scale-95 sm:text-sm dark:text-[#EAF4F1]"
             >
               <span>Iniciar Sesión</span>
               <ArrowRight size={16} />
@@ -182,709 +192,651 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* MAIN CONTENT LANDMARK */}
       <main id="main-content" className="relative z-10">
-        {/* HERO */}
         <section className="relative z-10 min-h-[calc(100vh-80px)] overflow-hidden px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
-        <div className="relative mx-auto flex min-h-[650px] max-w-[1600px] items-center justify-center">
-          {/* CUADRO PRINCIPAL */}
-          <div
-            className="relative z-20 w-full max-w-[1550px] overflow-hidden rounded-[24px] bg-transparent shadow-[0_30px_100px_rgba(0,0,0,0.18)] transition-all duration-500 dark:bg-[#01192E] dark:shadow-[0_30px_100px_rgba(0,0,0,0.28)]"
-          >
-            {/* HERO LCP BACKGROUND IMAGE */}
-            <img
-              src={cuadroLandingDark}
-              alt=""
-              role="presentation"
-              fetchPriority="high"
-              decoding="async"
-              className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
-            />
+          <div className="relative mx-auto flex min-h-[650px] max-w-[1600px] items-center justify-center">
+            <div className="relative z-20 w-full max-w-[1550px] overflow-hidden rounded-[24px] border border-[#D4DACD]/60 bg-[#F9F6EB]/30 shadow-[0_30px_100px_rgba(0,0,0,0.12)] transition-all duration-500 dark:border-white/10 dark:bg-[#01192E]/40 dark:shadow-[0_30px_100px_rgba(0,0,0,0.32)]">
+              <img
+                src={cuadroLandingDark}
+                alt=""
+                role="presentation"
+                fetchPriority="high"
+                decoding="async"
+                className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
+              />
 
-            {/* CAPA DE PROFUNDIDAD */}
-            <div
-              className={`pointer-events-none absolute inset-0 ${
-                isDark
-                  ? "bg-gradient-to-r from-[#01192E]/78 via-[#01192E]/62 to-[#01192E]/35"
-                  : "bg-gradient-to-r from-[#F9F6EB]/40 via-[#F9F6EB]/25 to-[#F9F6EB]/10"
-              }`}
-            />
+              <div
+                className={`pointer-events-none absolute inset-0 ${
+                  isDark
+                    ? "bg-gradient-to-r from-[#01192E]/95 via-[#01192E]/82 to-[#01192E]/35"
+                    : "bg-gradient-to-r from-[#F9F6EB]/92 via-[#F9F6EB]/70 to-[#F9F6EB]/20"
+                }`}
+              />
 
-            {/* DECORACIÓN SUPERIOR */}
-            <div className="pointer-events-none absolute -left-20 -top-24 h-72 w-96 rounded-full bg-[#2A6970]/10 blur-3xl" />
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#01192E]/20 dark:to-[#01192E]/35" />
 
-            <div className="pointer-events-none absolute -right-32 -top-24 h-80 w-80 rounded-full border border-[#7DADAA]/10" />
+              <div className="pointer-events-none absolute -left-20 -top-24 h-72 w-96 rounded-full bg-[#2A6970]/10 blur-3xl" />
 
-            {/* CONTENIDO */}
-            <div className="relative z-10 grid min-h-[560px] grid-cols-1 lg:grid-cols-[1.05fr_0.95fr]">
-              {/* LADO IZQUIERDO */}
-              <div className="flex flex-col justify-center px-8 py-12 sm:px-12 lg:px-16 lg:py-16 xl:px-20">
-                {/* ETIQUETA */}
-                <div className="mb-7 flex items-center gap-3">
-                  <span className="h-px w-10 bg-gradient-to-r from-transparent to-[#437C76]" />
+              <div className="relative z-10 grid min-h-[560px] grid-cols-1 lg:grid-cols-[1.05fr_0.95fr]">
+                <div className="flex flex-col justify-center px-8 py-12 sm:px-12 lg:px-16 lg:py-16 xl:px-20">
+                  <div className="mb-7 flex items-center gap-3">
+                    <span className="h-px w-10 bg-gradient-to-r from-transparent to-[#437C76]" />
 
-                  <span
-                    className={`text-[9px] font-black uppercase tracking-[0.32em] drop-shadow-[0_2px_8px_rgba(249,246,235,0.95)] ${
-                      isDark
-                        ? "text-[#FFFFFF] drop-shadow-[0_2px_10px_rgba(255,255,255,0.5)]"
-                        : "text-[#050505]"
-                    }`}
-                  >
-                    Odontología integral y especializada
+                    <span className="text-[13px] font-black uppercase tracking-[0.32em] text-[#153B36] dark:text-[#B4CEC5]">
+                      Odontología integral y especializada
+                    </span>
+                  </div>
+
+                  <div className="max-w-[680px]">
+                    <h1 className="text-[2.2rem] font-black leading-[1.05] tracking-[-0.035em] text-[#050505] sm:text-5xl lg:text-[3.6rem] dark:text-[#F4F0E6]">
+                      Atención odontológica
+                    </h1>
+
+                    <h1 className="mt-2 text-[2.2rem] font-black leading-[1.05] tracking-[-0.035em] sm:text-5xl lg:text-[3.6rem]">
+                      <span
+                        className={`bg-clip-text text-transparent ${
+                          isDark
+                            ? "bg-gradient-to-r from-[#F4F0E6] via-[#CFE1DD] to-[#7DADAA]"
+                            : "bg-gradient-to-r from-[#050505] via-[#153B36] to-[#24574F]"
+                        }`}
+                      >
+                        clara, cercana y especializada
+                      </span>
+                    </h1>
+                  </div>
+
+                  <p className="mt-6 max-w-[620px] text-[15px] font-semibold leading-7 text-[#000000] sm:text-sm dark:text-[#D4E2DE]">
+                    Gestiona tus citas, consulta tu información clínica y mantén
+                    el seguimiento de tu salud bucal desde un solo lugar, de
+                    manera segura, organizada y sencilla.
+                  </p>
+
+                  <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                    <button
+                      type="button"
+                      onClick={() => navigate("/login")}
+                      className="inline-flex items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-[#437C76] via-[#2F5E58] to-[#1F3F3B] px-7 py-3.5 text-xs font-black text-white shadow-lg shadow-[#2F5E58]/20 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl active:scale-95"
+                    >
+                      Acceder al Portal Clínico
+                      <ArrowRight size={16} />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => navigate("/register")}
+                      className={`inline-flex items-center justify-center gap-3 rounded-xl border px-7 py-3.5 text-xs font-bold backdrop-blur-md transition-all ${
+                        isDark
+                          ? "border-[#7DADAA]/50 bg-[#01192E]/60 text-[#F4F0E6] hover:border-[#B4CEC5]/70 hover:bg-[#063143]/70"
+                          : "border-[#1F3F3B]/40 bg-[#F9F6EB]/80 text-[#050505] hover:border-[#1F3F3B] hover:bg-[#F9F6EB]"
+                      }`}
+                    >
+                      <UserCheck
+                        size={16}
+                        className={
+                          isDark ? "text-[#A7BFB7]" : "text-[#1F3F3B]"
+                        }
+                      />
+                      Crear Cuenta de Paciente
+                    </button>
+                  </div>
+
+                  <div className="mt-9 h-px w-full max-w-[760px] bg-gradient-to-r from-[#437C76]/70 via-[#2F5E58]/40 to-transparent" />
+
+                  <div className="mt-7 grid grid-cols-1 gap-5 sm:grid-cols-3">
+                    {[
+                      {
+                        icon: Calendar,
+                        title: "Atención organizada",
+                        description:
+                          "Gestiona tus citas desde un mismo portal.",
+                      },
+                      {
+                        icon: ClipboardCheck,
+                        title: "Información clínica",
+                        description:
+                          "Consulta tus registros y seguimiento fácilmente.",
+                      },
+                      {
+                        icon: HeartPulse,
+                        title: "Atención especializada",
+                        description:
+                          "Profesionales comprometidos con tu bienestar.",
+                      },
+                    ].map((item) => {
+                      const Icon = item.icon;
+
+                      return (
+                        <div
+                          key={item.title}
+                          className={`border-l pl-4 ${
+                            isDark
+                              ? "border-[#7DADAA]"
+                              : "border-[#1F3F3B]/70"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Icon
+                              size={15.5}
+                              className={
+                                isDark
+                                  ? "text-[#A7BFB7]"
+                                  : "text-[#1F3F3B]"
+                              }
+                            />
+
+                            <p className="text-[11.5px] font-black text-[#050505] dark:text-[#F4F0E6]">
+                              {item.title}
+                            </p>
+                          </div>
+
+                          <p className="mt-2 text-[10.5px] font-medium leading-relaxed text-[#000000] dark:text-[#B4CEC5]">
+                            {item.description}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3">
+                    {[
+                      "Información protegida",
+                      "Gestión digital",
+                      "Atención personalizada",
+                    ].map((beneficio) => (
+                      <div
+                        key={beneficio}
+                        className="flex items-center gap-2"
+                      >
+                        <CircleCheck
+                          size={13}
+                          className={
+                            isDark ? "text-[#A7BFB7]" : "text-[#1F3F3B]"
+                          }
+                        />
+
+                        <span className="text-[10px] font-bold text-[#15302D] dark:text-[#D4DACD]">
+                          {beneficio}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="relative hidden min-h-[560px] overflow-hidden lg:block">
+                  <div className="absolute left-0 top-1/2 h-64 w-px -translate-y-1/2 bg-gradient-to-b from-transparent via-[#B4CEC5]/30 to-transparent" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* SERVICIOS */}
+        <section
+          id="servicios"
+          className="relative z-10 mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8"
+        >
+          <div className="relative px-5 py-10 sm:px-10 sm:py-14 lg:px-14 lg:py-16">
+            <span className="absolute left-0 top-0 h-24 w-px bg-[#050505] dark:bg-white/60" />
+            <span className="absolute left-0 top-0 h-px w-28 bg-[#050505] dark:bg-white/60" />
+            <span className="absolute bottom-0 right-0 h-24 w-px bg-[#050505] dark:bg-white/60" />
+            <span className="absolute bottom-0 right-0 h-px w-28 bg-[#050505] dark:bg-white/60" />
+
+            <div className="mb-16 max-w-2xl">
+              <p className="text-xs font-black uppercase tracking-[0.3em] text-[#1F3F3B] dark:text-[#A7BFB7]">
+                Nuestros servicios
+              </p>
+
+              <h2 className="mt-4 text-4xl font-black tracking-tight text-[#050505] sm:text-5xl dark:text-[#F4F0E6]">
+                Tratamientos diseñados para tu sonrisa
+              </h2>
+
+              <p className="mt-5 text-sm leading-relaxed text-[#0A0A0A] sm:text-base dark:text-[#B4CEC5]">
+                Procedimientos clínicos avanzados y atención especializada para
+                mantener tu salud bucal en las mejores condiciones.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-x-16 gap-y-14 md:grid-cols-2">
+              {[
+                {
+                  icon: Activity,
+                  title: "Valoración & Limpieza Profunda",
+                  description:
+                    "Eliminación de placa bacteriana y sarro con ultrasonido, pulido coronal y diagnóstico preventivo integral.",
+                  info: "Sesión clínica: 30 - 45 min",
+                },
+                {
+                  icon: Smile,
+                  title: "Ortodoncia & Alineación",
+                  description:
+                    "Corrección de mordida y alineación estética mediante brackets metálicos, estéticos o alineadores transparentes.",
+                  info: "Seguimiento y control mensual",
+                },
+                {
+                  icon: Sparkles,
+                  title: "Estética & Blanqueamiento",
+                  description:
+                    "Aclaramiento dental seguro y restauraciones estéticas que devuelven el brillo natural de tu sonrisa.",
+                  info: "Resultados inmediatos",
+                },
+                {
+                  icon: Stethoscope,
+                  title: "Endodoncia & Cirugía Oral",
+                  description:
+                    "Tratamiento especializado para preservar tus piezas dentales y resolver procedimientos quirúrgicos complejos.",
+                  info: "Especialistas certificados",
+                },
+              ].map((service) => {
+                const Icon = service.icon;
+
+                return (
+                  <div key={service.title} className="group flex gap-5">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#9FC1B8]/20 text-[#1F3F3B] transition-transform duration-300 group-hover:scale-110 dark:bg-[#437C76]/15 dark:text-[#A7BFB7]">
+                      <Icon size={24} />
+                    </div>
+
+                    <div>
+                      <h3 className="text-xl font-black text-[#050505] dark:text-[#F4F0E6]">
+                        {service.title}
+                      </h3>
+
+                      <p className="mt-3 text-sm leading-relaxed text-[#0A0A0A] dark:text-[#B4CEC5]">
+                        {service.description}
+                      </p>
+
+                      <span className="mt-4 inline-block text-xs font-bold text-[#1F3F3B] dark:text-[#A7BFB7]">
+                        {service.info}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* NUEVA INTEGRACIÓN - PROCESO ODONTOLÓGICO */}
+        <section
+          id="proceso"
+          className="relative z-10 mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8"
+        >
+          <div className="relative px-5 py-10 sm:px-10 sm:py-14 lg:px-14 lg:py-16">
+            <span className="absolute left-0 top-0 h-24 w-px bg-[#050505] dark:bg-white/60" />
+            <span className="absolute left-0 top-0 h-px w-28 bg-[#050505] dark:bg-white/60" />
+            <span className="absolute bottom-0 right-0 h-24 w-px bg-[#050505] dark:bg-white/60" />
+            <span className="absolute bottom-0 right-0 h-px w-28 bg-[#050505] dark:bg-white/60" />
+
+            <div className="grid grid-cols-1 gap-16 lg:grid-cols-[0.8fr_1.2fr] lg:gap-24">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.3em] text-[#1F3F3B] dark:text-[#A7BFB7]">
+                  Tu atención paso a paso
+                </p>
+
+                <h2 className="mt-5 text-4xl font-black tracking-tight text-[#050505] sm:text-5xl dark:text-[#F4F0E6]">
+                  Una experiencia odontológica organizada
+                </h2>
+
+                <p className="mt-6 text-sm leading-relaxed text-[#0A0A0A] sm:text-base dark:text-[#B4CEC5]">
+                  Desde tu primera consulta hasta el seguimiento de tu
+                  tratamiento, NexusOdonto mantiene tu atención clínica
+                  organizada y conectada.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => navigate("/register")}
+                  className="mt-9 inline-flex cursor-pointer items-center gap-3 text-sm font-black text-[#1F3F3B] transition-all hover:gap-5 dark:text-[#A7BFB7]"
+                >
+                  Crear mi cuenta de paciente
+                  <ArrowRight size={18} />
+                </button>
+              </div>
+
+              <div className="relative">
+                <div className="absolute left-[23px] top-8 hidden h-[calc(100%-64px)] w-px bg-gradient-to-b from-[#437C76]/70 via-[#2F5E58]/30 to-transparent sm:block dark:from-[#7DADAA]/70" />
+
+                <div className="space-y-9">
+                  {[
+                    {
+                      number: "01",
+                      icon: Calendar,
+                      title: "Agenda tu consulta",
+                      description:
+                        "Selecciona una fecha para tu valoración odontológica y organiza tu atención desde el portal.",
+                    },
+                    {
+                      number: "02",
+                      icon: Search,
+                      title: "Valoración y diagnóstico",
+                      description:
+                        "El profesional realiza la evaluación clínica de tu salud oral y registra la información necesaria.",
+                    },
+                    {
+                      number: "03",
+                      icon: FileText,
+                      title: "Plan de tratamiento",
+                      description:
+                        "Recibe una orientación clara sobre el procedimiento odontológico recomendado para tu caso.",
+                    },
+                    {
+                      number: "04",
+                      icon: ScanLine,
+                      title: "Seguimiento clínico",
+                      description:
+                        "Consulta tu evolución, registros y seguimiento de tratamiento desde un mismo lugar.",
+                    },
+                  ].map((step) => {
+                    const Icon = step.icon;
+
+                    return (
+                      <div
+                        key={step.number}
+                        className="group relative flex gap-6"
+                      >
+                        <div className="relative z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[#437C76]/30 bg-[#F9F6EB] shadow-sm transition-transform duration-300 group-hover:scale-110 dark:border-[#7DADAA]/40 dark:bg-[#01192E]">
+                          <Icon
+                            size={20}
+                            className="text-[#1F3F3B] dark:text-[#A7BFB7]"
+                          />
+                        </div>
+
+                        <div className="pb-2">
+                          <div className="flex items-center gap-4">
+                            <span className="text-[10px] font-black tracking-[0.2em] text-[#437C76] dark:text-[#7DADAA]">
+                              {step.number}
+                            </span>
+
+                            <span className="h-px w-8 bg-[#437C76]/30" />
+                          </div>
+
+                          <h3 className="mt-2 text-xl font-black text-[#050505] dark:text-[#F4F0E6]">
+                            {step.title}
+                          </h3>
+
+                          <p className="mt-2 max-w-xl text-sm leading-relaxed text-[#0A0A0A] dark:text-[#B4CEC5]">
+                            {step.description}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-16 flex flex-wrap items-center gap-x-8 gap-y-4 border-t border-[#2F5E58]/15 pt-8 dark:border-white/10">
+              <div className="flex items-center gap-2">
+              </div>
+
+              <div className="flex items-center gap-2">
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* COMPROMISO */}
+        <section
+          id="compromiso"
+          className="relative z-10 mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8"
+        >
+          <div className="relative px-5 py-10 sm:px-10 sm:py-14 lg:px-14 lg:py-16">
+            <span className="absolute left-0 top-0 h-24 w-px bg-[#050505] dark:bg-white/60" />
+            <span className="absolute left-0 top-0 h-px w-28 bg-[#050505] dark:bg-white/60" />
+            <span className="absolute bottom-0 right-0 h-24 w-px bg-[#050505] dark:bg-white/60" />
+            <span className="absolute bottom-0 right-0 h-px w-28 bg-[#050505] dark:bg-white/60" />
+
+            <div className="grid grid-cols-1 items-center gap-16 lg:grid-cols-2 lg:gap-24">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.3em] text-[#1F3F3B] dark:text-[#A7BFB7]">
+                  NexusOdonto
+                </p>
+
+                <h2 className="mt-5 text-4xl font-black tracking-tight text-[#050505] sm:text-5xl dark:text-[#F4F0E6]">
+                  Atención odontológica personalizada y sin dolor
+                </h2>
+
+                <p className="mt-7 text-base leading-relaxed text-[#0A0A0A] dark:text-[#D4DACD]">
+                  En NexusOdonto combinamos la calidez humana con herramientas
+                  digitales para que tengas siempre a la mano tu evolución
+                  médica, diagnósticos claros y citas organizadas.
+                </p>
+
+                <div className="mt-9 space-y-5">
+                  {[
+                    "Odontograma digital anatómico por pieza y superficie dental",
+                    "Historia clínica electrónica conforme a normativas de salud",
+                    "Recordatorios y confirmaciones directas de citas",
+                  ].map((item) => (
+                    <div key={item} className="flex items-center gap-4">
+                      <CheckCircle2
+                        size={20}
+                        className="shrink-0 text-[#2F5E58]"
+                      />
+
+                      <span className="text-sm font-semibold text-[#0A0A0A] dark:text-[#D4DACD]">
+                        {item}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => navigate("/login")}
+                  className="mt-10 inline-flex cursor-pointer items-center gap-3 text-sm font-black text-[#1F3F3B] transition-all hover:gap-5 dark:text-[#A7BFB7]"
+                >
+                  Ingresar a mi cuenta
+                  <ArrowRight size={18} />
+                </button>
+              </div>
+
+              <div className="relative">
+                <div className="relative p-8 sm:p-12">
+                  <div className="mb-10 flex items-center gap-4">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#437C76] to-[#1F3F3B] shadow-lg shadow-[#2F5E58]/20">
+                      <ShieldCheck size={26} className="text-white" />
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.25em] text-[#1F3F3B] dark:text-[#A7BFB7]">
+                        Tecnología que cuida
+                      </p>
+
+                      <h3 className="mt-1 text-2xl font-black text-[#050505] sm:text-3xl dark:text-[#F4F0E6]">
+                        Tu tranquilidad primero
+                      </h3>
+                    </div>
+                  </div>
+
+                  <div className="space-y-7">
+                    <div className="flex items-end justify-between gap-8">
+                      <div>
+                        <p className="text-sm font-bold text-[#0A0A0A] dark:text-[#B4CEC5]">
+                          Horarios de Atención
+                        </p>
+
+                        <p className="mt-1 text-lg font-black text-[#050505] dark:text-[#F4F0E6]">
+                          Lun a Sáb
+                        </p>
+                      </div>
+
+                      <p className="text-sm font-black text-[#1F3F3B] dark:text-[#A7BFB7]">
+                        08:00 - 18:00
+                      </p>
+                    </div>
+
+                    <div className="h-px bg-[#050505]/20 dark:bg-white/20" />
+
+                    <div className="flex items-end justify-between gap-8">
+                      <div>
+                        <p className="text-sm font-bold text-[#0A0A0A] dark:text-[#B4CEC5]">
+                          Especialidades
+                        </p>
+
+                        <p className="mt-1 text-lg font-black text-[#050505] dark:text-[#F4F0E6]">
+                          Atención especializada
+                        </p>
+                      </div>
+
+                      <p className="max-w-[150px] text-right text-sm font-black text-[#1F3F3B] dark:text-[#A7BFB7]">
+                        Ortodoncia · Cirugía · Endodoncia
+                      </p>
+                    </div>
+
+                    <div className="h-px bg-[#050505]/20 dark:bg-white/20" />
+
+                    <div className="flex items-end justify-between gap-8">
+                      <div>
+                        <p className="text-sm font-bold text-[#0A0A0A] dark:text-[#B4CEC5]">
+                          Canal de Atención
+                        </p>
+
+                        <p className="mt-1 text-lg font-black text-[#050505] dark:text-[#F4F0E6]">
+                          Siempre conectado
+                        </p>
+                      </div>
+
+                      <p className="text-right text-sm font-black text-[#1F3F3B] dark:text-[#A7BFB7]">
+                        Portal Web
+                        <br />
+                        y Recepción
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ESPECIALISTAS */}
+        <section
+          id="profesionales"
+          className="relative z-10 mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8"
+        >
+          <div className="relative px-5 py-10 sm:px-10 sm:py-14 lg:px-14 lg:py-16">
+            <span className="absolute left-0 top-0 h-24 w-px bg-[#050505] dark:bg-white/60" />
+            <span className="absolute left-0 top-0 h-px w-28 bg-[#050505] dark:bg-white/60" />
+            <span className="absolute bottom-0 right-0 h-24 w-px bg-[#050505] dark:bg-white/60" />
+            <span className="absolute bottom-0 right-0 h-px w-28 bg-[#050505] dark:bg-white/60" />
+
+            <div className="max-w-3xl">
+              <p className="text-xs font-black uppercase tracking-[0.3em] text-[#1F3F3B] dark:text-[#A7BFB7]">
+                Cuerpo médico
+              </p>
+
+              <h2 className="mt-4 text-4xl font-black tracking-tight text-[#050505] sm:text-5xl dark:text-[#F4F0E6]">
+                Nuestros odontólogos especialistas
+              </h2>
+
+              <p className="mt-5 text-sm text-[#0A0A0A] dark:text-[#B4CEC5]">
+                Profesionales altamente calificados y comprometidos con tu
+                bienestar.
+              </p>
+            </div>
+
+            <div className="mt-16 grid grid-cols-1 gap-10 md:grid-cols-3">
+              {[
+                {
+                  initials: "LG",
+                  name: "Dra. Laura Gómez",
+                  specialty: "Ortodoncia y Ortopedia Maxilar",
+                  description:
+                    "Especialista en diseño de sonrisa, alineación estética y rehabilitación mínimamente invasiva.",
+                },
+                {
+                  initials: "RM",
+                  name: "Dr. Roberto Martínez",
+                  specialty: "Cirugía Oral e Implantología",
+                  description:
+                    "Cirujano maxilofacial e implantólogo oral. Especializado en implantes de carga inmediata y regeneración ósea guiada.",
+                },
+                {
+                  initials: "AS",
+                  name: "Dra. Ana Sofía Silva",
+                  specialty: "Endodoncia y Microcirugía Apical",
+                  description:
+                    "Especialista en preservación de piezas dentales mediante tratamiento de conductos avanzado y cuidado tisular.",
+                },
+              ].map((doctor) => (
+                <article
+                  key={doctor.name}
+                  className="group border-l border-[#2F5E58]/30 pl-6 transition-all hover:border-[#437C76] dark:border-[#7DADAA]/30"
+                >
+                  <div className="flex items-center gap-4">
+                    <span className="text-3xl font-black text-[#1F3F3B] dark:text-[#A7BFB7]">
+                      {doctor.initials}
+                    </span>
+
+                    <div>
+                      <h3 className="text-lg font-black text-[#050505] dark:text-[#F4F0E6]">
+                        {doctor.name}
+                      </h3>
+
+                      <p className="text-xs font-bold text-[#1F3F3B] dark:text-[#A7BFB7]">
+                        {doctor.specialty}
+                      </p>
+                    </div>
+                  </div>
+
+                  <p className="mt-7 text-sm leading-relaxed text-[#0A0A0A] dark:text-[#B4CEC5]">
+                    {doctor.description}
+                  </p>
+
+                  <div className="mt-6 flex items-center gap-2">
+                    <span className="h-px w-8 bg-[#2F5E58]/60" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#2F5E58]" />
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* CTA FINAL */}
+        <section className="relative z-10 px-4 py-24 sm:px-6 lg:px-8">
+          <div className="relative mx-auto max-w-6xl px-6 py-14 sm:px-10 lg:px-14 lg:py-20">
+            <span className="absolute left-0 top-0 h-24 w-px bg-[#050505] dark:bg-white/60" />
+            <span className="absolute left-0 top-0 h-px w-28 bg-[#050505] dark:bg-white/60" />
+            <span className="absolute bottom-0 right-0 h-24 w-px bg-[#050505] dark:bg-white/60" />
+            <span className="absolute bottom-0 right-0 h-px w-28 bg-[#050505] dark:bg-white/60" />
+
+            <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-[1fr_auto]">
+              <div>
+                <div className="flex items-center gap-2 text-[#1F3F3B] dark:text-[#A7BFB7]">
+                  <Award size={18} />
+
+                  <span className="text-xs font-black uppercase tracking-[0.25em]">
+                    Atención odontológica especializada
                   </span>
                 </div>
 
-                {/* TITULO */}
-                <div className="max-w-[680px]">
-                  <h1
-                    className={`text-[2.2rem] font-black leading-[1.05] tracking-[-0.035em] drop-shadow-[0_3px_14px_rgba(249,246,235,0.95)] sm:text-5xl lg:text-[3.6rem] ${
-                      isDark
-                        ? "text-white drop-shadow-[0_4px_18px_rgba(255,255,255,0.4)]"
-                        : "text-[#050505]"
-                    }`}
-                  >
-                    Atención odontológica
-                  </h1>
-
-                  <h1 className="mt-2 text-[2.2rem] font-black leading-[1.05] tracking-[-0.035em] drop-shadow-[0_3px_14px_rgba(249,246,235,0.9)] sm:text-5xl lg:text-[3.6rem]">
-                    <span
-                      className={`bg-clip-text text-transparent ${
-                        isDark
-                          ? "bg-gradient-to-r from-[#FFFFFF] via-[#DDEDE9] to-[#8CB9B2]"
-                          : "bg-gradient-to-r from-[#050505] via-[#153B36] to-[#24574F]"
-                      }`}
-                    >
-                      clara, cercana y especializada
-                    </span>
-                  </h1>
-                </div>
-
-                {/* DESCRIPCIÓN */}
-                <p
-                  className={`mt-6 max-w-[620px] text-[13px] font-bold leading-7 drop-shadow-[0_2px_8px_rgba(249,246,235,0.9)] sm:text-sm ${
-                    isDark
-                      ? "text-[#FFFFFF] drop-shadow-[0_2px_10px_rgba(255,255,255,0.3)]"
-                      : "text-[#050505]"
-                  }`}
-                >
-                  Gestiona tus citas, consulta tu información clínica y mantén
-                  el seguimiento de tu salud bucal desde un solo lugar, de
-                  manera segura, organizada y sencilla.
-                </p>
-
-                {/* BOTONES */}
-                <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                  <button
-                    type="button"
-                    onClick={() => navigate("/login")}
-                    className="inline-flex items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-[#437C76] via-[#2F5E58] to-[#1F3F3B] px-7 py-3.5 text-xs font-black text-white shadow-lg shadow-[#2F5E58]/20 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl active:scale-95"
-                  >
-                    Acceder al Portal Clínico
-                    <ArrowRight size={16} />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => navigate("/register")}
-                    className={`inline-flex items-center justify-center gap-3 rounded-xl border px-7 py-3.5 text-xs font-bold backdrop-blur-md transition-all ${
-                      isDark
-                        ? "border-[#B4CEC5]/60 bg-[#01192E]/25 text-white hover:border-[#EAF4F1]/80 hover:bg-[#063143]/45"
-                        : "border-[#1F3F3B]/50 bg-[#F9F6EB]/70 text-[#050505] hover:border-[#1F3F3B] hover:bg-[#F9F6EB]/90"
-                    }`}
-                  >
-                    <UserCheck
-                      size={16}
-                      className={
-                        isDark ? "text-[#EAF4F1]" : "text-[#1F3F3B]"
-                      }
-                    />
-                    Crear Cuenta de Paciente
-                  </button>
-                </div>
-
-                {/* LÍNEA SEPARADORA */}
-                <div className="mt-9 h-px w-full max-w-[760px] bg-gradient-to-r from-[#437C76]/70 via-[#2F5E58]/40 to-transparent" />
-
-                {/* BENEFICIOS PRINCIPALES */}
-                <div className="mt-7 grid grid-cols-1 gap-5 sm:grid-cols-3">
-                  <div
-                    className={`border-l pl-4 ${
-                      isDark
-                        ? "border-[#B4CEC5]/80"
-                        : "border-[#1F3F3B]/70"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Calendar
-                        size={15}
-                        className={
-                          isDark ? "text-[#EAF4F1]" : "text-[#1F3F3B]"
-                        }
-                      />
-
-                      <p
-                        className={`text-[11px] font-black drop-shadow-[0_2px_6px_rgba(249,246,235,0.9)] ${
-                          isDark
-                            ? "text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]"
-                            : "text-[#050505]"
-                        }`}
-                      >
-                        Atención organizada
-                      </p>
-                    </div>
-
-                    <p
-                      className={`mt-2 text-[10px] font-semibold leading-relaxed drop-shadow-[0_2px_6px_rgba(249,246,235,0.85)] ${
-                        isDark
-                          ? "text-[#FFFFFF]"
-                          : "text-[#050505]"
-                      }`}
-                    >
-                      Gestiona tus citas desde un mismo portal.
-                    </p>
-                  </div>
-
-                  <div
-                    className={`border-l pl-4 ${
-                      isDark
-                        ? "border-[#B4CEC5]/80"
-                        : "border-[#1F3F3B]/70"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <ClipboardCheck
-                        size={15}
-                        className={
-                          isDark ? "text-[#EAF4F1]" : "text-[#1F3F3B]"
-                        }
-                      />
-
-                      <p
-                        className={`text-[11px] font-black drop-shadow-[0_2px_6px_rgba(249,246,235,0.9)] ${
-                          isDark
-                            ? "text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]"
-                            : "text-[#050505]"
-                        }`}
-                      >
-                        Información clínica
-                      </p>
-                    </div>
-
-                    <p
-                      className={`mt-2 text-[10px] font-semibold leading-relaxed drop-shadow-[0_2px_6px_rgba(249,246,235,0.85)] ${
-                        isDark
-                          ? "text-[#FFFFFF]"
-                          : "text-[#050505]"
-                      }`}
-                    >
-                      Consulta tus registros y seguimiento fácilmente.
-                    </p>
-                  </div>
-
-                  <div
-                    className={`border-l pl-4 ${
-                      isDark
-                        ? "border-[#B4CEC5]/80"
-                        : "border-[#1F3F3B]/70"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <HeartPulse
-                        size={15}
-                        className={
-                          isDark ? "text-[#EAF4F1]" : "text-[#1F3F3B]"
-                        }
-                      />
-
-                      <p
-                        className={`text-[11px] font-black drop-shadow-[0_2px_6px_rgba(249,246,235,0.9)] ${
-                          isDark
-                            ? "text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.3)]"
-                            : "text-[#050505]"
-                        }`}
-                      >
-                        Atención especializada
-                      </p>
-                    </div>
-
-                    <p
-                      className={`mt-2 text-[10px] font-semibold leading-relaxed drop-shadow-[0_2px_6px_rgba(249,246,235,0.85)] ${
-                        isDark
-                          ? "text-[#FFFFFF]"
-                          : "text-[#050505]"
-                      }`}
-                    >
-                      Profesionales comprometidos con tu bienestar.
-                    </p>
-                  </div>
-                </div>
-
-                {/* BENEFICIOS INFERIORES */}
-                <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3">
-                  <div className="flex items-center gap-2">
-                    <CircleCheck
-                      size={13}
-                      className={
-                        isDark ? "text-[#EAF4F1]" : "text-[#1F3F3B]"
-                      }
-                    />
-
-                    <span
-                      className={`text-[10px] font-bold drop-shadow-[0_2px_6px_rgba(249,246,235,0.9)] ${
-                        isDark ? "text-white" : "text-[#050505]"
-                      }`}
-                    >
-                      Información protegida
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <CircleCheck
-                      size={13}
-                      className={
-                        isDark ? "text-[#EAF4F1]" : "text-[#1F3F3B]"
-                      }
-                    />
-
-                    <span
-                      className={`text-[10px] font-bold drop-shadow-[0_2px_6px_rgba(249,246,235,0.9)] ${
-                        isDark ? "text-white" : "text-[#050505]"
-                      }`}
-                    >
-                      Gestión digital
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <CircleCheck
-                      size={13}
-                      className={
-                        isDark ? "text-[#EAF4F1]" : "text-[#1F3F3B]"
-                      }
-                    />
-
-                    <span
-                      className={`text-[10px] font-bold drop-shadow-[0_2px_6px_rgba(249,246,235,0.9)] ${
-                        isDark ? "text-white" : "text-[#050505]"
-                      }`}
-                    >
-                      Atención personalizada
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* LADO DERECHO */}
-              <div className="relative hidden min-h-[560px] overflow-hidden lg:block">
-                <div className="absolute left-0 top-1/2 h-64 w-px -translate-y-1/2 bg-gradient-to-b from-transparent via-[#B4CEC5]/30 to-transparent" />
-
-                <div className="absolute inset-0 bg-gradient-to-l from-transparent via-[#01192E]/5 to-[#01192E]/15" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* SERVICIOS */}
-      <section
-        id="servicios"
-        className="relative z-10 mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8"
-      >
-        <div className="mb-16 max-w-2xl">
-          <p className="text-xs font-black uppercase tracking-[0.3em] text-[#1F3F3B] dark:text-[#A7BFB7]">
-            Nuestros servicios
-          </p>
-
-          <h2 className="mt-4 text-4xl font-black tracking-tight text-[#050505] sm:text-5xl dark:text-[#F4F0E6]">
-            Tratamientos diseñados para tu sonrisa
-          </h2>
-
-          <p className="mt-5 text-sm leading-relaxed text-[#0A0A0A] sm:text-base dark:text-[#B4CEC5]">
-            Procedimientos clínicos avanzados y atención especializada para
-            mantener tu salud bucal en las mejores condiciones.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 gap-x-16 gap-y-14 md:grid-cols-2">
-          <div className="group flex gap-5">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#9FC1B8]/20 text-[#1F3F3B] transition-transform group-hover:scale-110 dark:text-[#A7BFB7]">
-              <Activity size={24} />
-            </div>
-
-            <div>
-              <h3 className="text-xl font-black text-[#050505] dark:text-[#F4F0E6]">
-                Valoración & Limpieza Profunda
-              </h3>
-
-              <p className="mt-3 text-sm leading-relaxed text-[#0A0A0A] dark:text-[#B4CEC5]">
-                Eliminación de placa bacteriana y sarro con ultrasonido,
-                pulido coronal y diagnóstico preventivo integral.
-              </p>
-
-              <span className="mt-4 inline-block text-xs font-bold text-[#1F3F3B] dark:text-[#A7BFB7]">
-                Sesión clínica: 30 - 45 min
-              </span>
-            </div>
-          </div>
-
-          <div className="group flex gap-5">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#B4CEC5]/30 text-[#2F5E58] transition-transform group-hover:scale-110 dark:text-[#A7BFB7]">
-              <Smile size={24} />
-            </div>
-
-            <div>
-              <h3 className="text-xl font-black text-[#050505] dark:text-[#F4F0E6]">
-                Ortodoncia & Alineación
-              </h3>
-
-              <p className="mt-3 text-sm leading-relaxed text-[#0A0A0A] dark:text-[#B4CEC5]">
-                Corrección de mordida y alineación estética mediante brackets
-                metálicos, estéticos o alineadores transparentes.
-              </p>
-
-              <span className="mt-4 inline-block text-xs font-bold text-[#1F3F3B] dark:text-[#A7BFB7]">
-                Seguimiento y control mensual
-              </span>
-            </div>
-          </div>
-
-          <div className="group flex gap-5">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#9FC1B8]/20 text-[#1F3F3B] transition-transform group-hover:scale-110 dark:text-[#A7BFB7]">
-              <Sparkles size={24} />
-            </div>
-
-            <div>
-              <h3 className="text-xl font-black text-[#050505] dark:text-[#F4F0E6]">
-                Estética & Blanqueamiento
-              </h3>
-
-              <p className="mt-3 text-sm leading-relaxed text-[#0A0A0A] dark:text-[#B4CEC5]">
-                Aclaramiento dental seguro y restauraciones estéticas que
-                devuelven el brillo natural de tu sonrisa.
-              </p>
-
-              <span className="mt-4 inline-block text-xs font-bold text-[#1F3F3B] dark:text-[#A7BFB7]">
-                Resultados inmediatos
-              </span>
-            </div>
-          </div>
-
-          <div className="group flex gap-5">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#D4DACD]/50 text-[#1F3F3B] transition-transform group-hover:scale-110 dark:bg-[#22535B]/40 dark:text-[#A7BFB7]">
-              <Stethoscope size={24} />
-            </div>
-
-            <div>
-              <h3 className="text-xl font-black text-[#050505] dark:text-[#F4F0E6]">
-                Endodoncia & Cirugía Oral
-              </h3>
-
-              <p className="mt-3 text-sm leading-relaxed text-[#0A0A0A] dark:text-[#B4CEC5]">
-                Tratamiento especializado para preservar tus piezas dentales y
-                resolver procedimientos quirúrgicos complejos.
-              </p>
-
-              <span className="mt-4 inline-block text-xs font-bold text-[#1F3F3B] dark:text-[#A7BFB7]">
-                Especialistas certificados
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* COMPROMISO */}
-      <section
-        id="compromiso"
-        className="relative z-10 mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8"
-      >
-        <div className="grid grid-cols-1 items-center gap-16 lg:grid-cols-2 lg:gap-24">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.3em] text-[#1F3F3B] dark:text-[#A7BFB7]">
-              NexusOdonto
-            </p>
-
-            <h2 className="mt-5 text-4xl font-black tracking-tight text-[#050505] sm:text-5xl dark:text-[#F4F0E6]">
-              Atención odontológica personalizada y sin dolor
-            </h2>
-
-            <p className="mt-7 text-base leading-relaxed text-[#0A0A0A] dark:text-[#D4DACD]">
-              En NexusOdonto combinamos la calidez humana con herramientas
-              digitales para que tengas siempre a la mano tu evolución médica,
-              diagnósticos claros y citas organizadas.
-            </p>
-
-            <div className="mt-9 space-y-5">
-              <div className="flex items-center gap-4">
-                <CheckCircle2
-                  size={20}
-                  className="shrink-0 text-[#2F5E58]"
-                />
-
-                <span className="text-sm font-semibold text-[#0A0A0A] dark:text-[#D4DACD]">
-                  Odontograma digital anatómico por pieza y superficie dental
-                </span>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <CheckCircle2
-                  size={20}
-                  className="shrink-0 text-[#2F5E58]"
-                />
-
-                <span className="text-sm font-semibold text-[#0A0A0A] dark:text-[#D4DACD]">
-                  Historia clínica electrónica conforme a normativas de salud
-                </span>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <CheckCircle2
-                  size={20}
-                  className="shrink-0 text-[#2F5E58]"
-                />
-
-                <span className="text-sm font-semibold text-[#0A0A0A] dark:text-[#D4DACD]">
-                  Recordatorios y confirmaciones directas de citas
-                </span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => navigate("/login")}
-              className="mt-10 inline-flex cursor-pointer items-center gap-3 text-sm font-black text-[#1F3F3B] transition-all hover:gap-5 dark:text-[#A7BFB7]"
-            >
-              Ingresar a mi cuenta
-              <ArrowRight size={18} />
-            </button>
-          </div>
-
-          <div className="relative">
-            <div className="absolute -inset-8 rounded-full bg-gradient-to-br from-[#9FC1B8]/20 via-[#7DADAA]/10 to-[#65958E]/15 blur-3xl" />
-
-            <div className="relative py-8 sm:py-12">
-              <div className="mb-10 flex items-center gap-4">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#437C76] to-[#1F3F3B] shadow-lg shadow-[#2F5E58]/20">
-                  <ShieldCheck size={26} className="text-white" />
-                </div>
-
-                <div>
-                  <p className="text-xs font-black uppercase tracking-[0.25em] text-[#1F3F3B] dark:text-[#A7BFB7]">
-                    Tecnología que cuida
-                  </p>
-
-                  <h3 className="mt-1 text-2xl font-black text-[#050505] sm:text-3xl dark:text-[#F4F0E6]">
-                    Tu tranquilidad primero
-                  </h3>
-                </div>
-              </div>
-
-              <div className="space-y-7">
-                <div className="flex items-end justify-between gap-8">
-                  <div>
-                    <p className="text-sm font-bold text-[#0A0A0A] dark:text-[#B4CEC5]">
-                      Horarios de Atención
-                    </p>
-
-                    <p className="mt-1 text-lg font-black text-[#050505] dark:text-[#F4F0E6]">
-                      Lun a Sáb
-                    </p>
-                  </div>
-
-                  <p className="text-sm font-black text-[#1F3F3B] dark:text-[#A7BFB7]">
-                    08:00 - 18:00
-                  </p>
-                </div>
-
-                <div className="h-px bg-[#D4DACD] dark:bg-[#437C76]/30" />
-
-                <div className="flex items-end justify-between gap-8">
-                  <div>
-                    <p className="text-sm font-bold text-[#0A0A0A] dark:text-[#B4CEC5]">
-                      Especialidades
-                    </p>
-
-                    <p className="mt-1 text-lg font-black text-[#050505] dark:text-[#F4F0E6]">
-                      Atención especializada
-                    </p>
-                  </div>
-
-                  <p className="max-w-[150px] text-right text-sm font-black text-[#1F3F3B] dark:text-[#A7BFB7]">
-                    Ortodoncia · Cirugía · Endodoncia
-                  </p>
-                </div>
-
-                <div className="h-px bg-[#D4DACD] dark:bg-[#437C76]/30" />
-
-                <div className="flex items-end justify-between gap-8">
-                  <div>
-                    <p className="text-sm font-bold text-[#0A0A0A] dark:text-[#B4CEC5]">
-                      Canal de Atención
-                    </p>
-
-                    <p className="mt-1 text-lg font-black text-[#050505] dark:text-[#F4F0E6]">
-                      Siempre conectado
-                    </p>
-                  </div>
-
-                  <p className="text-right text-sm font-black text-[#1F3F3B] dark:text-[#A7BFB7]">
-                    Portal Web
-                    <br />
-                    y Recepción
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ESPECIALISTAS */}
-      <section
-        id="profesionales"
-        className="relative z-10 mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8"
-      >
-        <div className="max-w-3xl">
-          <p className="text-xs font-black uppercase tracking-[0.3em] text-[#1F3F3B] dark:text-[#A7BFB7]">
-            Cuerpo médico
-          </p>
-
-          <h2 className="mt-4 text-4xl font-black tracking-tight text-[#050505] sm:text-5xl dark:text-[#F4F0E6]">
-            Nuestros odontólogos especialistas
-          </h2>
-
-          <p className="mt-5 text-sm text-[#0A0A0A] dark:text-[#B4CEC5]">
-            Profesionales altamente calificados y comprometidos con tu
-            bienestar.
-          </p>
-        </div>
-
-        <div className="mt-16 grid grid-cols-1 gap-10 md:grid-cols-3">
-          <article className="group">
-            <div className="flex items-center gap-4">
-              <span className="text-3xl font-black text-[#1F3F3B] dark:text-[#A7BFB7]">
-                LG
-              </span>
-
-              <div>
-                <h3 className="text-lg font-black text-[#050505] dark:text-[#F4F0E6]">
-                  Dra. Laura Gómez
-                </h3>
-
-                <p className="text-xs font-bold text-[#1F3F3B] dark:text-[#A7BFB7]">
-                  Ortodoncia y Ortopedia Maxilar
+                <h2 className="mt-6 max-w-3xl text-4xl font-black tracking-tight text-[#050505] sm:text-5xl dark:text-[#F4F0E6]">
+                  Tu salud bucal merece una atención de calidad
+                </h2>
+
+                <p className="mt-5 max-w-2xl text-sm leading-relaxed text-[#0A0A0A] sm:text-base dark:text-[#D4DACD]">
+                  Accede a tu portal seguro para gestionar citas, consultar
+                  información clínica y mantener el seguimiento de tu atención.
                 </p>
               </div>
+
+              <button
+                type="button"
+                onClick={() => navigate("/login")}
+                className="inline-flex cursor-pointer items-center justify-center gap-3 whitespace-nowrap rounded-2xl bg-gradient-to-r from-[#437C76] via-[#2F5E58] to-[#1F3F3B] px-8 py-4 text-sm font-black text-white shadow-xl shadow-[#2F5E58]/20 transition-all hover:scale-105 active:scale-95 dark:text-[#EAF4F1]"
+              >
+                Iniciar Sesión
+                <ArrowRight size={18} />
+              </button>
             </div>
-
-            <p className="mt-7 text-sm leading-relaxed text-[#0A0A0A] dark:text-[#B4CEC5]">
-              Especialista en diseño de sonrisa, alineación estética y
-              rehabilitación mínimamente invasiva.
-            </p>
-
-            <div className="mt-6 flex items-center gap-2">
-              <span className="h-px w-8 bg-[#2F5E58]/60" />
-              <span className="h-1.5 w-1.5 rounded-full bg-[#2F5E58]" />
-            </div>
-          </article>
-
-          <article className="group">
-            <div className="flex items-center gap-4">
-              <span className="text-3xl font-black text-[#2F5E58] dark:text-[#A7BFB7]">
-                RM
-              </span>
-
-              <div>
-                <h3 className="text-lg font-black text-[#050505] dark:text-[#F4F0E6]">
-                  Dr. Roberto Martínez
-                </h3>
-
-                <p className="text-xs font-bold text-[#1F3F3B] dark:text-[#A7BFB7]">
-                  Cirugía Oral e Implantología
-                </p>
-              </div>
-            </div>
-
-            <p className="mt-7 text-sm leading-relaxed text-[#0A0A0A] dark:text-[#B4CEC5]">
-              Cirujano maxilofacial e implantólogo oral. Especializado en
-              implantes de carga inmediata y regeneración ósea guiada.
-            </p>
-
-            <div className="mt-6 flex items-center gap-2">
-              <span className="h-px w-8 bg-[#437C76]/60" />
-              <span className="h-1.5 w-1.5 rounded-full bg-[#437C76]" />
-            </div>
-          </article>
-
-          <article className="group">
-            <div className="flex items-center gap-4">
-              <span className="text-3xl font-black text-[#1F3F3B] dark:text-[#A7BFB7]">
-                AS
-              </span>
-
-              <div>
-                <h3 className="text-lg font-black text-[#050505] dark:text-[#F4F0E6]">
-                  Dra. Ana Sofía Silva
-                </h3>
-
-                <p className="text-xs font-bold text-[#1F3F3B] dark:text-[#A7BFB7]">
-                  Endodoncia y Microcirugía Apical
-                </p>
-              </div>
-            </div>
-
-            <p className="mt-7 text-sm leading-relaxed text-[#0A0A0A] dark:text-[#B4CEC5]">
-              Especialista en preservación de piezas dentales mediante
-              tratamiento de conductos avanzado y cuidado tisular.
-            </p>
-
-            <div className="mt-6 flex items-center gap-2">
-              <span className="h-px w-8 bg-[#1F3F3B]/60" />
-              <span className="h-1.5 w-1.5 rounded-full bg-[#1F3F3B]" />
-            </div>
-          </article>
-        </div>
-      </section>
-
-      {/* CTA FINAL */}
-      <section className="relative z-10 px-4 py-24 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-6xl border-y border-[#D4DACD]/70 py-16 lg:py-20 dark:border-[#437C76]/30">
-          <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-[1fr_auto]">
-            <div>
-              <div className="flex items-center gap-2 text-[#1F3F3B] dark:text-[#A7BFB7]">
-                <Award size={18} />
-
-                <span className="text-xs font-black uppercase tracking-[0.25em]">
-                  Atención odontológica especializada
-                </span>
-              </div>
-
-              <h2 className="mt-6 max-w-3xl text-4xl font-black tracking-tight text-[#050505] sm:text-5xl dark:text-[#F4F0E6]">
-                Tu salud bucal merece una atención de calidad
-              </h2>
-
-              <p className="mt-5 max-w-2xl text-sm leading-relaxed text-[#0A0A0A] sm:text-base dark:text-[#D4DACD]">
-                Accede a tu portal seguro para gestionar citas, consultar
-                información clínica y mantener el seguimiento de tu atención.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => navigate("/login")}
-              className="inline-flex cursor-pointer items-center justify-center gap-3 whitespace-nowrap rounded-2xl bg-gradient-to-r from-[#437C76] via-[#2F5E58] to-[#1F3F3B] px-8 py-4 text-sm font-black text-white shadow-xl shadow-[#2F5E58]/20 transition-all hover:scale-105 active:scale-95 dark:text-[#01192E]"
-            >
-              Iniciar Sesión
-              <ArrowRight size={18} />
-            </button>
           </div>
-        </div>
-      </section>
+        </section>
       </main>
 
-      {/* FOOTER */}
       <footer
         id="contacto"
-        className="relative z-10 border-t border-[#D4DACD]/70 bg-[#F4F0E6]/50 px-4 py-14 backdrop-blur-xl dark:border-[#437C76]/30 dark:bg-[#01192E]/40 sm:px-6 lg:px-8"
+        className="relative z-10 border-t border-[#D4DACD]/70 bg-[#F4F0E6]/70 px-4 py-14 backdrop-blur-xl dark:border-[#437C76]/30 dark:bg-[#01192E]/70 sm:px-6 lg:px-8"
       >
         <div className="mx-auto grid max-w-7xl grid-cols-1 gap-12 text-sm md:grid-cols-4">
           <div>
@@ -936,7 +888,7 @@ export default function LandingPage() {
                   Lunes a Viernes
                 </p>
 
-                <p>08:00 AM - 06:00 PM (08:00 - 18:00)</p>
+                <p>08:00 AM - 06:00 PM</p>
               </div>
 
               <div>
@@ -944,7 +896,7 @@ export default function LandingPage() {
                   Sábados
                 </p>
 
-                <p>08:00 AM - 02:00 PM (08:00 - 14:00)</p>
+                <p>08:00 AM - 02:00 PM</p>
               </div>
 
               <div>
@@ -1019,9 +971,7 @@ export default function LandingPage() {
             reservados.
           </p>
 
-          <p className="font-mono">
-            Sistema de Salud Oral Especializado
-          </p>
+          <p className="font-mono">Sistema de Salud Oral Especializado</p>
         </div>
       </footer>
     </div>
