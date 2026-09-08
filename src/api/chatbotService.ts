@@ -249,6 +249,57 @@ export const chatbotService = {
     return response.data;
   },
 
+  // Envío directo a WhatsApp a través del microservicio de Chatbot AI / Evolution API
+  sendAgentDirectMessage: async (data: {
+    phoneNumber: string;
+    message: string;
+    senderRole?: string;
+    skipDbRegister?: boolean;
+  }): Promise<any> => {
+    try {
+      const res = await chatbotClient.post(
+        '/api/v1/agent/send-message',
+        {
+          phone_number: data.phoneNumber,
+          message: data.message,
+          sender_role: data.senderRole || 'AGENTE_HUMANO',
+          skip_db_register: data.skipDbRegister ?? false,
+        },
+        {
+          headers: {
+            'X-Internal-Secret': 'TOKEN_SECRETO_INTERNO_NET_2026',
+          },
+        }
+      );
+      return res.data;
+    } catch (err) {
+      console.warn('sendAgentDirectMessage failed:', err);
+      return null;
+    }
+  },
+
+  // Reactivación de conversación y retorno al bot (FastAPI)
+  resumeConversation: async (phoneNumber: string, clearHistory: boolean = false): Promise<any> => {
+    try {
+      const res = await chatbotClient.post(
+        '/api/v1/conversations/resume',
+        {
+          phone_number: phoneNumber,
+          clear_history: clearHistory,
+        },
+        {
+          headers: {
+            'X-Internal-Secret': 'TOKEN_SECRETO_INTERNO_NET_2026',
+          },
+        }
+      );
+      return res.data;
+    } catch (err) {
+      console.warn('resumeConversation failed:', err);
+      return null;
+    }
+  },
+
   // Catálogos
   getConversationStatuses: async (): Promise<CatalogItem[]> => {
     try {
@@ -265,6 +316,37 @@ export const chatbotService = {
       return response.data || [];
     } catch {
       return [];
+    }
+  },
+
+  // WhatsApp QR Code Endpoints
+  getQrData: async (): Promise<{ connected: boolean; state: string; base64?: string; instanceName?: string }> => {
+    try {
+      const res = await chatbotClient.get('/qr/data');
+      return res.data;
+    } catch (err) {
+      console.warn('Could not fetch QR data:', err);
+      return { connected: false, state: 'error' };
+    }
+  },
+
+  restartQrInstance: async (): Promise<any> => {
+    try {
+      const res = await chatbotClient.post('/qr/restart');
+      return res.data;
+    } catch (err) {
+      console.warn('Could not restart QR instance:', err);
+      return { status: 'error' };
+    }
+  },
+
+  logoutQrInstance: async (): Promise<any> => {
+    try {
+      const res = await chatbotClient.post('/qr/logout');
+      return res.data;
+    } catch (err) {
+      console.warn('Could not logout QR instance:', err);
+      return { status: 'error' };
     }
   },
 

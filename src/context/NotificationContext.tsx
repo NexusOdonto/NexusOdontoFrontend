@@ -1,3 +1,4 @@
+import { chatbotService, CONVERSATION_STATUS_IDS, TICKET_STATUS_IDS } from '../api/chatbotService';
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../features/auth/AuthContext';
 import { getUserRole } from '../utils/routePermissions';
@@ -10,7 +11,7 @@ export interface SystemNotification {
   message: string;
   time: string;
   read: boolean;
-  type: 'appointment_pending' | 'appointment_confirmed' | 'system';
+  type: 'appointment_pending' | 'appointment_confirmed' | 'system' | 'whatsapp_escalated';
   link?: string;
 }
 
@@ -21,6 +22,7 @@ interface NotificationContextType {
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;
   refreshNotifications: () => Promise<void>;
+  addNotification: (notif: { title: string; message: string; link?: string; type?: 'system' | 'whatsapp_escalated' }) => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -49,6 +51,28 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const role = getUserRole(user);
   const [notifications, setNotifications] = useState<SystemNotification[]>([]);
   const [pendingAppointmentsCount, setPendingAppointmentsCount] = useState<number>(0);
+
+  const addNotification = useCallback(
+    (notif: { title: string; message: string; link?: string; type?: 'system' | 'whatsapp_escalated' }) => {
+      const newNotif: SystemNotification = {
+        id: `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        title: notif.title,
+        message: notif.message,
+        time: 'Ahora',
+        read: false,
+        type: notif.type || 'system',
+        link: notif.link || '/atencion-chat',
+      };
+
+      setNotifications((prev) => {
+        if (prev.some((n) => n.title === newNotif.title && n.message === newNotif.message && !n.read)) {
+          return prev;
+        }
+        return [newNotif, ...prev];
+      });
+    },
+    []
+  );
 
   const refreshNotifications = useCallback(async () => {
     if (!user || !localStorage.getItem('auth_token')) return;
@@ -82,6 +106,39 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
       setPendingAppointmentsCount(pendingList.length);
 
+      // Fetch Escalated WhatsApp conversations
+      let waNotifs: SystemNotification[] = [];
+      if (isStaff) {
+        try {
+          const convs = await chatbotService.getConversations().catch(() => []);
+          const tickets = await chatbotService.getSupportTickets().catch(() => []);
+          const escalatedConvs = convs.filter(
+            (c) =>
+              c.conversationStatusId === CONVERSATION_STATUS_IDS.ESCALADA ||
+              tickets.some(
+                (t) =>
+                  t.chatbotConversationId === c.id &&
+                  t.ticketStatusId !== TICKET_STATUS_IDS.CERRADO
+              )
+          );
+
+          waNotifs = escalatedConvs.map((c) => {
+            const notifId = `wa-escalated-${c.id}`;
+            return {
+              id: notifId,
+              title: 'Atención requerida en WhatsApp',
+              message: `El contacto ${c.chatIdentifier} requiere intervención de un asesor humano.`,
+              time: 'Reciente',
+              read: readIds.has(notifId),
+              type: 'whatsapp_escalated' as const,
+              link: '/atencion-chat',
+            };
+          });
+        } catch {
+          waNotifs = [];
+        }
+      }
+
       // 2. Generar lista de notificaciones para recepción / admin
       if (isStaff && pendingList.length > 0) {
         const notifId = `pending-appointments-alert-${pendingList.length}`;
@@ -96,7 +153,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           type: 'appointment_pending',
           link: '/citas?filtro=Pendiente',
         };
-        setNotifications([notif]);
+        setNotifications([notif, ...waNotifs]);
       } else if (role === 'PACIENTE') {
         const local = localStorage.getItem('nexus_citas');
         let ownPending = 0;
@@ -186,6 +243,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         markAsRead,
         markAllAsRead,
         refreshNotifications,
+        addNotification,
       }}
     >
       {children}

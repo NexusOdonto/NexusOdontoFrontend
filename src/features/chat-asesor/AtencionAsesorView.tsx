@@ -1,4 +1,6 @@
+import { useNotifications } from '../../context/NotificationContext';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
   MessageSquare,
@@ -19,6 +21,10 @@ import {
   Inbox,
   Bell,
   AlertCircle,
+  QrCode,
+  Smartphone,
+  LogOut,
+  ExternalLink,
 } from "lucide-react";
 import {
   chatbotService,
@@ -31,6 +37,7 @@ import { patientService } from "../../api/patientService";
 
 interface ChatItemDisplay {
   id: string;
+  allConversationIds?: string[];
   patientId?: string;
   chatIdentifier: string;
   patientName: string;
@@ -46,36 +53,77 @@ interface ChatItemDisplay {
   reason?: string;
 }
 
-// Función utilitaria para desduplicar mensajes por ID y por contenido/rol/marcas de tiempo cercanas
+// Limpia comillas escapadas accidentales y formato en bruto de respuestas del bot
+function cleanMessageContent(content: string): string {
+  if (!content) return "";
+  let res = content.trim();
+  if (res.startsWith('"') && res.endsWith('"') && res.length > 2) {
+    res = res.slice(1, -1);
+  }
+  return res
+    .replace(/\\"/g, '"')
+    .replace(/\\n/g, '\n')
+    .replace(/^"(.*?)"$/gm, '$1');
+}
+
+// Función utilitaria para desduplicar mensajes por ID y por contenido/marcas de tiempo cercanas
 function deduplicateMessages(msgs: ChatbotMessage[]): ChatbotMessage[] {
-  const seenIds = new Set<string>();
-  const result: ChatbotMessage[] = [];
+  const map = new Map<string, ChatbotMessage>();
 
   for (const m of msgs) {
-    if (m.id && seenIds.has(m.id)) continue;
-    if (m.id) seenIds.add(m.id);
+    if (!m || !m.content) continue;
 
-    const isDuplicate = result.some((prev) => {
-      if (
-        prev.content.trim() === m.content.trim() &&
-        String(prev.messageRoleId).toLowerCase() === String(m.messageRoleId).toLowerCase()
-      ) {
-        const t1 = new Date(prev.createdAt).getTime();
-        const t2 = new Date(m.createdAt).getTime();
-        if (!isNaN(t1) && !isNaN(t2) && Math.abs(t1 - t2) < 10000) {
-          return true;
+    // Si ya existe por ID idéntico
+    if (m.id && map.has(m.id)) continue;
+
+    const normContent = m.content.trim();
+    const normRole = String(m.messageRoleId || "").toLowerCase();
+    const mIsUser = isUserMessage(m.messageRoleId);
+    const timeMs = parseTimestamp(m.createdAt);
+
+    let foundKey: string | null = null;
+    for (const [key, existing] of map.entries()) {
+      if (existing.content.trim() === normContent) {
+        const existingRole = String(existing.messageRoleId || "").toLowerCase();
+        const existingIsUser = isUserMessage(existing.messageRoleId);
+        const exTime = parseTimestamp(existing.createdAt);
+        const timeDiff = Math.abs(exTime - timeMs);
+
+        // 1. Mismo rol con desfase menor a 20 segundos
+        const sameRole = existingRole === normRole;
+        // 2. O ambos son mensajes salientes de la clínica (Asesor o Bot) con mismo texto en menos de 20s
+        const bothClinicOutgoing = !mIsUser && !existingIsUser;
+
+        if ((sameRole || bothClinicOutgoing) && timeDiff < 20000) {
+          foundKey = key;
+          break;
         }
       }
-      return false;
-    });
+    }
 
-    if (!isDuplicate) {
-      result.push(m);
+    if (foundKey) {
+      const existing = map.get(foundKey)!;
+      // Si el existente es un mensaje local temporal y este es persistido, reemplazarlo
+      if (m.id && !m.id.startsWith("local-msg-") && existing.id.startsWith("local-msg-")) {
+        map.delete(foundKey);
+        map.set(m.id, m);
+      }
+    } else {
+      map.set(m.id || `msg-${Math.random()}`, m);
     }
   }
 
-  return result;
+  return Array.from(map.values()).sort((a, b) => parseTimestamp(a.createdAt) - parseTimestamp(b.createdAt));
 }
+
+// Mapeo canónico de LIDs (Linked Device IDs de WhatsApp) hacia teléfonos reales y nombres
+const KNOWN_LID_MAP: Record<string, { phone: string; name: string }> = {
+  "233783743803574": { phone: "+57 300 111 2233", name: "Kevin Pico" },
+  "189515549421795": { phone: "+57 322 668 8304", name: "J" },
+  "57213628510462": { phone: "+57 323 889 1073", name: "Pipe" },
+  "144444363939899": { phone: "+57 310 444 4436", name: "Santiago" },
+  "12696040816707": { phone: "+57 316 126 9604", name: "Jerson R" },
+};
 
 // Función utilitaria para formatear números de teléfono y JIDs de WhatsApp
 function formatPhone(identifier: string, patientPhone?: string): string {
@@ -87,9 +135,9 @@ function formatPhone(identifier: string, patientPhone?: string): string {
 
   if (!digitsOnly) return cleanedDomain;
 
-  // Mapeo específico para el LID de pruebas 57213628510462 de WhatsApp Evolution API
-  if (digitsOnly === "57213628510462" || cleanedDomain.includes("57213628510462")) {
-    return "+57 323 889 1073";
+  // Si es un LID conocido de pruebas en Evolution API
+  if (KNOWN_LID_MAP[digitsOnly]) {
+    return KNOWN_LID_MAP[digitsOnly].phone;
   }
 
   // Celulares colombianos de 10 dígitos (ej. 3238891073)
@@ -112,11 +160,17 @@ function formatPhone(identifier: string, patientPhone?: string): string {
     return `+57 (${digitsOnly.slice(0, 3)}) ${digitsOnly.slice(3, 6)} ${digitsOnly.slice(6)}`;
   }
 
+  // Teléfonos internacionales estándar (10 a 12 dígitos)
   if (digitsOnly.length >= 10 && digitsOnly.length <= 12) {
     if (digitsOnly.startsWith("57")) {
       return `+57 ${digitsOnly.slice(2, 5)} ${digitsOnly.slice(5, 8)} ${digitsOnly.slice(8)}`;
     }
     return `+${digitsOnly.slice(0, 3)} ${digitsOnly.slice(3, 7)} ${digitsOnly.slice(7)}`;
+  }
+
+  // Si tiene más de 12 dígitos o proviene de un @lid interno de WhatsApp
+  if (digitsOnly.length > 12 || raw.includes("@lid")) {
+    return `WhatsApp (${digitsOnly.slice(-6)})`;
   }
 
   return `+${digitsOnly}`;
@@ -212,6 +266,7 @@ function isAgenteMessage(roleIdStr?: string): boolean {
 
 export function AtencionAsesorView() {
   const navigate = useNavigate();
+  const { addNotification } = useNotifications();
 
   const [chats, setChats] = useState<ChatItemDisplay[]>([]);
   const [selectedChatId, setSelectedChatId] = useState<string>("");
@@ -228,6 +283,67 @@ export function AtencionAsesorView() {
   const [toastErrorMessage, setToastErrorMessage] = useState<string | null>(null);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
 
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [qrData, setQrData] = useState<{ connected: boolean; state: string; base64?: string; instanceName?: string } | null>(null);
+  const [restartingQr, setRestartingQr] = useState(false);
+
+  const fetchQr = useCallback(async () => {
+    try {
+      const data = await chatbotService.getQrData();
+      setQrData(data);
+    } catch (e) {
+      console.warn("Error consultando estado de QR WhatsApp:", e);
+    }
+  }, []);
+
+  const isConnected = qrData?.connected === true || qrData?.state === "open";
+  const isCheckingConnection = qrData === null;
+
+  useEffect(() => {
+    fetchQr();
+    // Continúa verificando automáticamente si el modal está abierto o si WhatsApp todavía no está conectado
+    if (!showQrModal && isConnected) return;
+    const interval = setInterval(() => {
+      fetchQr();
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [fetchQr, showQrModal, isConnected]);
+
+  const handleRestartQr = async () => {
+    setRestartingQr(true);
+    try {
+      await chatbotService.restartQrInstance();
+      showToast("Generando nuevo código QR...");
+      setTimeout(async () => {
+        await fetchQr();
+        setRestartingQr(false);
+      }, 1200);
+    } catch {
+      showToast("Error al reiniciar la instancia QR");
+      setRestartingQr(false);
+    }
+  };
+
+  const [loggingOutQr, setLoggingOutQr] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+  const handleConfirmLogoutQr = async () => {
+    setLoggingOutQr(true);
+    try {
+      await chatbotService.logoutQrInstance();
+      showToast("Sesión de WhatsApp cerrada. Puedes escanear un nuevo código QR.");
+      setTimeout(async () => {
+        await fetchQr();
+        setLoggingOutQr(false);
+        setShowLogoutConfirm(false);
+      }, 1500);
+    } catch {
+      showToast("Error al desvincular WhatsApp");
+      setLoggingOutQr(false);
+      setShowLogoutConfirm(false);
+    }
+  };
+
   const readSetRef = useRef<Set<string>>(new Set());
   const [unreadMap, setUnreadMap] = useState<Record<string, number>>({});
   const lastMsgCountRef = useRef<Record<string, number>>({});
@@ -239,7 +355,17 @@ export function AtencionAsesorView() {
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 4000);
-  }, []);
+    try {
+      addNotification({
+        title: 'Notificación de WhatsApp',
+        message: msg,
+        link: '/atencion-chat',
+        type: 'whatsapp_escalated',
+      });
+    } catch {
+      // Ignore
+    }
+  }, [addNotification]);
 
   const showErrorToast = useCallback((msg: string) => {
     setToastErrorMessage(msg);
@@ -265,11 +391,17 @@ export function AtencionAsesorView() {
           const cleanDigits = (str?: string) => (str || "").replace(/\D/g, "");
           const chatDigits = cleanDigits(c.chatIdentifier);
 
+          // Resolver si este chatIdentifier corresponde a un LID conocido
+          const mappedLid = KNOWN_LID_MAP[chatDigits];
+          const effectivePhoneDigits = mappedLid ? cleanDigits(mappedLid.phone) : "";
+
           const matchedPatient = patients.find(
             (p) =>
               (p.id && c.patientId && String(p.id).toLowerCase() === String(c.patientId).toLowerCase()) ||
               (p.phone && chatDigits && cleanDigits(p.phone).endsWith(chatDigits.slice(-10))) ||
-              (p.emergencyPhone && chatDigits && cleanDigits(p.emergencyPhone).endsWith(chatDigits.slice(-10)))
+              (p.emergencyPhone && chatDigits && cleanDigits(p.emergencyPhone).endsWith(chatDigits.slice(-10))) ||
+              (effectivePhoneDigits && p.phone && cleanDigits(p.phone).endsWith(effectivePhoneDigits.slice(-10))) ||
+              (effectivePhoneDigits && p.emergencyPhone && cleanDigits(p.emergencyPhone).endsWith(effectivePhoneDigits.slice(-10)))
           );
           const matchedTicket = tickets.find(
             (t) => t.chatbotConversationId && String(t.chatbotConversationId).toLowerCase() === String(c.id).toLowerCase()
@@ -285,6 +417,8 @@ export function AtencionAsesorView() {
 
           const pName = matchedPatient
             ? `${matchedPatient.firstName || ""} ${matchedPatient.lastName || ""}`.trim()
+            : mappedLid?.name
+            ? mappedLid.name
             : formattedPhone;
 
           const cleanSummary = formatTicketSummary(matchedTicket?.chatbotSummary, matchedTicket?.title);
@@ -330,13 +464,43 @@ export function AtencionAsesorView() {
           };
         });
 
-        mapped.sort((a, b) => parseTimestamp(b.rawTimestamp) - parseTimestamp(a.rawTimestamp));
+        // Unificar conversaciones que pertenecen al mismo número de teléfono (JID y LID)
+        const groupedByPhone = new Map<string, ChatItemDisplay>();
 
-        setChats(mapped);
+        for (const item of mapped) {
+          const key = item.phone || item.chatIdentifier;
+          if (!groupedByPhone.has(key)) {
+            groupedByPhone.set(key, { ...item, allConversationIds: [item.id] });
+          } else {
+            const existing = groupedByPhone.get(key)!;
+            existing.allConversationIds = [...(existing.allConversationIds || [existing.id]), item.id];
+            // Priorizar la información de la sesión más reciente
+            if (parseTimestamp(item.rawTimestamp) > parseTimestamp(existing.rawTimestamp)) {
+              existing.id = item.id;
+              existing.chatIdentifier = item.chatIdentifier;
+              existing.lastMessage = item.lastMessage;
+              existing.lastMessageTime = item.lastMessageTime;
+              existing.rawTimestamp = item.rawTimestamp;
+              existing.status = item.status;
+              existing.ticket = item.ticket || existing.ticket;
+            }
+            existing.unreadCount = (existing.unreadCount || 0) + (item.unreadCount || 0);
+            existing.unread = existing.unreadCount > 0;
+          }
+        }
+
+        const consolidated = Array.from(groupedByPhone.values()).sort(
+          (a, b) => parseTimestamp(b.rawTimestamp) - parseTimestamp(a.rawTimestamp)
+        );
+
+        setChats(consolidated);
 
         setSelectedChatId((prev) => {
-          if (prev && mapped.some((ch) => ch.id === prev)) return prev;
-          return mapped[0]?.id || "";
+          if (prev && consolidated.some((ch) => ch.id === prev || ch.allConversationIds?.includes(prev))) {
+            const matching = consolidated.find((ch) => ch.id === prev || ch.allConversationIds?.includes(prev));
+            return matching ? matching.id : prev;
+          }
+          return consolidated[0]?.id || "";
         });
       } else {
         setChats([]);
@@ -361,7 +525,15 @@ export function AtencionAsesorView() {
     }
     if (!isSilent) setLoadingMessages(true);
     try {
-      const msgs = await chatbotService.getConversationMessages(convId);
+      const currentChat = chats.find((c) => c.id === convId || c.allConversationIds?.includes(convId));
+      const targetIds = currentChat?.allConversationIds && currentChat.allConversationIds.length > 0
+        ? currentChat.allConversationIds
+        : [convId];
+
+      const allResults = await Promise.all(
+        targetIds.map((id: string) => chatbotService.getConversationMessages(id).catch(() => []))
+      );
+      const msgs = allResults.flat();
       if (msgs && msgs.length > 0) {
         setMessages(deduplicateMessages(msgs));
 
@@ -481,8 +653,11 @@ export function AtencionAsesorView() {
         try {
           await chatbotService.replyToTicket(selectedChat.ticket.id, text, roleId);
           sentToBackend = true;
-        } catch (ticketErr) {
-          console.warn("replyToTicket failed, falling back to direct message send:", ticketErr);
+        } catch (ticketErr: any) {
+          console.warn("replyToTicket failed:", ticketErr);
+          if (ticketErr?.response?.status >= 200 && ticketErr?.response?.status < 300) {
+            sentToBackend = true;
+          }
         }
       }
 
@@ -490,23 +665,36 @@ export function AtencionAsesorView() {
         const alreadyDeliveredWa = waDeliveredRef.current.get(dispatchKey);
         if (!alreadyDeliveredWa) {
           const cleanPhone = selectedChat.chatIdentifier.replace(/@.*$/, "").replace(/\D/g, "");
-          const waRes = await chatbotService.sendWhatsAppMessage({
-            destinationPhone: cleanPhone || selectedChat.chatIdentifier,
-            content: text,
-            patientId: selectedChat.patientId,
-          });
+          try {
+            const waRes = await chatbotService.sendWhatsAppMessage({
+              destinationPhone: cleanPhone || selectedChat.chatIdentifier,
+              content: text,
+              patientId: selectedChat.patientId,
+            });
 
-          if (!waRes && waRes !== undefined) {
-            throw new Error("Respuesta inválida del servidor al despachar mensaje de WhatsApp.");
+            if (!waRes && waRes !== undefined) {
+              throw new Error("Respuesta inválida del servidor al despachar mensaje de WhatsApp.");
+            }
+            waDeliveredRef.current.set(dispatchKey, true);
+          } catch (waErr) {
+            console.warn("sendWhatsAppMessage fallback to direct FastAPI agent dispatch:", waErr);
+            await chatbotService.sendAgentDirectMessage({
+              phoneNumber: selectedChat.chatIdentifier,
+              message: text,
+              senderRole: sendIdentity === "CHATBOT" ? "CHATBOT" : "AGENTE_HUMANO",
+              skipDbRegister: true,
+            });
+            waDeliveredRef.current.set(dispatchKey, true);
           }
-          waDeliveredRef.current.set(dispatchKey, true);
         }
 
-        await chatbotService.sendMessage({
-          chatbotConversationId: selectedChat.id,
-          messageRoleId: roleId,
-          content: text,
-        });
+        if (!selectedChat.ticket || selectedChat.ticket.id.startsWith("tick-")) {
+          await chatbotService.sendMessage({
+            chatbotConversationId: selectedChat.id,
+            messageRoleId: roleId,
+            content: text,
+          }).catch(() => null);
+        }
 
         // Completado con éxito: limpiar marcador de despacho pendiente
         waDeliveredRef.current.delete(dispatchKey);
@@ -592,12 +780,18 @@ export function AtencionAsesorView() {
         closedAt: newStatus === "CERRADA" ? new Date().toISOString() : undefined,
       });
 
+      if (newStatus === "ACTIVA") {
+        await chatbotService.resumeConversation(selectedChat.chatIdentifier, false).catch(() => null);
+      } else if (newStatus === "CERRADA") {
+        await chatbotService.resumeConversation(selectedChat.chatIdentifier, true).catch(() => null);
+      }
+
       if (selectedChat.ticket) {
         if (newStatus === "CERRADA" || newStatus === "ACTIVA") {
           await chatbotService.resolveTicket(
             selectedChat.ticket.id,
             newStatus === "ACTIVA" ? "Devuelto al bot para atención automática." : "Atendido y cerrado por recepcionista."
-          );
+          ).catch(() => null);
         }
       }
 
@@ -651,11 +845,38 @@ export function AtencionAsesorView() {
               <h1 className="text-base font-black tracking-tight text-slate-900 dark:text-white">
                 Atención y Escalamiento WhatsApp
               </h1>
-              <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[11px] font-semibold">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                <span className="w-2 h-2 rounded-full bg-emerald-500 -ml-3.5" />
-                <span>Evolution WhatsApp Conectado</span>
-              </div>
+              {qrData?.connected || qrData?.state === "open" ? (
+                <button
+                  type="button"
+                  onClick={() => setShowQrModal(true)}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[11px] font-semibold transition-all cursor-pointer"
+                  title="WhatsApp conectado. Clic para ver estado o administrar"
+                >
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 -ml-3.5" />
+                  <span>Evolution WhatsApp Conectado</span>
+                </button>
+              ) : qrData?.state === "connecting" ? (
+                <button
+                  type="button"
+                  onClick={() => setShowQrModal(true)}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-[11px] font-semibold transition-all cursor-pointer animate-pulse"
+                  title="WhatsApp requiere escanear código QR. Haz clic aquí."
+                >
+                  <QrCode size={13} />
+                  <span>Escanear QR WhatsApp</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowQrModal(true)}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-[11px] font-semibold transition-all cursor-pointer"
+                  title="WhatsApp desconectado. Clic para vincular mediante código QR"
+                >
+                  <span className="w-2 h-2 rounded-full bg-rose-500" />
+                  <span>WhatsApp Desconectado (Vincular)</span>
+                </button>
+              )}
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               Supervisión de NexusBot, respuesta manual e intervención de recepcionista en tiempo real
@@ -664,6 +885,16 @@ export function AtencionAsesorView() {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* BOTÓN VINCULAR QR WHATSAPP */}
+          <button
+            type="button"
+            onClick={() => setShowQrModal(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-teal-50 dark:bg-teal-950/50 hover:bg-teal-100 dark:hover:bg-teal-900/50 border border-teal-200 dark:border-teal-800/60 text-teal-700 dark:text-teal-300 text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-95"
+            title="Abrir ventana para vincular WhatsApp por Código QR"
+          >
+            <QrCode size={15} />
+            <span className="hidden sm:inline">Vincular QR</span>
+          </button>
           {/* BOTÓN / ICONO DE NOTIFICACIONES */}
           <button
             type="button"
@@ -695,8 +926,94 @@ export function AtencionAsesorView() {
         </div>
       </header>
 
-      {/* CUERPO PRINCIPAL TRIPLE COLUMNA */}
-      <div className="flex-1 flex min-h-0 divide-x divide-slate-200/80 dark:divide-white/10">
+      {/* CONTENIDO PRINCIPAL: CONDICIONAL SEGÚN ESTADO DE CONEXIÓN */}
+      {isCheckingConnection ? (
+        <div className="flex-1 flex flex-col items-center justify-center p-8 space-y-3 bg-slate-50/40 dark:bg-slate-950/20">
+          <RefreshCw size={32} className="animate-spin text-teal-500" />
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+            Comprobando estado de conexión con Evolution WhatsApp...
+          </p>
+        </div>
+      ) : !isConnected ? (
+        <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-10 bg-slate-50/40 dark:bg-slate-950/20 overflow-y-auto">
+          <div className="w-full max-w-xl bg-white/95 dark:bg-slate-900/90 backdrop-blur-xl rounded-3xl border border-slate-200/80 dark:border-white/10 p-6 sm:p-8 shadow-2xl shadow-emerald-950/10 text-center space-y-6 animate-in fade-in zoom-in-95 duration-300">
+            <div className="space-y-2">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-teal-500/20 via-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/10">
+                <QrCode size={30} />
+              </div>
+              <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
+                WhatsApp no está vinculado
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
+                Los chats y mensajes de pacientes permanecerán ocultos hasta que vincules WhatsApp con NexusBot. Escanea el código QR a continuación para habilitar la atención.
+              </p>
+            </div>
+
+            {/* CÓDIGO QR DIRECTO EN PANTALLA */}
+            <div className="relative group inline-block">
+              {qrData?.base64 ? (
+                <div className="p-4 rounded-3xl bg-white border-2 border-teal-500/40 shadow-xl inline-block transition-transform duration-300 hover:scale-105">
+                  <img
+                    src={
+                      qrData.base64.startsWith("data:")
+                        ? qrData.base64
+                        : `data:image/png;base64,${qrData.base64}`
+                    }
+                    alt="Código QR de WhatsApp"
+                    className="w-56 h-56 object-contain rounded-xl"
+                  />
+                </div>
+              ) : (
+                <div className="w-56 h-56 rounded-3xl border-2 border-dashed border-teal-500/40 bg-teal-500/5 flex flex-col items-center justify-center mx-auto space-y-3 text-teal-600 dark:text-teal-400 p-4">
+                  <RefreshCw size={32} className="animate-spin text-teal-500" />
+                  <span className="text-xs font-bold">Generando Código QR Seguro...</span>
+                  <span className="text-[10px] text-slate-400">Conectando con Evolution API</span>
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 rounded-2xl bg-teal-50/80 dark:bg-teal-950/40 border border-teal-200/80 dark:border-teal-800/60 text-left max-w-md mx-auto">
+              <h4 className="text-xs font-bold text-teal-950 dark:text-teal-200 flex items-center gap-1.5 mb-2">
+                <Smartphone size={15} className="text-teal-600 dark:text-teal-400" />
+                Instrucciones de escaneo:
+              </h4>
+              <ol className="text-[11px] text-slate-700 dark:text-slate-300 space-y-1.5 list-decimal list-inside pl-1 font-medium">
+                <li>Abre <b>WhatsApp</b> en tu celular corporativo.</li>
+                <li>Toca <b>Menú (⋮)</b> o <b>Configuración</b>.</li>
+                <li>Selecciona <b>Dispositivos vinculados</b> &gt; <b>Vincular un dispositivo</b>.</li>
+                <li>Apunta la cámara de tu celular hacia este código QR.</li>
+              </ol>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={handleRestartQr}
+                disabled={restartingQr}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 text-xs font-black transition-all shadow-md active:scale-95 flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                <RefreshCw size={14} className={restartingQr ? "animate-spin" : ""} />
+                <span>{restartingQr ? "Generando..." : "Generar Nuevo QR"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={fetchQr}
+                className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition-all border border-slate-200 dark:border-white/10 cursor-pointer"
+              >
+                Refrescar Estado
+              </button>
+            </div>
+
+            <div className="text-[11px] text-slate-400 dark:text-slate-500 flex items-center justify-center gap-2 pt-2 border-t border-slate-200/60 dark:border-white/5">
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+              <span>Sincronizando automáticamente al detectar el escaneo...</span>
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* CUERPO PRINCIPAL TRIPLE COLUMNA (Solo visible cuando WhatsApp está conectado) */
+        <div className="flex-1 flex min-h-0 divide-x divide-slate-200/80 dark:divide-white/10">
         
         {/* COLUMNA 1: LISTA LATERAL DE CONVERSACIONES Y FILTROS */}
         <aside className="w-80 sm:w-96 flex flex-col bg-slate-50/60 dark:bg-slate-950/40 flex-shrink-0">
@@ -1006,7 +1323,7 @@ export function AtencionAsesorView() {
                         <div key={msg.id} className="flex justify-center my-2">
                           <div className="px-3 py-1 rounded-full bg-slate-200/80 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-[11px] font-medium flex items-center gap-1.5 shadow-sm">
                             <Sparkles size={12} className="text-amber-500 dark:text-amber-400" />
-                            <span>{msg.content}</span>
+                            <span>{cleanMessageContent(msg.content)}</span>
                           </div>
                         </div>
                       );
@@ -1051,7 +1368,7 @@ export function AtencionAsesorView() {
                               : "bg-cyan-600 dark:bg-cyan-700 text-white rounded-tr-xs font-medium"
                           }`}
                         >
-                          <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                          <p className="whitespace-pre-wrap break-words">{cleanMessageContent(msg.content)}</p>
 
                           {msg.ragConfidence !== undefined && msg.ragConfidence > 0 && (
                             <div className="mt-1.5 pt-1.5 border-t border-white/20 flex items-center justify-between text-[9.5px] opacity-90 font-medium">
@@ -1262,113 +1579,367 @@ export function AtencionAsesorView() {
           )}
         </aside>
       </div>
+      )}
 
-      {/* MODAL DE CENTRO DE NOTIFICACIONES Y ALERTAS */}
-      {showNotificationsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
-            <div className="p-5 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-white/10 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-600 dark:text-rose-400">
-                  <Bell size={20} className="animate-bounce" />
-                </div>
-                <div>
-                  <h2 className="text-sm font-black text-slate-900 dark:text-white">
-                    Centro de Notificaciones & Alertas
-                  </h2>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Casos que requieren atención humana inmediata en WhatsApp
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowNotificationsModal(false)}
-                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition-all cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
+      {/* MODAL PARA VINCULAR WHATSAPP POR QR (Renderizado en Portal para evitar recorte) */}
+      {showQrModal &&
+        createPortal(
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 sm:p-6 bg-slate-950/75 backdrop-blur-xl animate-in fade-in duration-200">
+            <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-white/10 shadow-2xl shadow-slate-950/50 overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+              {/* LÍNEA DECORATIVA GRADIENTE */}
+              <div className="h-1 bg-gradient-to-r from-emerald-400 via-teal-500 to-cyan-500 w-full" />
 
-            <div className="p-4 overflow-y-auto space-y-3 flex-1">
-              {chats.filter((c: ChatItemDisplay) => c.status === "ESCALADA" || c.unread).length === 0 ? (
-                <div className="p-8 text-center text-slate-400 space-y-3">
-                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 flex items-center justify-center mx-auto">
-                    <CheckCircle2 size={24} />
+              {/* CABECERA DEL MODAL */}
+              <div className="px-6 py-4 bg-slate-50/80 dark:bg-slate-950/50 border-b border-slate-200/80 dark:border-white/10 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-sm">
+                    <QrCode size={20} />
                   </div>
                   <div>
-                    <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300">¡Todo al día!</h3>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
-                      No hay notificaciones ni alertas pendientes por atender.
+                    <h2 className="text-sm font-black text-slate-900 dark:text-white tracking-tight">
+                      Vincular WhatsApp - NexusBot
+                    </h2>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Conexión de mensajería con Evolution API
                     </p>
                   </div>
                 </div>
-              ) : (
-                chats
-                  .filter((c: ChatItemDisplay) => c.status === "ESCALADA" || c.unread)
-                  .map((alertChat: ChatItemDisplay) => (
-                    <div
-                      key={alertChat.id}
-                      className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-white/10 hover:border-teal-500/50 transition-all flex items-start justify-between gap-3 group"
-                    >
-                      <div className="space-y-1.5 min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
-                            <AlertTriangle size={9} />
-                            Requiere Asesor
-                          </span>
-                          <span className="text-[10px] text-slate-400 font-mono">
-                            {alertChat.lastMessageTime}
-                          </span>
-                        </div>
+                <button
+                  type="button"
+                  onClick={() => setShowQrModal(false)}
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition-all cursor-pointer"
+                  title="Cerrar modal"
+                >
+                  <X size={18} />
+                </button>
+              </div>
 
-                        <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                          {alertChat.patientName}
-                        </h4>
+              {/* CONTENIDO DEL MODAL */}
+              <div className="p-6 overflow-y-auto space-y-5 text-center flex-1">
+                {showLogoutConfirm ? (
+                  <div className="py-6 space-y-4 animate-in fade-in zoom-in-95 duration-200">
+                    <div className="w-16 h-16 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-center justify-center mx-auto shadow-lg shadow-rose-500/10">
+                      <AlertTriangle size={32} />
+                    </div>
 
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                          {alertChat.reason || alertChat.lastMessage}
-                        </p>
+                    <div className="space-y-1">
+                      <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight">
+                        ¿Desvincular WhatsApp?
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto leading-relaxed">
+                        Se cerrará la sesión actual de Evolution API. Los chats se ocultarán y deberás escanear un nuevo código QR para volver a sincronizar el bot clínico.
+                      </p>
+                    </div>
 
-                        <p className="text-[10px] font-mono text-teal-600 dark:text-teal-400">
-                          {alertChat.phone}
+                    <div className="pt-3 flex items-center justify-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setShowLogoutConfirm(false)}
+                        disabled={loggingOutQr}
+                        className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleConfirmLogoutQr}
+                        disabled={loggingOutQr}
+                        className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-all shadow-md shadow-rose-600/25 active:scale-95 flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                      >
+                        {loggingOutQr ? <RefreshCw size={14} className="animate-spin" /> : <LogOut size={14} />}
+                        <span>{loggingOutQr ? "Cerrando sesión..." : "Sí, Desvincular"}</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : qrData?.connected || qrData?.state === "open" ? (
+                  <div className="py-4 space-y-4">
+                    {/* ESTADO CONECTADO */}
+                    <div className="relative flex items-center justify-center mx-auto">
+                      <div className="w-18 h-18 rounded-3xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-white flex items-center justify-center shadow-xl shadow-emerald-500/25">
+                        <CheckCircle2 size={38} className="stroke-[2.5]" />
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="text-base font-black text-slate-900 dark:text-white">
+                        ¡WhatsApp Conectado y Activo!
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto leading-relaxed">
+                        NexusBot AI está sincronizado con la clínica y respondiendo mensajes de pacientes en tiempo real.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2.5 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-white/5 text-left text-xs">
+                      <div className="space-y-0.5">
+                        <span className="text-[10px] uppercase font-bold text-slate-400">Instancia WhatsApp</span>
+                        <p className="font-semibold text-slate-800 dark:text-slate-200 truncate">
+                          {qrData?.instanceName || "Nexus_Odonto"}
                         </p>
                       </div>
+                      <div className="space-y-0.5">
+                        <span className="text-[10px] uppercase font-bold text-slate-400">Estado de Red</span>
+                        <p className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                          ONLINE (Sesión abierta)
+                        </p>
+                      </div>
+                      <div className="space-y-0.5">
+                        <span className="text-[10px] uppercase font-bold text-slate-400">Canal Integrado</span>
+                        <p className="font-semibold text-slate-800 dark:text-slate-200">
+                          Evolution API v2
+                        </p>
+                      </div>
+                      <div className="space-y-0.5">
+                        <span className="text-[10px] uppercase font-bold text-slate-400">Puerto del Servicio</span>
+                        <p className="font-semibold text-slate-800 dark:text-slate-200 font-mono">
+                          localhost:8085
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 flex flex-wrap items-center justify-center gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => setShowQrModal(false)}
+                        className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 text-xs font-black shadow-md shadow-emerald-500/20 transition-all active:scale-95 cursor-pointer"
+                      >
+                        Continuar
+                      </button>
 
                       <button
                         type="button"
-                        onClick={() => {
-                          setSelectedChatId(alertChat.id);
-                          setFilterTab("TODAS");
-                          setShowNotificationsModal(false);
-                          showToast(`Atendiendo caso de ${alertChat.patientName}`);
-                        }}
-                        className="px-3 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 shrink-0 flex items-center gap-1 cursor-pointer"
+                        onClick={handleRestartQr}
+                        disabled={restartingQr}
+                        className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition-all border border-slate-200 dark:border-white/10 flex items-center gap-2 cursor-pointer disabled:opacity-50"
                       >
-                        <span>Atender</span>
-                        <ChevronRight size={14} />
+                        <RefreshCw size={14} className={restartingQr ? "animate-spin text-teal-500" : ""} />
+                        <span>Regenerar QR</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowLogoutConfirm(true)}
+                        disabled={loggingOutQr}
+                        className="px-4 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                      >
+                        <LogOut size={14} />
+                        <span>Desvincular WhatsApp</span>
                       </button>
                     </div>
-                  ))
-              )}
-            </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4 py-1">
+                    {/* VISUALIZADOR DEL QR */}
+                    <div className="relative group inline-block">
+                      {qrData?.base64 ? (
+                        <div className="p-4 rounded-3xl bg-white border-2 border-teal-500/40 shadow-2xl inline-block transition-transform duration-300 hover:scale-[1.02]">
+                          <img
+                            src={
+                              qrData.base64.startsWith("data:")
+                                ? qrData.base64
+                                : `data:image/png;base64,${qrData.base64}`
+                            }
+                            alt="Código QR de WhatsApp"
+                            className="w-56 h-56 object-contain rounded-xl"
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-56 h-56 rounded-3xl border-2 border-dashed border-teal-500/40 bg-teal-500/5 flex flex-col items-center justify-center mx-auto space-y-3 text-teal-600 dark:text-teal-400 p-4">
+                          <RefreshCw size={32} className="animate-spin text-teal-500" />
+                          <span className="text-xs font-bold">Generando Código QR...</span>
+                          <span className="text-[10px] text-slate-400">Conectando con Evolution API</span>
+                        </div>
+                      )}
+                    </div>
 
-            <div className="p-3.5 bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-white/10 flex items-center justify-between text-xs text-slate-500">
-              <span>Alertas activas: {counts.escaladas}</span>
-              <button
-                type="button"
-                onClick={() => {
-                  setFilterTab("ESCALADAS");
-                  setShowNotificationsModal(false);
-                }}
-                className="text-teal-600 dark:text-teal-400 font-bold hover:underline cursor-pointer"
-              >
-                Ver todas en la lista
-              </button>
+                    <div className="p-3.5 rounded-2xl bg-teal-50/80 dark:bg-teal-950/40 border border-teal-200/80 dark:border-teal-800/60 text-left">
+                      <h4 className="text-xs font-bold text-teal-900 dark:text-teal-200 flex items-center gap-1.5 mb-2">
+                        <Smartphone size={15} className="text-teal-600 dark:text-teal-400" />
+                        Pasos para escanear en tu teléfono:
+                      </h4>
+                      <ol className="text-[11px] text-slate-600 dark:text-slate-300 space-y-1.5 list-decimal list-inside pl-1 font-medium">
+                        <li>Abre <b>WhatsApp</b> en tu celular corporativo.</li>
+                        <li>Toca <b>Menú (⋮)</b> o <b>Configuración</b>.</li>
+                        <li>Selecciona <b>Dispositivos vinculados</b> &gt; <b>Vincular dispositivo</b>.</li>
+                        <li>Apunta con la cámara de tu celular hacia este código QR.</li>
+                      </ol>
+                    </div>
+
+                    {/* BOTONES DE ACCIÓN */}
+                    <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1">
+                      <button
+                        type="button"
+                        onClick={handleRestartQr}
+                        disabled={restartingQr}
+                        className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 text-xs font-black transition-all shadow-md active:scale-95 flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                      >
+                        <RefreshCw size={14} className={restartingQr ? "animate-spin" : ""} />
+                        <span>{restartingQr ? "Generando..." : "Generar Nuevo QR"}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={fetchQr}
+                        className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition-all border border-slate-200 dark:border-white/10 cursor-pointer"
+                      >
+                        Refrescar Estado
+                      </button>
+                    </div>
+
+                    <div className="pt-1">
+                      <a
+                        href="http://localhost:8000/qr"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-teal-600 dark:text-teal-400 hover:underline inline-flex items-center gap-1.5 font-medium"
+                      >
+                        <ExternalLink size={13} />
+                        <span>Abrir visor de QR en pantalla completa</span>
+                      </a>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* PIE DEL MODAL */}
+              <div className="px-6 py-3.5 bg-slate-50/90 dark:bg-slate-950 border-t border-slate-200/80 dark:border-white/10 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                <span className="flex items-center gap-2">
+                  <span
+                    className={`w-2.5 h-2.5 rounded-full ${
+                      qrData?.connected || qrData?.state === "open"
+                        ? "bg-emerald-500 shadow-sm shadow-emerald-500/50"
+                        : "bg-amber-500 animate-pulse"
+                    }`}
+                  />
+                  <span>
+                    Estado:{" "}
+                    <b className="uppercase text-slate-800 dark:text-slate-200">
+                      {qrData?.state || "Consultando..."}
+                    </b>
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowQrModal(false)}
+                  className="px-3 py-1 rounded-lg text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  Cerrar
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
+
+      {/* MODAL DE CENTRO DE NOTIFICACIONES Y ALERTAS (Renderizado en Portal) */}
+      {showNotificationsModal &&
+        createPortal(
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 sm:p-6 bg-slate-950/75 backdrop-blur-xl animate-in fade-in duration-200">
+            <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-white/10 shadow-2xl shadow-slate-950/50 overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
+              <div className="p-5 bg-slate-50/90 dark:bg-slate-950 border-b border-slate-200/80 dark:border-white/10 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-600 dark:text-rose-400 shadow-sm">
+                    <Bell size={20} className="animate-bounce" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-black text-slate-900 dark:text-white">
+                      Centro de Notificaciones & Alertas
+                    </h2>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Casos que requieren atención humana inmediata en WhatsApp
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowNotificationsModal(false)}
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition-all cursor-pointer"
+                  title="Cerrar modal"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="p-4 overflow-y-auto space-y-3 flex-1">
+                {chats.filter((c: ChatItemDisplay) => c.status === "ESCALADA" || c.unread).length === 0 ? (
+                  <div className="p-8 text-center text-slate-400 space-y-3">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 flex items-center justify-center mx-auto">
+                      <CheckCircle2 size={24} />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300">¡Todo al día!</h3>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        No hay notificaciones ni alertas pendientes por atender.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  chats
+                    .filter((c: ChatItemDisplay) => c.status === "ESCALADA" || c.unread)
+                    .map((alertChat: ChatItemDisplay) => (
+                      <div
+                        key={alertChat.id}
+                        className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-white/10 hover:border-teal-500/50 transition-all flex items-start justify-between gap-3 group"
+                      >
+                        <div className="space-y-1.5 min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
+                              <AlertTriangle size={9} />
+                              Requiere Asesor
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              {alertChat.lastMessageTime}
+                            </span>
+                          </div>
+
+                          <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                            {alertChat.patientName}
+                          </h4>
+
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                            {alertChat.reason || alertChat.lastMessage}
+                          </p>
+
+                          <p className="text-[10px] font-mono text-teal-600 dark:text-teal-400">
+                            {alertChat.phone}
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedChatId(alertChat.id);
+                            setFilterTab("TODAS");
+                            setShowNotificationsModal(false);
+                            showToast(`Atendiendo caso de ${alertChat.patientName}`);
+                          }}
+                          className="px-3 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 shrink-0 flex items-center gap-1 cursor-pointer"
+                        >
+                          <span>Atender</span>
+                          <ChevronRight size={14} />
+                        </button>
+                      </div>
+                    ))
+                )}
+              </div>
+
+              <div className="p-3.5 bg-slate-50/90 dark:bg-slate-950 border-t border-slate-200/80 dark:border-white/10 flex items-center justify-between text-xs text-slate-500">
+                <span>Alertas activas: {counts.escaladas}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFilterTab("ESCALADAS");
+                    setShowNotificationsModal(false);
+                  }}
+                  className="text-teal-600 dark:text-teal-400 font-bold hover:underline cursor-pointer"
+                >
+                  Ver todas en la lista
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
