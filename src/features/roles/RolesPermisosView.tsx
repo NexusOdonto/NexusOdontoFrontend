@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   ShieldCheck,
   Plus,
@@ -156,7 +156,7 @@ export function RolesPermisosView() {
     return desc;
   };
 
-  const fetchRoles = async () => {
+  const fetchRoles = useCallback(async () => {
     setLoading(true);
     try {
       const data = await roleService.getAll();
@@ -188,11 +188,11 @@ export function RolesPermisosView() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchRoles();
-  }, []);
+  }, [fetchRoles]);
 
   const handleTogglePermission = (moduloId: string, action: "ver" | "crear" | "editar" | "eliminar") => {
     if (!selectedRole) return;

@@ -69,7 +69,7 @@ export default function ConfiguracionView() {
     if (saved) {
       try {
         return { ...CONFIG_DEFAULT, ...JSON.parse(saved) };
-      } catch (e) {
+      } catch (_e) {
         return CONFIG_DEFAULT;
       }
     }

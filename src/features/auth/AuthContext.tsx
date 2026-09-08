@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../../api/authService';
 import { formatRoleName } from '../../utils/roleUtils';
@@ -84,7 +84,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   };
 
-  const loginWithGoogleCallback = async (token: string, refreshToken?: string): Promise<boolean> => {
+  const loginWithGoogleCallback = useCallback(async (token: string, refreshToken?: string): Promise<boolean> => {
     setIsLoading(true);
     try {
       localStorage.setItem('auth_token', token);
@@ -133,7 +133,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [navigate]);
 
   useEffect(() => {
     // 1. Detectar tokens provenientes del callback de Google en URL
@@ -179,7 +179,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } else {
       setIsLoading(false);
     }
-  }, [navigate]);
+  }, [navigate, loginWithGoogleCallback]);
 
   const updateUser = (updatedData: Partial<User>) => {
     setUser((prev) => {

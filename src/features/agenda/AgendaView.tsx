@@ -18,7 +18,6 @@ import {
 import {
   type Cita,
   type EstadoCita,
-  citasIniciales,
   nombresDias,
   odontologos as odontologosFallback,
   sumarDias,
@@ -45,7 +44,7 @@ export function AgendaView() {
   const isPaciente = role === "PACIENTE";
 
   // Citas locales y de la base de datos
-  const [citas, setCitas] = useState<Cita[]>(citasIniciales);
+  const [citas, setCitas] = useState<Cita[]>([]);
   const [fechaActual, setFechaActual] = useState(new Date());
 
   // Catálogos reales del backend
@@ -195,11 +194,26 @@ export function AgendaView() {
         const mappedFromBackend: Cita[] = apiApps.value
           .filter((a: AppointmentResponseDto) => !a.cancelledAt)
           .map((a: AppointmentResponseDto, idx: number) => {
-            const fechaStr = a.startsAt ? a.startsAt.split("T")[0] : formatoFechaInput(new Date());
-            const inicio =
-              a.startsAt && a.startsAt.includes("T") ? a.startsAt.split("T")[1].substring(0, 5) : "09:00";
-            const fin =
-              a.endsAt && a.endsAt.includes("T") ? a.endsAt.split("T")[1].substring(0, 5) : "10:00";
+            let fechaStr = formatoFechaInput(new Date());
+            let inicio = "09:00";
+            let fin = "10:00";
+
+            if (a.startsAt) {
+              const startDate = new Date(a.startsAt);
+              if (!isNaN(startDate.getTime())) {
+                fechaStr = formatoFechaInput(startDate);
+                inicio = startDate.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", hour12: false });
+              } else {
+                fechaStr = a.startsAt.split("T")[0] || fechaStr;
+              }
+            }
+
+            if (a.endsAt) {
+              const endDate = new Date(a.endsAt);
+              if (!isNaN(endDate.getTime())) {
+                fin = endDate.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", hour12: false });
+              }
+            }
 
             // Enriquecimiento de nombres reales a partir de los catálogos y entidades
             let resolvedPatientName = a.patientName;
@@ -236,16 +250,29 @@ export function AgendaView() {
 
             let estadoMapeado: EstadoCita = "Confirmada";
             const sn = (a.statusName || "").toUpperCase();
-            if (sn.includes("ATEN") || sn.includes("ATTEND")) estadoMapeado = "En Atención";
-            else if (sn.includes("PEND") || sn.includes("AGEN")) estadoMapeado = "Pendiente";
-            else if (sn.includes("CANCEL")) estadoMapeado = "No disponible";
+            if (sn.includes("COMPLET") || sn.includes("ATENDIDA") || sn.includes("FINALIZ")) {
+              estadoMapeado = "Completada";
+            } else if (sn.includes("ATEN") || sn.includes("ATTEND") || sn.includes("PROCESO")) {
+              estadoMapeado = "En Atención";
+            } else if (sn.includes("PEND") || sn.includes("AGEN") || sn.includes("SCHEDULED")) {
+              estadoMapeado = "Pendiente";
+            } else if (sn.includes("CONFIRM") || sn.includes("ACEPT")) {
+              estadoMapeado = "Confirmada";
+            } else if (sn.includes("CANCEL")) {
+              estadoMapeado = "No disponible";
+            }
+
+            const profsList = profs.status === "fulfilled" && Array.isArray(profs.value) ? profs.value : [];
+            const fallbackDoc = profsList.length > 0 && profsList[0]?.firstName 
+              ? `Dr(a). ${profsList[0].firstName} ${profsList[0].lastName || ""}`.trim()
+              : "Dra. Laura Gómez";
 
             return {
               id: idx + 1000,
               rawGuid: a.id,
               paciente: resolvedPatientName || "Paciente Registrado",
               servicio: resolvedServiceName || "Consulta Odontológica",
-              odontologo: resolvedProfName || (listaOdontologos[1] ? listaOdontologos[1].nombre : "Dra. Laura Gómez"),
+              odontologo: resolvedProfName || fallbackDoc,
               fecha: fechaStr,
               horaInicio: inicio,
               horaFin: fin,
@@ -328,13 +355,18 @@ export function AgendaView() {
   }, [citasSemana]);
 
   const espaciosDisponibles = useMemo(() => {
-    // 11 franjas horarias por día (7:00 a 18:00) a lo largo de la semana visualizada
-    const totalSlotsSemana = diasSemana.length * 11;
-    const ocupadasSemana = citasSemana.filter(
-      (cita) => (cita.estado || "").toLowerCase() !== "disponible"
-    ).length;
+    // Franjas horarias por día (7:00 a 18:00 = 11 franjas) escaladas por cantidad de profesionales filtrados
+    const numOdontologos = odontologosSeleccionados.includes("Todos los odontólogos")
+      ? Math.max(1, listaOdontologos.filter((o) => o.nombre !== "Todos los odontólogos").length)
+      : Math.max(1, odontologosSeleccionados.length);
+    const totalSlotsSemana = diasSemana.length * 11 * numOdontologos;
+    // Solo cuentan como ocupadas las citas activas vigentes (no canceladas)
+    const ocupadasSemana = citasSemana.filter((cita) => {
+      const st = (cita.estado || "").toLowerCase();
+      return st !== "cancelada" && st !== "no disponible" && st !== "cancelled";
+    }).length;
     return Math.max(0, totalSlotsSemana - ocupadasSemana);
-  }, [diasSemana.length, citasSemana]);
+  }, [diasSemana.length, citasSemana, odontologosSeleccionados, listaOdontologos]);
 
   const cambiarSemana = (direccion: number) => {
     setFechaActual((fecha) => sumarDias(fecha, direccion * 7));
@@ -423,40 +455,74 @@ export function AgendaView() {
       setFormError(null);
 
       const matchedService = serviciosEntities.find((s) => s.name === nuevaCita.servicio || areGuidsEqual(s.id, nuevaCita.servicio));
-      const serviceIdToUse = matchedService?.id || (serviciosEntities.length > 0 ? serviciosEntities[0].id : "30000000-0000-0000-0000-000000000001");
+      const serviceIdToUse = matchedService?.id;
+      if (!serviceIdToUse) {
+        setFormError("Debes seleccionar un servicio o tratamiento válido del catálogo.");
+        setErrorMessage("Debes seleccionar un servicio válido.");
+        setTimeout(() => setErrorMessage(null), 5000);
+        setIsSubmitting(false);
+        return;
+      }
 
       const matchedProf = profesionalesEntities.find((p) => {
         const pFullName = `Dr(a). ${p.firstName || ""} ${p.lastName || ""}`.trim();
         return pFullName === nuevaCita.odontologo || p.firstName === nuevaCita.odontologo || areGuidsEqual(p.id, nuevaCita.odontologo);
       });
-      const profIdToUse =
-        matchedProf?.id ||
-        (profesionalesEntities.length > 0
-          ? profesionalesEntities[0].id
-          : "1d000000-0000-0000-0000-000000000001");
+      const profIdToUse = matchedProf?.id;
+      if (!profIdToUse && !isPaciente) {
+        setFormError("Debes seleccionar un odontólogo válido del listado de profesionales.");
+        setErrorMessage("Debes seleccionar un profesional válido.");
+        setTimeout(() => setErrorMessage(null), 5000);
+        setIsSubmitting(false);
+        return;
+      }
+
+      const finalProfId = profIdToUse || (profesionalesEntities.length > 0 ? profesionalesEntities[0].id : null);
+      if (!finalProfId) {
+        setFormError("No hay un profesional activo disponible en el sistema.");
+        setErrorMessage("No hay un profesional disponible.");
+        setTimeout(() => setErrorMessage(null), 5000);
+        setIsSubmitting(false);
+        return;
+      }
 
       const matchedPatient =
         pacientesEntities.find((pt) => {
-          return areGuidsEqual(pt.id, nuevaCita.patientId) || 
-                 areGuidsEqual(pt.personId, nuevaCita.patientId) ||
-                 (user?.id && areGuidsEqual(pt.id, user.id)) ||
-                 (user?.personId && areGuidsEqual(pt.personId, user.personId));
-        }) || (pacientesEntities.length > 0 ? pacientesEntities[0] : null);
-      const patientIdToUse = nuevaCita.patientId || matchedPatient?.id || "1e000000-0000-0000-0000-000000000001";
+          return (nuevaCita.patientId && (areGuidsEqual(pt.id, nuevaCita.patientId) || areGuidsEqual(pt.personId, nuevaCita.patientId))) ||
+                 (isPaciente && user?.id && areGuidsEqual(pt.id, user.id)) ||
+                 (isPaciente && user?.personId && areGuidsEqual(pt.personId, user.personId));
+        }) ||
+        pacientesEntities.find((pt) => {
+          const ptName = `${pt.firstName || ""} ${pt.lastName || ""}`.toLowerCase().trim();
+          return nuevaCita.paciente && ptName.includes(nuevaCita.paciente.toLowerCase().trim());
+        });
 
-      const [year, month, day] = fechaSeleccionada.split('-').map(Number);
+      const patientIdToUse = matchedPatient?.id || (nuevaCita.patientId && pacientesEntities.some(p => areGuidsEqual(p.id, nuevaCita.patientId)) ? nuevaCita.patientId : null);
+      if (!patientIdToUse) {
+        setFormError("Debes seleccionar un paciente registrado activo de la clínica.");
+        setErrorMessage("Debes seleccionar un paciente registrado válido.");
+        setTimeout(() => setErrorMessage(null), 5000);
+        setIsSubmitting(false);
+        return;
+      }
+
       const [h, m] = (nuevaCita.horaInicio || "09:00").split(":").map(Number);
-      const start = new Date(year, month - 1, day, isNaN(h) ? 9 : h, isNaN(m) ? 0 : m, 0, 0);
+      const safeH = String(isNaN(h) ? 9 : h).padStart(2, "0");
+      const safeM = String(isNaN(m) ? 0 : m).padStart(2, "0");
 
       const [eh, em] = (nuevaCita.horaFin || "10:00").split(":").map(Number);
-      const end = new Date(year, month - 1, day, isNaN(eh) ? 10 : eh, isNaN(em) ? 0 : em, 0, 0);
+      const safeEH = String(isNaN(eh) ? 10 : eh).padStart(2, "0");
+      const safeEM = String(isNaN(em) ? 0 : em).padStart(2, "0");
+
+      const startsAtLocal = `${fechaSeleccionada}T${safeH}:${safeM}:00`;
+      const endsAtLocal = `${fechaSeleccionada}T${safeEH}:${safeEM}:00`;
 
       const payload = {
         patientId: patientIdToUse,
-        professionalId: profIdToUse,
+        professionalId: finalProfId,
         serviceId: serviceIdToUse,
-        startsAt: start.toISOString(),
-        endsAt: end.toISOString(),
+        startsAt: startsAtLocal,
+        endsAt: endsAtLocal,
         appointmentStatusId:
           nuevaCita.estado === "Pendiente"
             ? "10000000-0000-0000-0000-000000000001"
@@ -492,7 +558,15 @@ export function AgendaView() {
       if (rawGuid && rawGuid.length > 10) {
         await appointmentService.delete(rawGuid);
       }
-      setCitas((actuales) => actuales.filter((cita) => cita.id !== id && cita.rawGuid !== rawGuid));
+      // A-08: Filtrar por rawGuid solo si existe; de lo contrario, filtrar exclusivamente por id
+      setCitas((actuales) =>
+        actuales.filter((cita) => {
+          if (rawGuid) {
+            return !cita.rawGuid || cita.rawGuid !== rawGuid;
+          }
+          return cita.id !== id;
+        })
+      );
       setSuccessToast("Cita eliminada correctamente");
       setTimeout(() => setSuccessToast(null), 3500);
       await fetchAgendaData();

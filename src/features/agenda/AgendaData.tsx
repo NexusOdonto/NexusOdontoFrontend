@@ -2,6 +2,7 @@ export type EstadoCita =
   | "Confirmada"
   | "En Atención"
   | "Pendiente"
+  | "Completada"
   | "Disponible"
   | "No disponible";
 
@@ -17,68 +18,7 @@ export interface Cita {
   estado: EstadoCita;
 }
 
-export const citasIniciales: Cita[] = [
-  {
-    id: 1,
-    paciente: "Carlos Andrés Pérez",
-    servicio: "Blanqueamiento Dental",
-    odontologo: "Dra. Laura Gómez",
-    fecha: "2026-09-01",
-    horaInicio: "09:00",
-    horaFin: "10:00",
-    estado: "Confirmada",
-  },
-  {
-    id: 2,
-    paciente: "Lucía Ramírez",
-    servicio: "Tratamiento de Endodoncia",
-    odontologo: "Dra. Patricia Silva",
-    fecha: "2026-09-02",
-    horaInicio: "09:00",
-    horaFin: "10:00",
-    estado: "Confirmada",
-  },
-  {
-    id: 3,
-    paciente: "Andrés Pérez",
-    servicio: "Limpieza y Valoración",
-    odontologo: "Dra. Laura Gómez",
-    fecha: "2026-09-01",
-    horaInicio: "10:00",
-    horaFin: "11:00",
-    estado: "En Atención",
-  },
-  {
-    id: 4,
-    paciente: "Camila Rodríguez",
-    servicio: "Control de Ortodoncia",
-    odontologo: "Dra. Laura Gómez",
-    fecha: "2026-09-04",
-    horaInicio: "10:00",
-    horaFin: "11:00",
-    estado: "Confirmada",
-  },
-  {
-    id: 5,
-    paciente: "María Fernanda López",
-    servicio: "Calza en Resina Pieza #16",
-    odontologo: "Dr. Juan Martínez",
-    fecha: "2026-09-03",
-    horaInicio: "11:00",
-    horaFin: "12:00",
-    estado: "Confirmada",
-  },
-  {
-    id: 6,
-    paciente: "Espacio disponible",
-    servicio: "Disponible para agendar",
-    odontologo: "Dr. Juan Martínez",
-    fecha: "2026-09-02",
-    horaInicio: "12:00",
-    horaFin: "13:00",
-    estado: "Disponible",
-  },
-];
+
 
 export const nombresDias = [
   "DOM",
@@ -123,8 +63,12 @@ export const tiposCita = [
     color: "bg-amber-400",
   },
   {
-    nombre: "Libre",
+    nombre: "Completada",
     color: "bg-emerald-400",
+  },
+  {
+    nombre: "Libre",
+    color: "bg-teal-400",
   },
 ];
 
@@ -232,13 +176,22 @@ export function obtenerColorEvento(
         texto: "text-amber-800/80 dark:text-slate-400",
       };
 
-    case "Disponible":
+    case "Completada":
       return {
         contenedor:
           "border-emerald-500/40 bg-emerald-500/15 dark:bg-emerald-500/10 text-emerald-900 dark:text-emerald-100 hover:bg-emerald-500/25 dark:hover:bg-emerald-500/20",
         punto: "bg-emerald-500",
-        titulo: "text-emerald-950 dark:text-emerald-200",
+        titulo: "text-emerald-950 dark:text-emerald-100",
         texto: "text-emerald-800/80 dark:text-slate-400",
+      };
+
+    case "Disponible":
+      return {
+        contenedor:
+          "border-teal-500/40 bg-teal-500/15 dark:bg-teal-500/10 text-teal-900 dark:text-teal-100 hover:bg-teal-500/25 dark:hover:bg-teal-500/20",
+        punto: "bg-teal-500",
+        titulo: "text-teal-950 dark:text-teal-200",
+        texto: "text-teal-800/80 dark:text-slate-400",
       };
 
     default:

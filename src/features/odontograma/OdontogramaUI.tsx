@@ -142,6 +142,12 @@ interface PacienteItem {
   clinicalHistoryId?: string;
 }
 
+interface ProfesionalItem {
+  id: string;
+  nombre: string;
+  specialty?: string;
+}
+
 function OdontogramaUI() {
   const { user } = useAuth();
   const { theme } = useTheme();
@@ -154,6 +160,8 @@ function OdontogramaUI() {
   const [selectedTooth, setSelectedTooth] = useState<number | null>(null);
   const [pacientesList, setPacientesList] = useState<PacienteItem[]>([]);
   const [selectedPaciente, setSelectedPaciente] = useState<PacienteItem | null>(null);
+  const [profesionalesList, setProfesionalesList] = useState<ProfesionalItem[]>([]);
+  const [selectedProfessionalId, setSelectedProfessionalId] = useState<string>("");
   const [notasClinicas, setNotasClinicas] = useState("");
   const [successToast, setSuccessToast] = useState<string | null>(null);
   const [errorToast, setErrorToast] = useState<string | null>(null);
@@ -161,14 +169,34 @@ function OdontogramaUI() {
   const [isPatientDropdownOpen, setIsPatientDropdownOpen] = useState(false);
   const patientDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Cargar lista dinámica de pacientes desde API
+  // Cargar lista dinámica de pacientes y profesionales desde API
   const fetchPacientes = useCallback(async () => {
     try {
-      const [patientsData, personsData, historiesData] = await Promise.all([
+      const [patientsData, personsData, historiesData, profsData] = await Promise.all([
         patientService.getAll().catch(() => []),
         personService.getAll().catch(() => []),
         clinicalHistoryService.getAll().catch(() => []),
+        professionalService.getAll().catch(() => []),
       ]);
+
+      if (profsData && profsData.length > 0) {
+        const mappedProfs: ProfesionalItem[] = profsData.map((pr: any) => {
+          const docName = `Dr(a). ${pr.firstName || ""} ${pr.lastName || ""}`.trim();
+          return { id: pr.id, nombre: docName, specialty: pr.specialty || pr.speciality || "Odontología General" };
+        });
+        setProfesionalesList(mappedProfs);
+
+        const matched = mappedProfs.find((pr) =>
+          (user?.personId && areGuidsEqual(pr.id, user.personId)) ||
+          (user?.id && areGuidsEqual(pr.id, user.id)) ||
+          (user?.name && pr.nombre.toLowerCase().includes(user.name.toLowerCase()))
+        );
+        if (matched) {
+          setSelectedProfessionalId(matched.id);
+        } else if (mappedProfs.length > 0) {
+          setSelectedProfessionalId(mappedProfs[0].id);
+        }
+      }
 
       if (patientsData && patientsData.length > 0) {
         const mapped: PacienteItem[] = patientsData.map((p, idx) => {
@@ -186,7 +214,7 @@ function OdontogramaUI() {
     } catch (err) {
       console.warn("API Patients unavailable in Odontograma:", err);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     fetchPacientes();
@@ -206,21 +234,77 @@ function OdontogramaUI() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Al cambiar de paciente seleccionado, hidratar su odontograma específico y sus notas clínicas aisladas (Sección 3.2 y 3.3)
+  // Al cambiar de paciente seleccionado, hidratar odontograma desde LocalStorage y desde el servidor API (A-03)
   useEffect(() => {
-    if (selectedPaciente?.id) {
-      const patientState = cargarOdontograma(selectedPaciente.id);
-      setState(patientState);
+    let isCancelled = false;
+    async function loadPatientOdontogram() {
+      if (!selectedPaciente?.id) {
+        setState(createDefaultOdontogramState());
+        setNotasClinicas("");
+        return;
+      }
+
+      // 1. Carga inicial local
+      const localState = cargarOdontograma(selectedPaciente.id);
       const keyNotas = getNotasStorageKey(selectedPaciente.id);
-      const savedNotas = localStorage.getItem(keyNotas);
-      setNotasClinicas(savedNotas || "");
-    } else {
-      setState(createDefaultOdontogramState());
-      setNotasClinicas("");
+      const savedNotas = localStorage.getItem(keyNotas) || "";
+      setState(localState);
+      setNotasClinicas(savedNotas);
+
+      // 2. A-03: Sincronización e hidratación desde el servidor
+      try {
+        const [allOdontograms, histories] = await Promise.all([
+          odontogramService.getAll().catch(() => []),
+          clinicalHistoryService.getAll().catch(() => []),
+        ]);
+
+        if (isCancelled) return;
+
+        const hist = histories.find((h: any) => areGuidsEqual(h.patientId, selectedPaciente.id));
+        const histId = hist?.id || selectedPaciente.clinicalHistoryId;
+
+        const serverOdontogram = allOdontograms.find((o: any) =>
+          (histId && areGuidsEqual(o.clinicalHistoryId, histId)) ||
+          (o.patientId && areGuidsEqual(o.patientId, selectedPaciente.id))
+        );
+
+        if (serverOdontogram && serverOdontogram.notes) {
+          const marker = "ODONTOGRAM_STATE:";
+          if (serverOdontogram.notes.includes(marker)) {
+            const rawJson = serverOdontogram.notes.split(marker)[1]?.trim();
+            if (rawJson) {
+              try {
+                const parsedState = JSON.parse(rawJson);
+                if (parsedState && parsedState.teeth) {
+                  setState(parsedState);
+                  guardarOdontograma(parsedState, selectedPaciente.id);
+                }
+              } catch {
+                // Ignore parse error
+              }
+            }
+          }
+          const cleanNotes = serverOdontogram.notes
+            .split("ODONTOGRAM_STATE:")[0]
+            .replace(/^Notas Clínicas:\s*/, "")
+            .trim();
+          if (cleanNotes) {
+            setNotasClinicas(cleanNotes);
+            localStorage.setItem(keyNotas, cleanNotes);
+          }
+        }
+      } catch (err) {
+        console.warn("No se pudo sincronizar odontograma con API:", err);
+      }
     }
+
     setSelectedSurface(null);
     setSelectedTooth(null);
-  }, [selectedPaciente?.id]);
+    loadPatientOdontogram();
+    return () => {
+      isCancelled = true;
+    };
+  }, [selectedPaciente?.id, selectedPaciente?.clinicalHistoryId]);
 
   const getCurrentQuadrants = (): Quadrants => {
     if (state.dentitionType === "permanent") {
@@ -430,22 +514,23 @@ function OdontogramaUI() {
       return;
     }
 
-    // 3. Resolver profesional activo
+    // 3. A-04: Resolver y validar profesional seleccionado responsable
     const profs = await professionalService.getAll().catch(() => []);
     const matchedProf = profs.find((pr: any) =>
-      (user?.personId && areGuidsEqual(pr.personId, user.personId)) ||
+      (selectedProfessionalId && areGuidsEqual(pr.id, selectedProfessionalId)) ||
+      (user?.personId && areGuidsEqual(pr.id, user.personId)) ||
       (user?.id && areGuidsEqual(pr.id, user.id)) ||
       (user?.name && `${pr.firstName || ""} ${pr.lastName || ""}`.toLowerCase().includes(user.name.toLowerCase()))
     );
-    const professionalIdToUse = matchedProf?.id || (profs.length > 0 ? profs[0].id : null);
+    const professionalIdToUse = selectedProfessionalId || matchedProf?.id;
 
     if (!professionalIdToUse) {
-      setErrorToast("No se encontró un profesional odontólogo activo para registrar el odontograma.");
+      setErrorToast("Por favor selecciona el profesional odontólogo responsable antes de guardar el odontograma.");
       setTimeout(() => setErrorToast(null), 5000);
       return;
     }
 
-    // 4. Serializar hallazgos del odontograma por pieza dental
+    // 4. A-03: Serializar hallazgos del odontograma y estado estructurado completo
     const findingsList: string[] = [];
     Object.entries(state.teeth).forEach(([toothNum, t]) => {
       if (!t || !t.isVisible) return;
@@ -461,10 +546,17 @@ function OdontogramaUI() {
       }
     });
 
+    const serializedStatePayload = JSON.stringify({
+      dentitionType: state.dentitionType,
+      teeth: state.teeth,
+      selectedDiagnosis: state.selectedDiagnosis,
+    });
+
     const fullClinicalNotes = [
       notasClinicas ? `Notas Clínicas: ${notasClinicas}` : null,
       findingsList.length > 0 ? `Hallazgos Odontograma: ${findingsList.join('; ')}` : "Sin hallazgos patológicos activos en el odontograma",
-      `Dentición: ${state.dentitionType === "permanent" ? "Permanente" : "Temporal"}`
+      `Dentición: ${state.dentitionType === "permanent" ? "Permanente" : "Temporal"}`,
+      `ODONTOGRAM_STATE:${serializedStatePayload}`,
     ].filter(Boolean).join('\n\n');
 
     try {
@@ -475,7 +567,7 @@ function OdontogramaUI() {
         notes: fullClinicalNotes,
       });
 
-      setSuccessToast("¡Odontograma, hallazgos dentales y notas guardadas con éxito!");
+      setSuccessToast("¡Odontograma, hallazgos dentales y notas sincronizados en el servidor!");
       setTimeout(() => setSuccessToast(null), 3500);
     } catch (err: any) {
       console.error("Error al persistir odontograma en API:", err);
@@ -655,6 +747,27 @@ function OdontogramaUI() {
                 })}
               </div>
             )}
+          </div>
+
+          {/* Selector de Profesional Responsable (A-04) */}
+          <div className="flex items-center gap-2 px-3.5 py-2 bg-white/80 dark:bg-slate-900/70 border border-slate-200/80 dark:border-white/10 rounded-2xl backdrop-blur-2xl shadow-lg shadow-slate-900/5 dark:shadow-[0_12px_36px_rgba(0,0,0,0.5)]">
+            <ShieldCheck size={16} className="text-teal-600 dark:text-teal-400 flex-shrink-0" />
+            <div className="flex flex-col">
+              <span className="text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-400 font-bold leading-none mb-0.5">
+                Odontólogo Responsable
+              </span>
+              <select
+                value={selectedProfessionalId}
+                onChange={(e) => setSelectedProfessionalId(e.target.value)}
+                className="bg-transparent text-xs font-black text-slate-900 dark:text-white outline-none cursor-pointer border-none p-0 pr-2"
+              >
+                {profesionalesList.map((pr) => (
+                  <option key={pr.id} value={pr.id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
+                    {pr.nombre} ({pr.specialty})
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Botón de Acción Principal Guardar */}

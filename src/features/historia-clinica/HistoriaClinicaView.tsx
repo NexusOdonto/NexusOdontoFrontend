@@ -80,8 +80,10 @@ export function HistoriaClinicaView() {
   const [showNewAttentionModal, setShowNewAttentionModal] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [modalErrorMessage, setModalErrorMessage] = useState<string | null>(null);
 
   // Form State para nueva atención
+  const [formAppointmentId, setFormAppointmentId] = useState("");
   const [formMotivo, setFormMotivo] = useState("");
   const [formEnfermedad, setFormEnfermedad] = useState("");
   const [formExamen, setFormExamen] = useState("");
@@ -137,63 +139,11 @@ export function HistoriaClinicaView() {
           setSelectedPatientId(enriched[0].id);
         }
       } else {
-        const fallbackPatients: PatientResponseDto[] = [
-          {
-            id: "1",
-            personId: "p1",
-            firstName: "Ana María",
-            lastName: "Rodríguez",
-            documentNumber: "1098765432",
-            phone: "3001234567",
-            email: "ana.rodriguez@email.com",
-            allergies: "Alérgica a Penicilina",
-            bloodType: "O+",
-            createdAt: "2024-01-15",
-          },
-          {
-            id: "2",
-            personId: "p2",
-            firstName: "Carlos Andrés",
-            lastName: "Pérez",
-            documentNumber: "1023456789",
-            phone: "3012345678",
-            email: "carlos.perez@email.com",
-            allergies: "Sin alergias declaradas",
-            bloodType: "A+",
-            createdAt: "2024-02-10",
-          },
-          {
-            id: "3",
-            personId: "p3",
-            firstName: "María Fernanda",
-            lastName: "López",
-            documentNumber: "1009876543",
-            phone: "3023456789",
-            email: "maria.lopez@email.com",
-            allergies: "Aspirina",
-            bloodType: "B+",
-            createdAt: "2024-03-05",
-          },
-          {
-            id: "4",
-            personId: "p4",
-            firstName: "Juan David",
-            lastName: "Gómez",
-            documentNumber: "1091234567",
-            phone: "3034567890",
-            email: "juan.gomez@email.com",
-            allergies: "Sin alergias declaradas",
-            bloodType: "O-",
-            createdAt: "2024-04-12",
-          },
-        ];
-        setPatients(fallbackPatients);
-        if (!selectedPatientId) {
-          setSelectedPatientId("1");
-        }
+        setPatients([]);
       }
     } catch (err) {
       console.warn("Could not load patients for Historia Clínica:", err);
+      setPatients([]);
     } finally {
       setLoading(false);
     }
@@ -276,24 +226,34 @@ export function HistoriaClinicaView() {
 
       const patientAppointmentIds = new Set(patientAppointments.map((a: any) => a.id || a.appointmentId).filter(Boolean));
 
-      // FRONT-06: Ordenar cronológicamente citas futuras y filtrar las pasadas
+      // FRONT-06 / A-07: Ordenar cronológicamente citas futuras convirtiendo ISO a hora local real
       const now = new Date();
       const futureApps = patientAppointments
         .map((a: any) => {
-          const datePart = a.startsAt ? a.startsAt.split("T")[0] : a.fecha || "";
-          const timePart = (a.startsAt && a.startsAt.includes("T")) ? a.startsAt.split("T")[1].substring(0, 5) : a.hora || "00:00";
-          const parsedTime = datePart ? new Date(`${datePart}T${timePart}:00`).getTime() : 0;
+          let parsedDate: Date;
+          if (a.startsAt) {
+            parsedDate = new Date(a.startsAt);
+          } else if (a.fecha) {
+            const timeStr = a.hora || a.horaInicio || "09:00";
+            parsedDate = new Date(`${a.fecha}T${timeStr}:00`);
+          } else {
+            parsedDate = new Date();
+          }
+          const valid = !isNaN(parsedDate.getTime());
+          const datePart = valid ? parsedDate.toLocaleDateString("es-CO") : (a.fecha || "");
+          const timePart = valid ? parsedDate.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", hour12: false }) : "09:00";
+          const parsedTime = valid ? parsedDate.getTime() : 0;
           return { ...a, _parsedTime: parsedTime, _datePart: datePart, _timePart: timePart };
         })
         .filter((a: any) => {
-          const isNotCancelled = !a.cancelledAt && a.estado !== "Cancelada";
+          const isNotCancelled = !a.cancelledAt && a.estado !== "Cancelada" && a.estado !== "No disponible";
           return a._parsedTime >= now.getTime() && isNotCancelled;
         })
         .sort((a: any, b: any) => a._parsedTime - b._parsedTime);
 
       if (futureApps.length > 0) {
         const next = futureApps[0];
-        const nextDate = next._datePart || new Date().toISOString().split("T")[0];
+        const nextDate = next._datePart || new Date().toLocaleDateString("es-CO");
         const nextHour = next._timePart || "09:00";
 
         // Resolver nombre real del servicio
@@ -339,18 +299,32 @@ export function HistoriaClinicaView() {
           return matchesDirectPatient || matchesAppointment || matchesHistory;
         });
 
-        const mapped: LocalAttention[] = filtered.map((a, idx) => ({
-          id: a.id || `att-api-${idx}`,
-          fecha: a.attentionDate ? new Date(a.attentionDate).toLocaleString("es-CO") : "Reciente",
-          profesional: "Dr. Asignado",
-          motivo: a.reasonForConsultation || "Consulta odontológica",
-          enfermedadActual: a.currentIllness || "Sin registros",
-          examenFisico: a.physicalExamination || "Sin hallazgos patológicos",
-          diagnostico: "Evaluación clínica",
-          cie10: "K02.1",
-          planTratamiento: a.planAndTreatment || "Control posterior",
-          observaciones: a.observations,
-        }));
+        const mapped: LocalAttention[] = filtered.map((a, idx) => {
+          let profName = "Dr(a). Profesional";
+          if (a.professionalId) {
+            const matchedProf = profsList.find((p: any) => areGuidsEqual(p.id, a.professionalId));
+            if (matchedProf) {
+              profName = `Dr(a). ${matchedProf.firstName || ""} ${matchedProf.lastName || ""}`.trim();
+            }
+          } else if ((a as any).professionalName) {
+            profName = (a as any).professionalName;
+          } else if (dentistsList && dentistsList.length > 0) {
+            profName = dentistsList[0];
+          }
+
+          return {
+            id: a.id || `att-api-${idx}`,
+            fecha: a.attentionDate ? new Date(a.attentionDate).toLocaleString("es-CO") : "Reciente",
+            profesional: profName,
+            motivo: a.reasonForConsultation || "Consulta odontológica",
+            enfermedadActual: a.currentIllness || "Sin registros",
+            examenFisico: a.physicalExamination || "Sin hallazgos patológicos",
+            diagnostico: "Evaluación clínica",
+            cie10: "K02.1",
+            planTratamiento: a.planAndTreatment || "Control posterior",
+            observaciones: a.observations,
+          };
+        });
         setAttentions(mapped);
       } else {
         setAttentions([]);
@@ -360,7 +334,7 @@ export function HistoriaClinicaView() {
       setAttentions([]);
       setNextAppointment(null);
     }
-  }, [selectedPatientId, selectedPatient, isDentist]);
+  }, [selectedPatientId, selectedPatient, isDentist, dentistsList]);
 
   useEffect(() => {
     setAttentions([]);
@@ -383,24 +357,22 @@ export function HistoriaClinicaView() {
 
   const handleSaveNewAttention = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formMotivo || !formDiagnostico) return;
+    setModalErrorMessage(null);
     setErrorMessage(null);
 
-    const linkedAppointment =
-      patientAppointmentsList.find((a: any) => !a.cancelledAt && a.estado !== "Cancelada") ||
-      patientAppointmentsList[0];
-    const appointmentIdToUse = linkedAppointment?.id || linkedAppointment?.appointmentId;
+    if (!formMotivo?.trim() || !formDiagnostico?.trim()) {
+      setModalErrorMessage("Por favor ingresa el motivo de consulta y el diagnóstico.");
+      return;
+    }
 
-    if (!appointmentIdToUse) {
-      const msg = "Se requiere una cita vinculada activa del paciente para registrar la atención clínica.";
-      setErrorMessage(msg);
-      setTimeout(() => setErrorMessage(null), 5000);
+    if (!formAppointmentId || formAppointmentId.trim() === "") {
+      setModalErrorMessage("Por favor selecciona una cita médica activa del paciente.");
       return;
     }
 
     try {
       const payload: CreateClinicalAttentionRequestDto = {
-        appointmentId: appointmentIdToUse,
+        appointmentId: formAppointmentId,
         clinicalHistoryId: selectedPatientId,
         professionalId: user?.personId || user?.id || "12000000-0000-0000-0000-000000000001",
         attentionDate: new Date().toISOString(),
@@ -410,10 +382,23 @@ export function HistoriaClinicaView() {
         planAndTreatment: formPlan,
         observations: formObservaciones,
       };
-      await clinicalHistoryService.createAttention(payload);
+      const createdAttention = await clinicalHistoryService.createAttention(payload);
+
+      // A-02: Persistir diagnóstico estructurado vinculado a la atención clínica creada
+      if (formDiagnostico.trim() && createdAttention?.id) {
+        await clinicalHistoryService
+          .createDiagnosis({
+            clinicalAttentionId: createdAttention.id,
+            code: formCie10 || "K02.1",
+            cie10Code: formCie10 || "K02.1",
+            description: formDiagnostico,
+            type: "DENTAL",
+          })
+          .catch((dErr) => console.warn("Advertencia al persistir diagnóstico estructurado:", dErr));
+      }
 
       const newAtt: LocalAttention = {
-        id: `att-${Date.now()}`,
+        id: createdAttention?.id || `att-${Date.now()}`,
         fecha: new Date().toLocaleString("es-CO", {
           year: "numeric",
           month: "2-digit",
@@ -433,6 +418,7 @@ export function HistoriaClinicaView() {
 
       setAttentions((prev) => [newAtt, ...prev]);
       setShowNewAttentionModal(false);
+      setFormAppointmentId("");
       setFormMotivo("");
       setFormEnfermedad("");
       setFormExamen("");
@@ -440,11 +426,12 @@ export function HistoriaClinicaView() {
       setFormPlan("");
       setFormObservaciones("");
 
-      setToastMessage("Evolución clínica registrada correctamente.");
+      setToastMessage("Evolución clínica y diagnóstico guardados exitosamente.");
       setTimeout(() => setToastMessage(null), 3500);
     } catch (err: any) {
       console.error("Error al registrar evolución clínica:", err);
       const errMsg = err?.response?.data?.message || err?.message || "No se pudo registrar la evolución clínica en el servidor.";
+      setModalErrorMessage(errMsg);
       setErrorMessage(errMsg);
       setTimeout(() => setErrorMessage(null), 6000);
     }
@@ -1159,7 +1146,46 @@ export function HistoriaClinicaView() {
               </button>
             </div>
 
+            {modalErrorMessage && (
+              <div className="p-3 bg-rose-500/10 border border-rose-500/30 text-rose-500 dark:text-rose-400 rounded-xl text-xs font-semibold flex items-center gap-2">
+                <AlertCircle size={16} className="shrink-0" />
+                <span>{modalErrorMessage}</span>
+              </div>
+            )}
+
             <form onSubmit={handleSaveNewAttention} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Cita Médica Vinculada *
+                </label>
+                <select
+                  required
+                  value={formAppointmentId}
+                  onChange={(e) => setFormAppointmentId(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 cursor-pointer"
+                >
+                  <option value="">-- Seleccionar cita activa a evolucionar --</option>
+                  {patientAppointmentsList
+                    .filter((a: any) => !a.cancelledAt && a.estado !== "Cancelada" && a.estado !== "No disponible")
+                    .map((a: any) => {
+                      const aptId = a.id || a.appointmentId;
+                      const dateText = a.startsAt ? new Date(a.startsAt).toLocaleDateString("es-CO") : (a.fecha || "");
+                      const timeText = a.startsAt ? new Date(a.startsAt).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", hour12: false }) : (a.hora || a.horaInicio || "");
+                      const srvText = a.serviceName || a.servicio || "Consulta General";
+                      return (
+                        <option key={aptId} value={aptId}>
+                          {dateText} {timeText} — {srvText} ({a.estado || "Vigente"})
+                        </option>
+                      );
+                    })}
+                </select>
+                {patientAppointmentsList.filter((a: any) => !a.cancelledAt && a.estado !== "Cancelada" && a.estado !== "No disponible").length === 0 && (
+                  <p className="mt-1 text-[11px] text-amber-500 font-medium">
+                    ⚠️ No se encontraron citas activas para este paciente. Agende o confirme una cita previa para vincular la atención.
+                  </p>
+                )}
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">

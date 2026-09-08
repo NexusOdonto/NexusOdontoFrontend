@@ -484,12 +484,6 @@ export function AtencionAsesorView() {
       }
 
       if (!sentToBackend) {
-        await chatbotService.sendMessage({
-          chatbotConversationId: selectedChat.id,
-          messageRoleId: roleId,
-          content: text,
-        });
-
         const cleanPhone = selectedChat.chatIdentifier.replace(/@.*$/, "").replace(/\D/g, "");
         const waRes = await chatbotService.sendWhatsAppMessage({
           destinationPhone: cleanPhone || selectedChat.chatIdentifier,
@@ -500,6 +494,12 @@ export function AtencionAsesorView() {
         if (!waRes && waRes !== undefined) {
           throw new Error("Respuesta inválida del servidor al despachar mensaje de WhatsApp.");
         }
+
+        await chatbotService.sendMessage({
+          chatbotConversationId: selectedChat.id,
+          messageRoleId: roleId,
+          content: text,
+        });
       }
 
       // Inserción segura solo después de confirmar la entrega en servidor
