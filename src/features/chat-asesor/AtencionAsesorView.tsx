@@ -407,11 +407,23 @@ export function AtencionAsesorView() {
             (t) => t.chatbotConversationId && String(t.chatbotConversationId).toLowerCase() === String(c.id).toLowerCase()
           );
 
+          const isTicketPending =
+            matchedTicket &&
+            matchedTicket.ticketStatusId !== TICKET_STATUS_IDS.CERRADO &&
+            matchedTicket.ticketStatusId !== TICKET_STATUS_IDS.RESUELTO;
+
           let stCode: ChatItemDisplay["status"] = "ACTIVA";
-          if (c.conversationStatusId === CONVERSATION_STATUS_IDS.ESCALADA) stCode = "ESCALADA";
-          else if (c.conversationStatusId === CONVERSATION_STATUS_IDS.ATENDIDA_HUMANO) stCode = "ATENDIDA_HUMANO";
-          else if (c.conversationStatusId === CONVERSATION_STATUS_IDS.CERRADA) stCode = "CERRADA";
-          else if (matchedTicket && matchedTicket.ticketStatusId !== TICKET_STATUS_IDS.CERRADO) stCode = "ESCALADA";
+          if (c.conversationStatusId === CONVERSATION_STATUS_IDS.CERRADA) {
+            stCode = "CERRADA";
+          } else if (c.conversationStatusId === CONVERSATION_STATUS_IDS.ATENDIDA_HUMANO) {
+            stCode = "ATENDIDA_HUMANO";
+          } else if (isTicketPending) {
+            stCode = "ESCALADA";
+          } else if (c.conversationStatusId === CONVERSATION_STATUS_IDS.ESCALADA) {
+            stCode = isTicketPending ? "ESCALADA" : "ACTIVA";
+          } else {
+            stCode = "ACTIVA";
+          }
 
           const formattedPhone = formatPhone(c.chatIdentifier, matchedPatient?.phone || matchedPatient?.emergencyPhone);
 
@@ -762,7 +774,20 @@ export function AtencionAsesorView() {
     readSetRef.current.add(targetConvId);
 
     setChats((prev) =>
-      prev.map((c) => (c.id === targetConvId ? { ...c, status: newStatus, unread: false, unreadCount: 0 } : c))
+      prev.map((c) =>
+        c.id === targetConvId
+          ? {
+              ...c,
+              status: newStatus,
+              ticket:
+                c.ticket && (newStatus === "CERRADA" || newStatus === "ACTIVA")
+                  ? { ...c.ticket, ticketStatusId: TICKET_STATUS_IDS.RESUELTO }
+                  : c.ticket,
+              unread: false,
+              unreadCount: 0,
+            }
+          : c
+      )
     );
 
     if (newStatus === "ATENDIDA_HUMANO") {
@@ -1275,7 +1300,7 @@ export function AtencionAsesorView() {
                     </button>
                   )}
 
-                  {selectedChat.status === "ATENDIDA_HUMANO" && (
+                  {selectedChat.status !== "ACTIVA" && (
                     <button
                       type="button"
                       onClick={() => handleUpdateStatus("ACTIVA")}
