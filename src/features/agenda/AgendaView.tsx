@@ -11,9 +11,9 @@ import {
   Trash2,
   CalendarDays,
   Plus,
-  RefreshCw,
   AlertCircle,
 } from "lucide-react";
+import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
 
 import {
   type Cita,
@@ -594,12 +594,13 @@ export function AgendaView() {
   const obtenerPosicionEvento = (cita: Cita) => {
     const [horaInicio, minutosInicio] = cita.horaInicio.split(":").map(Number);
     const [horaFin, minutosFin] = cita.horaFin.split(":").map(Number);
-    const inicioMinutos = (horaInicio - 7) * 60 + minutosInicio;
-    const finMinutos = (horaFin - 7) * 60 + minutosFin;
+    const inicioMinutos = (horaInicio - 7) * 60 + (minutosInicio || 0);
+    const finMinutos = (horaFin - 7) * 60 + (minutosFin || 0);
+    const duracion = finMinutos - inicioMinutos;
 
     return {
       top: `${inicioMinutos}px`,
-      height: `${Math.max(finMinutos - inicioMinutos, 54)}px`,
+      height: `${Math.max(duracion, 64)}px`,
     };
   };
 
@@ -647,9 +648,9 @@ export function AgendaView() {
             <main className="min-w-0 space-y-4">
               {/* Tarjetas KPI Superiores */}
               <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 px-4 py-4 shadow-sm backdrop-blur-sm">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400">
-                    <CalendarDays size={20} />
+                <div className="group flex min-w-0 items-center gap-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 px-4 py-4 shadow-sm backdrop-blur-sm hover:border-cyan-500/40 transition-all">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 icon-animated-interactive group-hover:scale-110 group-hover:bg-cyan-500/20 transition-all">
+                    <CalendarDays size={20} className="group-hover:animate-icon-bounce" />
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Citas hoy</p>
@@ -658,9 +659,9 @@ export function AgendaView() {
                   </div>
                 </div>
 
-                <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 px-4 py-4 shadow-sm backdrop-blur-sm">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400">
-                    <Clock3 size={20} />
+                <div className="group flex min-w-0 items-center gap-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 px-4 py-4 shadow-sm backdrop-blur-sm hover:border-cyan-500/40 transition-all">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 icon-animated-interactive group-hover:scale-110 group-hover:bg-cyan-500/20 transition-all">
+                    <Clock3 size={20} className="group-hover:animate-icon-pulse" />
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Espacios disponibles</p>
@@ -669,9 +670,9 @@ export function AgendaView() {
                   </div>
                 </div>
 
-                <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 px-4 py-4 shadow-sm backdrop-blur-sm">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                    <CheckCircle2 size={20} />
+                <div className="group flex min-w-0 items-center gap-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 px-4 py-4 shadow-sm backdrop-blur-sm hover:border-blue-500/40 transition-all">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400 icon-animated-interactive group-hover:scale-110 group-hover:bg-blue-500/20 transition-all">
+                    <CheckCircle2 size={20} className="group-hover:animate-icon-wiggle" />
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Confirmadas</p>
@@ -680,9 +681,9 @@ export function AgendaView() {
                   </div>
                 </div>
 
-                <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 px-4 py-4 shadow-sm backdrop-blur-sm">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                    <Hourglass size={20} />
+                <div className="group flex min-w-0 items-center gap-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 px-4 py-4 shadow-sm backdrop-blur-sm hover:border-amber-500/40 transition-all">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400 icon-animated-interactive group-hover:scale-110 group-hover:bg-amber-500/20 transition-all">
+                    <Hourglass size={20} className="group-hover:animate-icon-bounce" />
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Pendientes</p>
@@ -731,10 +732,10 @@ export function AgendaView() {
                     <button
                       type="button"
                       onClick={fetchAgendaData}
-                      className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 p-2 text-slate-600 dark:text-slate-400 transition hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+                      className="group rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 p-1.5 text-slate-600 dark:text-slate-400 transition hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer flex items-center justify-center"
                       title="Sincronizar con backend"
                     >
-                      <RefreshCw size={16} />
+                      <DentistryReloadIcon size={18} />
                     </button>
 
                     <button
@@ -891,29 +892,32 @@ export function AgendaView() {
                                   style={{
                                     top: posicion.top,
                                     height: posicion.height,
+                                    minHeight: "64px",
                                   }}
-                                  className={`group absolute left-1 right-1 z-20 overflow-hidden rounded-xl border p-2 shadow-sm transition hover:scale-[1.01] hover:z-30 cursor-pointer ${colorEvento.contenedor}`}
+                                  className={`group absolute left-1 right-1 z-20 overflow-hidden rounded-xl border px-2.5 py-1.5 shadow-sm transition hover:scale-[1.01] hover:z-30 cursor-pointer flex flex-col justify-between ${colorEvento.contenedor}`}
                                 >
-                                  <div className="flex items-start justify-between gap-1">
-                                    <p className="truncate text-xs font-bold leading-tight">
-                                      {cita.paciente}
+                                  <div className="min-w-0">
+                                    <div className="flex items-start justify-between gap-1">
+                                      <p className="truncate text-xs font-bold leading-tight">
+                                        {cita.paciente}
+                                      </p>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          eliminarCita(cita.id, cita.rawGuid);
+                                        }}
+                                        className="opacity-0 group-hover:opacity-100 transition p-0.5 hover:text-rose-500 shrink-0 cursor-pointer"
+                                        title="Eliminar cita"
+                                      >
+                                        <Trash2 size={12} />
+                                      </button>
+                                    </div>
+                                    <p className="truncate text-[10.5px] opacity-90 leading-tight mt-0.5">
+                                      {cita.servicio}
                                     </p>
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        eliminarCita(cita.id, cita.rawGuid);
-                                      }}
-                                      className="opacity-0 group-hover:opacity-100 transition p-0.5 hover:text-rose-500"
-                                      title="Eliminar cita"
-                                    >
-                                      <Trash2 size={12} />
-                                    </button>
                                   </div>
-                                  <p className="truncate text-[11px] opacity-90 mt-0.5">
-                                    {cita.servicio}
-                                  </p>
-                                  <p className="text-[10px] opacity-75 mt-0.5 font-mono">
+                                  <p className="text-[10px] opacity-80 font-mono font-medium leading-none shrink-0 mt-1 pb-0.5">
                                     {cita.horaInicio} - {cita.horaFin}
                                   </p>
                                 </div>

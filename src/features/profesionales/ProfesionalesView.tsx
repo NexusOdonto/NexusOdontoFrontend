@@ -6,10 +6,10 @@ import {
   type FormEvent,
 } from "react";
 import { useNavigate } from "react-router-dom";
+import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
 import {
   Stethoscope,
   Plus,
-  RefreshCw,
   Search,
   Clock,
   Mail,
@@ -497,10 +497,10 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
             <button
               type="button"
               onClick={fetchProfessionals}
-              className="p-3 rounded-2xl border border-white/15 bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer backdrop-blur-md active:scale-95 shadow-sm"
+              className="group p-2.5 rounded-2xl border border-white/15 bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer backdrop-blur-md active:scale-95 shadow-sm flex items-center justify-center"
               title="Recargar directorio de profesionales"
             >
-              <RefreshCw size={17} className={loading ? "animate-spin" : ""} />
+              <DentistryReloadIcon size={22} loading={loading} />
             </button>
 
             <button
@@ -522,8 +522,8 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Especialistas Activos
             </span>
-            <div className="p-2.5 rounded-2xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400">
-              <UserCheck size={20} />
+            <div className="p-2.5 rounded-2xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 icon-animated-interactive group-hover:scale-110 group-hover:bg-cyan-500/20 transition-all">
+              <UserCheck size={20} className="group-hover:animate-icon-bounce" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
@@ -538,8 +538,8 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Especialidades Médicas
             </span>
-            <div className="p-2.5 rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
-              <Award size={20} />
+            <div className="p-2.5 rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400 icon-animated-interactive group-hover:scale-110 group-hover:bg-purple-500/20 transition-all">
+              <Award size={20} className="group-hover:animate-icon-wiggle" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
@@ -554,8 +554,8 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Sillones & Quirófanos
             </span>
-            <div className="p-2.5 rounded-2xl bg-teal-500/10 text-teal-600 dark:text-teal-400">
-              <Activity size={20} />
+            <div className="p-2.5 rounded-2xl bg-teal-500/10 text-teal-600 dark:text-teal-400 icon-animated-interactive group-hover:scale-110 group-hover:bg-teal-500/20 transition-all">
+              <Activity size={20} className="group-hover:animate-icon-pulse" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
@@ -570,8 +570,8 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Calificación Pacientes
             </span>
-            <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
-              <Star size={20} className="fill-amber-400 text-amber-400" />
+            <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 icon-animated-interactive group-hover:scale-110 group-hover:bg-amber-500/20 transition-all">
+              <Star size={20} className="fill-amber-400 text-amber-400 group-hover:animate-icon-bounce" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
@@ -678,7 +678,7 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
       {/* CONTENIDO PRINCIPAL: VISTA DE TARJETAS O TABLA */}
       {loading ? (
         <div className="py-24 text-center">
-          <RefreshCw size={32} className="mx-auto animate-spin text-cyan-500 mb-3" />
+          <DentistryReloadIcon size={36} loading className="mx-auto mb-3" />
           <p className="text-sm font-bold text-slate-600 dark:text-slate-400">
             Sincronizando staff de profesionales...
           </p>

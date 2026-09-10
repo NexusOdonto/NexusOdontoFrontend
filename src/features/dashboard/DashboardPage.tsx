@@ -7,7 +7,6 @@ import {
   ArrowRight,
   Stethoscope,
   Plus,
-  RefreshCw,
   Activity,
   Smile,
   FileText,
@@ -25,6 +24,7 @@ import { personService } from "../../api/personService";
 import { professionalService } from "../../api/professionalService";
 import { serviceCatalogService } from "../../api/serviceCatalogService";
 import { areGuidsEqual } from "../../utils/roleUtils";
+import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
 
 interface CitaItem {
   id: string;
@@ -225,10 +225,10 @@ export default function DashboardPage() {
           <button
             type="button"
             onClick={loadRealData}
-            className="p-2.5 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-md active:scale-95 shadow-sm"
+            className="group p-2 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-md active:scale-95 shadow-sm flex items-center justify-center"
             title="Recargar métricas"
           >
-            <RefreshCw size={15} className={`text-cyan-600 dark:text-cyan-400 ${loading ? "animate-spin" : ""}`} />
+            <DentistryReloadIcon size={18} loading={loading} />
           </button>
 
           <button
@@ -245,13 +245,13 @@ export default function DashboardPage() {
       {/* 2. CUADRÍCULA DE 4 KPIs OPERATIVOS Y VALOR ESTIMADO */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
         {/* KPI 1: Citas del Día */}
-        <div className="p-5 rounded-2xl border border-slate-200/90 dark:border-white/15 bg-white/95 dark:bg-slate-950/65 backdrop-blur-xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+        <div className="group p-5 rounded-2xl border border-slate-200/90 dark:border-white/15 bg-white/95 dark:bg-slate-950/65 backdrop-blur-xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               Citas Agendadas Hoy
             </span>
-            <div className="p-2 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400">
-              <CalendarDays size={18} />
+            <div className="p-2.5 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 icon-animated-interactive group-hover:scale-110 group-hover:bg-teal-500/20 transition-all">
+              <CalendarDays size={20} className="group-hover:animate-icon-bounce" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
@@ -271,13 +271,13 @@ export default function DashboardPage() {
         </div>
 
         {/* KPI 2: Pacientes Totales */}
-        <div className="p-5 rounded-2xl border border-slate-200/90 dark:border-white/15 bg-white/95 dark:bg-slate-950/65 backdrop-blur-xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+        <div className="group p-5 rounded-2xl border border-slate-200/90 dark:border-white/15 bg-white/95 dark:bg-slate-950/65 backdrop-blur-xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               Pacientes Activos
             </span>
-            <div className="p-2 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
-              <Users size={18} />
+            <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 icon-animated-interactive group-hover:scale-110 group-hover:bg-blue-500/20 transition-all">
+              <Users size={20} className="group-hover:animate-icon-wiggle" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
@@ -297,13 +297,13 @@ export default function DashboardPage() {
         </div>
 
         {/* KPI 3: Valor Estimado / Presupuesto Agendado (Tarjeta Reincorporada) */}
-        <div className="p-5 rounded-2xl border border-slate-200/90 dark:border-white/15 bg-white/95 dark:bg-slate-950/65 backdrop-blur-xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+        <div className="group p-5 rounded-2xl border border-slate-200/90 dark:border-white/15 bg-white/95 dark:bg-slate-950/65 backdrop-blur-xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               Valor Estimado / Servicios
             </span>
-            <div className="p-2 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400">
-              <DollarSign size={18} />
+            <div className="p-2.5 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 icon-animated-interactive group-hover:scale-110 group-hover:bg-teal-500/20 transition-all">
+              <DollarSign size={20} className="group-hover:animate-icon-pulse" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
@@ -323,13 +323,13 @@ export default function DashboardPage() {
         </div>
 
         {/* KPI 4: Ocupación de Consultorio */}
-        <div className="p-5 rounded-2xl border border-slate-200/90 dark:border-white/15 bg-white/95 dark:bg-slate-950/65 backdrop-blur-xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+        <div className="group p-5 rounded-2xl border border-slate-200/90 dark:border-white/15 bg-white/95 dark:bg-slate-950/65 backdrop-blur-xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               Ocupación de Consultorio
             </span>
-            <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
-              <Activity size={18} />
+            <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 icon-animated-interactive group-hover:scale-110 group-hover:bg-purple-500/20 transition-all">
+              <Activity size={20} className="group-hover:animate-icon-wiggle" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">

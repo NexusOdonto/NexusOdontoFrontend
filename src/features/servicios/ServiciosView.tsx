@@ -5,9 +5,9 @@ import { ServicioModal } from "./components/ServicioModal";
 import type { Servicio } from "../../types/servicios";
 import { serviceCatalogService } from "../../api/serviceCatalogService";
 import { formatCurrency } from "../../utils/currency";
+import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
 import {
   Plus,
-  RefreshCw,
   Filter,
   Search,
   Layers,
@@ -433,13 +433,10 @@ export function ServiciosView() {
           <button
             type="button"
             onClick={fetchServicios}
-            className="p-3 rounded-2xl border border-slate-200/80 bg-white/80 hover:bg-slate-100 dark:border-white/15 dark:bg-slate-900/70 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-2xl active:scale-95 shadow-sm"
+            className="group p-2.5 rounded-2xl border border-slate-200/80 bg-white/80 hover:bg-slate-100 dark:border-white/15 dark:bg-slate-900/70 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-2xl active:scale-95 shadow-sm flex items-center justify-center"
             title="Recargar catálogo"
           >
-            <RefreshCw
-              size={17}
-              className={`text-cyan-600 dark:text-cyan-400 ${loading ? "animate-spin" : ""}`}
-            />
+            <DentistryReloadIcon size={22} loading={loading} />
           </button>
 
           <button
@@ -471,8 +468,8 @@ export function ServiciosView() {
       {/* Métricas Clínicas Rápidas (KPIs) adaptables para Claro y Oscuro */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-slideDown">
         <div className="group relative p-4.5 rounded-3xl border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-slate-900/70 backdrop-blur-2xl shadow-lg shadow-slate-900/5 dark:shadow-[0_10px_25px_rgba(0,0,0,0.45)] hover:border-cyan-500/50 transition-all duration-300 flex items-center gap-4 overflow-hidden">
-          <div className="h-12 w-12 rounded-2xl bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 flex items-center justify-center font-bold flex-shrink-0 border border-cyan-500/30 group-hover:scale-105 transition-transform">
-            <Layers size={22} />
+          <div className="h-12 w-12 rounded-2xl bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 flex items-center justify-center font-bold flex-shrink-0 border border-cyan-500/30 icon-animated-interactive group-hover:scale-110 group-hover:bg-cyan-500/25 transition-all">
+            <Layers size={22} className="group-hover:animate-icon-bounce" />
           </div>
           <div className="min-w-0">
             <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">
@@ -486,8 +483,8 @@ export function ServiciosView() {
         </div>
 
         <div className="group relative p-4.5 rounded-3xl border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-slate-900/70 backdrop-blur-2xl shadow-lg shadow-slate-900/5 dark:shadow-[0_10px_25px_rgba(0,0,0,0.45)] hover:border-emerald-500/50 transition-all duration-300 flex items-center gap-4 overflow-hidden">
-          <div className="h-12 w-12 rounded-2xl bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold flex-shrink-0 border border-emerald-500/30 group-hover:scale-105 transition-transform">
-            <CheckCircle2 size={22} />
+          <div className="h-12 w-12 rounded-2xl bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold flex-shrink-0 border border-emerald-500/30 icon-animated-interactive group-hover:scale-110 group-hover:bg-emerald-500/25 transition-all">
+            <CheckCircle2 size={22} className="group-hover:animate-icon-wiggle" />
           </div>
           <div className="min-w-0">
             <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">
@@ -501,8 +498,8 @@ export function ServiciosView() {
         </div>
 
         <div className="group relative p-4.5 rounded-3xl border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-slate-900/70 backdrop-blur-2xl shadow-lg shadow-slate-900/5 dark:shadow-[0_10px_25px_rgba(0,0,0,0.45)] hover:border-teal-500/50 transition-all duration-300 flex items-center gap-4 overflow-hidden">
-          <div className="h-12 w-12 rounded-2xl bg-teal-500/15 text-teal-700 dark:text-teal-300 flex items-center justify-center font-bold flex-shrink-0 border border-teal-500/30 group-hover:scale-105 transition-transform">
-            <Clock size={22} />
+          <div className="h-12 w-12 rounded-2xl bg-teal-500/15 text-teal-700 dark:text-teal-300 flex items-center justify-center font-bold flex-shrink-0 border border-teal-500/30 icon-animated-interactive group-hover:scale-110 group-hover:bg-teal-500/25 transition-all">
+            <Clock size={22} className="group-hover:animate-icon-pulse" />
           </div>
           <div className="min-w-0">
             <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">
@@ -516,8 +513,8 @@ export function ServiciosView() {
         </div>
 
         <div className="group relative p-4.5 rounded-3xl border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-slate-900/70 backdrop-blur-2xl shadow-lg shadow-slate-900/5 dark:shadow-[0_10px_25px_rgba(0,0,0,0.45)] hover:border-purple-500/50 transition-all duration-300 flex items-center gap-4 overflow-hidden">
-          <div className="h-12 w-12 rounded-2xl bg-purple-500/15 text-purple-700 dark:text-purple-300 flex items-center justify-center font-bold flex-shrink-0 border border-purple-500/30 group-hover:scale-105 transition-transform">
-            <DollarSign size={22} />
+          <div className="h-12 w-12 rounded-2xl bg-purple-500/15 text-purple-700 dark:text-purple-300 flex items-center justify-center font-bold flex-shrink-0 border border-purple-500/30 icon-animated-interactive group-hover:scale-110 group-hover:bg-purple-500/25 transition-all">
+            <DollarSign size={22} className="group-hover:animate-icon-bounce" />
           </div>
           <div className="min-w-0">
             <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">

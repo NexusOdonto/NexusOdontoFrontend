@@ -1,8 +1,9 @@
 import { Suspense, lazy } from "react";
 import { Route, Routes } from "react-router-dom";
-
 import ProtectedRoute from "./ProtectedRoute";
 import PublicOnlyRoute from "./PublicOnlyRoute";
+import { ErrorAccessPage } from "../features/auth/ErrorAccessPage";
+import { DentistryReloadIcon } from "../components/common/DentistryReloadIcon";
 
 const LandingPage = lazy(() =>
   import("../features/landing/LandingPage").then((module) => ({
@@ -118,8 +119,6 @@ const ConfiguracionView = lazy(() =>
   })),
 );
 
-import { ErrorAccessPage } from "../features/auth/ErrorAccessPage";
-
 const NotFoundPage = lazy(() =>
   import("../pages/NotFoundPage").then((module) => ({
     default: module.NotFoundPage,
@@ -128,10 +127,13 @@ const NotFoundPage = lazy(() =>
 
 function LoadingFallback() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
-      <div className="text-center">
-        <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-cyan-500 border-t-transparent" />
-        <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
+    <div className="flex min-h-screen items-center justify-center bg-slate-50/90 dark:bg-slate-950 transition-colors">
+      <div className="text-center flex flex-col items-center">
+        <div className="relative mb-4 flex items-center justify-center">
+          <div className="absolute inset-0 rounded-full bg-cyan-500/20 dark:bg-cyan-500/25 blur-xl animate-pulse" />
+          <DentistryReloadIcon size={64} loading className="relative z-10 drop-shadow-[0_4px_12px_rgba(6,182,212,0.4)]" />
+        </div>
+        <p className="text-sm text-slate-700 dark:text-cyan-300 font-semibold tracking-wide animate-pulse">
           Cargando NexusOdonto...
         </p>
       </div>

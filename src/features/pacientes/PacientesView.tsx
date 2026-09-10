@@ -10,7 +10,8 @@ import {
 import { patientService } from "../../api/patientService";
 import { personService } from "../../api/personService";
 import { areGuidsEqual } from "../../utils/roleUtils";
-import { Plus, RefreshCw, LayoutGrid, List, Download } from "lucide-react";
+import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
+import { Plus, LayoutGrid, List, Download } from "lucide-react";
 
 const ITEMS_PER_PAGE = 6;
 
@@ -232,10 +233,10 @@ export function PacientesView() {
           <button
             type="button"
             onClick={fetchPacientes}
-            className="p-2.5 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/30 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-md active:scale-95 shadow-sm"
+            className="group p-2 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/30 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-md active:scale-95 shadow-sm flex items-center justify-center"
             title="Recargar datos"
           >
-            <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+            <DentistryReloadIcon size={20} loading={loading} />
           </button>
 
           <button
