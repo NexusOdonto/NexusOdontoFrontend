@@ -544,8 +544,8 @@ export function AtencionAsesorView() {
           if (userDismissedSelectionRef.current) {
             return "";
           }
-          // First load only: auto-select first chat for desktop split view
-          return consolidated[0]?.id || "";
+          // First load / no selection: stay on chat list (mobile) and empty pane (desktop)
+          return "";
         });
       } else {
         setChats([]);
