@@ -588,7 +588,7 @@ export default function RegisterPage() {
       <button
         type="button"
         onClick={() => navigate("/")}
-        className="absolute top-3 left-3 sm:top-6 sm:left-6 z-30 inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-slate-950/70 hover:bg-slate-900/90 text-slate-200 hover:text-white border border-white/15 backdrop-blur-xl shadow-lg text-xs font-bold transition-all hover:-translate-x-1 active:scale-95 cursor-pointer"
+        className="hidden md:inline-flex absolute top-3 left-3 sm:top-6 sm:left-6 z-30 items-center gap-2 px-4 py-2 rounded-2xl bg-slate-950/70 hover:bg-slate-900/90 text-slate-200 hover:text-white border border-white/15 backdrop-blur-xl shadow-lg text-xs font-bold transition-all hover:-translate-x-1 active:scale-95 cursor-pointer"
       >
         <ArrowLeft size={16} className="text-teal-400" />
         <span>Volver a la Página Principal</span>
