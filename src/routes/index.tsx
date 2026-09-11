@@ -1,6 +1,5 @@
-import { Suspense, lazy } from "react";
-import { Route, Routes } from "react-router-dom";
-
+﻿import { lazy, Suspense } from "react";
+import { Routes, Route } from "react-router-dom";
 import ProtectedRoute from "./ProtectedRoute";
 import PublicOnlyRoute from "./PublicOnlyRoute";
 
@@ -18,6 +17,12 @@ const LoginPage = lazy(() =>
 
 const RegisterPage = lazy(() =>
   import("../features/auth/RegisterPage").then((module) => ({
+    default: module.default,
+  })),
+);
+
+const ChangePasswordPage = lazy(() =>
+  import("../features/auth/ChangePasswordPage").then((module) => ({
     default: module.default,
   })),
 );
@@ -143,27 +148,20 @@ export default function AppRoutes() {
   return (
     <Suspense fallback={<LoadingFallback />}>
       <Routes>
-        {/* Pantalla de Bienvenida / Landing Page Pública */}
         <Route path="/" element={<LandingPage />} />
-
-        {/* Callback OAuth público */}
         <Route path="/auth/callback" element={<AuthCallback />} />
-
-        {/* Pantallas de Error y Control de Acceso Directas */}
         <Route path="/401" element={<ErrorAccessPage code={401} />} />
         <Route path="/403" element={<ErrorAccessPage code={403} />} />
         <Route path="/404" element={<NotFoundPage />} />
         <Route path="/unauthorized" element={<ErrorAccessPage code={401} />} />
 
-        {/* Rutas Públicas Exclusivas (si ya tiene sesión activa, redirige a /dashboard) */}
         <Route element={<PublicOnlyRoute />}>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
         </Route>
 
-        {/* Rutas Protegidas por RBAC */}
         <Route element={<ProtectedRoute />}>
-          {/* M11: Dashboard */}
+          <Route path="/cambiar-password" element={<ChangePasswordPage />} />
           <Route
             path="/dashboard"
             element={
@@ -172,8 +170,6 @@ export default function AppRoutes() {
               </DashboardLayout>
             }
           />
-
-          {/* M8: Citas */}
           <Route
             path="/citas"
             element={
@@ -182,8 +178,6 @@ export default function AppRoutes() {
               </DashboardLayout>
             }
           />
-
-          {/* M7: Agenda y Calendario */}
           <Route
             path="/agenda"
             element={
@@ -192,8 +186,6 @@ export default function AppRoutes() {
               </DashboardLayout>
             }
           />
-
-          {/* M8: Atención y Escalamiento WhatsApp (Chatbot) */}
           <Route
             path="/atencion-chat"
             element={
@@ -202,8 +194,6 @@ export default function AppRoutes() {
               </DashboardLayout>
             }
           />
-
-          {/* M4: Pacientes */}
           <Route
             path="/pacientes"
             element={
@@ -212,7 +202,6 @@ export default function AppRoutes() {
               </DashboardLayout>
             }
           />
-
           <Route
             path="/pacientes/nuevo"
             element={
@@ -221,8 +210,6 @@ export default function AppRoutes() {
               </DashboardLayout>
             }
           />
-
-          {/* M6: Profesionales y Disponibilidad */}
           <Route
             path="/profesionales"
             element={
@@ -231,8 +218,6 @@ export default function AppRoutes() {
               </DashboardLayout>
             }
           />
-
-          {/* M5: Catálogo de Servicios */}
           <Route
             path="/servicios"
             element={
@@ -241,8 +226,6 @@ export default function AppRoutes() {
               </DashboardLayout>
             }
           />
-
-          {/* M9: Historia Clínica y Odontograma */}
           <Route
             path="/historia-clinica"
             element={
@@ -251,7 +234,6 @@ export default function AppRoutes() {
               </DashboardLayout>
             }
           />
-
           <Route
             path="/odontograma"
             element={
@@ -260,8 +242,6 @@ export default function AppRoutes() {
               </DashboardLayout>
             }
           />
-
-          {/* M2: Gestión de Usuarios */}
           <Route
             path="/usuarios"
             element={
@@ -270,8 +250,6 @@ export default function AppRoutes() {
               </DashboardLayout>
             }
           />
-
-          {/* M3: Roles y Permisos Configurables */}
           <Route
             path="/roles-permisos"
             element={
@@ -280,7 +258,6 @@ export default function AppRoutes() {
               </DashboardLayout>
             }
           />
-
           <Route
             path="/configuracion"
             element={
@@ -289,7 +266,6 @@ export default function AppRoutes() {
               </DashboardLayout>
             }
           />
-
           <Route
             path="/perfil"
             element={
@@ -300,7 +276,6 @@ export default function AppRoutes() {
           />
         </Route>
 
-        {/* Catch-all para URLs inexistentes */}
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Suspense>

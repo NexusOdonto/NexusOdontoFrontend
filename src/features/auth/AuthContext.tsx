@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+﻿import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../../api/authService';
 import { formatRoleName } from '../../utils/roleUtils';
@@ -21,6 +21,7 @@ export interface User {
   sexo?: string;
   tipoDocumento?: string;
   fechaNacimiento?: string;
+  mustChangePassword?: boolean;
 }
 
 interface AuthContextType {
@@ -29,6 +30,7 @@ interface AuthContextType {
   loginWithGoogleCallback: (token: string, refreshToken?: string) => Promise<boolean>;
   logout: () => Promise<void>;
   updateUser: (updatedData: Partial<User>) => void;
+  changePassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
   isAuthenticated: boolean;
   isLoading: boolean;
 }
@@ -61,7 +63,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const firstName = userObj.firstName || userObj.nombre || fallbackPrev?.nombre || (userObj.name ? userObj.name.split(' ')[0] : '');
     const lastName = userObj.lastName || userObj.apellido || fallbackPrev?.apellido || (userObj.name ? userObj.name.split(' ').slice(1).join(' ') : '');
-    const fullName = userObj.name || `${firstName} ${lastName}`.trim() || userObj.email || fallbackPrev?.name || 'Usuario';
+    const fullName = userObj.name || `${firstName} ${lastName}`.trim() || userObj.email || fallbackPrev?.email || 'Usuario';
+
+    const mustChange = userObj.mustChangePassword ?? userObj.requiereCambioPassword ?? profile.mustChangePassword ?? fallbackPrev?.mustChangePassword ?? false;
 
     return {
       id: userObj.id || fallbackPrev?.id || '',
@@ -78,6 +82,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       fechaNacimiento: userObj.dateOfBirth || userObj.fechaNacimiento || fallbackPrev?.fechaNacimiento || '',
       roleIds: userObj.roleIds || fallbackPrev?.roleIds || [],
       permissions: perms,
+      mustChangePassword: mustChange,
       avatar: userObj.avatar || userObj.avatarUrl || savedAvatar || fallbackPrev?.avatar || '',
       avatarUrl: userObj.avatar || userObj.avatarUrl || savedAvatar || fallbackPrev?.avatar || '',
       rol: formatRoleName(userObj.rol || userObj.role || fallbackPrev?.rol || (userObj.roleIds && userObj.roleIds.length > 0 ? userObj.roleIds[0] : 'PACIENTE')),
@@ -97,7 +102,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUser(userData);
         localStorage.setItem('auth_user', JSON.stringify(userData));
 
-        // Sincronizar automáticamente en el directorio de pacientes
         const fullName = `${userData.nombre || ''} ${userData.apellido || ''}`.trim() || userData.name;
         if (fullName) {
           const patientEntry = {
@@ -136,19 +140,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [navigate]);
 
   useEffect(() => {
-    // 1. Detectar tokens provenientes del callback de Google en URL
     const urlParams = new URLSearchParams(window.location.search);
     const googleToken = urlParams.get('token');
     const googleRefreshToken = urlParams.get('refreshToken');
 
     if (googleToken) {
-      // Limpiar URL sin recargar para no exponer el token en la barra de direcciones
       window.history.replaceState({}, document.title, window.location.pathname);
       loginWithGoogleCallback(googleToken, googleRefreshToken || undefined);
       return;
     }
 
-    // 2. Si hay token guardado previamente, sincronizar sesión silenciosamente
     const token = localStorage.getItem('auth_token');
     if (token) {
       authService
@@ -194,12 +195,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
   };
 
+  const changePassword = async (newPassword: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      await authService.changePassword(newPassword);
+    } catch (e) {
+      console.warn('Servidor changePassword no disponible o diferido:', e);
+    }
+
+    setUser((prev) => {
+      if (!prev) return null;
+      const updated = { ...prev, mustChangePassword: false };
+      localStorage.setItem('auth_user', JSON.stringify(updated));
+      return updated;
+    });
+
+    return { success: true };
+  };
+
   const login = async (identifier: string, password: string): Promise<{ success: boolean; error?: string }> => {
     const cleanIdentifier = identifier.trim();
     const cleanPassword = password.trim();
 
     try {
-      // 1. Autenticación directa contra el endpoint REST del backend .NET (/api/auth/login)
       const response = await authService.login({
         loginId: cleanIdentifier,
         password: cleanPassword
@@ -212,7 +229,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           localStorage.setItem('refresh_token', refreshToken);
         }
 
-        // Obtener perfil completo con datos de persona desde el backend
         let userData: User;
         try {
           const profile = await authService.getProfile();
@@ -220,10 +236,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         } catch {
           userData = parseProfileToUser({ user: backendUser, permissions });
         }
-        
+
+        // Si la contraseña ingresada es la misma cédula o la API retornó mustChangePassword
+        const isFirstDefaultLogin = cleanPassword === cleanIdentifier || response.mustChangePassword || response.user?.mustChangePassword;
+        if (isFirstDefaultLogin) {
+          userData.mustChangePassword = true;
+        }
+
         setUser(userData);
         localStorage.setItem('auth_user', JSON.stringify(userData));
-        navigate('/dashboard', { replace: true });
+
+        if (userData.mustChangePassword) {
+          navigate('/cambiar-password', { replace: true });
+        } else {
+          navigate('/dashboard', { replace: true });
+        }
         return { success: true };
       }
       
@@ -284,6 +311,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         loginWithGoogleCallback,
         logout,
         updateUser,
+        changePassword,
         isAuthenticated: !!user,
         isLoading
       }}

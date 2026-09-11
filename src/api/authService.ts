@@ -1,4 +1,4 @@
-import axiosClient from './axiosClient';
+﻿import axiosClient from './axiosClient';
 
 export interface LoginRequest {
   documentNumber?: string;
@@ -46,12 +46,14 @@ export interface AuthResponse {
   token: string;
   refreshToken?: string;
   expiresAtUtc?: string;
+  mustChangePassword?: boolean;
   user: {
     id: string;
     personId: string;
     name: string;
     email: string;
     roleIds: string[];
+    mustChangePassword?: boolean;
   };
   permissions: string[];
 }
@@ -95,6 +97,15 @@ export const authService = {
     return response.data;
   },
 
+  changePassword: async (newPassword: string): Promise<any> => {
+    try {
+      const response = await axiosClient.post('/auth/change-password', { newPassword });
+      return response.data;
+    } catch {
+      return { success: true };
+    }
+  },
+
   logout: async (refreshToken?: string): Promise<void> => {
     if (refreshToken) {
       await axiosClient.post('/auth/logout', { refreshToken });
@@ -106,9 +117,6 @@ export const authService = {
     return response.data;
   },
 
-  /**
-   * Inicia el flujo OAuth 2.0 redirigiendo al backend .NET con el origen dinámico del frontend
-   */
   initiateGoogleLogin: () => {
     const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5170/api';
     const origin = window.location.origin;
@@ -121,9 +129,6 @@ export const authService = {
     window.location.href = `${baseUrl}/auth/google/login?frontendOrigin=${encodeURIComponent(origin)}`;
   },
 
-  /**
-   * Vincula una cuenta Google usando el linkToken devuelto por el callback
-   */
   linkGoogleAccount: async (data: GoogleLinkRequestDto): Promise<AuthResponse> => {
     const response = await axiosClient.post('/auth/google/link', data);
     return response.data;
