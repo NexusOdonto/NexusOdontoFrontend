@@ -92,3 +92,9 @@ $RECYCLE.BIN/
 .stylelintcache
 *.tgz
 *.tar.gz
+
+# Markdown files (ignorar todos excepto README.md)
+*.md
+**/*.md
+!README.md
+!**/README.md
