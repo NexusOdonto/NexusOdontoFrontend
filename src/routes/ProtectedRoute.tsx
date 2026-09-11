@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+﻿import { useEffect } from 'react';
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthContext';
 import { hasRouteAccess, ROUTE_PERMISSIONS } from '../utils/routePermissions';
@@ -14,14 +14,16 @@ export default function ProtectedRoute(_props: ProtectedRouteProps = {}) {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Manejo controlado del historial de navegación para evitar volver al login sin cerrar sesión
   useEffect(() => {
     if (!isAuthenticated) return;
 
     const handlePopState = () => {
-      // Si el navegador intenta retroceder a rutas de login o register, redirigir a dashboard
       if (window.location.pathname === '/login' || window.location.pathname === '/register') {
-        navigate('/dashboard', { replace: true });
+        if (user?.mustChangePassword) {
+          navigate('/cambiar-password', { replace: true });
+        } else {
+          navigate('/dashboard', { replace: true });
+        }
       }
     };
 
@@ -29,9 +31,8 @@ export default function ProtectedRoute(_props: ProtectedRouteProps = {}) {
     return () => {
       window.removeEventListener('popstate', handlePopState);
     };
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, user?.mustChangePassword, navigate]);
 
-  // 1. Mostrar pantalla de carga suave mientras se valida la sesión inicial
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50/90 dark:bg-slate-950 transition-colors">
@@ -48,17 +49,19 @@ export default function ProtectedRoute(_props: ProtectedRouteProps = {}) {
     );
   }
 
-  // 2. Si terminó de cargar y no está autenticado, redirigir a /login
   if (!isAuthenticated) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 
-  // 3. El dashboard y el perfil siempre son accesibles para cualquier usuario autenticado
-  if (location.pathname === '/dashboard' || location.pathname === '/perfil') {
+  // Redirección obligatoria al panel de cambio de contraseña en el primer inicio de sesión
+  if (user?.mustChangePassword && location.pathname !== '/cambiar-password') {
+    return <Navigate to="/cambiar-password" replace />;
+  }
+
+  if (location.pathname === '/dashboard' || location.pathname === '/perfil' || location.pathname === '/cambiar-password') {
     return <Outlet />;
   }
 
-  // 4. Verificar si el usuario tiene acceso a la ruta según su rol RBAC
   if (!hasRouteAccess(user, location.pathname)) {
     const requiredPermission = ROUTE_PERMISSIONS[location.pathname] || 'Módulo clínico/administrativo';
     return (
