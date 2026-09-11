@@ -360,6 +360,8 @@ export function AtencionAsesorView() {
   const [unreadMap, setUnreadMap] = useState<Record<string, number>>({});
   const lastMsgCountRef = useRef<Record<string, number>>({});
   const chatsRef = useRef<ChatItemDisplay[]>([]);
+  /** Mobile back to list: polling must not re-open a chat until the user picks one again. */
+  const userDismissedSelectionRef = useRef(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -538,6 +540,11 @@ export function AtencionAsesorView() {
             const matching = consolidated.find((ch) => ch.id === prev || ch.allConversationIds?.includes(prev));
             return matching ? matching.id : prev;
           }
+          // User tapped back to the chat list — keep list until they select again
+          if (userDismissedSelectionRef.current) {
+            return "";
+          }
+          // First load only: auto-select first chat for desktop split view
           return consolidated[0]?.id || "";
         });
       } else {
@@ -1182,7 +1189,10 @@ export function AtencionAsesorView() {
                 return (
                   <div
                     key={chat.id}
-                    onClick={() => setSelectedChatId(chat.id)}
+                    onClick={() => {
+                      userDismissedSelectionRef.current = false;
+                      setSelectedChatId(chat.id);
+                    }}
                     className={`p-4 transition-all cursor-pointer select-none flex items-start gap-3.5 relative border-l-4 ${
                       isSelected
                         ? "bg-teal-500/10 dark:bg-teal-500/15 border-teal-500 dark:border-teal-400 shadow-sm"
@@ -1266,6 +1276,7 @@ export function AtencionAsesorView() {
                   <button
                     type="button"
                     onClick={() => {
+                      userDismissedSelectionRef.current = true;
                       setSelectedChatId("");
                       setShowContactInfo(false);
                     }}
@@ -2110,6 +2121,7 @@ export function AtencionAsesorView() {
                         <button
                           type="button"
                           onClick={() => {
+                            userDismissedSelectionRef.current = false;
                             setSelectedChatId(alertChat.id);
                             setFilterTab("TODAS");
                             setShowNotificationsModal(false);
