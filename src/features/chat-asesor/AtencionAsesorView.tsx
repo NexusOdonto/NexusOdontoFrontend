@@ -34,6 +34,7 @@ import {
 } from "../../api/chatbotService";
 import type { ChatbotMessage, SupportTicket } from "../../api/chatbotService";
 import { patientService } from "../../api/patientService";
+import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
 
 interface ChatItemDisplay {
   id: string;
@@ -942,10 +943,10 @@ export function AtencionAsesorView() {
             type="button"
             onClick={() => loadData(false)}
             disabled={loadingChats}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700/80 border border-slate-200/80 dark:border-white/10 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-all cursor-pointer shadow-sm active:scale-95 disabled:opacity-50"
+            className="group flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700/80 border border-slate-200/80 dark:border-white/10 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-all cursor-pointer shadow-sm active:scale-95 disabled:opacity-50"
             title="Sincronizar conversaciones"
           >
-            <RefreshCw size={14} className={loadingChats ? "animate-spin text-teal-500" : "text-slate-500 dark:text-slate-400"} />
+            <DentistryReloadIcon size={16} loading={loadingChats} />
             <span>Actualizar</span>
           </button>
         </div>

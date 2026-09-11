@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   X,
   FileDown,
-  RefreshCw,
   Phone,
   Mail,
   User,
@@ -33,6 +32,7 @@ import { appointmentService } from "../../api/appointmentService";
 import { serviceCatalogService } from "../../api/serviceCatalogService";
 import { useAuth } from "../auth/AuthContext";
 import { getUserRole } from "../../utils/routePermissions";
+import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
 import { areGuidsEqual } from "../../utils/roleUtils";
 
 interface LocalAttention {
@@ -592,9 +592,9 @@ export function HistoriaClinicaView() {
           <button
             type="button"
             onClick={() => window.print()}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/65 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-xl active:scale-95 text-xs font-semibold shadow-sm"
+            className="group inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/65 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-xl active:scale-95 text-xs font-semibold shadow-sm"
           >
-            <FileDown size={15} className="text-cyan-600 dark:text-cyan-400" />
+            <FileDown size={15} className="text-cyan-600 dark:text-cyan-400 icon-animated-interactive group-hover:scale-125 group-hover:animate-icon-bounce" />
             <span>Imprimir Expediente</span>
           </button>
 
@@ -602,10 +602,10 @@ export function HistoriaClinicaView() {
             <button
               type="button"
               onClick={() => setShowPrescriptionModal(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-cyan-500/40 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-800 dark:text-cyan-200 transition-all cursor-pointer backdrop-blur-xl active:scale-95 text-xs font-semibold shadow-sm"
+              className="group inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-cyan-500/40 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-800 dark:text-cyan-200 transition-all cursor-pointer backdrop-blur-xl active:scale-95 text-xs font-semibold shadow-sm"
               title="Generar e imprimir receta odontológica oficial"
             >
-              <FileText size={15} className="text-cyan-600 dark:text-cyan-400" />
+              <FileText size={15} className="text-cyan-600 dark:text-cyan-400 icon-animated-interactive group-hover:scale-125 group-hover:animate-icon-wiggle" />
               <span>Fórmula Médica</span>
             </button>
           )}
@@ -613,10 +613,10 @@ export function HistoriaClinicaView() {
           <button
             type="button"
             onClick={loadClinicalData}
-            className="p-2.5 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/65 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-xl active:scale-95 shadow-sm"
+            className="group p-2 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/65 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-xl active:scale-95 shadow-sm flex items-center justify-center"
             title="Recargar datos"
           >
-            <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+            <DentistryReloadIcon size={20} loading={loading} />
           </button>
 
           {!isPaciente && (

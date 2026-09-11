@@ -18,13 +18,20 @@ import {
 } from "lucide-react";
 
 import { useTheme } from "../../context/ThemeContext";
-import { documentTypeService, type DocumentType } from "../../api/documentTypeService";
+import {
+  documentTypeService,
+  type DocumentType,
+} from "../../api/documentTypeService";
 import { sexService, type Sex } from "../../api/sexService";
 import { roleService } from "../../api/roleService";
 import { personService } from "../../api/personService";
 import { userService } from "../../api/userService";
 import { patientService } from "../../api/patientService";
-import { authService, type RegisterRequest, type GoogleRegisterRequest } from "../../api/authService";
+import {
+  authService,
+  type RegisterRequest,
+  type GoogleRegisterRequest,
+} from "../../api/authService";
 import { useAuth } from "./AuthContext";
 import { GoogleAuthButton } from "./components/GoogleAuthButton";
 import fondoLoginLight from "../../assets/fondo-Login-ligh.webp";
@@ -37,19 +44,27 @@ export default function RegisterPage() {
   const { theme } = useTheme();
   const { loginWithGoogleCallback } = useAuth();
 
-  // Detectar si el usuario viene de redirección de Google Onboarding
-  const isGoogle = searchParams.get("isGoogle") === "true" || searchParams.get("google") === "true";
-  const [googleSub, setGoogleSub] = useState(searchParams.get("googleSub") || "");
+  const isGoogle =
+    searchParams.get("isGoogle") === "true" ||
+    searchParams.get("google") === "true";
 
-  // Catalogs
+  const [googleSub, setGoogleSub] = useState(
+    searchParams.get("googleSub") || ""
+  );
+
   const [documentTypes, setDocumentTypes] = useState<DocumentType[]>([]);
   const [sexes, setSexes] = useState<Sex[]>([]);
-  const [patientRoleId, setPatientRoleId] = useState<string>("13000000-0000-0000-0000-000000000005");
+  const [patientRoleId, setPatientRoleId] = useState<string>(
+    "13000000-0000-0000-0000-000000000005"
+  );
   const [loadingCatalogs, setLoadingCatalogs] = useState(true);
 
-  // Form fields
-  const [firstName, setFirstName] = useState(searchParams.get("firstName") || "");
-  const [lastName, setLastName] = useState(searchParams.get("lastName") || "");
+  const [firstName, setFirstName] = useState(
+    searchParams.get("firstName") || ""
+  );
+  const [lastName, setLastName] = useState(
+    searchParams.get("lastName") || ""
+  );
   const [documentTypeId, setDocumentTypeId] = useState("");
   const [documentNumber, setDocumentNumber] = useState("");
   const [email, setEmail] = useState(searchParams.get("email") || "");
@@ -60,14 +75,48 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  // UI state
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Sincronizar parámetros de URL
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 767px)");
+
+    const originalHtmlOverflow = document.documentElement.style.overflow;
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalHtmlOverflowX = document.documentElement.style.overflowX;
+    const originalBodyOverflowX = document.body.style.overflowX;
+
+    const updateScroll = () => {
+      if (mediaQuery.matches) {
+        document.documentElement.style.overflow = "hidden";
+        document.body.style.overflow = "hidden";
+        document.documentElement.style.overflowX = "hidden";
+        document.body.style.overflowX = "hidden";
+      } else {
+        document.documentElement.style.overflow = "hidden";
+        document.body.style.overflow = "hidden";
+        document.documentElement.style.overflowX = "hidden";
+        document.body.style.overflowX = "hidden";
+      }
+    };
+
+    updateScroll();
+
+    mediaQuery.addEventListener("change", updateScroll);
+
+    return () => {
+      mediaQuery.removeEventListener("change", updateScroll);
+
+      document.documentElement.style.overflow = originalHtmlOverflow;
+      document.body.style.overflow = originalBodyOverflow;
+      document.documentElement.style.overflowX = originalHtmlOverflowX;
+      document.body.style.overflowX = originalBodyOverflowX;
+    };
+  }, []);
+
   useEffect(() => {
     const urlFirstName = searchParams.get("firstName");
     const urlLastName = searchParams.get("lastName");
@@ -83,78 +132,177 @@ export default function RegisterPage() {
   const translateDocumentTypeName = (doc: DocumentType): string => {
     const code = (doc.code || "").toUpperCase();
     const name = (doc.name || "").toLowerCase();
-    
-    if (code === "CC" || name.includes("citizenship") || name.includes("ciudadanía") || name.includes("ciudadania")) {
+
+    if (
+      code === "CC" ||
+      name.includes("citizenship") ||
+      name.includes("ciudadanía") ||
+      name.includes("ciudadania")
+    ) {
       return "Cédula de Ciudadanía";
     }
-    if (code === "CE" || name.includes("foreigner") || name.includes("extranjería") || name.includes("extranjeria")) {
+
+    if (
+      code === "CE" ||
+      name.includes("foreigner") ||
+      name.includes("extranjería") ||
+      name.includes("extranjeria")
+    ) {
       return "Cédula de Extranjería";
     }
-    if (code === "TI" || name.includes("identity card") || name.includes("tarjeta de identidad")) {
+
+    if (
+      code === "TI" ||
+      name.includes("identity card") ||
+      name.includes("tarjeta de identidad")
+    ) {
       return "Tarjeta de Identidad";
     }
-    if (code === "PAS" || code === "PP" || name.includes("passport") || name.includes("pasaporte")) {
+
+    if (
+      code === "PAS" ||
+      code === "PP" ||
+      name.includes("passport") ||
+      name.includes("pasaporte")
+    ) {
       return "Pasaporte";
     }
-    if (code === "RC" || name.includes("civil registry") || name.includes("registro civil")) {
+
+    if (
+      code === "RC" ||
+      name.includes("civil registry") ||
+      name.includes("registro civil")
+    ) {
       return "Registro Civil";
     }
-    if (code === "NIT" || name.includes("tax") || name.includes("tributario")) {
+
+    if (
+      code === "NIT" ||
+      name.includes("tax") ||
+      name.includes("tributario")
+    ) {
       return "NIT";
     }
+
     return doc.name;
   };
 
-  // Load catalogs on mount
   useEffect(() => {
     const loadCatalogs = async () => {
       try {
         setLoadingCatalogs(true);
-        const [docTypesData, sexesData, rolesData] = await Promise.allSettled([
-          documentTypeService.getAll(),
-          sexService.getAll(),
-          roleService.getAll(),
-        ]);
 
-        if (docTypesData.status === "fulfilled" && docTypesData.value.length > 0) {
+        const [docTypesData, sexesData, rolesData] =
+          await Promise.allSettled([
+            documentTypeService.getAll(),
+            sexService.getAll(),
+            roleService.getAll(),
+          ]);
+
+        if (
+          docTypesData.status === "fulfilled" &&
+          docTypesData.value.length > 0
+        ) {
           const translatedDocs = docTypesData.value.map((dt) => ({
             ...dt,
             name: translateDocumentTypeName(dt),
           }));
+
           setDocumentTypes(translatedDocs);
-          const defaultDoc = translatedDocs.find((dt) => dt.code === "CC") || translatedDocs[0];
+
+          const defaultDoc =
+            translatedDocs.find((dt) => dt.code === "CC") ||
+            translatedDocs[0];
+
           setDocumentTypeId(defaultDoc.id);
         } else {
           const fallbackDocs: DocumentType[] = [
-            { id: "e0000000-0000-0000-0000-000000000001", code: "CC", name: "Cédula de Ciudadanía", isActive: true },
-            { id: "e0000000-0000-0000-0000-000000000002", code: "CE", name: "Cédula de Extranjería", isActive: true },
-            { id: "e0000000-0000-0000-0000-000000000003", code: "TI", name: "Tarjeta de Identidad", isActive: true },
-            { id: "e0000000-0000-0000-0000-000000000004", code: "PAS", name: "Pasaporte", isActive: true },
+            {
+              id: "e0000000-0000-0000-0000-000000000001",
+              code: "CC",
+              name: "Cédula de Ciudadanía",
+              isActive: true,
+            },
+            {
+              id: "e0000000-0000-0000-0000-000000000002",
+              code: "CE",
+              name: "Cédula de Extranjería",
+              isActive: true,
+            },
+            {
+              id: "e0000000-0000-0000-0000-000000000003",
+              code: "TI",
+              name: "Tarjeta de Identidad",
+              isActive: true,
+            },
+            {
+              id: "e0000000-0000-0000-0000-000000000004",
+              code: "PAS",
+              name: "Pasaporte",
+              isActive: true,
+            },
           ];
+
           setDocumentTypes(fallbackDocs);
           setDocumentTypeId(fallbackDocs[0].id);
         }
 
-        if (sexesData.status === "fulfilled" && sexesData.value.length > 0) {
+        if (
+          sexesData.status === "fulfilled" &&
+          sexesData.value.length > 0
+        ) {
           const translatedSexes = sexesData.value.map((s) => {
             const code = (s.code || s.name || "").toUpperCase();
+
             let name = s.name;
-            if (code.includes("FEM") || code === "F") name = "Femenino";
-            else if (code.includes("MASC") || code.includes("MALE") || code === "M") name = "Masculino";
-            else name = "Otro";
+
+            if (code.includes("FEM") || code === "F") {
+              name = "Femenino";
+            } else if (
+              code.includes("MASC") ||
+              code.includes("MALE") ||
+              code === "M"
+            ) {
+              name = "Masculino";
+            } else {
+              name = "Otro";
+            }
+
             return { ...s, name };
           });
+
           setSexes(translatedSexes);
         } else {
           setSexes([
-            { id: "f0000000-0000-0000-0000-000000000001", code: "FEMENINO", name: "Femenino", isActive: true },
-            { id: "f0000000-0000-0000-0000-000000000002", code: "MASCULINO", name: "Masculino", isActive: true },
-            { id: "f0000000-0000-0000-0000-000000000003", code: "OTRO", name: "Otro", isActive: true },
+            {
+              id: "f0000000-0000-0000-0000-000000000001",
+              code: "FEMENINO",
+              name: "Femenino",
+              isActive: true,
+            },
+            {
+              id: "f0000000-0000-0000-0000-000000000002",
+              code: "MASCULINO",
+              name: "Masculino",
+              isActive: true,
+            },
+            {
+              id: "f0000000-0000-0000-0000-000000000003",
+              code: "OTRO",
+              name: "Otro",
+              isActive: true,
+            },
           ]);
         }
 
-        if (rolesData.status === "fulfilled" && rolesData.value.length > 0) {
-          const patient = rolesData.value.find((r) => r.code === "PACIENTE");
+        if (
+          rolesData.status === "fulfilled" &&
+          rolesData.value.length > 0
+        ) {
+          const patient = rolesData.value.find(
+            (r) => r.code === "PACIENTE"
+          );
+
           if (patient) {
             setPatientRoleId(patient.id);
           }
@@ -173,7 +321,6 @@ export default function RegisterPage() {
     e.preventDefault();
     setError("");
 
-    // Validations
     const cleanFirstName = firstName.trim();
     const cleanLastName = lastName.trim();
     const cleanDocNumber = documentNumber.trim();
@@ -197,8 +344,11 @@ export default function RegisterPage() {
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
     if (!emailRegex.test(cleanEmail)) {
-      setError("Ingresa un correo electrónico válido (ejemplo: usuario@correo.com).");
+      setError(
+        "Ingresa un correo electrónico válido (ejemplo: usuario@correo.com)."
+      );
       return;
     }
 
@@ -218,7 +368,6 @@ export default function RegisterPage() {
 
     try {
       if (isGoogle) {
-        // FLUJO ONBOARDING GOOGLE
         const payload: GoogleRegisterRequest = {
           documentTypeId,
           documentNumber: cleanDocNumber,
@@ -226,7 +375,9 @@ export default function RegisterPage() {
           lastName: cleanLastName,
           email: cleanEmail,
           phone: cleanPhone || undefined,
-          dateOfBirth: dateOfBirth ? new Date(dateOfBirth).toISOString().split("T")[0] : undefined,
+          dateOfBirth: dateOfBirth
+            ? new Date(dateOfBirth).toISOString().split("T")[0]
+            : undefined,
           sexId: sexId || undefined,
           address: address.trim() || undefined,
           googleSub: googleSub || cleanEmail,
@@ -234,23 +385,33 @@ export default function RegisterPage() {
         };
 
         const res = await authService.registerGoogle(payload);
+
         if (res && res.token) {
           setIsSuccess(true);
           await loginWithGoogleCallback(res.token, res.refreshToken);
           return;
         }
       } else {
-        // FLUJO REGISTRO TRADICIONAL
         let roleIdToAssign = patientRoleId;
-        if (!roleIdToAssign || roleIdToAssign === "13000000-0000-0000-0000-000000000005") {
+
+        if (
+          !roleIdToAssign ||
+          roleIdToAssign ===
+            "13000000-0000-0000-0000-000000000005"
+        ) {
           try {
             const roles = await roleService.getAll();
-            const patient = roles.find((r) => r.code?.toUpperCase() === "PACIENTE");
+
+            const patient = roles.find(
+              (r) => r.code?.toUpperCase() === "PACIENTE"
+            );
+
             if (patient) {
               roleIdToAssign = patient.id;
             }
           } catch {
-            roleIdToAssign = "13000000-0000-0000-0000-000000000005";
+            roleIdToAssign =
+              "13000000-0000-0000-0000-000000000005";
           }
         }
 
@@ -261,22 +422,22 @@ export default function RegisterPage() {
           lastName: cleanLastName,
           email: cleanEmail,
           phone: cleanPhone || undefined,
-          dateOfBirth: dateOfBirth ? new Date(dateOfBirth).toISOString() : undefined,
+          dateOfBirth: dateOfBirth
+            ? new Date(dateOfBirth).toISOString()
+            : undefined,
           sexId: sexId || undefined,
           address: address.trim() || undefined,
           password: cleanPassword,
           roleId: roleIdToAssign,
         };
 
-        // 1. Intentar endpoint directo /auth/register
         let registerSuccess = false;
+
         try {
           await authService.register(payload);
           registerSuccess = true;
         } catch (authErr: any) {
-          // Si el endpoint /auth/register no existe (404), ejecutar flujo REST de creación Person -> User -> Patient
           if (authErr?.response?.status === 404) {
-            console.warn("Endpoint /auth/register no encontrado (404). Ejecutando creación vía Person + User + Patient...");
             try {
               const createdPerson = await personService.create({
                 documentTypeId,
@@ -291,25 +452,47 @@ export default function RegisterPage() {
               });
 
               if (createdPerson && createdPerson.id) {
-                // Crear usuario
-                await userService.create({
-                  personId: createdPerson.id,
-                  password: cleanPassword,
-                  roleId: roleIdToAssign,
-                  roleIds: [roleIdToAssign],
-                }).catch((uErr) => console.warn("User create fallback error:", uErr));
+                await userService
+                  .create({
+                    personId: createdPerson.id,
+                    password: cleanPassword,
+                    roleId: roleIdToAssign,
+                    roleIds: [roleIdToAssign],
+                  })
+                  .catch((uErr) =>
+                    console.warn(
+                      "User create fallback error:",
+                      uErr
+                    )
+                  );
 
-                // Crear registro de paciente clínico
-                await patientService.create({
-                  personId: createdPerson.id,
-                }).catch((pErr) => console.warn("Patient create fallback error:", pErr));
+                await patientService
+                  .create({
+                    personId: createdPerson.id,
+                  })
+                  .catch((pErr) =>
+                    console.warn(
+                      "Patient create fallback error:",
+                      pErr
+                    )
+                  );
 
                 registerSuccess = true;
               }
             } catch (fallbackErr: any) {
-              console.error("Error en flujo alternativo de creación:", fallbackErr);
-              const errMsg = fallbackErr.response?.data?.message || fallbackErr.message;
-              throw new Error(errMsg || "No se pudo registrar la cuenta en el sistema.");
+              console.error(
+                "Error en flujo alternativo de creación:",
+                fallbackErr
+              );
+
+              const errMsg =
+                fallbackErr.response?.data?.message ||
+                fallbackErr.message;
+
+              throw new Error(
+                errMsg ||
+                  "No se pudo registrar la cuenta en el sistema."
+              );
             }
           } else {
             throw authErr;
@@ -328,28 +511,44 @@ export default function RegisterPage() {
             direccion: address.trim(),
             rol: "PACIENTE",
           };
+
           try {
-            const raw = localStorage.getItem("nexusodontopacientes");
+            const raw = localStorage.getItem(
+              "nexusodontopacientes"
+            );
+
             const list = raw ? JSON.parse(raw) : [];
+
             list.unshift(patientEntry);
-            localStorage.setItem("nexusodontopacientes", JSON.stringify(list));
-          } catch {
-            // Ignore
-          }
+
+            localStorage.setItem(
+              "nexusodontopacientes",
+              JSON.stringify(list)
+            );
+          } catch {}
         }
       }
 
       setIsSuccess(true);
     } catch (err: any) {
       console.error("Error creating account:", err);
+
       const status = err.response?.status;
-      let friendlyMsg = "Ocurrió un error al procesar el registro. Intenta nuevamente.";
+
+      let friendlyMsg =
+        "Ocurrió un error al procesar el registro. Intenta nuevamente.";
 
       if (status === 409) {
-        friendlyMsg = "El número de documento o correo electrónico ya se encuentra registrado.";
+        friendlyMsg =
+          "El número de documento o correo electrónico ya se encuentra registrado.";
       } else if (status === 400) {
-        friendlyMsg = err.response?.data?.message || "Verifica que todos los campos obligatorios sean correctos.";
-      } else if (err.message && !err.message.includes("status code")) {
+        friendlyMsg =
+          err.response?.data?.message ||
+          "Verifica que todos los campos obligatorios sean correctos.";
+      } else if (
+        err.message &&
+        !err.message.includes("status code")
+      ) {
         friendlyMsg = err.message;
       }
 
@@ -359,90 +558,136 @@ export default function RegisterPage() {
     }
   };
 
-  const backgroundImage = theme === "dark" ? fondoLoginDark : fondoLoginLight;
+  const backgroundImage =
+    theme === "dark" ? fondoLoginDark : fondoLoginLight;
 
   return (
     <main
       role="main"
-      className="relative min-h-screen w-full flex items-center justify-center bg-cover bg-center bg-no-repeat overflow-x-hidden p-4 py-8"
+      className="
+        relative
+        w-full
+        h-screen
+        max-h-screen
+        min-h-0
+        flex
+        items-center
+        justify-center
+        bg-cover
+        bg-center
+        bg-no-repeat
+        overflow-hidden
+        p-4
+        py-8
+        max-md:h-dvh
+        max-md:max-h-dvh
+        max-md:min-h-0
+      "
       style={{ backgroundImage: `url(${backgroundImage})` }}
     >
-      {/* Botón flotante para regresar a la Landing Page */}
       <button
         type="button"
-        onClick={() => navigate('/')}
-        className="absolute top-6 left-6 z-20 inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-slate-950/70 hover:bg-slate-900/90 text-slate-200 hover:text-white border border-white/15 backdrop-blur-xl shadow-lg text-xs font-bold transition-all hover:-translate-x-1 active:scale-95 cursor-pointer"
+        onClick={() => navigate("/")}
+        className="absolute top-3 left-3 sm:top-6 sm:left-6 z-30 inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-slate-950/70 hover:bg-slate-900/90 text-slate-200 hover:text-white border border-white/15 backdrop-blur-xl shadow-lg text-xs font-bold transition-all hover:-translate-x-1 active:scale-95 cursor-pointer"
       >
         <ArrowLeft size={16} className="text-teal-400" />
         <span>Volver a la Página Principal</span>
       </button>
 
-      <div className="relative w-full max-w-2xl mx-auto my-auto group transition-all duration-500">
-        {/* Capas traseras decorativas */}
+      <div className="relative w-full max-w-2xl mx-auto my-auto min-w-0 group transition-all duration-500">
         <div className="absolute -inset-4 rotate-[-2deg] rounded-3xl bg-teal-500/10 backdrop-blur-sm border border-teal-300/20 shadow-xl pointer-events-none transition-all duration-500 ease-out group-hover:-inset-6 group-hover:rotate-[-4deg] group-hover:bg-teal-500/20" />
+
         <div className="absolute -inset-2 rotate-2deg rounded-3xl bg-slate-900/30 backdrop-blur-md border border-cyan-400/20 shadow-2xl pointer-events-none transition-all duration-500 ease-out group-hover:-inset-4 group-hover:rotate-[3deg] group-hover:bg-slate-900/60" />
 
-        {/* Tarjeta Principal */}
-        <div className="relative z-10 w-full p-6 sm:p-10 rounded-3xl bg-slate-950/80 backdrop-blur-xl border border-white/15 shadow-[0_20px_50px_rgba(0,0,0,0.6)] flex flex-col gap-6">
-          
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-white/10 pb-4">
+        <div
+          className="
+            relative
+            z-10
+            w-full
+            min-w-0
+            p-6
+            sm:p-10
+            rounded-3xl
+            bg-slate-950/80
+            backdrop-blur-xl
+            border
+            border-white/15
+            shadow-[0_20px_50px_rgba(0,0,0,0.6)]
+            flex
+            flex-col
+            gap-6
+            overflow-hidden
+            md:max-h-full
+            md:overflow-hidden
+            max-md:max-h-[calc(100dvh-2rem)]
+            max-md:overflow-y-auto
+            max-md:overflow-x-hidden
+            max-md:overscroll-contain
+          "
+        >
+          <div className="flex items-center justify-between border-b border-white/10 pb-4 min-w-0">
             <button
               type="button"
               onClick={() => navigate("/login")}
-              className="flex items-center gap-2 text-xs font-semibold text-slate-300 hover:text-teal-300 transition-colors bg-transparent border-none cursor-pointer py-1 px-2 rounded-lg hover:bg-white/5"
+              className="flex items-center gap-2 text-xs font-semibold text-slate-300 hover:text-teal-300 transition-colors bg-transparent border-none cursor-pointer py-1 px-2 rounded-lg hover:bg-white/5 shrink-0"
             >
               <ArrowLeft className="w-4 h-4" />
               <span>Volver al Login</span>
             </button>
 
-            <div className="flex items-center">
+            <div className="flex items-center min-w-0">
               <img
                 src={logoNexus}
                 alt="NexusOdonto"
-                className="h-7 w-auto object-contain"
+                className="h-7 w-auto max-w-full object-contain"
               />
             </div>
           </div>
 
-          {/* Título */}
-          <div className="text-center space-y-1">
+          <div className="text-center space-y-1 min-w-0">
             <h1 className="bg-gradient-to-r from-white via-slate-100 to-teal-300 bg-clip-text text-transparent font-extrabold text-3xl sm:text-4xl tracking-tight">
-              {isGoogle ? "Completa tu Registro" : "Crear Nueva Cuenta"}
+              {isGoogle
+                ? "Completa tu Registro"
+                : "Crear Nueva Cuenta"}
             </h1>
-            <p className="text-xs sm:text-sm text-slate-300">
+
+            <p className="text-xs sm:text-sm text-slate-300 break-words">
               {isGoogle
                 ? "Estás a un paso de acceder. Ingresa tus datos clínicos y de identificación."
                 : "Regístrate para agendar consultas, ver tus citas y acceder a tu odontograma."}
             </p>
           </div>
 
-          {/* Banner informativo de Google Onboarding */}
           {isGoogle && (
-            <div className="p-4 rounded-2xl bg-teal-500/15 border border-teal-400/30 text-teal-200 text-xs flex items-center gap-3 animate-fadeIn">
+            <div className="p-4 rounded-2xl bg-teal-500/15 border border-teal-400/30 text-teal-200 text-xs flex items-center gap-3 animate-fadeIn min-w-0">
               <div className="p-2 rounded-xl bg-teal-500/20 text-teal-300 flex-shrink-0">
                 <ShieldCheck className="w-5 h-5" />
               </div>
-              <div className="space-y-0.5">
-                <p className="font-bold text-white flex items-center gap-1.5">
+
+              <div className="space-y-0.5 min-w-0">
+                <p className="font-bold text-white flex items-center gap-1.5 flex-wrap">
                   <span>Autenticación con Google verificada</span>
-                  <Sparkles size={13} className="text-teal-300" />
+                  <Sparkles
+                    size={13}
+                    className="text-teal-300"
+                  />
                 </p>
-                <p className="text-teal-200/90 leading-relaxed">
-                  Hemos precargado tu correo ({email}). Completa tu documento y teléfono para activar tu expediente.
+
+                <p className="text-teal-200/90 leading-relaxed break-words">
+                  Hemos precargado tu correo ({email}). Completa tu
+                  documento y teléfono para activar tu expediente.
                 </p>
               </div>
             </div>
           )}
 
-          {/* Alertas */}
           {error && (
             <div
-              className="p-3.5 bg-red-500/20 border border-red-500/50 rounded-xl text-red-300 text-xs sm:text-sm text-center flex items-center justify-center gap-2 animate-fadeIn"
+              className="p-3.5 bg-red-500/20 border border-red-500/50 rounded-xl text-red-300 text-xs sm:text-sm text-center flex items-center justify-center gap-2 animate-fadeIn min-w-0"
               role="alert"
             >
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              <span>{error}</span>
+              <span className="break-words">{error}</span>
             </div>
           )}
 
@@ -451,82 +696,112 @@ export default function RegisterPage() {
               <div className="w-16 h-16 rounded-full bg-teal-500/20 border border-teal-500/40 text-teal-400 mx-auto flex items-center justify-center">
                 <CheckCircle2 className="w-8 h-8" />
               </div>
+
               <div className="space-y-1">
-                <h2 className="text-xl font-bold text-white">¡Registro completado con éxito!</h2>
+                <h2 className="text-xl font-bold text-white">
+                  ¡Registro completado con éxito!
+                </h2>
+
                 <p className="text-xs sm:text-sm text-slate-300">
-                  Tu perfil ha sido creado satisfactoriamente en NexusOdonto.
+                  Tu perfil ha sido creado satisfactoriamente en
+                  NexusOdonto.
                 </p>
               </div>
+
               <button
                 type="button"
-                onClick={() => navigate(isGoogle ? "/dashboard" : "/login")}
+                onClick={() =>
+                  navigate(isGoogle ? "/dashboard" : "/login")
+                }
                 className="w-full sm:w-auto px-8 py-3 bg-gradient-to-r from-teal-500 to-cyan-400 hover:from-teal-400 hover:to-cyan-300 text-slate-950 font-bold rounded-xl text-xs transition-all shadow-md cursor-pointer"
               >
-                {isGoogle ? "Ir a mi Panel Principal" : "Iniciar Sesión Ahora"}
+                {isGoogle
+                  ? "Ir a mi Panel Principal"
+                  : "Iniciar Sesión Ahora"}
               </button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Nombres y Apellidos */}
+            <form
+              onSubmit={handleSubmit}
+              className="space-y-4 min-w-0"
+            >
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 min-w-0">
                   <label className="block text-xs font-medium text-slate-200">
-                    Nombres <span className="text-teal-400">*</span>
+                    Nombres{" "}
+                    <span className="text-teal-400">*</span>
                   </label>
-                  <div className="relative">
+
+                  <div className="relative min-w-0">
                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                       <User className="w-4 h-4" />
                     </div>
+
                     <input
                       type="text"
                       placeholder="Ej. Juan Andrés"
                       value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                      className="w-full pl-10 pr-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-400 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 focus:outline-none transition-colors"
+                      onChange={(e) =>
+                        setFirstName(e.target.value)
+                      }
+                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-400 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 focus:outline-none transition-colors"
                       required
                     />
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 min-w-0">
                   <label className="block text-xs font-medium text-slate-200">
-                    Apellidos <span className="text-teal-400">*</span>
+                    Apellidos{" "}
+                    <span className="text-teal-400">*</span>
                   </label>
-                  <div className="relative">
+
+                  <div className="relative min-w-0">
                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                       <User className="w-4 h-4" />
                     </div>
+
                     <input
                       type="text"
                       placeholder="Ej. Pérez Gómez"
                       value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
-                      className="w-full pl-10 pr-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-400 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 focus:outline-none transition-colors"
+                      onChange={(e) =>
+                        setLastName(e.target.value)
+                      }
+                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-400 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 focus:outline-none transition-colors"
                       required
                     />
                   </div>
                 </div>
               </div>
 
-              {/* Tipo y Número de Documento */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 min-w-0">
                   <label className="block text-xs font-medium text-slate-200">
-                    Tipo de Documento <span className="text-teal-400">*</span>
+                    Tipo de Documento{" "}
+                    <span className="text-teal-400">*</span>
                   </label>
-                  <div className="relative">
+
+                  <div className="relative min-w-0">
                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                       <CreditCard className="w-4 h-4" />
                     </div>
+
                     <select
                       value={documentTypeId}
-                      onChange={(e) => setDocumentTypeId(e.target.value)}
+                      onChange={(e) =>
+                        setDocumentTypeId(e.target.value)
+                      }
                       disabled={loadingCatalogs}
-                      className="w-full pl-10 pr-3 py-2.5 bg-slate-900/90 border border-white/10 rounded-xl text-sm text-slate-100 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 focus:outline-none transition-colors"
+                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-slate-900/90 border border-white/10 rounded-xl text-sm text-slate-100 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 focus:outline-none transition-colors"
                       required
                     >
                       {documentTypes.map((dt) => (
-                        <option key={dt.id} value={dt.id} className="bg-slate-900 text-slate-100">
+                        <option
+                          key={dt.id}
+                          value={dt.id}
+                          className="bg-slate-900 text-slate-100"
+                        >
                           {dt.name} ({dt.code})
                         </option>
                       ))}
@@ -534,106 +809,132 @@ export default function RegisterPage() {
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 min-w-0">
                   <label className="block text-xs font-medium text-slate-200">
-                    Número de Documento <span className="text-teal-400">*</span>
+                    Número de Documento{" "}
+                    <span className="text-teal-400">*</span>
                   </label>
-                  <div className="relative">
+
+                  <div className="relative min-w-0">
                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                       <CreditCard className="w-4 h-4" />
                     </div>
+
                     <input
                       type="text"
                       placeholder="Ej. 1020304050"
                       value={documentNumber}
-                      onChange={(e) => setDocumentNumber(e.target.value.replace(/\D/g, ""))}
-                      className="w-full pl-10 pr-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-400 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 focus:outline-none transition-colors"
+                      onChange={(e) =>
+                        setDocumentNumber(
+                          e.target.value.replace(/\D/g, "")
+                        )
+                      }
+                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-400 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 focus:outline-none transition-colors"
                       required
                     />
                   </div>
                 </div>
               </div>
 
-              {/* Correo y Teléfono */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 min-w-0">
                   <label className="block text-xs font-medium text-slate-200">
-                    Correo Electrónico <span className="text-teal-400">*</span>
+                    Correo Electrónico{" "}
+                    <span className="text-teal-400">*</span>
                   </label>
-                  <div className="relative">
+
+                  <div className="relative min-w-0">
                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                       <Mail className="w-4 h-4" />
                     </div>
+
                     <input
                       type="email"
                       placeholder="paciente@correo.com"
                       value={email}
                       readOnly={isGoogle}
                       onChange={(e) => setEmail(e.target.value)}
-                      className={`w-full pl-10 pr-3 py-2.5 border rounded-xl text-sm text-slate-100 placeholder:text-slate-400 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 focus:outline-none transition-colors ${
-                        isGoogle ? "bg-slate-900/60 border-teal-500/30 text-teal-200 cursor-not-allowed" : "bg-white/5 border-white/10"
+                      className={`w-full min-w-0 pl-10 pr-3 py-2.5 border rounded-xl text-sm text-slate-100 placeholder:text-slate-400 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 focus:outline-none transition-colors ${
+                        isGoogle
+                          ? "bg-slate-900/60 border-teal-500/30 text-teal-200 cursor-not-allowed"
+                          : "bg-white/5 border-white/10"
                       }`}
                       required
                     />
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 min-w-0">
                   <label className="block text-xs font-medium text-slate-200">
                     Teléfono / Celular (Opcional)
                   </label>
-                  <div className="relative">
+
+                  <div className="relative min-w-0">
                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                       <Phone className="w-4 h-4" />
                     </div>
+
                     <input
                       type="tel"
                       placeholder="Ej. 3001234567"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      className="w-full pl-10 pr-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-400 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 focus:outline-none transition-colors"
+                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-400 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 focus:outline-none transition-colors"
                     />
                   </div>
                 </div>
               </div>
 
-              {/* Fecha de Nacimiento y Sexo */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 min-w-0">
                   <label className="block text-xs font-medium text-slate-200">
                     Fecha de Nacimiento (Opcional)
                   </label>
-                  <div className="relative">
+
+                  <div className="relative min-w-0">
                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                       <Calendar className="w-4 h-4" />
                     </div>
+
                     <input
                       type="date"
                       value={dateOfBirth}
-                      onChange={(e) => setDateOfBirth(e.target.value)}
-                      className="w-full pl-10 pr-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-400 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 focus:outline-none transition-colors [color-scheme:dark]"
+                      onChange={(e) =>
+                        setDateOfBirth(e.target.value)
+                      }
+                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-400 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 focus:outline-none transition-colors [color-scheme:dark]"
                     />
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 min-w-0">
                   <label className="block text-xs font-medium text-slate-200">
                     Sexo / Género (Opcional)
                   </label>
-                  <div className="relative">
+
+                  <div className="relative min-w-0">
                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                       <User className="w-4 h-4" />
                     </div>
+
                     <select
                       value={sexId}
                       onChange={(e) => setSexId(e.target.value)}
-                      className="w-full pl-10 pr-3 py-2.5 bg-slate-900/90 border border-white/10 rounded-xl text-sm text-slate-100 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 focus:outline-none transition-colors"
+                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-slate-900/90 border border-white/10 rounded-xl text-sm text-slate-100 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 focus:outline-none transition-colors"
                     >
-                      <option value="" className="bg-slate-900 text-slate-400">
+                      <option
+                        value=""
+                        className="bg-slate-900 text-slate-400"
+                      >
                         Selecciona sexo (opcional)
                       </option>
+
                       {sexes.map((s) => (
-                        <option key={s.id} value={s.id} className="bg-slate-900 text-slate-100">
+                        <option
+                          key={s.id}
+                          value={s.id}
+                          className="bg-slate-900 text-slate-100"
+                        >
                           {s.name}
                         </option>
                       ))}
@@ -642,85 +943,114 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              {/* Dirección */}
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 min-w-0">
                 <label className="block text-xs font-medium text-slate-200">
                   Dirección de Residencia (Opcional)
                 </label>
-                <div className="relative">
+
+                <div className="relative min-w-0">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                     <MapPin className="w-4 h-4" />
                   </div>
+
                   <input
                     type="text"
                     placeholder="Ej. Calle 123 # 45-67"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    className="w-full pl-10 pr-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-400 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 focus:outline-none transition-colors"
+                    className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-400 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 focus:outline-none transition-colors"
                   />
                 </div>
               </div>
 
-              {/* Contraseñas (Solo para registro tradicional) */}
               {!isGoogle && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 min-w-0">
                     <label className="block text-xs font-medium text-slate-200">
-                      Contraseña <span className="text-teal-400">*</span>
+                      Contraseña{" "}
+                      <span className="text-teal-400">*</span>
                     </label>
-                    <div className="relative">
+
+                    <div className="relative min-w-0">
                       <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                         <Lock className="w-4 h-4" />
                       </div>
+
                       <input
                         type={showPassword ? "text" : "password"}
                         placeholder="Mínimo 6 caracteres"
                         value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="w-full pl-10 pr-10 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-400 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 focus:outline-none transition-colors"
+                        onChange={(e) =>
+                          setPassword(e.target.value)
+                        }
+                        className="w-full min-w-0 pl-10 pr-10 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-400 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 focus:outline-none transition-colors"
                         required={!isGoogle}
                       />
+
                       <button
                         type="button"
-                        onClick={() => setShowPassword(!showPassword)}
+                        onClick={() =>
+                          setShowPassword(!showPassword)
+                        }
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-300 transition-colors bg-transparent border-none cursor-pointer"
                         aria-label="Toggle password visibility"
                       >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        {showPassword ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
                       </button>
                     </div>
                   </div>
 
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 min-w-0">
                     <label className="block text-xs font-medium text-slate-200">
-                      Confirmar Contraseña <span className="text-teal-400">*</span>
+                      Confirmar Contraseña{" "}
+                      <span className="text-teal-400">*</span>
                     </label>
-                    <div className="relative">
+
+                    <div className="relative min-w-0">
                       <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                         <Lock className="w-4 h-4" />
                       </div>
+
                       <input
-                        type={showConfirmPassword ? "text" : "password"}
+                        type={
+                          showConfirmPassword
+                            ? "text"
+                            : "password"
+                        }
                         placeholder="Repite la contraseña"
                         value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="w-full pl-10 pr-10 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-400 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 focus:outline-none transition-colors"
+                        onChange={(e) =>
+                          setConfirmPassword(e.target.value)
+                        }
+                        className="w-full min-w-0 pl-10 pr-10 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-400 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 focus:outline-none transition-colors"
                         required={!isGoogle}
                       />
+
                       <button
                         type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        onClick={() =>
+                          setShowConfirmPassword(
+                            !showConfirmPassword
+                          )
+                        }
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-300 transition-colors bg-transparent border-none cursor-pointer"
                         aria-label="Toggle confirm password visibility"
                       >
-                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        {showConfirmPassword ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
                       </button>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={isSubmitting}
@@ -729,32 +1059,41 @@ export default function RegisterPage() {
                 {isSubmitting ? (
                   <>
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-950 border-t-transparent" />
-                    <span>{isGoogle ? "Guardando expediente..." : "Creando cuenta..."}</span>
+
+                    <span>
+                      {isGoogle
+                        ? "Guardando expediente..."
+                        : "Creando cuenta..."}
+                    </span>
                   </>
                 ) : (
-                  <span>{isGoogle ? "Completar Registro y Entrar" : "Registrarme"}</span>
+                  <span>
+                    {isGoogle
+                      ? "Completar Registro y Entrar"
+                      : "Registrarme"}
+                  </span>
                 )}
               </button>
 
-              {/* Separador Visual y botón de Google solo si no estamos en onboarding */}
               {!isGoogle && (
                 <>
                   <div className="relative flex items-center justify-center my-2">
                     <div className="border-t border-white/10 w-full" />
+
                     <span className="bg-slate-950/80 px-3 text-xs text-slate-400 font-medium uppercase tracking-wider whitespace-nowrap">
                       O regístrate con
                     </span>
+
                     <div className="border-t border-white/10 w-full" />
                   </div>
 
-                  <GoogleAuthButton 
-                    text="Registrarme con Google" 
-                    onError={(msg) => setError(msg)} 
+                  <GoogleAuthButton
+                    text="Registrarme con Google"
+                    onError={(msg) => setError(msg)}
                   />
                 </>
               )}
 
-              {/* Already have an account link */}
               <div className="text-center pt-2">
                 <p className="text-sm text-slate-300">
                   ¿Ya tienes una cuenta?{" "}

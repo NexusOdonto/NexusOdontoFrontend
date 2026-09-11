@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import {
   ShieldCheck,
   Plus,
-  RefreshCw,
   Search,
   Check,
   X,
@@ -11,6 +10,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { roleService, type Role } from "../../api/roleService";
+import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
 
 const modulosSistema = [
   { id: "pacientes", nombre: "Gestión de Pacientes" },
@@ -290,10 +290,10 @@ export function RolesPermisosView() {
           <button
             type="button"
             onClick={fetchRoles}
-            className="p-2.5 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/30 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-md active:scale-95 shadow-sm"
+            className="group p-2 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/30 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-md active:scale-95 shadow-sm flex items-center justify-center"
             title="Recargar roles"
           >
-            <RefreshCw size={16} className={`text-cyan-600 dark:text-cyan-400 ${loading ? "animate-spin" : ""}`} />
+            <DentistryReloadIcon size={20} loading={loading} />
           </button>
 
           <button

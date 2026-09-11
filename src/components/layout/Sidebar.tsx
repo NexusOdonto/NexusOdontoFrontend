@@ -169,7 +169,7 @@ export function Sidebar({
                 to={item.path}
                 onClick={onMobileClose}
                 className={({ isActive }) =>
-                  `w-full flex items-center gap-3 px-3 py-2 text-xs font-medium transition-all duration-150 text-left cursor-pointer ${
+                  `group w-full flex items-center gap-3 px-3 py-2 text-xs font-medium transition-all duration-200 text-left cursor-pointer rounded-lg ${
                     isActive
                       ? "border-l-2 border-cyan-600 dark:border-cyan-400 text-cyan-900 dark:text-cyan-200 font-bold bg-cyan-500/15 dark:bg-cyan-400/10 -ml-[1px]"
                       : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100/80 dark:hover:bg-white/5"
@@ -180,12 +180,16 @@ export function Sidebar({
                 {({ isActive }) => (
                   <>
                     <Icon
-                      size={17}
-                      strokeWidth={1.25}
-                      className={isActive ? "text-cyan-600 dark:text-cyan-400 flex-shrink-0" : "text-slate-500 dark:text-slate-400 flex-shrink-0"}
+                      size={18}
+                      strokeWidth={1.5}
+                      className={`flex-shrink-0 transition-all duration-300 ${
+                        isActive
+                          ? "text-cyan-600 dark:text-cyan-400 scale-110 drop-shadow-[0_0_8px_rgba(6,182,212,0.6)] animate-icon-pulse"
+                          : "text-slate-500 dark:text-slate-400 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 group-hover:scale-125 group-hover:rotate-6 group-hover:-translate-y-0.5"
+                      }`}
                     />
                     {!isCollapsed && (
-                      <span className="truncate tracking-wide">{item.label}</span>
+                      <span className="truncate tracking-wide group-hover:translate-x-0.5 transition-transform duration-200">{item.label}</span>
                     )}
                   </>
                 )}

@@ -430,13 +430,13 @@ export default function LandingPage() {
                 const Icon = service.icon;
 
                 return (
-                  <div key={service.title} className="group flex gap-5">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#9FC1B8]/20 text-[#1F3F3B] transition-transform duration-300 group-hover:scale-110 dark:bg-[#437C76]/15 dark:text-[#A7BFB7]">
-                      <Icon size={24} />
+                  <div key={service.title} className="group flex gap-5 cursor-default">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#9FC1B8]/20 text-[#1F3F3B] transition-all duration-300 group-hover:scale-115 group-hover:rotate-6 group-hover:bg-[#9FC1B8]/40 dark:bg-[#437C76]/15 dark:text-[#A7BFB7] dark:group-hover:bg-[#437C76]/30 icon-animated-interactive">
+                      <Icon size={24} className="group-hover:animate-icon-bounce transition-transform" />
                     </div>
 
                     <div>
-                      <h3 className="text-xl font-black text-[#050505] dark:text-[#F4F0E6]">
+                      <h3 className="text-xl font-black text-[#050505] dark:text-[#F4F0E6] group-hover:text-[#1F3F3B] dark:group-hover:text-[#A7BFB7] transition-colors">
                         {service.title}
                       </h3>
 

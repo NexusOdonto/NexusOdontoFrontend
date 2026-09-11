@@ -207,9 +207,9 @@ export function ServiciosGrid({
               <div className="flex items-start justify-between gap-3 mb-4">
                 <div className="flex items-center gap-3">
                   <div
-                    className={`relative flex h-12 w-12 items-center justify-center rounded-2xl border transition-transform duration-300 group-hover:scale-105 flex-shrink-0 ${details.iconBg}`}
+                    className={`relative flex h-12 w-12 items-center justify-center rounded-2xl border transition-all duration-300 group-hover:scale-115 group-hover:rotate-6 flex-shrink-0 icon-animated-interactive ${details.iconBg}`}
                   >
-                    <Icon size={22} className={details.iconColor} />
+                    <Icon size={22} className={`${details.iconColor} group-hover:animate-icon-bounce transition-transform`} />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
