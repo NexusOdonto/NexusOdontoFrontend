@@ -191,29 +191,29 @@ export default function DashboardPage() {
   const cantidadTratamientos = citasHoy.length;
 
   return (
-    <div className="space-y-6 text-slate-900 dark:text-slate-100 pb-10">
+    <div className="space-y-6 text-slate-900 dark:text-slate-100 pb-10 animate-fadeIn">
       {/* 1. HEADER EJECUTIVO DEL CONSULTORIO */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-200/80 dark:border-white/10 pb-5">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-200/80 dark:border-white/10 pb-5 animate-slideDown">
         <div className="space-y-1">
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-slate-900 dark:text-white">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-prata font-bold tracking-tight text-slate-900 dark:text-white">
             Panel de Control Clínico
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
-            {currentDateFormatted} • Sesión activa de <strong className="text-cyan-700 dark:text-cyan-300">{user?.name || "Administrador"}</strong> ({role})
+          <p className="text-xs sm:text-sm font-instrument text-slate-500 dark:text-slate-400 font-medium">
+            <span className="font-spacemono">{currentDateFormatted}</span> • Sesión activa de <strong className="text-cyan-700 dark:text-cyan-300 font-bold">{user?.name || "Administrador"}</strong> ({role})
           </p>
         </div>
 
         {/* Acciones y Filtro de Periodo */}
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <div className="flex items-center rounded-xl bg-slate-100/90 dark:bg-slate-900/80 p-1 border border-slate-200 dark:border-white/10 text-xs font-semibold">
+        <div className="flex items-center gap-2.5 flex-wrap font-instrument">
+          <div className="flex items-center rounded-xl bg-slate-100/90 dark:bg-slate-900/80 p-1 border border-slate-200 dark:border-white/10 text-xs font-semibold shadow-inner">
             {(["Hoy", "Semana", "Mes"] as const).map((p) => (
               <button
                 key={p}
                 type="button"
                 onClick={() => setFiltroPeriodo(p)}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg transition-all duration-300 cursor-pointer ${
                   filtroPeriodo === p
-                    ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm font-bold"
+                    ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-md font-bold scale-105"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
@@ -225,7 +225,7 @@ export default function DashboardPage() {
           <button
             type="button"
             onClick={loadRealData}
-            className="group p-2 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-md active:scale-95 shadow-sm flex items-center justify-center"
+            className="group p-2 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-all duration-300 cursor-pointer backdrop-blur-md active:scale-95 shadow-sm flex items-center justify-center hover:shadow-cyan-500/20 hover:border-cyan-500/40"
             title="Recargar métricas"
           >
             <DentistryReloadIcon size={18} loading={loading} />
@@ -234,9 +234,10 @@ export default function DashboardPage() {
           <button
             type="button"
             onClick={() => navigate(isPaciente ? "/citas" : "/agenda")}
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 px-4 py-2 text-xs font-bold text-white dark:text-slate-950 shadow-md transition-all active:scale-95 cursor-pointer"
+            className="relative overflow-hidden group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 px-4 py-2 text-xs font-bold text-white dark:text-slate-950 shadow-md hover:shadow-lg hover:shadow-cyan-500/30 transition-all duration-300 active:scale-95 cursor-pointer"
           >
-            <Plus size={16} />
+            <span className="absolute inset-0 w-full h-full bg-white/20 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out pointer-events-none" />
+            <Plus size={16} className="group-hover:rotate-90 transition-transform duration-300" />
             <span>{isPaciente ? "Solicitar Cita" : "Nueva Cita"}</span>
           </button>
         </div>
@@ -245,9 +246,9 @@ export default function DashboardPage() {
       {/* 2. CUADRÍCULA DE 4 KPIs OPERATIVOS Y VALOR ESTIMADO */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
         {/* KPI 1: Citas del Día */}
-        <div className="group p-5 rounded-2xl border border-slate-200/90 dark:border-white/15 bg-white/95 dark:bg-slate-950/65 backdrop-blur-xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+        <div className="group p-5 rounded-2xl border border-slate-200/90 dark:border-white/15 bg-white/95 dark:bg-slate-950/65 backdrop-blur-xl shadow-sm card-hover-elevate transition-all flex flex-col justify-between animate-fadeIn animate-stagger-1">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+            <span className="font-oswald text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Citas Agendadas Hoy
             </span>
             <div className="p-2.5 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 icon-animated-interactive group-hover:scale-110 group-hover:bg-teal-500/20 transition-all">
@@ -255,25 +256,26 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-black text-slate-900 dark:text-white font-mono">
+            <span className="text-3xl font-black text-slate-900 dark:text-white font-spacemono tracking-tight">
               {citasHoy.length}
             </span>
-            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 font-instrument flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
               {citasAtendidasCount} en curso/atendidas
             </span>
           </div>
-          <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-white/10 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+          <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-white/10 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-instrument">
             <span>{citasPendientesCount} pendientes</span>
-            <span className="font-bold text-teal-600 dark:text-teal-400 cursor-pointer hover:underline" onClick={() => navigate("/citas")}>
+            <span className="font-bold text-teal-600 dark:text-teal-400 cursor-pointer hover:underline group-hover:translate-x-0.5 transition-transform" onClick={() => navigate("/citas")}>
               Ver lista →
             </span>
           </div>
         </div>
 
         {/* KPI 2: Pacientes Totales */}
-        <div className="group p-5 rounded-2xl border border-slate-200/90 dark:border-white/15 bg-white/95 dark:bg-slate-950/65 backdrop-blur-xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+        <div className="group p-5 rounded-2xl border border-slate-200/90 dark:border-white/15 bg-white/95 dark:bg-slate-950/65 backdrop-blur-xl shadow-sm card-hover-elevate transition-all flex flex-col justify-between animate-fadeIn animate-stagger-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+            <span className="font-oswald text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Pacientes Activos
             </span>
             <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 icon-animated-interactive group-hover:scale-110 group-hover:bg-blue-500/20 transition-all">
@@ -281,25 +283,25 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-black text-slate-900 dark:text-white font-mono">
+            <span className="text-3xl font-black text-slate-900 dark:text-white font-spacemono tracking-tight">
               {totalPacientes}
             </span>
-            <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+            <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 font-instrument">
               Expedientes
             </span>
           </div>
-          <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-white/10 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+          <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-white/10 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-instrument">
             <span>Historias clínicas al día</span>
-            <span className="font-bold text-blue-600 dark:text-blue-400 cursor-pointer hover:underline" onClick={() => navigate("/pacientes")}>
+            <span className="font-bold text-blue-600 dark:text-blue-400 cursor-pointer hover:underline group-hover:translate-x-0.5 transition-transform" onClick={() => navigate("/pacientes")}>
               Directorio →
             </span>
           </div>
         </div>
 
-        {/* KPI 3: Valor Estimado / Presupuesto Agendado (Tarjeta Reincorporada) */}
-        <div className="group p-5 rounded-2xl border border-slate-200/90 dark:border-white/15 bg-white/95 dark:bg-slate-950/65 backdrop-blur-xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+        {/* KPI 3: Valor Estimado / Presupuesto Agendado */}
+        <div className="group p-5 rounded-2xl border border-slate-200/90 dark:border-white/15 bg-white/95 dark:bg-slate-950/65 backdrop-blur-xl shadow-sm card-hover-elevate transition-all flex flex-col justify-between animate-fadeIn animate-stagger-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+            <span className="font-oswald text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Valor Estimado / Servicios
             </span>
             <div className="p-2.5 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 icon-animated-interactive group-hover:scale-110 group-hover:bg-teal-500/20 transition-all">
@@ -307,14 +309,14 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
+            <span className="text-3xl font-black text-slate-900 dark:text-white font-spacemono tracking-tight">
               ${totalEstimado.toLocaleString("es-CO")}
             </span>
           </div>
-          <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-white/10 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+          <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-white/10 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-instrument">
             <span>{cantidadTratamientos} tratamientos</span>
             <span
-              className="font-bold text-teal-600 dark:text-teal-400 cursor-pointer hover:underline"
+              className="font-bold text-teal-600 dark:text-teal-400 cursor-pointer hover:underline group-hover:translate-x-0.5 transition-transform"
               onClick={() => navigate("/catalogo-servicios")}
             >
               Tarifas catálogo →
@@ -323,9 +325,9 @@ export default function DashboardPage() {
         </div>
 
         {/* KPI 4: Ocupación de Consultorio */}
-        <div className="group p-5 rounded-2xl border border-slate-200/90 dark:border-white/15 bg-white/95 dark:bg-slate-950/65 backdrop-blur-xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+        <div className="group p-5 rounded-2xl border border-slate-200/90 dark:border-white/15 bg-white/95 dark:bg-slate-950/65 backdrop-blur-xl shadow-sm card-hover-elevate transition-all flex flex-col justify-between animate-fadeIn animate-stagger-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+            <span className="font-oswald text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Ocupación de Consultorio
             </span>
             <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 icon-animated-interactive group-hover:scale-110 group-hover:bg-purple-500/20 transition-all">
@@ -333,16 +335,16 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-black text-slate-900 dark:text-white font-mono">
+            <span className="text-3xl font-black text-slate-900 dark:text-white font-spacemono tracking-tight">
               {tasaOcupacion}%
             </span>
-            <span className="text-xs font-semibold text-purple-600 dark:text-purple-400">
+            <span className="text-xs font-semibold text-purple-600 dark:text-purple-400 font-instrument">
               Capacidad óptima
             </span>
           </div>
-          <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-white/10 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+          <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-white/10 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-instrument">
             <span>3 doctores en turno</span>
-            <span className="font-bold text-purple-600 dark:text-purple-400 cursor-pointer hover:underline" onClick={() => navigate("/profesionales")}>
+            <span className="font-bold text-purple-600 dark:text-purple-400 cursor-pointer hover:underline group-hover:translate-x-0.5 transition-transform" onClick={() => navigate("/profesionales")}>
               Turnos →
             </span>
           </div>
@@ -361,10 +363,10 @@ export default function DashboardPage() {
                   <Clock size={16} />
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                  <h2 className="text-base font-prata font-bold text-slate-900 dark:text-white">
                     Cronograma de Citas de Hoy
                   </h2>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-instrument">
                     Seguimiento en tiempo real de pacientes y sillones de atención
                   </p>
                 </div>
@@ -373,7 +375,7 @@ export default function DashboardPage() {
               <button
                 type="button"
                 onClick={() => navigate("/agenda")}
-                className="text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-1 cursor-pointer"
+                className="text-xs font-bold font-instrument text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-1 cursor-pointer"
               >
                 <span>Ver Agenda Completa</span>
                 <ArrowRight size={13} />
@@ -381,7 +383,7 @@ export default function DashboardPage() {
             </div>
 
             {/* LISTA DE CITAS */}
-            <div className="divide-y divide-slate-100 dark:divide-white/5">
+            <div className="divide-y divide-slate-100 dark:divide-white/5 font-instrument">
               {citasHoy.length === 0 ? (
                 <div className="py-8 text-center">
                   <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
@@ -396,7 +398,7 @@ export default function DashboardPage() {
                 >
                   <div className="flex items-start sm:items-center gap-3.5">
                     {/* Hora Badge */}
-                    <span className="px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-mono font-bold text-xs border border-slate-200 dark:border-white/10 flex-shrink-0">
+                    <span className="px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-spacemono font-bold text-xs border border-slate-200 dark:border-white/10 flex-shrink-0">
                       {cita.hora}
                     </span>
 
@@ -409,7 +411,7 @@ export default function DashboardPage() {
                         <span>•</span>
                         <span>{cita.doctor}</span>
                         <span>•</span>
-                        <span className="font-mono text-[11px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">{cita.sillon}</span>
+                        <span className="font-spacemono text-[11px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">{cita.sillon}</span>
                       </div>
                     </div>
                   </div>
@@ -448,11 +450,11 @@ export default function DashboardPage() {
           {/* DISTRIBUCIÓN DE SERVICIOS MÁS DEMANDADOS */}
           <div className="p-6 rounded-2xl border border-slate-200/90 dark:border-white/15 bg-white/95 dark:bg-slate-950/65 backdrop-blur-xl shadow-sm space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/10">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <h3 className="text-sm font-prata font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <Layers size={16} className="text-teal-500" />
                 <span>Tratamientos Más Solicitados (Demanda Clínica)</span>
               </h3>
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+              <span className="text-xs font-semibold font-instrument text-slate-500 dark:text-slate-400">
                 Últimos 30 días
               </span>
             </div>
@@ -461,8 +463,8 @@ export default function DashboardPage() {
               {distribucionServicios.map((srv) => (
                 <div key={srv.nombre} className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs font-semibold">
-                    <span className="text-slate-800 dark:text-slate-200">{srv.nombre}</span>
-                    <span className="font-mono text-slate-600 dark:text-slate-400">
+                    <span className="text-slate-800 dark:text-slate-200 font-instrument">{srv.nombre}</span>
+                    <span className="font-spacemono text-slate-600 dark:text-slate-400">
                       {srv.count} procedimientos ({srv.porcentaje}%)
                     </span>
                   </div>
@@ -483,11 +485,11 @@ export default function DashboardPage() {
           {/* ODONTÓLOGOS EN TURNO */}
           <div className="p-6 rounded-2xl border border-slate-200/90 dark:border-white/15 bg-white/95 dark:bg-slate-950/65 backdrop-blur-xl shadow-sm space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/10">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <h3 className="text-sm font-prata font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <Stethoscope size={16} className="text-cyan-500" />
                 <span>Equipo en Turno Hoy</span>
               </h3>
-              <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+              <span className="text-[11px] font-bold font-instrument text-emerald-600 dark:text-emerald-400">
                 3 Activos
               </span>
             </div>
@@ -496,7 +498,7 @@ export default function DashboardPage() {
               {odontologosTurno.map((doc) => (
                 <div
                   key={doc.nombre}
-                  className="p-3.5 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/70 dark:border-white/10 space-y-1"
+                  className="p-3.5 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/70 dark:border-white/10 space-y-1 font-instrument"
                 >
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-bold text-slate-900 dark:text-white">
@@ -506,7 +508,7 @@ export default function DashboardPage() {
                   </div>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400">{doc.especialidad}</p>
                   <div className="pt-1.5 flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400 border-t border-slate-200/60 dark:border-white/5">
-                    <span className="font-mono">{doc.sillon}</span>
+                    <span className="font-spacemono">{doc.sillon}</span>
                     <span className="font-semibold text-cyan-700 dark:text-cyan-400">{doc.citasHoy} citas hoy</span>
                   </div>
                 </div>
@@ -516,11 +518,11 @@ export default function DashboardPage() {
 
           {/* ACCESOS RÁPIDOS CLÍNICOS */}
           <div className="p-6 rounded-2xl border border-slate-200/90 dark:border-white/15 bg-white/95 dark:bg-slate-950/65 backdrop-blur-xl shadow-sm space-y-3">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white pb-2 border-b border-slate-100 dark:border-white/10">
+            <h3 className="text-sm font-prata font-bold text-slate-900 dark:text-white pb-2 border-b border-slate-100 dark:border-white/10">
               Accesos Rápidos del Sistema
             </h3>
 
-            <div className="space-y-2 text-xs font-semibold">
+            <div className="space-y-2 text-xs font-semibold font-instrument">
               <button
                 type="button"
                 onClick={() => navigate("/odontograma")}

@@ -19,7 +19,6 @@ import {
   CheckCircle2,
   Star,
   MapPin,
-  Sparkles,
   ShieldCheck,
   Award,
   LayoutGrid,
@@ -481,14 +480,10 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-400/30 text-cyan-300 text-xs font-bold tracking-wide uppercase">
-              <Sparkles size={13} className="text-cyan-300 animate-pulse" />
-              <span>Cuerpo Médico Odontológico</span>
-            </div>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white drop-shadow-sm">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white drop-shadow-sm font-prata">
               Profesionales & Especialidades
             </h1>
-            <p className="text-slate-300 text-xs sm:text-sm max-w-2xl font-medium">
+            <p className="text-slate-300 text-xs sm:text-sm max-w-2xl font-medium font-sans">
               Gestión clínica del staff de especialistas, sillones de atención, quirófanos y disponibilidad semanal en NexusOdonto.
             </p>
           </div>

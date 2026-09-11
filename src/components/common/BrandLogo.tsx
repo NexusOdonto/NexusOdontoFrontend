@@ -26,11 +26,11 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
       {/* 2. Texto Tipográfico Adaptativo Light / Dark */}
       {showText && (
         <div className="flex flex-col">
-          <span className={`font-serif font-bold tracking-tight leading-none ${textClassName}`}>
+          <span className={`font-prata font-bold tracking-tight leading-none ${textClassName}`}>
             <span className="text-slate-900 dark:text-white transition-colors duration-200">
               Nexus
             </span>
-            <span className="text-teal-700 dark:text-teal-400 transition-colors duration-200">
+            <span className="text-teal-700 dark:text-teal-400 transition-colors duration-200 ml-0.5">
               Odonto
             </span>
           </span>

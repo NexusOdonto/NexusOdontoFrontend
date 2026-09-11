@@ -645,13 +645,13 @@ export default function RegisterPage() {
           </div>
 
           <div className="text-center space-y-1 min-w-0">
-            <h1 className="bg-gradient-to-r from-white via-slate-100 to-teal-300 bg-clip-text text-transparent font-extrabold text-3xl sm:text-4xl tracking-tight">
+            <h1 className="font-prata bg-gradient-to-r from-white via-slate-100 to-teal-300 bg-clip-text text-transparent font-bold text-3xl sm:text-4xl tracking-tight">
               {isGoogle
                 ? "Completa tu Registro"
                 : "Crear Nueva Cuenta"}
             </h1>
 
-            <p className="text-xs sm:text-sm text-slate-300 break-words">
+            <p className="font-sans text-xs sm:text-sm text-slate-300 break-words">
               {isGoogle
                 ? "Estás a un paso de acceder. Ingresa tus datos clínicos y de identificación."
                 : "Regístrate para agendar consultas, ver tus citas y acceder a tu odontograma."}
@@ -723,7 +723,7 @@ export default function RegisterPage() {
           ) : (
             <form
               onSubmit={handleSubmit}
-              className="space-y-4 min-w-0"
+              className="space-y-4 min-w-0 font-instrument"
             >
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5 min-w-0">

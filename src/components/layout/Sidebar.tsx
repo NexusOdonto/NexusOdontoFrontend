@@ -122,35 +122,45 @@ export function Sidebar({
 
       {/* 2. PANEL LATERAL / DRAWER MÓVIL & DESKTOP (z-50 en móvil, lg:z-30) */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 h-screen bg-white/40 border-slate-200/50 backdrop-blur-md dark:bg-[#06141d]/50 dark:border-teal-500/10 dark:backdrop-blur-md border-r flex flex-col shadow-2xl transition-all duration-300 ease-in-out lg:shadow-none lg:sticky lg:top-0 lg:z-30 ${
-          isCollapsed ? "w-72 lg:w-20" : "w-72 lg:w-64"
+        className={`fixed inset-y-0 left-0 z-50 h-screen bg-white/40 border-slate-200/50 backdrop-blur-md dark:bg-[#06141d]/50 dark:border-teal-500/10 dark:backdrop-blur-md border-r flex flex-col shadow-2xl transition-[width,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] lg:shadow-none lg:sticky lg:top-0 lg:z-30 will-change-[width,transform] ${
+          isCollapsed ? "w-72 lg:w-[76px]" : "w-72 lg:w-64"
         } ${
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
         {/* Cabecera del Sidebar */}
         <div
-          className={`flex items-center h-16 px-4 border-b border-slate-200/50 dark:border-teal-500/10 transition-all duration-300 justify-between ${
-            isCollapsed ? "lg:justify-center lg:px-2" : "justify-between"
+          className={`flex items-center h-16 px-3.5 border-b border-slate-200/50 dark:border-teal-500/10 transition-all duration-300 ${
+            isCollapsed ? "lg:justify-center" : "justify-between"
           }`}
         >
-          {/* Logo + Título */}
-          <div className="flex items-center gap-3 overflow-hidden min-w-0">
-            <img
-              src={nexusLogoIcon}
-              alt="NexusOdonto"
-              style={{ width: '38px', height: '38px', minWidth: '38px', minHeight: '38px' }}
-              className="object-contain flex-shrink-0 transition-transform hover:scale-105 cursor-pointer drop-shadow-sm"
-              onClick={() => isCollapsed && setIsCollapsed(false)}
-            />
-            <span
-              className={`text-xl font-serif font-bold tracking-tight whitespace-nowrap select-none ${
-                isCollapsed ? "lg:hidden block" : "block"
+          {/* Logo + Título Animado */}
+          <div
+            className="flex items-center gap-3 overflow-hidden min-w-0 cursor-pointer group/logo select-none"
+            onClick={() => isCollapsed && setIsCollapsed(false)}
+            title={isCollapsed ? "Desplegar menú" : undefined}
+          >
+            <div className="relative shrink-0 flex items-center justify-center">
+              <img
+                src={nexusLogoIcon}
+                alt="NexusOdonto"
+                style={{ width: '36px', height: '36px', minWidth: '36px', minHeight: '36px' }}
+                className="object-contain flex-shrink-0 transition-transform duration-300 group-hover/logo:scale-110 drop-shadow-sm"
+              />
+            </div>
+            
+            <div
+              className={`transition-[max-width,opacity,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden whitespace-nowrap flex items-center ${
+                isCollapsed
+                  ? "lg:max-w-0 lg:opacity-0 lg:-translate-x-3 pointer-events-none"
+                  : "max-w-[160px] opacity-100 translate-x-0"
               }`}
             >
-              <span className="text-slate-900 dark:text-white">Nexus</span>
-              <span className="text-teal-700 dark:text-teal-400">Odonto</span>
-            </span>
+              <span className="text-xl font-prata font-bold tracking-tight">
+                <span className="text-slate-900 dark:text-white">Nexus</span>
+                <span className="text-teal-700 dark:text-teal-400 ml-0.5">Odonto</span>
+              </span>
+            </div>
           </div>
 
           {/* Botón de cerrar para vista móvil */}
@@ -168,17 +178,17 @@ export function Sidebar({
             <button
               type="button"
               onClick={() => setIsCollapsed(true)}
-              className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors cursor-pointer hidden lg:flex items-center justify-center shrink-0"
+              className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-all duration-300 cursor-pointer hidden lg:flex items-center justify-center shrink-0"
               title="Colapsar menú"
-              aria-label="Colapsar menú"
+              aria-label="Colapsar menú lateral"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
           )}
         </div>
 
-        {/* Navigation Section con acento lateral en la ruta activa */}
-        <nav className="flex-1 p-2.5 space-y-0.5 overflow-y-auto">
+        {/* Navigation Section con animación fluida de ancho y fade en texto */}
+        <nav className="flex-1 p-2 space-y-1 overflow-y-auto overflow-x-hidden font-instrument">
           {filteredMenuItems.map((item) => {
             const Icon = item.icon;
             return (
@@ -187,32 +197,36 @@ export function Sidebar({
                 to={item.path}
                 onClick={onMobileClose}
                 className={({ isActive }) =>
-                  `group w-full flex items-center gap-3 px-3 py-2.5 text-xs font-medium transition-all duration-200 text-left cursor-pointer rounded-xl ${
+                  `group relative w-full flex items-center gap-3 px-3 py-2.5 text-xs font-semibold tracking-wide transition-all duration-200 text-left cursor-pointer rounded-xl ${
                     isActive
                       ? "border-l-2 border-cyan-600 dark:border-cyan-400 text-cyan-900 dark:text-cyan-200 font-bold bg-cyan-500/15 dark:bg-cyan-400/10 -ml-[1px]"
                       : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100/80 dark:hover:bg-white/5"
-                  } ${isCollapsed ? "lg:justify-center justify-start" : "justify-start"}`
+                  } ${isCollapsed ? "lg:justify-center" : "justify-start"}`
                 }
                 title={isCollapsed ? item.label : undefined}
               >
                 {({ isActive }) => (
                   <>
                     <Icon
-                      size={18}
-                      strokeWidth={1.5}
+                      size={19}
+                      strokeWidth={1.6}
                       className={`flex-shrink-0 transition-all duration-300 ${
                         isActive
                           ? "text-cyan-600 dark:text-cyan-400 scale-110 drop-shadow-[0_0_8px_rgba(6,182,212,0.6)] animate-icon-pulse"
-                          : "text-slate-500 dark:text-slate-400 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 group-hover:scale-125 group-hover:rotate-6 group-hover:-translate-y-0.5"
+                          : "text-slate-500 dark:text-slate-400 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 group-hover:scale-115 group-hover:rotate-6"
                       }`}
                     />
-                    <span
-                      className={`truncate tracking-wide group-hover:translate-x-0.5 transition-transform duration-200 ${
-                        isCollapsed ? "lg:hidden block font-medium" : "block"
+                    <div
+                      className={`transition-[max-width,opacity,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden whitespace-nowrap ${
+                        isCollapsed
+                          ? "lg:max-w-0 lg:opacity-0 lg:-translate-x-2 pointer-events-none"
+                          : "max-w-[200px] opacity-100 translate-x-0"
                       }`}
                     >
-                      {item.label}
-                    </span>
+                      <span className="truncate tracking-wide group-hover:translate-x-0.5 transition-transform duration-200 block">
+                        {item.label}
+                      </span>
+                    </div>
                   </>
                 )}
               </NavLink>

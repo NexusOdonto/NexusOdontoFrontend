@@ -128,14 +128,14 @@ export default function LoginPage() {
             />
           </div>
 
-          <h1 className="bg-gradient-to-r from-slate-900 via-slate-800 to-teal-600 dark:from-white dark:via-slate-100 dark:to-teal-300 bg-clip-text text-transparent font-extrabold text-3xl tracking-tight text-center transition-all duration-300 hover:scale-105 cursor-default select-none">
+          <h1 className="font-prata bg-gradient-to-r from-slate-900 via-slate-800 to-teal-600 dark:from-white dark:via-slate-100 dark:to-teal-300 bg-clip-text text-transparent font-bold text-3xl sm:text-4xl tracking-tight text-center transition-all duration-300 hover:scale-105 cursor-default select-none">
             Bienvenido
           </h1>
 
           <form
             onSubmit={handleSubmit}
             noValidate
-            className="space-y-4"
+            className="space-y-4 font-instrument"
           >
             {error && (
               <div
@@ -199,7 +199,7 @@ export default function LoginPage() {
           <div className="relative flex items-center justify-center my-1">
             <div className="border-t border-slate-200 dark:border-slate-700/80 w-full" />
 
-            <span className="bg-white dark:bg-slate-900 px-3 text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider whitespace-nowrap">
+            <span className="font-oswald bg-white dark:bg-slate-900 px-3 text-xs text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider whitespace-nowrap">
               O continúa con
             </span>
 
@@ -211,13 +211,13 @@ export default function LoginPage() {
             onError={(msg) => setError(msg)}
           />
 
-          <div className="text-center pt-1">
+          <div className="text-center pt-1 font-instrument">
             <p className="text-sm text-slate-600 dark:text-slate-300">
               ¿No tienes cuenta?{' '}
               <button
                 type="button"
                 onClick={() => navigate('/register')}
-                className="text-teal-600 hover:text-teal-700 dark:text-teal-300 dark:hover:text-teal-200 hover:underline font-medium transition-colors py-1 px-1 bg-transparent border-none cursor-pointer inline-block"
+                className="text-teal-600 hover:text-teal-700 dark:text-teal-300 dark:hover:text-teal-200 hover:underline font-semibold transition-colors py-1 px-1 bg-transparent border-none cursor-pointer inline-block"
               >
                 Regístrate aquí
               </button>
@@ -230,7 +230,7 @@ export default function LoginPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 animate-fadeIn">
           <div className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-2xl animate-scaleIn space-y-5 text-slate-900 dark:text-slate-100">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <h3 className="font-bold text-base sm:text-lg">
+              <h3 className="font-prata font-bold text-base sm:text-lg">
                 Recuperar Acceso a tu Cuenta
               </h3>
 
@@ -245,7 +245,7 @@ export default function LoginPage() {
               </button>
             </div>
 
-            <div className="space-y-3 text-xs sm:text-sm text-slate-600 dark:text-slate-300">
+            <div className="space-y-3 text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-instrument">
               <p className="leading-relaxed">
                 Por políticas de seguridad clínica y protección de
                 datos médicos, el restablecimiento de contraseñas se
@@ -260,14 +260,14 @@ export default function LoginPage() {
 
                 <p className="text-xs">
                   📧 Correo:{' '}
-                  <span className="font-mono font-bold text-teal-700 dark:text-teal-300">
+                  <span className="font-spacemono font-bold text-teal-700 dark:text-teal-300">
                     soporte@nexusodonto.com
                   </span>
                 </p>
 
                 <p className="text-xs">
                   📞 Teléfono:{' '}
-                  <span className="font-semibold text-teal-700 dark:text-teal-300">
+                  <span className="font-spacemono font-semibold text-teal-700 dark:text-teal-300">
                     +57 (601) 745-9000
                   </span>
                 </p>

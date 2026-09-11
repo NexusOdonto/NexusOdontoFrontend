@@ -45,9 +45,13 @@ export default function LandingPage() {
         }}
       />
 
+      {/* Orbes de luz y ambient glow en movimiento suave */}
+      <div className="fixed top-1/4 -left-32 w-96 h-96 rounded-full bg-teal-500/15 dark:bg-teal-400/10 blur-[100px] pointer-events-none animate-orb-drift" />
+      <div className="fixed bottom-1/3 -right-32 w-96 h-96 rounded-full bg-cyan-500/15 dark:bg-cyan-400/10 blur-[120px] pointer-events-none animate-orb-drift" style={{ animationDelay: '-7s' }} />
+
       <div className="fixed inset-0 pointer-events-none bg-gradient-to-b from-[#F9F6EB]/20 via-transparent to-[#F4F0E6]/40 dark:from-[#01192E]/30 dark:via-[#01192E]/10 dark:to-[#01192E]/50" />
 
-      <header className="sticky top-0 z-50 w-full border-b border-[#D4DACD]/70 bg-[#F9F6EB]/90 shadow-sm backdrop-blur-2xl transition-all dark:border-white/10 dark:bg-[#01192E]/90">
+      <header className="sticky top-0 z-50 w-full border-b border-[#D4DACD]/70 bg-[#F9F6EB]/90 shadow-sm backdrop-blur-2xl transition-all dark:border-white/10 dark:bg-[#01192E]/90 animate-slideDown">
         <div className="mx-auto flex h-20 max-w-[1400px] items-center justify-between px-4 sm:px-6 lg:px-8">
           <div
             onClick={() =>
@@ -71,17 +75,17 @@ export default function LandingPage() {
             </div>
 
             <div>
-              <span className="bg-gradient-to-r from-[#1F3F3B] via-[#2F5E58] to-[#437C76] bg-clip-text text-xl font-black tracking-tight text-transparent sm:text-2xl dark:from-[#A7BFB7] dark:via-[#65958E] dark:to-[#437C76]">
+              <span className="font-prata bg-gradient-to-r from-[#1F3F3B] via-[#2F5E58] to-[#437C76] bg-clip-text text-xl font-bold tracking-tight text-transparent sm:text-2xl dark:from-[#A7BFB7] dark:via-[#65958E] dark:to-[#437C76]">
                 NexusOdonto
               </span>
 
-              <span className="-mt-1 block text-[10px] font-bold uppercase tracking-widest text-[#0A0A0A] dark:text-[#A7BFB7]">
+              <span className="-mt-1 block font-caacupe text-xs tracking-wider text-[#0A0A0A] dark:text-[#A7BFB7]">
                 Centro Odontológico Especializado
               </span>
             </div>
           </div>
 
-          <nav className="hidden items-center gap-8 text-sm font-semibold text-[#0A0A0A] md:flex dark:text-[#D4DACD]">
+          <nav className="hidden items-center gap-8 text-sm font-semibold font-instrument tracking-wide text-[#0A0A0A] md:flex dark:text-[#D4DACD]">
             <a
               href="#servicios"
               className="transition-colors hover:text-[#1F3F3B] dark:hover:text-[#A7BFB7]"
@@ -222,17 +226,17 @@ export default function LandingPage() {
                   <div className="mb-7 flex items-center gap-3">
                     <span className="h-px w-10 bg-gradient-to-r from-transparent to-[#437C76]" />
 
-                    <span className="text-[13px] font-black uppercase tracking-[0.32em] text-[#153B36] dark:text-[#B4CEC5]">
+                    <span className="font-oswald text-[13px] uppercase tracking-[0.25em] text-[#153B36] dark:text-[#B4CEC5]">
                       Odontología integral y especializada
                     </span>
                   </div>
 
                   <div className="max-w-[680px]">
-                    <h1 className="text-[2.2rem] font-black leading-[1.05] tracking-[-0.035em] text-[#050505] sm:text-5xl lg:text-[3.6rem] dark:text-[#F4F0E6]">
+                    <h1 className="font-prata text-[2.2rem] font-bold leading-[1.1] tracking-tight text-[#050505] sm:text-5xl lg:text-[3.6rem] dark:text-[#F4F0E6]">
                       Atención odontológica
                     </h1>
 
-                    <h1 className="mt-2 text-[2.2rem] font-black leading-[1.05] tracking-[-0.035em] sm:text-5xl lg:text-[3.6rem]">
+                    <h1 className="mt-2 font-prata text-[2.2rem] font-bold leading-[1.1] tracking-tight sm:text-5xl lg:text-[3.6rem]">
                       <span
                         className={`bg-clip-text text-transparent ${
                           isDark
@@ -245,17 +249,17 @@ export default function LandingPage() {
                     </h1>
                   </div>
 
-                  <p className="mt-6 max-w-[620px] text-[15px] font-semibold leading-7 text-[#000000] sm:text-sm dark:text-[#D4E2DE]">
+                  <p className="mt-6 max-w-[620px] font-sans text-[15px] font-normal leading-7 text-[#000000] sm:text-base dark:text-[#D4E2DE]">
                     Gestiona tus citas, consulta tu información clínica y mantén
                     el seguimiento de tu salud bucal desde un solo lugar, de
                     manera segura, organizada y sencilla.
                   </p>
 
-                  <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                  <div className="mt-8 flex flex-col gap-3 sm:flex-row font-instrument">
                     <button
                       type="button"
                       onClick={() => navigate("/login")}
-                      className="inline-flex items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-[#437C76] via-[#2F5E58] to-[#1F3F3B] px-7 py-3.5 text-xs font-black text-white shadow-lg shadow-[#2F5E58]/20 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl active:scale-95"
+                      className="inline-flex items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-[#437C76] via-[#2F5E58] to-[#1F3F3B] px-7 py-3.5 text-xs font-bold text-white shadow-lg shadow-[#2F5E58]/20 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl active:scale-95"
                     >
                       Acceder al Portal Clínico
                       <ArrowRight size={16} />
@@ -382,11 +386,11 @@ export default function LandingPage() {
             <span className="absolute bottom-0 right-0 h-px w-28 bg-[#050505] dark:bg-white/60" />
 
             <div className="mb-16 max-w-2xl">
-              <p className="text-xs font-black uppercase tracking-[0.3em] text-[#1F3F3B] dark:text-[#A7BFB7]">
+              <p className="font-oswald text-xs uppercase tracking-[0.25em] text-[#1F3F3B] dark:text-[#A7BFB7]">
                 Nuestros servicios
               </p>
 
-              <h2 className="mt-4 text-4xl font-black tracking-tight text-[#050505] sm:text-5xl dark:text-[#F4F0E6]">
+              <h2 className="mt-4 font-prata text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-[#050505] dark:text-[#F4F0E6]">
                 Tratamientos diseñados para tu sonrisa
               </h2>
 
@@ -396,7 +400,7 @@ export default function LandingPage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 gap-x-16 gap-y-14 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-x-12 gap-y-10 md:grid-cols-2">
               {[
                 {
                   icon: Activity,
@@ -430,13 +434,16 @@ export default function LandingPage() {
                 const Icon = service.icon;
 
                 return (
-                  <div key={service.title} className="group flex gap-5 cursor-default">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#9FC1B8]/20 text-[#1F3F3B] transition-all duration-300 group-hover:scale-115 group-hover:rotate-6 group-hover:bg-[#9FC1B8]/40 dark:bg-[#437C76]/15 dark:text-[#A7BFB7] dark:group-hover:bg-[#437C76]/30 icon-animated-interactive">
-                      <Icon size={24} className="group-hover:animate-icon-bounce transition-transform" />
+                  <div
+                    key={service.title}
+                    className="group flex gap-5 p-6 rounded-3xl bg-white/40 dark:bg-[#01192E]/30 border border-[#D4DACD]/40 dark:border-white/5 backdrop-blur-md card-hover-elevate transition-all duration-300 cursor-default"
+                  >
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#9FC1B8]/20 text-[#1F3F3B] transition-all duration-300 group-hover:scale-115 group-hover:rotate-6 group-hover:bg-[#9FC1B8]/40 dark:bg-[#437C76]/15 dark:text-[#A7BFB7] dark:group-hover:bg-[#437C76]/30 icon-animated-interactive">
+                      <Icon size={26} className="group-hover:animate-icon-bounce transition-transform" />
                     </div>
 
-                    <div>
-                      <h3 className="text-xl font-black text-[#050505] dark:text-[#F4F0E6] group-hover:text-[#1F3F3B] dark:group-hover:text-[#A7BFB7] transition-colors">
+                    <div className="flex-1">
+                      <h3 className="font-prata text-xl font-bold text-[#050505] dark:text-[#F4F0E6] group-hover:text-[#1F3F3B] dark:group-hover:text-[#A7BFB7] transition-colors">
                         {service.title}
                       </h3>
 
@@ -444,7 +451,7 @@ export default function LandingPage() {
                         {service.description}
                       </p>
 
-                      <span className="mt-4 inline-block text-xs font-bold text-[#1F3F3B] dark:text-[#A7BFB7]">
+                      <span className="mt-4 inline-block font-spacemono text-xs font-semibold text-[#1F3F3B] dark:text-[#A7BFB7] px-2.5 py-1 rounded-lg bg-teal-500/10 dark:bg-teal-400/10 border border-teal-500/20">
                         {service.info}
                       </span>
                     </div>
@@ -468,11 +475,11 @@ export default function LandingPage() {
 
             <div className="grid grid-cols-1 gap-16 lg:grid-cols-[0.8fr_1.2fr] lg:gap-24">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.3em] text-[#1F3F3B] dark:text-[#A7BFB7]">
+                <p className="font-oswald text-xs uppercase tracking-[0.25em] text-[#1F3F3B] dark:text-[#A7BFB7]">
                   Tu atención paso a paso
                 </p>
 
-                <h2 className="mt-5 text-4xl font-black tracking-tight text-[#050505] sm:text-5xl dark:text-[#F4F0E6]">
+                <h2 className="mt-5 font-prata text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-[#050505] dark:text-[#F4F0E6]">
                   Una experiencia odontológica organizada
                 </h2>
 
@@ -485,7 +492,7 @@ export default function LandingPage() {
                 <button
                   type="button"
                   onClick={() => navigate("/register")}
-                  className="mt-9 inline-flex cursor-pointer items-center gap-3 text-sm font-black text-[#1F3F3B] transition-all hover:gap-5 dark:text-[#A7BFB7]"
+                  className="mt-9 font-instrument inline-flex cursor-pointer items-center gap-3 text-sm font-bold text-[#1F3F3B] transition-all hover:gap-5 dark:text-[#A7BFB7]"
                 >
                   Crear mi cuenta de paciente
                   <ArrowRight size={18} />
@@ -542,14 +549,14 @@ export default function LandingPage() {
 
                         <div className="pb-2">
                           <div className="flex items-center gap-4">
-                            <span className="text-[10px] font-black tracking-[0.2em] text-[#437C76] dark:text-[#7DADAA]">
+                            <span className="font-spacemono text-xs font-bold tracking-wider text-[#437C76] dark:text-[#7DADAA]">
                               {step.number}
                             </span>
 
                             <span className="h-px w-8 bg-[#437C76]/30" />
                           </div>
 
-                          <h3 className="mt-2 text-xl font-black text-[#050505] dark:text-[#F4F0E6]">
+                          <h3 className="mt-2 font-prata text-xl font-bold text-[#050505] dark:text-[#F4F0E6]">
                             {step.title}
                           </h3>
 
@@ -587,11 +594,11 @@ export default function LandingPage() {
 
             <div className="grid grid-cols-1 items-center gap-16 lg:grid-cols-2 lg:gap-24">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.3em] text-[#1F3F3B] dark:text-[#A7BFB7]">
+                <p className="font-oswald text-xs uppercase tracking-[0.25em] text-[#1F3F3B] dark:text-[#A7BFB7]">
                   NexusOdonto
                 </p>
 
-                <h2 className="mt-5 text-4xl font-black tracking-tight text-[#050505] sm:text-5xl dark:text-[#F4F0E6]">
+                <h2 className="mt-5 font-prata text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-[#050505] dark:text-[#F4F0E6]">
                   Atención odontológica personalizada y sin dolor
                 </h2>
 
@@ -623,7 +630,7 @@ export default function LandingPage() {
                 <button
                   type="button"
                   onClick={() => navigate("/login")}
-                  className="mt-10 inline-flex cursor-pointer items-center gap-3 text-sm font-black text-[#1F3F3B] transition-all hover:gap-5 dark:text-[#A7BFB7]"
+                  className="mt-10 font-instrument inline-flex cursor-pointer items-center gap-3 text-sm font-bold text-[#1F3F3B] transition-all hover:gap-5 dark:text-[#A7BFB7]"
                 >
                   Ingresar a mi cuenta
                   <ArrowRight size={18} />
@@ -638,11 +645,11 @@ export default function LandingPage() {
                     </div>
 
                     <div>
-                      <p className="text-xs font-black uppercase tracking-[0.25em] text-[#1F3F3B] dark:text-[#A7BFB7]">
+                      <p className="font-oswald text-xs uppercase tracking-[0.25em] text-[#1F3F3B] dark:text-[#A7BFB7]">
                         Tecnología que cuida
                       </p>
 
-                      <h3 className="mt-1 text-2xl font-black text-[#050505] sm:text-3xl dark:text-[#F4F0E6]">
+                      <h3 className="mt-1 font-prata text-2xl font-bold text-[#050505] sm:text-3xl dark:text-[#F4F0E6]">
                         Tu tranquilidad primero
                       </h3>
                     </div>
@@ -655,12 +662,12 @@ export default function LandingPage() {
                           Horarios de Atención
                         </p>
 
-                        <p className="mt-1 text-lg font-black text-[#050505] dark:text-[#F4F0E6]">
+                        <p className="mt-1 font-prata text-lg font-bold text-[#050505] dark:text-[#F4F0E6]">
                           Lun a Sáb
                         </p>
                       </div>
 
-                      <p className="text-sm font-black text-[#1F3F3B] dark:text-[#A7BFB7]">
+                      <p className="font-spacemono text-sm font-bold text-[#1F3F3B] dark:text-[#A7BFB7]">
                         08:00 - 18:00
                       </p>
                     </div>
@@ -673,12 +680,12 @@ export default function LandingPage() {
                           Especialidades
                         </p>
 
-                        <p className="mt-1 text-lg font-black text-[#050505] dark:text-[#F4F0E6]">
+                        <p className="mt-1 font-prata text-lg font-bold text-[#050505] dark:text-[#F4F0E6]">
                           Atención especializada
                         </p>
                       </div>
 
-                      <p className="max-w-[150px] text-right text-sm font-black text-[#1F3F3B] dark:text-[#A7BFB7]">
+                      <p className="max-w-[150px] text-right text-sm font-semibold text-[#1F3F3B] dark:text-[#A7BFB7]">
                         Ortodoncia · Cirugía · Endodoncia
                       </p>
                     </div>
@@ -691,12 +698,12 @@ export default function LandingPage() {
                           Canal de Atención
                         </p>
 
-                        <p className="mt-1 text-lg font-black text-[#050505] dark:text-[#F4F0E6]">
+                        <p className="mt-1 font-prata text-lg font-bold text-[#050505] dark:text-[#F4F0E6]">
                           Siempre conectado
                         </p>
                       </div>
 
-                      <p className="text-right text-sm font-black text-[#1F3F3B] dark:text-[#A7BFB7]">
+                      <p className="text-right text-sm font-semibold text-[#1F3F3B] dark:text-[#A7BFB7]">
                         Portal Web
                         <br />
                         y Recepción
@@ -721,11 +728,11 @@ export default function LandingPage() {
             <span className="absolute bottom-0 right-0 h-px w-28 bg-[#050505] dark:bg-white/60" />
 
             <div className="max-w-3xl">
-              <p className="text-xs font-black uppercase tracking-[0.3em] text-[#1F3F3B] dark:text-[#A7BFB7]">
+              <p className="font-oswald text-xs uppercase tracking-[0.25em] text-[#1F3F3B] dark:text-[#A7BFB7]">
                 Cuerpo médico
               </p>
 
-              <h2 className="mt-4 text-4xl font-black tracking-tight text-[#050505] sm:text-5xl dark:text-[#F4F0E6]">
+              <h2 className="mt-4 font-prata text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-[#050505] dark:text-[#F4F0E6]">
                 Nuestros odontólogos especialistas
               </h2>
 
@@ -764,16 +771,16 @@ export default function LandingPage() {
                   className="group border-l border-[#2F5E58]/30 pl-6 transition-all hover:border-[#437C76] dark:border-[#7DADAA]/30"
                 >
                   <div className="flex items-center gap-4">
-                    <span className="text-3xl font-black text-[#1F3F3B] dark:text-[#A7BFB7]">
+                    <span className="font-prata text-3xl font-bold text-[#1F3F3B] dark:text-[#A7BFB7]">
                       {doctor.initials}
                     </span>
 
                     <div>
-                      <h3 className="text-lg font-black text-[#050505] dark:text-[#F4F0E6]">
+                      <h3 className="font-prata text-lg font-bold text-[#050505] dark:text-[#F4F0E6]">
                         {doctor.name}
                       </h3>
 
-                      <p className="text-xs font-bold text-[#1F3F3B] dark:text-[#A7BFB7]">
+                      <p className="font-instrument text-xs font-semibold text-[#1F3F3B] dark:text-[#A7BFB7]">
                         {doctor.specialty}
                       </p>
                     </div>
