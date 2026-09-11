@@ -38,7 +38,7 @@ export interface GoogleRegisterRequest {
 
 export interface GoogleLinkRequestDto {
   linkToken: string;
-  documentNumber: string;
+  loginId: string;
   password: string;
 }
 
@@ -58,7 +58,29 @@ export interface AuthResponse {
   permissions: string[];
 }
 
+export interface RegisterOptionItem {
+  id: string;
+  code: string;
+  name: string;
+  description?: string;
+  isActive?: boolean;
+}
+
+export interface RegisterOptionsResponse {
+  documentTypes: RegisterOptionItem[];
+  sexes: RegisterOptionItem[];
+}
+
 export const authService = {
+  getRegisterOptions: async (): Promise<RegisterOptionsResponse> => {
+    const response = await axiosClient.get('/auth/register-options');
+    const data = response.data || {};
+    return {
+      documentTypes: Array.isArray(data.documentTypes) ? data.documentTypes : [],
+      sexes: Array.isArray(data.sexes) ? data.sexes : [],
+    };
+  },
+
   login: async (credentials: LoginRequest): Promise<AuthResponse> => {
     const docOrId =
       credentials.documentNumber ||

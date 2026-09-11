@@ -351,8 +351,6 @@ export function AtencionAsesorView() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const waDeliveredRef = useRef<Map<string, boolean>>(new Map());
-
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 4000);
@@ -657,61 +655,11 @@ export function AtencionAsesorView() {
     const formattedNow = formatTime(currentTimeIso);
 
     setSendingMessage(true);
-    const dispatchKey = `${selectedChat.id}:${text}`;
 
     try {
-      let sentToBackend = false;
-
-      if (selectedChat.ticket?.id && !selectedChat.ticket.id.startsWith("tick-")) {
-        try {
-          await chatbotService.replyToTicket(selectedChat.ticket.id, text, roleId);
-          sentToBackend = true;
-        } catch (ticketErr: any) {
-          console.warn("replyToTicket failed:", ticketErr);
-          if (ticketErr?.response?.status >= 200 && ticketErr?.response?.status < 300) {
-            sentToBackend = true;
-          }
-        }
-      }
-
-      if (!sentToBackend) {
-        const alreadyDeliveredWa = waDeliveredRef.current.get(dispatchKey);
-        if (!alreadyDeliveredWa) {
-          const cleanPhone = selectedChat.chatIdentifier.replace(/@.*$/, "").replace(/\D/g, "");
-          try {
-            const waRes = await chatbotService.sendWhatsAppMessage({
-              destinationPhone: cleanPhone || selectedChat.chatIdentifier,
-              content: text,
-              patientId: selectedChat.patientId,
-            });
-
-            if (!waRes && waRes !== undefined) {
-              throw new Error("Respuesta inválida del servidor al despachar mensaje de WhatsApp.");
-            }
-            waDeliveredRef.current.set(dispatchKey, true);
-          } catch (waErr) {
-            console.warn("sendWhatsAppMessage fallback to direct FastAPI agent dispatch:", waErr);
-            await chatbotService.sendAgentDirectMessage({
-              phoneNumber: selectedChat.chatIdentifier,
-              message: text,
-              senderRole: sendIdentity === "CHATBOT" ? "CHATBOT" : "AGENTE_HUMANO",
-              skipDbRegister: true,
-            });
-            waDeliveredRef.current.set(dispatchKey, true);
-          }
-        }
-
-        if (!selectedChat.ticket || selectedChat.ticket.id.startsWith("tick-")) {
-          await chatbotService.sendMessage({
-            chatbotConversationId: selectedChat.id,
-            messageRoleId: roleId,
-            content: text,
-          }).catch(() => null);
-        }
-
-        // Completado con éxito: limpiar marcador de despacho pendiente
-        waDeliveredRef.current.delete(dispatchKey);
-      }
+      // Always via .NET → FastAPI/Evolution (works with or without open ticket).
+      // Never WhatsAppNotifications or browser → /bot agent/send-message.
+      await chatbotService.sendConversationWhatsApp(selectedChat.id, text, roleId);
 
       // Inserción segura solo después de confirmar la entrega en servidor
       const newMsgObj: ChatbotMessage = {
@@ -751,13 +699,8 @@ export function AtencionAsesorView() {
       setTimeout(scrollToBottom, 50);
     } catch (err: any) {
       console.error("Error al enviar mensaje:", err);
-      const isWaDelivered = waDeliveredRef.current.get(dispatchKey);
-      if (isWaDelivered) {
-        showErrorToast("El mensaje fue entregado por WhatsApp, pero ocurrió un problema al registrarlo en el historial de la conversación. Puede reintentar registrarlo.");
-      } else {
-        const errMsg = err?.response?.data?.message || err?.message || "No se pudo entregar el mensaje. Error de conexión con el servidor.";
-        showErrorToast(errMsg);
-      }
+      const errMsg = err?.response?.data?.message || err?.message || "No se pudo entregar el mensaje. Error de conexión con el servidor.";
+      showErrorToast(errMsg);
     } finally {
       setSendingMessage(false);
     }

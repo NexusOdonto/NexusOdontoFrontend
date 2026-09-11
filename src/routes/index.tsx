@@ -36,6 +36,12 @@ const AuthCallback = lazy(() =>
   })),
 );
 
+const LinkGooglePage = lazy(() =>
+  import("../features/auth/LinkGooglePage").then((module) => ({
+    default: module.default,
+  })),
+);
+
 const DashboardLayout = lazy(() =>
   import("../layouts/DashboardLayout").then((module) => ({
     default: module.DashboardLayout,
@@ -154,6 +160,7 @@ export default function AppRoutes() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/auth/link-google" element={<LinkGooglePage />} />
         <Route path="/401" element={<ErrorAccessPage code={401} />} />
         <Route path="/403" element={<ErrorAccessPage code={403} />} />
         <Route path="/404" element={<NotFoundPage />} />
