@@ -33,9 +33,32 @@ export default function LoginPage() {
   useEffect(() => {
     const errorParam = searchParams.get('error');
 
-    if (errorParam) {
-      setError(decodeURIComponent(errorParam));
-    }
+    if (!errorParam) return;
+
+    const decoded = decodeURIComponent(errorParam).trim();
+    const key = decoded.toLowerCase();
+
+    const oauthMessages: Record<string, string> = {
+      no_token_provided:
+        'Google no devolvió una sesión válida. Intenta iniciar sesión con Google de nuevo.',
+      session_init_failed:
+        'Se recibió la respuesta de Google, pero no se pudo iniciar la sesión en NexusOdonto. Inténtalo de nuevo.',
+      auth_callback_failed:
+        'Falló el retorno desde Google. Cierra la ventana emergente si quedó abierta e inténtalo otra vez.',
+      access_denied:
+        'Cancelaste el acceso con Google o no se otorgaron permisos.',
+      oauth_failed:
+        'No se pudo completar el inicio de sesión con Google. Inténtalo más tarde.',
+      link_required:
+        'Tu cuenta de Google aún no está vinculada. Usa “Continuar con Google” y vincula tu cédula cuando se solicite.',
+    };
+
+    setError(
+      oauthMessages[key] ||
+        (decoded.includes(' ')
+          ? decoded
+          : `Error de Google: ${decoded}. Intenta de nuevo o inicia sesión con tu cédula.`)
+    );
   }, [searchParams]);
 
   useEffect(() => {
@@ -69,7 +92,7 @@ export default function LoginPage() {
     const cleanPassword = password.trim();
 
     if (!cleanIdentifier || !cleanPassword) {
-      setError('Por favor ingresa tu cédula o correo y tu contraseña.');
+      setError('Por favor ingresa tu cédula (o código de empleado) y tu contraseña.');
       return;
     }
 
@@ -154,7 +177,7 @@ export default function LoginPage() {
             <LoginInput
               type="text"
               name="identifier"
-              placeholder="Cédula o Correo Electrónico"
+              placeholder="Cédula o código de empleado"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
             />

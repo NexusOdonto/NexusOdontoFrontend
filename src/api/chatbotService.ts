@@ -228,6 +228,22 @@ export const chatbotService = {
     return response.data;
   },
 
+  // Envío asesor por conversación (.NET → FastAPI/Evolution; 502 si falla)
+  sendConversationWhatsApp: async (
+    conversationId: string,
+    content: string,
+    messageRoleId?: string
+  ): Promise<any> => {
+    const response = await axiosClient.post(
+      `/v1/ChatbotConversations/${conversationId}/send-whatsapp`,
+      {
+        content,
+        ...(messageRoleId ? { messageRoleId } : {}),
+      }
+    );
+    return response.data;
+  },
+
   // Resolver ticket y devolver la conversación al bot (reactiva el bot en FastAPI)
   resolveTicket: async (ticketId: string, resolution?: string): Promise<any> => {
     const response = await axiosClient.post(`/v1/SupportTickets/${ticketId}/resolve`, { resolution });
@@ -256,26 +272,24 @@ export const chatbotService = {
     senderRole?: string;
     skipDbRegister?: boolean;
   }): Promise<any> => {
-    try {
-      const res = await chatbotClient.post(
-        '/api/v1/agent/send-message',
-        {
-          phone_number: data.phoneNumber,
-          message: data.message,
-          sender_role: data.senderRole || 'AGENTE_HUMANO',
-          skip_db_register: data.skipDbRegister ?? false,
+    const res = await chatbotClient.post(
+      '/api/v1/agent/send-message',
+      {
+        phone_number: data.phoneNumber,
+        message: data.message,
+        sender_role: data.senderRole || 'AGENTE_HUMANO',
+        skip_db_register: data.skipDbRegister ?? false,
+      },
+      {
+        headers: {
+          'X-Internal-Secret': 'TOKEN_SECRETO_INTERNO_NET_2026',
         },
-        {
-          headers: {
-            'X-Internal-Secret': 'TOKEN_SECRETO_INTERNO_NET_2026',
-          },
-        }
-      );
-      return res.data;
-    } catch (err) {
-      console.warn('sendAgentDirectMessage failed:', err);
-      return null;
+      }
+    );
+    if (!res.data) {
+      throw new Error('El chatbot no confirmó el envío del mensaje a WhatsApp.');
     }
+    return res.data;
   },
 
   // Reactivación de conversación y retorno al bot (FastAPI)

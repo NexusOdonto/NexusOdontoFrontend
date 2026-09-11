@@ -19,18 +19,10 @@ import {
 
 import { useTheme } from "../../context/ThemeContext";
 import {
-  documentTypeService,
-  type DocumentType,
-} from "../../api/documentTypeService";
-import { sexService, type Sex } from "../../api/sexService";
-import { roleService } from "../../api/roleService";
-import { personService } from "../../api/personService";
-import { userService } from "../../api/userService";
-import { patientService } from "../../api/patientService";
-import {
   authService,
   type RegisterRequest,
   type GoogleRegisterRequest,
+  type RegisterOptionItem,
 } from "../../api/authService";
 import { useAuth } from "./AuthContext";
 import { GoogleAuthButton } from "./components/GoogleAuthButton";
@@ -38,11 +30,23 @@ import fondoLoginLight from "../../assets/fondo-Login-ligh.webp";
 import fondoLoginDark from "../../assets/fondoLogin.webp";
 import logoNexus from "../../assets/nexus-odonto-logo.webp";
 
+type CatalogOption = RegisterOptionItem;
+
+/** Normalize date input to YYYY-MM-DD for DateOnly-compatible APIs. */
+const toDateOnly = (value: string): string | undefined => {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) return undefined;
+  return parsed.toISOString().split("T")[0];
+};
+
 export default function RegisterPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { theme } = useTheme();
-  const { loginWithGoogleCallback } = useAuth();
+  const { login, loginWithGoogleCallback } = useAuth();
 
   const isGoogle =
     searchParams.get("isGoogle") === "true" ||
@@ -52,11 +56,8 @@ export default function RegisterPage() {
     searchParams.get("googleSub") || ""
   );
 
-  const [documentTypes, setDocumentTypes] = useState<DocumentType[]>([]);
-  const [sexes, setSexes] = useState<Sex[]>([]);
-  const [patientRoleId, setPatientRoleId] = useState<string>(
-    "13000000-0000-0000-0000-000000000005"
-  );
+  const [documentTypes, setDocumentTypes] = useState<CatalogOption[]>([]);
+  const [sexes, setSexes] = useState<CatalogOption[]>([]);
   const [loadingCatalogs, setLoadingCatalogs] = useState(true);
 
   const [firstName, setFirstName] = useState(
@@ -129,7 +130,7 @@ export default function RegisterPage() {
     if (urlSub) setGoogleSub(urlSub);
   }, [searchParams]);
 
-  const translateDocumentTypeName = (doc: DocumentType): string => {
+  const translateDocumentTypeName = (doc: CatalogOption): string => {
     const code = (doc.code || "").toUpperCase();
     const name = (doc.name || "").toLowerCase();
 
@@ -187,128 +188,52 @@ export default function RegisterPage() {
     return doc.name;
   };
 
+  const translateSexName = (s: CatalogOption): string => {
+    const code = (s.code || s.name || "").toUpperCase();
+    if (code.includes("FEM") || code === "F") return "Femenino";
+    if (code.includes("MASC") || code.includes("MALE") || code === "M") {
+      return "Masculino";
+    }
+    if (code.includes("OTRO") || code.includes("OTHER") || code === "O") {
+      return "Otro";
+    }
+    return s.name;
+  };
+
   useEffect(() => {
     const loadCatalogs = async () => {
       try {
         setLoadingCatalogs(true);
 
-        const [docTypesData, sexesData, rolesData] =
-          await Promise.allSettled([
-            documentTypeService.getAll(),
-            sexService.getAll(),
-            roleService.getAll(),
-          ]);
+        const options = await authService.getRegisterOptions();
 
-        if (
-          docTypesData.status === "fulfilled" &&
-          docTypesData.value.length > 0
-        ) {
-          const translatedDocs = docTypesData.value.map((dt) => ({
-            ...dt,
-            name: translateDocumentTypeName(dt),
-          }));
+        const docs = (options.documentTypes || []).map((dt) => ({
+          ...dt,
+          name: translateDocumentTypeName(dt),
+        }));
 
-          setDocumentTypes(translatedDocs);
-
+        if (docs.length > 0) {
+          setDocumentTypes(docs);
           const defaultDoc =
-            translatedDocs.find((dt) => dt.code === "CC") ||
-            translatedDocs[0];
-
+            docs.find((dt) => (dt.code || "").toUpperCase() === "CC") ||
+            docs[0];
           setDocumentTypeId(defaultDoc.id);
         } else {
-          const fallbackDocs: DocumentType[] = [
-            {
-              id: "e0000000-0000-0000-0000-000000000001",
-              code: "CC",
-              name: "Cédula de Ciudadanía",
-              isActive: true,
-            },
-            {
-              id: "e0000000-0000-0000-0000-000000000002",
-              code: "CE",
-              name: "Cédula de Extranjería",
-              isActive: true,
-            },
-            {
-              id: "e0000000-0000-0000-0000-000000000003",
-              code: "TI",
-              name: "Tarjeta de Identidad",
-              isActive: true,
-            },
-            {
-              id: "e0000000-0000-0000-0000-000000000004",
-              code: "PAS",
-              name: "Pasaporte",
-              isActive: true,
-            },
-          ];
-
-          setDocumentTypes(fallbackDocs);
-          setDocumentTypeId(fallbackDocs[0].id);
-        }
-
-        if (
-          sexesData.status === "fulfilled" &&
-          sexesData.value.length > 0
-        ) {
-          const translatedSexes = sexesData.value.map((s) => {
-            const code = (s.code || s.name || "").toUpperCase();
-
-            let name = s.name;
-
-            if (code.includes("FEM") || code === "F") {
-              name = "Femenino";
-            } else if (
-              code.includes("MASC") ||
-              code.includes("MALE") ||
-              code === "M"
-            ) {
-              name = "Masculino";
-            } else {
-              name = "Otro";
-            }
-
-            return { ...s, name };
-          });
-
-          setSexes(translatedSexes);
-        } else {
-          setSexes([
-            {
-              id: "f0000000-0000-0000-0000-000000000001",
-              code: "FEMENINO",
-              name: "Femenino",
-              isActive: true,
-            },
-            {
-              id: "f0000000-0000-0000-0000-000000000002",
-              code: "MASCULINO",
-              name: "Masculino",
-              isActive: true,
-            },
-            {
-              id: "f0000000-0000-0000-0000-000000000003",
-              code: "OTRO",
-              name: "Otro",
-              isActive: true,
-            },
-          ]);
-        }
-
-        if (
-          rolesData.status === "fulfilled" &&
-          rolesData.value.length > 0
-        ) {
-          const patient = rolesData.value.find(
-            (r) => r.code === "PACIENTE"
+          setError(
+            "No se pudieron cargar los tipos de documento. Recarga la página e inténtalo de nuevo."
           );
-
-          if (patient) {
-            setPatientRoleId(patient.id);
-          }
         }
+
+        const sexOptions = (options.sexes || []).map((s) => ({
+          ...s,
+          name: translateSexName(s),
+        }));
+        setSexes(sexOptions);
       } catch (err) {
-        console.error("Error loading catalogs in register:", err);
+        console.error("Error loading register-options:", err);
+        setError(
+          "No se pudieron cargar las opciones de registro. Verifica tu conexión e inténtalo de nuevo."
+        );
       } finally {
         setLoadingCatalogs(false);
       }
@@ -327,6 +252,7 @@ export default function RegisterPage() {
     const cleanEmail = email.trim();
     const cleanPhone = phone.trim();
     const cleanPassword = password.trim();
+    const dateOnly = toDateOnly(dateOfBirth);
 
     if (!cleanFirstName || !cleanLastName) {
       setError("Por favor ingresa tus nombres y apellidos.");
@@ -375,9 +301,7 @@ export default function RegisterPage() {
           lastName: cleanLastName,
           email: cleanEmail,
           phone: cleanPhone || undefined,
-          dateOfBirth: dateOfBirth
-            ? new Date(dateOfBirth).toISOString().split("T")[0]
-            : undefined,
+          dateOfBirth: dateOnly,
           sexId: sexId || undefined,
           address: address.trim() || undefined,
           googleSub: googleSub || cleanEmail,
@@ -391,142 +315,37 @@ export default function RegisterPage() {
           await loginWithGoogleCallback(res.token, res.refreshToken);
           return;
         }
-      } else {
-        let roleIdToAssign = patientRoleId;
 
-        if (
-          !roleIdToAssign ||
-          roleIdToAssign ===
-            "13000000-0000-0000-0000-000000000005"
-        ) {
-          try {
-            const roles = await roleService.getAll();
+        throw new Error(
+          "El registro con Google no devolvió una sesión válida."
+        );
+      }
 
-            const patient = roles.find(
-              (r) => r.code?.toUpperCase() === "PACIENTE"
-            );
+      const payload: RegisterRequest = {
+        documentTypeId,
+        documentNumber: cleanDocNumber,
+        firstName: cleanFirstName,
+        lastName: cleanLastName,
+        email: cleanEmail,
+        phone: cleanPhone || undefined,
+        dateOfBirth: dateOnly,
+        sexId: sexId || undefined,
+        address: address.trim() || undefined,
+        password: cleanPassword,
+      };
 
-            if (patient) {
-              roleIdToAssign = patient.id;
-            }
-          } catch {
-            roleIdToAssign =
-              "13000000-0000-0000-0000-000000000005";
-          }
-        }
+      await authService.register(payload);
 
-        const payload: RegisterRequest = {
-          documentTypeId,
-          documentNumber: cleanDocNumber,
-          firstName: cleanFirstName,
-          lastName: cleanLastName,
-          email: cleanEmail,
-          phone: cleanPhone || undefined,
-          dateOfBirth: dateOfBirth
-            ? new Date(dateOfBirth).toISOString()
-            : undefined,
-          sexId: sexId || undefined,
-          address: address.trim() || undefined,
-          password: cleanPassword,
-          roleId: roleIdToAssign,
-        };
+      // Auto-login with cédula (loginId). AuthContext routes to dashboard or cambiar-password.
+      const loginResult = await login(cleanDocNumber, cleanPassword);
 
-        let registerSuccess = false;
-
-        try {
-          await authService.register(payload);
-          registerSuccess = true;
-        } catch (authErr: any) {
-          if (authErr?.response?.status === 404) {
-            try {
-              const createdPerson = await personService.create({
-                documentTypeId,
-                documentNumber: cleanDocNumber,
-                firstName: cleanFirstName,
-                lastName: cleanLastName,
-                email: cleanEmail,
-                phone: cleanPhone || undefined,
-                dateOfBirth: dateOfBirth || undefined,
-                sexId: sexId || undefined,
-                address: address.trim() || undefined,
-              });
-
-              if (createdPerson && createdPerson.id) {
-                await userService
-                  .create({
-                    personId: createdPerson.id,
-                    password: cleanPassword,
-                    roleId: roleIdToAssign,
-                    roleIds: [roleIdToAssign],
-                  })
-                  .catch((uErr) =>
-                    console.warn(
-                      "User create fallback error:",
-                      uErr
-                    )
-                  );
-
-                await patientService
-                  .create({
-                    personId: createdPerson.id,
-                  })
-                  .catch((pErr) =>
-                    console.warn(
-                      "Patient create fallback error:",
-                      pErr
-                    )
-                  );
-
-                registerSuccess = true;
-              }
-            } catch (fallbackErr: any) {
-              console.error(
-                "Error en flujo alternativo de creación:",
-                fallbackErr
-              );
-
-              const errMsg =
-                fallbackErr.response?.data?.message ||
-                fallbackErr.message;
-
-              throw new Error(
-                errMsg ||
-                  "No se pudo registrar la cuenta en el sistema."
-              );
-            }
-          } else {
-            throw authErr;
-          }
-        }
-
-        if (registerSuccess) {
-          const patientEntry = {
-            id: Date.now(),
-            nombre: `${cleanFirstName} ${cleanLastName}`.trim(),
-            documento: cleanDocNumber,
-            telefono: cleanPhone || "",
-            estado: "Activo",
-            correo: cleanEmail,
-            fechaNacimiento: dateOfBirth,
-            direccion: address.trim(),
-            rol: "PACIENTE",
-          };
-
-          try {
-            const raw = localStorage.getItem(
-              "nexusodontopacientes"
-            );
-
-            const list = raw ? JSON.parse(raw) : [];
-
-            list.unshift(patientEntry);
-
-            localStorage.setItem(
-              "nexusodontopacientes",
-              JSON.stringify(list)
-            );
-          } catch {}
-        }
+      if (!loginResult.success) {
+        setIsSuccess(true);
+        setError(
+          loginResult.error ||
+            "Cuenta creada, pero no se pudo iniciar sesión automáticamente. Inicia sesión con tu cédula."
+        );
+        return;
       }
 
       setIsSuccess(true);
@@ -545,6 +364,9 @@ export default function RegisterPage() {
         friendlyMsg =
           err.response?.data?.message ||
           "Verifica que todos los campos obligatorios sean correctos.";
+      } else if (status === 401) {
+        friendlyMsg =
+          "No se pudo completar el registro (sesión no autorizada). Recarga e inténtalo de nuevo.";
       } else if (
         err.message &&
         !err.message.includes("status code")
@@ -711,11 +533,11 @@ export default function RegisterPage() {
               <button
                 type="button"
                 onClick={() =>
-                  navigate(isGoogle ? "/dashboard" : "/login")
+                  navigate(isGoogle || !error ? "/dashboard" : "/login")
                 }
                 className="w-full sm:w-auto px-8 py-3 bg-gradient-to-r from-teal-500 to-cyan-400 hover:from-teal-400 hover:to-cyan-300 text-slate-950 font-bold rounded-xl text-xs transition-all shadow-md cursor-pointer"
               >
-                {isGoogle
+                {isGoogle || !error
                   ? "Ir a mi Panel Principal"
                   : "Iniciar Sesión Ahora"}
               </button>

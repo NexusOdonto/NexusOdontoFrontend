@@ -7,9 +7,29 @@ const axiosClient = axios.create({
   },
 });
 
-// Adjunta el token JWT en el header Authorization si existe
+/** Public auth routes must not send a stale JWT (can cause 401 on anonymous endpoints). */
+const isPublicAuthRequest = (url?: string): boolean => {
+  if (!url) return false;
+  const path = url.split('?')[0].toLowerCase();
+  return (
+    path.includes('/auth/login') ||
+    path.includes('/auth/register-options') ||
+    path.includes('/auth/register-google') ||
+    path.includes('/auth/register') ||
+    path.includes('/auth/google/')
+  );
+};
+
+// Adjunta el token JWT en el header Authorization si existe (excepto rutas públicas de auth)
 axiosClient.interceptors.request.use(
   (config) => {
+    if (isPublicAuthRequest(config.url)) {
+      if (config.headers) {
+        delete config.headers.Authorization;
+      }
+      return config;
+    }
+
     const token = localStorage.getItem('auth_token') || localStorage.getItem('nexus_token');
     if (token && token !== 'mock_dev_token') {
       config.headers.Authorization = `Bearer ${token}`;
