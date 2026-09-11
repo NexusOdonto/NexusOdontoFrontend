@@ -44,7 +44,12 @@ export function DashboardLayout({
     theme === "dark" ? fondoDark : fondoLight;
 
   return (
-    <div className="flex min-h-screen min-w-0 max-w-full overflow-x-hidden text-slate-900 dark:text-slate-100 relative">
+    <div
+      className="flex min-h-screen min-w-0 max-w-full overflow-x-hidden text-slate-900 dark:text-slate-100 relative bg-cover bg-center bg-no-repeat bg-fixed"
+      style={{
+        backgroundImage: `url(${backgroundImage})`,
+      }}
+    >
       <Sidebar
         mobileOpen={mobileOpen}
         onMobileClose={() => setMobileOpen(false)}
@@ -59,12 +64,7 @@ export function DashboardLayout({
           }
         />
 
-        <main
-          className="flex min-w-0 flex-1 flex-col bg-cover bg-center bg-no-repeat transition-all duration-300 relative"
-          style={{
-            backgroundImage: `url(${backgroundImage})`,
-          }}
-        >
+        <main className="flex min-w-0 flex-1 flex-col transition-all duration-300 relative">
           {/* Contenido principal fluido con ancho máximo de 1440px */}
           <div className="relative z-10 w-full max-w-[1440px] mx-auto p-4 sm:p-6 md:p-8">
             <ErrorBoundary>

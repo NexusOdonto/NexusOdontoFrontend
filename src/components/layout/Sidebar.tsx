@@ -122,7 +122,7 @@ export function Sidebar({
 
       {/* 2. PANEL LATERAL / DRAWER MÓVIL & DESKTOP (z-50 en móvil, lg:z-30) */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 h-screen bg-white/95 dark:bg-slate-950/95 backdrop-blur-2xl border-r border-slate-200/80 dark:border-white/10 flex flex-col shadow-2xl transition-all duration-300 ease-in-out lg:shadow-none lg:sticky lg:top-0 lg:z-30 ${
+        className={`fixed inset-y-0 left-0 z-50 h-screen bg-white/40 border-slate-200/50 backdrop-blur-md dark:bg-[#06141d]/50 dark:border-teal-500/10 dark:backdrop-blur-md border-r flex flex-col shadow-2xl transition-all duration-300 ease-in-out lg:shadow-none lg:sticky lg:top-0 lg:z-30 ${
           isCollapsed ? "w-72 lg:w-20" : "w-72 lg:w-64"
         } ${
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
@@ -130,7 +130,7 @@ export function Sidebar({
       >
         {/* Cabecera del Sidebar */}
         <div
-          className={`flex items-center h-16 px-4 border-b border-slate-200 dark:border-slate-800 transition-all duration-300 justify-between ${
+          className={`flex items-center h-16 px-4 border-b border-slate-200/50 dark:border-teal-500/10 transition-all duration-300 justify-between ${
             isCollapsed ? "lg:justify-center lg:px-2" : "justify-between"
           }`}
         >
