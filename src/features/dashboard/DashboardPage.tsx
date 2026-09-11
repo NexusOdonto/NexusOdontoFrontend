@@ -25,6 +25,7 @@ import { professionalService } from "../../api/professionalService";
 import { serviceCatalogService } from "../../api/serviceCatalogService";
 import { areGuidsEqual } from "../../utils/roleUtils";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
+import PatientDashboardView from "./PatientDashboardView";
 
 interface CitaItem {
   id: string;
@@ -189,6 +190,10 @@ export default function DashboardPage() {
     return citasHoy.reduce((acc, c) => acc + (c.valor || 0), 0);
   }, [citasHoy]);
   const cantidadTratamientos = citasHoy.length;
+
+  if (isPaciente) {
+    return <PatientDashboardView user={user} />;
+  }
 
   return (
     <div className="space-y-6 text-slate-900 dark:text-slate-100 pb-10 animate-fadeIn">

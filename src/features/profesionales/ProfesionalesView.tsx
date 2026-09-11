@@ -467,23 +467,23 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
     <div className="space-y-6 text-slate-900 dark:text-slate-100 font-sans pb-12">
       {/* TOAST DE NOTIFICACIÓN */}
       {successToast && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 px-5 py-3 rounded-2xl shadow-2xl border border-cyan-500/30 animate-slideUp">
+        <div className="fixed bottom-6 right-6 z-[99999] flex items-center gap-3 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 px-5 py-3 rounded-2xl shadow-2xl border border-cyan-500/30 animate-slideUp">
           <CheckCircle2 size={18} className="text-cyan-400 dark:text-cyan-600 shrink-0" />
           <span className="text-xs font-semibold">{successToast}</span>
         </div>
       )}
 
       {/* BANNER PRINCIPAL / HERO ELEGANTE */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-teal-700 to-emerald-800 text-white border border-teal-600/30 shadow-2xl p-6 sm:p-8 dark:from-slate-900 dark:via-slate-950 dark:to-cyan-950 dark:border-white/10 transition-all">
+      <div className="relative overflow-hidden rounded-3xl bg-white/85 dark:bg-slate-950/70 text-slate-900 dark:text-white border border-slate-200/80 dark:border-white/10 shadow-lg dark:shadow-[0_12px_36px_rgba(0,0,0,0.5)] p-6 sm:p-8 backdrop-blur-xl transition-all">
         <div className="absolute -right-12 -top-12 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute right-1/4 -bottom-16 w-80 h-80 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div className="space-y-2">
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white drop-shadow-sm font-prata">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-slate-900 dark:text-white drop-shadow-sm font-prata">
               Profesionales & Especialidades
             </h1>
-            <p className="text-slate-300 text-xs sm:text-sm max-w-2xl font-medium font-sans">
+            <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm max-w-2xl font-medium font-sans">
               Gestión clínica del staff de especialistas, sillones de atención, quirófanos y disponibilidad semanal en NexusOdonto.
             </p>
           </div>
@@ -492,7 +492,7 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
             <button
               type="button"
               onClick={fetchProfessionals}
-              className="group p-2.5 rounded-2xl border border-white/15 bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer backdrop-blur-md active:scale-95 shadow-sm flex items-center justify-center"
+              className="group p-2.5 rounded-2xl border border-slate-200 dark:border-white/15 bg-slate-100/80 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 text-slate-700 dark:text-white transition-all cursor-pointer backdrop-blur-md active:scale-95 shadow-sm flex items-center justify-center"
               title="Recargar directorio de profesionales"
             >
               <DentistryReloadIcon size={22} loading={loading} />

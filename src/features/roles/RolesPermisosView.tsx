@@ -269,7 +269,7 @@ export function RolesPermisosView() {
     <div className="space-y-6 text-slate-900 dark:text-slate-100 pb-8">
       {/* Toast */}
       {successToast && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 px-5 py-3 rounded-2xl shadow-2xl border border-teal-500/30 animate-scaleIn">
+        <div className="fixed bottom-6 right-6 z-[99999] flex items-center gap-2.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 px-5 py-3 rounded-2xl shadow-2xl border border-teal-500/30 animate-slideUp backdrop-blur-md">
           <CheckCircle2 size={18} className="text-teal-400 dark:text-teal-600 flex-shrink-0" />
           <span className="text-xs font-semibold">{successToast}</span>
         </div>

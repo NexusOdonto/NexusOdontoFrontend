@@ -235,6 +235,14 @@ export default function PerfilView() {
         onChange={handleImageChange}
       />
 
+      {/* Toast Notificación */}
+      {saveSuccess && (
+        <div className="fixed bottom-6 right-6 z-[99999] flex items-center gap-2.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 px-5 py-3 rounded-2xl shadow-2xl border border-teal-500/30 animate-slideUp backdrop-blur-md">
+          <CheckCircle size={18} className="text-teal-400 dark:text-teal-600 flex-shrink-0" />
+          <span className="text-xs font-semibold">Perfil de usuario actualizado correctamente</span>
+        </div>
+      )}
+
       {/* Encabezado Principal estilo Pacientes */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between animate-slideDown">
         <div>

@@ -563,7 +563,7 @@ export function HistoriaClinicaView() {
     <div className="space-y-6 text-slate-900 dark:text-slate-100 font-sans">
       {/* Toast Notificación */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 px-5 py-3 rounded-2xl shadow-2xl border border-cyan-500/30 animate-slideUp">
+        <div className="fixed bottom-6 right-6 z-[99999] flex items-center gap-3 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 px-5 py-3 rounded-2xl shadow-2xl border border-cyan-500/30 animate-slideUp">
           <CheckCircle2 size={18} className="text-cyan-400 dark:text-cyan-600 shrink-0" />
           <span className="text-xs font-semibold">{toastMessage}</span>
         </div>
@@ -571,7 +571,7 @@ export function HistoriaClinicaView() {
 
       {/* Toast Error Notificación */}
       {errorMessage && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-rose-950/95 text-rose-200 px-5 py-3.5 rounded-2xl shadow-2xl border border-rose-500/40 animate-slideUp">
+        <div className="fixed bottom-6 right-6 z-[99999] flex items-center gap-3 bg-rose-950/95 text-rose-200 px-5 py-3.5 rounded-2xl shadow-2xl border border-rose-500/40 animate-slideUp">
           <AlertCircle size={18} className="text-rose-400 shrink-0" />
           <span className="text-xs font-semibold">{errorMessage}</span>
         </div>
