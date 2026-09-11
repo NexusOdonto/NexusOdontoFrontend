@@ -136,15 +136,30 @@ const KNOWN_LID_MAP: Record<string, { phone: string; name: string }> = {
   "12696040816707": { phone: "+57 316 126 9604", name: "Jerson R" },
 };
 
+/** Agrupa dígitos para lectura (ej. 997968123456 → 9979 6812 3456). */
+function formatDigitGroups(digits: string): string {
+  if (digits.length <= 4) return digits;
+  const parts: string[] = [];
+  let i = 0;
+  const first = digits.length % 4 || 4;
+  parts.push(digits.slice(0, first));
+  i = first;
+  while (i < digits.length) {
+    parts.push(digits.slice(i, i + 4));
+    i += 4;
+  }
+  return parts.join(" ");
+}
+
 // Función utilitaria para formatear números de teléfono y JIDs de WhatsApp
 function formatPhone(identifier: string, patientPhone?: string): string {
   const raw = patientPhone || identifier || "";
-  if (!raw) return "WhatsApp";
+  if (!raw) return "Sin número";
 
   const cleanedDomain = raw.replace(/@.*$/, "").trim();
   const digitsOnly = cleanedDomain.replace(/\D/g, "");
 
-  if (!digitsOnly) return cleanedDomain;
+  if (!digitsOnly) return cleanedDomain || "Sin número";
 
   // Si es un LID conocido de pruebas en Evolution API
   if (KNOWN_LID_MAP[digitsOnly]) {
@@ -179,9 +194,9 @@ function formatPhone(identifier: string, patientPhone?: string): string {
     return `+${digitsOnly.slice(0, 3)} ${digitsOnly.slice(3, 7)} ${digitsOnly.slice(7)}`;
   }
 
-  // Si tiene más de 12 dígitos o proviene de un @lid interno de WhatsApp
+  // LID / identificador largo: mostrar dígitos del chatIdentifier, nunca "WhatsApp (...)"
   if (digitsOnly.length > 12 || raw.includes("@lid")) {
-    return `WhatsApp (${digitsOnly.slice(-6)})`;
+    return formatDigitGroups(digitsOnly);
   }
 
   return `+${digitsOnly}`;
@@ -234,14 +249,30 @@ function formatTicketSummary(summary?: string, reason?: string): string {
 
 function getAvatarText(name: string): string {
   if (!name) return "WA";
-  if (name.startsWith("+") || /^\d/.test(name)) {
+  const trimmed = name.trim();
+  const digits = trimmed.replace(/\D/g, "");
+  // Teléfono / identificador numérico → ícono de teléfono (no iniciales tipo "W(")
+  if (
+    trimmed.startsWith("+") ||
+    /^\d/.test(trimmed) ||
+    digits.length >= 6 ||
+    /^whatsapp/i.test(trimmed) ||
+    /^sin número$/i.test(trimmed)
+  ) {
     return "WA";
   }
-  const parts = name.trim().split(" ");
+  const parts = trimmed.split(/\s+/).filter(Boolean);
   if (parts.length >= 2) {
-    return (parts[0][0] + parts[1][0]).toUpperCase();
+    const a = parts[0][0] || "";
+    const b = parts[1][0] || "";
+    if (/[a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(a) && /[a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(b)) {
+      return (a + b).toUpperCase();
+    }
   }
-  return name.slice(0, 2).toUpperCase();
+  const letters = trimmed.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ]/g, "");
+  if (letters.length >= 2) return letters.slice(0, 2).toUpperCase();
+  if (letters.length === 1) return (letters + letters).toUpperCase();
+  return "WA";
 }
 
 function isUserMessage(roleIdStr?: string): boolean {
@@ -453,13 +484,16 @@ export function AtencionAsesorView() {
             stCode = "ACTIVA";
           }
 
-          const formattedPhone = formatPhone(c.chatIdentifier, matchedPatient?.phone || matchedPatient?.emergencyPhone);
+          const formattedPhone = formatPhone(
+            c.chatIdentifier,
+            matchedPatient?.phone || matchedPatient?.emergencyPhone || mappedLid?.phone
+          );
 
-          const pName = matchedPatient
+          // Preferir nombre del paciente; si no hay, nombre LID conocido; si no, teléfono legible
+          const patientFullName = matchedPatient
             ? `${matchedPatient.firstName || ""} ${matchedPatient.lastName || ""}`.trim()
-            : mappedLid?.name
-            ? mappedLid.name
-            : formattedPhone;
+            : "";
+          const pName = patientFullName || mappedLid?.name || formattedPhone;
 
           const cleanSummary = formatTicketSummary(matchedTicket?.chatbotSummary, matchedTicket?.title);
 
