@@ -4,6 +4,8 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
   MessageSquare,
+  ArrowLeft,
+  Info,
   Send,
   User,
   Bot,
@@ -271,6 +273,7 @@ export function AtencionAsesorView() {
 
   const [chats, setChats] = useState<ChatItemDisplay[]>([]);
   const [selectedChatId, setSelectedChatId] = useState<string>("");
+  const [showContactInfo, setShowContactInfo] = useState<boolean>(false);
   const [messages, setMessages] = useState<ChatbotMessage[]>([]);
   const [inputText, setInputText] = useState("");
   const [filterTab, setFilterTab] = useState<"ESCALADAS" | "ATENDIDAS" | "BOT" | "TODAS">("TODAS");
@@ -838,7 +841,7 @@ export function AtencionAsesorView() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-5rem)] max-h-[920px] bg-white dark:bg-slate-900/95 text-slate-900 dark:text-slate-100 rounded-3xl border border-slate-200/80 dark:border-slate-800/80 shadow-2xl overflow-hidden font-sans backdrop-blur-2xl relative transition-colors duration-200">
+    <div className="flex flex-col h-[calc(100vh-4.5rem)] sm:h-[calc(100vh-5rem)] max-h-[960px] bg-white dark:bg-slate-900/95 text-slate-900 dark:text-slate-100 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800/80 shadow-2xl overflow-hidden font-sans backdrop-blur-2xl relative transition-colors duration-200">
       
       {/* TOAST DE NOTIFICACIÓN FLOTANTE */}
       {toastMessage && (
@@ -861,7 +864,7 @@ export function AtencionAsesorView() {
       )}
 
       {/* BARRA SUPERIOR DEL MÓDULO */}
-      <header className="px-6 py-4 bg-slate-50/90 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200/80 dark:border-white/10 flex items-center justify-between flex-shrink-0">
+      <header className={`px-4 sm:px-6 py-3.5 sm:py-4 bg-slate-50/90 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200/80 dark:border-white/10 items-center justify-between flex-shrink-0 ${selectedChatId ? "hidden md:flex" : "flex"}`}>
         <div className="flex items-center gap-4">
           <div className="p-3 rounded-2xl bg-gradient-to-br from-emerald-500/20 via-teal-500/20 to-cyan-500/20 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 shadow-lg shadow-emerald-500/10">
             <MessageSquare size={22} />
@@ -1042,7 +1045,7 @@ export function AtencionAsesorView() {
         <div className="flex-1 flex min-h-0 divide-x divide-slate-200/80 dark:divide-white/10">
         
         {/* COLUMNA 1: LISTA LATERAL DE CONVERSACIONES Y FILTROS */}
-        <aside className="w-80 sm:w-96 flex flex-col bg-slate-50/60 dark:bg-slate-950/40 flex-shrink-0">
+        <aside className={`w-full md:w-80 lg:w-96 flex flex-col bg-slate-50/60 dark:bg-slate-950/40 flex-shrink-0 min-h-0 ${selectedChatId ? "hidden md:flex" : "flex"}`}>
           
           <div className="p-4 space-y-3 border-b border-slate-200/80 dark:border-white/10 bg-slate-100/50 dark:bg-slate-900/40">
             <div className="relative">
@@ -1246,58 +1249,79 @@ export function AtencionAsesorView() {
         </aside>
 
         {/* COLUMNA 2: ÁREA DE CHAT Y MENSAJERÍA EN VIVO */}
-        <main className="flex-1 flex flex-col bg-white dark:bg-slate-900/60 min-w-0 relative">
+        <main className={`flex-1 flex flex-col bg-white dark:bg-slate-900/60 min-w-0 relative ${!selectedChatId ? "hidden md:flex" : "flex"}`}>
           {selectedChat ? (
             <>
-              <div className="p-3.5 px-6 border-b border-slate-200/80 dark:border-white/10 bg-slate-50/90 dark:bg-slate-950/80 backdrop-blur-md flex items-center justify-between flex-shrink-0">
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-teal-500 to-cyan-500 text-white font-black text-sm flex items-center justify-center shadow-md shrink-0">
-                    {getAvatarText(selectedChat.patientName) === "WA" ? (
-                      <Phone size={18} className="text-white" />
-                    ) : (
-                      getAvatarText(selectedChat.patientName)
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 truncate">
-                      <span>{selectedChat.patientName}</span>
-                      {selectedChat.patientName !== selectedChat.phone && (
-                        <span className="text-xs font-mono font-normal text-slate-500 dark:text-slate-400">
-                          ({selectedChat.phone})
-                        </span>
+              <div className="p-3 sm:p-3.5 px-3 sm:px-6 border-b border-slate-200/80 dark:border-white/10 bg-slate-50/90 dark:bg-slate-950/80 backdrop-blur-md flex items-center justify-between flex-shrink-0 gap-2">
+                <div className="flex items-center gap-2 sm:gap-3.5 min-w-0">
+                  {/* BOTÓN VOLVER (ESTILO WHATSAPP EN MÓVIL) */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedChatId("");
+                      setShowContactInfo(false);
+                    }}
+                    className="md:hidden -ml-1 p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-200/80 dark:hover:bg-slate-800 transition-all cursor-pointer flex items-center justify-center shrink-0 active:scale-90"
+                    title="Volver a la lista de chats"
+                    aria-label="Volver a chats"
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
+
+                  {/* AVATAR Y NOMBRE DEL CONTACTO (Click abre Ficha en Móvil/Tablet) */}
+                  <div
+                    onClick={() => setShowContactInfo(true)}
+                    className="flex items-center gap-2.5 sm:gap-3.5 min-w-0 cursor-pointer xl:cursor-default group"
+                    title="Ver detalles del contacto"
+                  >
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-teal-500 to-cyan-500 text-white font-black text-xs sm:text-sm flex items-center justify-center shadow-md shrink-0 group-hover:scale-105 transition-transform">
+                      {getAvatarText(selectedChat.patientName) === "WA" ? (
+                        <Phone size={18} className="text-white" />
+                      ) : (
+                        getAvatarText(selectedChat.patientName)
                       )}
-                    </h2>
-                    <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
-                      <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                        WhatsApp Corporativo
-                      </span>
-                      <span>•</span>
-                      <span>
-                        Estado:{" "}
-                        <strong className="text-slate-800 dark:text-slate-200">
-                          {selectedChat.status === "ESCALADA"
-                            ? "Esperando Respuesta Humana"
-                            : selectedChat.status === "ATENDIDA_HUMANO"
-                            ? "En Atención por Recepción"
-                            : selectedChat.status === "ACTIVA"
-                            ? "Atendiendo por NexusBot"
-                            : "Caso Cerrado"}
-                        </strong>
-                      </span>
+                    </div>
+                    <div className="min-w-0">
+                      <h2 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
+                        <span className="truncate">{selectedChat.patientName}</span>
+                        {selectedChat.patientName !== selectedChat.phone && (
+                          <span className="text-[11px] font-mono font-normal text-slate-500 dark:text-slate-400 hidden sm:inline truncate">
+                            ({selectedChat.phone})
+                          </span>
+                        )}
+                      </h2>
+                      <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                        <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium shrink-0">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                          <span className="hidden xs:inline">WhatsApp</span>
+                        </span>
+                        <span>•</span>
+                        <span className="truncate">
+                          <strong className="text-slate-800 dark:text-slate-200">
+                            {selectedChat.status === "ESCALADA"
+                              ? "Esperando Respuesta"
+                              : selectedChat.status === "ATENDIDA_HUMANO"
+                              ? "En Atención"
+                              : selectedChat.status === "ACTIVA"
+                              ? "NexusBot"
+                              : "Cerrado"}
+                          </strong>
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                   {selectedChat.status !== "ATENDIDA_HUMANO" && (
                     <button
                       type="button"
                       onClick={() => handleUpdateStatus("ATENDIDA_HUMANO")}
-                      className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                      className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] sm:text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-1 sm:gap-1.5 cursor-pointer"
+                      title="Tomar el caso para atención por asesor"
                     >
                       <UserCheck size={14} />
-                      <span>Tomar Caso</span>
+                      <span className="hidden sm:inline">Tomar Caso</span>
                     </button>
                   )}
 
@@ -1305,10 +1329,11 @@ export function AtencionAsesorView() {
                     <button
                       type="button"
                       onClick={() => handleUpdateStatus("ACTIVA")}
-                      className="px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                      className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] sm:text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-1 sm:gap-1.5 cursor-pointer"
+                      title="Devolver al asistente virtual NexusBot"
                     >
                       <Bot size={14} />
-                      <span>Devolver a Bot</span>
+                      <span className="hidden sm:inline">Devolver a Bot</span>
                     </button>
                   )}
 
@@ -1316,12 +1341,23 @@ export function AtencionAsesorView() {
                     <button
                       type="button"
                       onClick={() => handleUpdateStatus("CERRADA")}
-                      className="px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-rose-500 hover:text-white border border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95"
+                      className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-rose-500 hover:text-white border border-slate-300 dark:border-white/10 text-slate-700 dark:text-slate-300 text-[11px] sm:text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 sm:gap-1.5 shadow-sm active:scale-95"
+                      title="Cerrar caso"
                     >
                       <CheckCircle2 size={14} />
-                      <span>Cerrar Caso</span>
+                      <span className="hidden sm:inline">Cerrar</span>
                     </button>
                   )}
+
+                  {/* BOTÓN INFO EN MÓVIL Y TABLET */}
+                  <button
+                    type="button"
+                    onClick={() => setShowContactInfo(!showContactInfo)}
+                    className="xl:hidden p-1.5 sm:p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-white/10 transition-all cursor-pointer shadow-sm active:scale-95"
+                    title="Ver ficha y acciones clínicas"
+                  >
+                    <Info size={16} />
+                  </button>
                 </div>
               </div>
 
@@ -1497,7 +1533,7 @@ export function AtencionAsesorView() {
         </main>
 
         {/* COLUMNA 3: FICHA RÁPIDA DEL PACIENTE Y CONTEXTO */}
-        <aside className="w-72 sm:w-80 border-l border-slate-200/80 dark:border-white/10 bg-slate-50/60 dark:bg-slate-950/40 p-4 space-y-4 overflow-y-auto hidden lg:block flex-shrink-0">
+        <aside className="w-72 sm:w-80 border-l border-slate-200/80 dark:border-white/10 bg-slate-50/60 dark:bg-slate-950/40 p-4 space-y-4 overflow-y-auto hidden xl:block flex-shrink-0">
           {selectedChat ? (
             <>
               <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/10 shadow-md space-y-3">
@@ -1604,6 +1640,134 @@ export function AtencionAsesorView() {
             </div>
           )}
         </aside>
+        {/* DRAWER MÓVIL/TABLET PARA CONTACTO / ACCIONES CLÍNICAS (ESTILO WHATSAPP) */}
+        {showContactInfo && selectedChat && (
+          <div className="fixed inset-0 z-50 xl:hidden flex justify-end bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-200">
+            <div className="w-full max-w-sm h-full bg-white dark:bg-slate-900 border-l border-slate-200/80 dark:border-white/10 p-5 space-y-4 overflow-y-auto shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200/80 dark:border-white/10 shrink-0">
+                <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                  <User size={15} className="text-teal-500" />
+                  Detalles y Acciones Clínicas
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowContactInfo(false)}
+                  className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors cursor-pointer"
+                  aria-label="Cerrar detalles"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              
+          {selectedChat ? (
+            <>
+              <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/10 shadow-md space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-teal-500/15 border border-teal-500/30 text-teal-600 dark:text-teal-400 font-black text-sm flex items-center justify-center shadow-inner">
+                    {getAvatarText(selectedChat.patientName) === "WA" ? (
+                      <Phone size={20} className="text-teal-600 dark:text-teal-400" />
+                    ) : (
+                      getAvatarText(selectedChat.patientName)
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                      {selectedChat.patientName}
+                    </h3>
+                    {selectedChat.patientName !== selectedChat.phone ? (
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                        {selectedChat.phone}
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-teal-600 dark:text-teal-400 font-semibold truncate">
+                        Contacto WhatsApp
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-200/80 dark:border-white/10 space-y-2 text-xs">
+                  <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+                    <span>Canal:</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      WhatsApp Oficial
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+                    <span>ID Conversación:</span>
+                    <span className="font-mono text-[10px] text-slate-600 dark:text-slate-300">
+                      {selectedChat.id.slice(0, 8)}...
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {selectedChat.ticket && (
+                <div className="p-4 rounded-2xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 shadow-md space-y-2.5">
+                  <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300 font-extrabold text-xs">
+                    <Sparkles size={16} />
+                    <span>Motivo de Escalamiento</span>
+                  </div>
+                  <p className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed">
+                    {formatTicketSummary(selectedChat.ticket?.chatbotSummary, selectedChat.reason)}
+                  </p>
+                  {selectedChat.ticket.ragConfidence !== undefined && selectedChat.ticket.ragConfidence > 0 && (
+                    <div className="pt-2 border-t border-amber-500/20 space-y-1">
+                      <div className="flex items-center justify-between text-[11px] text-amber-800 dark:text-amber-300 font-semibold">
+                        <span>Confianza del Bot:</span>
+                        <span>{Math.round(selectedChat.ticket.ragConfidence * 100)}%</span>
+                      </div>
+                      <div className="w-full bg-slate-200 dark:bg-slate-950 rounded-full h-1.5 overflow-hidden border border-slate-300 dark:border-white/10">
+                        <div
+                          className="bg-amber-500 h-full rounded-full transition-all duration-500"
+                          style={{ width: `${Math.round(selectedChat.ticket.ragConfidence * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="space-y-2 pt-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 px-1">
+                  Acciones Clínicas
+                </span>
+                
+                <button
+                  type="button"
+                  onClick={() => navigate("/agenda")}
+                  className="w-full p-3 rounded-xl bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-white/10 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-all cursor-pointer flex items-center justify-between group shadow-sm"
+                >
+                  <div className="flex items-center gap-2">
+                    <Calendar size={15} className="text-teal-600 dark:text-teal-400" />
+                    <span>Agendar Cita en Agenda</span>
+                  </div>
+                  <ChevronRight size={14} className="text-slate-400 group-hover:translate-x-1 transition-transform" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => navigate("/pacientes")}
+                  className="w-full p-3 rounded-xl bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-white/10 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-all cursor-pointer flex items-center justify-between group shadow-sm"
+                >
+                  <div className="flex items-center gap-2">
+                    <User size={15} className="text-cyan-600 dark:text-cyan-400" />
+                    <span>Ver Ficha de Pacientes</span>
+                  </div>
+                  <ChevronRight size={14} className="text-slate-400 group-hover:translate-x-1 transition-transform" />
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="p-6 text-center text-slate-400 dark:text-slate-500 text-xs my-auto">
+              Selecciona una conversación para cargar su contexto clínico.
+            </div>
+          )}
+        
+            </div>
+          </div>
+        )}
       </div>
       )}
 
