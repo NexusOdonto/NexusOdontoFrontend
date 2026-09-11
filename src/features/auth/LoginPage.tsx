@@ -24,7 +24,6 @@ export default function LoginPage() {
 
   const isAlreadyAuth = Boolean(isAuthenticated && !isLoading);
 
-  // Redirección inmediata si ya hay sesión activa
   useEffect(() => {
     if (isAlreadyAuth) {
       navigate('/dashboard', { replace: true });
@@ -33,12 +32,31 @@ export default function LoginPage() {
 
   useEffect(() => {
     const errorParam = searchParams.get('error');
+
     if (errorParam) {
       setError(decodeURIComponent(errorParam));
     }
   }, [searchParams]);
 
-  // Si ya tiene sesión activa validada, no renderizar el formulario
+  useEffect(() => {
+    const originalHtmlOverflow = document.documentElement.style.overflow;
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalHtmlOverflowX = document.documentElement.style.overflowX;
+    const originalBodyOverflowX = document.body.style.overflowX;
+
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflowX = 'hidden';
+    document.body.style.overflowX = 'hidden';
+
+    return () => {
+      document.documentElement.style.overflow = originalHtmlOverflow;
+      document.body.style.overflow = originalBodyOverflow;
+      document.documentElement.style.overflowX = originalHtmlOverflowX;
+      document.body.style.overflowX = originalBodyOverflowX;
+    };
+  }, []);
+
   if (isAlreadyAuth) {
     return null;
   }
@@ -54,32 +72,39 @@ export default function LoginPage() {
       setError('Por favor ingresa tu cédula o correo y tu contraseña.');
       return;
     }
-    
+
     setIsSubmitting(true);
+
     try {
       const result = await login(cleanIdentifier, cleanPassword);
-      
+
       if (result.success) {
         navigate('/dashboard', { replace: true });
       } else {
-        setError(result.error || 'Credenciales incorrectas. Por favor intenta nuevamente.');
+        setError(
+          result.error ||
+            'Credenciales incorrectas. Por favor intenta nuevamente.'
+        );
       }
     } catch (err: any) {
-      setError(err?.message || 'Error inesperado al conectar con el servidor.');
+      setError(
+        err?.message ||
+          'Error inesperado al conectar con el servidor.'
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const backgroundImage = theme === 'dark' ? fondoLoginDark : fondoLoginLight;
+  const backgroundImage =
+    theme === 'dark' ? fondoLoginDark : fondoLoginLight;
 
   return (
-    <main 
+    <main
       role="main"
-      className="relative min-h-screen w-full flex items-center justify-center bg-cover bg-center bg-no-repeat overflow-hidden p-4"
+      className="relative w-full h-screen max-h-screen min-h-0 flex items-center justify-center bg-cover bg-center bg-no-repeat overflow-hidden p-4 max-md:h-dvh max-md:max-h-dvh max-md:min-h-0"
       style={{ backgroundImage: `url(${backgroundImage})` }}
     >
-      {/* Botón flotante para regresar a la Landing Page */}
       <button
         type="button"
         onClick={() => navigate('/')}
@@ -89,19 +114,12 @@ export default function LoginPage() {
         <span>Volver a la Página Principal</span>
       </button>
 
-      {/* Container with interactive hover effect */}
       <div className="relative w-full max-w-md mx-auto group transition-all duration-500 hover:-translate-y-1.5">
-        
-        {/* Capa Trasera 1 - Fondo lejano */}
         <div className="absolute -inset-4 rotate-[-4deg] rounded-3xl bg-teal-500/10 backdrop-blur-sm border border-teal-400/20 shadow-xl pointer-events-none transition-all duration-500 ease-out group-hover:-inset-7 group-hover:rotate-[-10deg] group-hover:scale-105 group-hover:bg-teal-500/20" />
-        
-        {/* Capa Trasera 2 - Capa media */}
+
         <div className="absolute -inset-2 rotate-3deg rounded-3xl bg-slate-200/40 dark:bg-slate-900/30 backdrop-blur-md border border-cyan-400/20 shadow-2xl pointer-events-none transition-all duration-500 ease-out group-hover:-inset-5 group-hover:rotate-[8deg] group-hover:scale-105 group-hover:bg-slate-200/70 dark:group-hover:bg-slate-900/60" />
-        
-        {/* Tarjeta Principal */}
+
         <div className="relative z-10 w-full p-8 md:p-10 rounded-3xl backdrop-blur-xl border transition-all duration-500 ease-out flex flex-col gap-6 group-hover:scale-[1.02] group-hover:-translate-y-1 bg-white/85 border-slate-200/80 text-slate-800 shadow-2xl dark:bg-slate-900/80 dark:border-slate-800/80 dark:text-white">
-          
-          {/* Logo oficial corporativo */}
           <div className="flex justify-center select-none -mb-2">
             <img
               src={logoNexus}
@@ -110,21 +128,29 @@ export default function LoginPage() {
             />
           </div>
 
-          {/* Title with gradient */}
           <h1 className="bg-gradient-to-r from-slate-900 via-slate-800 to-teal-600 dark:from-white dark:via-slate-100 dark:to-teal-300 bg-clip-text text-transparent font-extrabold text-3xl tracking-tight text-center transition-all duration-300 hover:scale-105 cursor-default select-none">
             Bienvenido
           </h1>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} noValidate className="space-y-4">
+          <form
+            onSubmit={handleSubmit}
+            noValidate
+            className="space-y-4"
+          >
             {error && (
-              <div className="flex items-center gap-2.5 p-3.5 bg-rose-500/15 border border-rose-500/40 rounded-2xl text-rose-700 dark:text-rose-200 text-xs sm:text-sm font-semibold animate-fadeIn shadow-lg shadow-rose-950/10" role="alert">
-                <AlertCircle size={18} className="text-rose-500 dark:text-rose-400 shrink-0" />
+              <div
+                className="flex items-center gap-2.5 p-3.5 bg-rose-500/15 border border-rose-500/40 rounded-2xl text-rose-700 dark:text-rose-200 text-xs sm:text-sm font-semibold animate-fadeIn shadow-lg shadow-rose-950/10"
+                role="alert"
+              >
+                <AlertCircle
+                  size={18}
+                  className="text-rose-500 dark:text-rose-400 shrink-0"
+                />
+
                 <span>{error}</span>
               </div>
             )}
 
-            {/* Email or Document Input */}
             <LoginInput
               type="text"
               name="identifier"
@@ -133,7 +159,6 @@ export default function LoginPage() {
               onChange={(e) => setIdentifier(e.target.value)}
             />
 
-            {/* Password Input with visibility toggle */}
             <LoginInput
               type="password"
               name="password"
@@ -141,12 +166,13 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               showPassword={showPassword}
-              onTogglePassword={() => setShowPassword(!showPassword)}
+              onTogglePassword={() =>
+                setShowPassword(!showPassword)
+              }
             />
 
-            {/* Forgot Password Link */}
             <div className="text-right">
-              <button 
+              <button
                 type="button"
                 onClick={() => setShowForgotPasswordModal(true)}
                 className="text-xs text-slate-500 hover:text-teal-600 dark:text-slate-400 dark:hover:text-teal-300 transition-colors py-1 px-1 inline-block bg-transparent border-none cursor-pointer"
@@ -155,8 +181,10 @@ export default function LoginPage() {
               </button>
             </div>
 
-            {/* Submit Button */}
-            <LoginButton type="submit" disabled={isSubmitting}>
+            <LoginButton
+              type="submit"
+              disabled={isSubmitting}
+            >
               {isSubmitting ? (
                 <span className="inline-flex items-center gap-2">
                   <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-slate-950 border-t-transparent" />
@@ -168,26 +196,25 @@ export default function LoginPage() {
             </LoginButton>
           </form>
 
-          {/* Separador Visual */}
           <div className="relative flex items-center justify-center my-1">
             <div className="border-t border-slate-200 dark:border-slate-700/80 w-full" />
+
             <span className="bg-white dark:bg-slate-900 px-3 text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider whitespace-nowrap">
               O continúa con
             </span>
+
             <div className="border-t border-slate-200 dark:border-slate-700/80 w-full" />
           </div>
 
-          {/* Botón de Google OAuth */}
-          <GoogleAuthButton 
-            text="Continuar con Google" 
-            onError={(msg) => setError(msg)} 
+          <GoogleAuthButton
+            text="Continuar con Google"
+            onError={(msg) => setError(msg)}
           />
 
-          {/* Sign up link */}
           <div className="text-center pt-1">
             <p className="text-sm text-slate-600 dark:text-slate-300">
               ¿No tienes cuenta?{' '}
-              <button 
+              <button
                 type="button"
                 onClick={() => navigate('/register')}
                 className="text-teal-600 hover:text-teal-700 dark:text-teal-300 dark:hover:text-teal-200 hover:underline font-medium transition-colors py-1 px-1 bg-transparent border-none cursor-pointer inline-block"
@@ -199,15 +226,19 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Modal de Recuperación de Contraseña (BUG-26) */}
       {showForgotPasswordModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 animate-fadeIn">
           <div className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-2xl animate-scaleIn space-y-5 text-slate-900 dark:text-slate-100">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <h3 className="font-bold text-base sm:text-lg">Recuperar Acceso a tu Cuenta</h3>
+              <h3 className="font-bold text-base sm:text-lg">
+                Recuperar Acceso a tu Cuenta
+              </h3>
+
               <button
                 type="button"
-                onClick={() => setShowForgotPasswordModal(false)}
+                onClick={() =>
+                  setShowForgotPasswordModal(false)
+                }
                 className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white"
               >
                 ✕
@@ -216,16 +247,31 @@ export default function LoginPage() {
 
             <div className="space-y-3 text-xs sm:text-sm text-slate-600 dark:text-slate-300">
               <p className="leading-relaxed">
-                Por políticas de seguridad clínica y protección de datos médicos, el restablecimiento de contraseñas se gestiona a través del administrador del sistema o recepción.
+                Por políticas de seguridad clínica y protección de
+                datos médicos, el restablecimiento de contraseñas se
+                gestiona a través del administrador del sistema o
+                recepción.
               </p>
+
               <div className="p-4 rounded-2xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800/50 space-y-2">
-                <p className="font-semibold text-teal-800 dark:text-teal-200">Canales de Atención:</p>
-                <p className="text-xs">
-                  📧 Correo: <span className="font-mono font-bold text-teal-700 dark:text-teal-300">soporte@nexusodonto.com</span>
+                <p className="font-semibold text-teal-800 dark:text-teal-200">
+                  Canales de Atención:
                 </p>
+
                 <p className="text-xs">
-                  📞 Teléfono: <span className="font-semibold text-teal-700 dark:text-teal-300">+57 (601) 745-9000</span>
+                  📧 Correo:{' '}
+                  <span className="font-mono font-bold text-teal-700 dark:text-teal-300">
+                    soporte@nexusodonto.com
+                  </span>
                 </p>
+
+                <p className="text-xs">
+                  📞 Teléfono:{' '}
+                  <span className="font-semibold text-teal-700 dark:text-teal-300">
+                    +57 (601) 745-9000
+                  </span>
+                </p>
+
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   Horario: Lunes a Sábado de 08:00 AM a 06:00 PM.
                 </p>
@@ -235,7 +281,9 @@ export default function LoginPage() {
             <div className="pt-2 flex justify-end">
               <button
                 type="button"
-                onClick={() => setShowForgotPasswordModal(false)}
+                onClick={() =>
+                  setShowForgotPasswordModal(false)
+                }
                 className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 text-slate-950 font-bold text-xs shadow-md transition-transform active:scale-95 cursor-pointer"
               >
                 Entendido
