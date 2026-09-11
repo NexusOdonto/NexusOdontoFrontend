@@ -244,9 +244,16 @@ export const chatbotService = {
     return response.data;
   },
 
-  // Resolver ticket y devolver la conversación al bot (reactiva el bot en FastAPI)
-  resolveTicket: async (ticketId: string, resolution?: string): Promise<any> => {
-    const response = await axiosClient.post(`/v1/SupportTickets/${ticketId}/resolve`, { resolution });
+  // Resolver ticket. returnToBot=true reabre conversación (ACTIVA); false la deja CERRADA.
+  resolveTicket: async (
+    ticketId: string,
+    resolution?: string,
+    returnToBot: boolean = true
+  ): Promise<any> => {
+    const response = await axiosClient.post(`/v1/SupportTickets/${ticketId}/resolve`, {
+      resolution,
+      returnToBot,
+    });
     return response.data;
   },
 

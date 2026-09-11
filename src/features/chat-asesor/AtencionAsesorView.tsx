@@ -37,6 +37,14 @@ import {
 import type { ChatbotMessage, SupportTicket } from "../../api/chatbotService";
 import { patientService } from "../../api/patientService";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
+import { areGuidsEqual } from "../../utils/roleUtils";
+
+const GUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isValidGuid(id?: string | null): boolean {
+  return !!id && GUID_RE.test(id.trim());
+}
 
 interface ChatItemDisplay {
   id: string;
@@ -351,8 +359,12 @@ export function AtencionAsesorView() {
   const readSetRef = useRef<Set<string>>(new Set());
   const [unreadMap, setUnreadMap] = useState<Record<string, number>>({});
   const lastMsgCountRef = useRef<Record<string, number>>({});
+  const chatsRef = useRef<ChatItemDisplay[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  /** When false, user scrolled up to read history — do not yank them to bottom on poll. */
+  const stickToBottomRef = useRef(true);
 
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
@@ -374,9 +386,21 @@ export function AtencionAsesorView() {
     setTimeout(() => setToastErrorMessage(null), 5000);
   }, []);
 
-  const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const isNearBottom = useCallback((thresholdPx = 120) => {
+    const el = messagesContainerRef.current;
+    if (!el) return true;
+    return el.scrollHeight - el.scrollTop - el.clientHeight <= thresholdPx;
   }, []);
+
+  const scrollToBottom = useCallback((force = false) => {
+    if (!force && !stickToBottomRef.current && !isNearBottom()) return;
+    stickToBottomRef.current = true;
+    messagesEndRef.current?.scrollIntoView({ behavior: force ? "auto" : "smooth" });
+  }, [isNearBottom]);
+
+  const handleMessagesScroll = useCallback(() => {
+    stickToBottomRef.current = isNearBottom(120);
+  }, [isNearBottom]);
 
   const loadData = useCallback(async (isSilent = false) => {
     if (!isSilent) setLoadingChats(true);
@@ -411,17 +435,17 @@ export function AtencionAsesorView() {
 
           const isTicketPending =
             matchedTicket &&
-            matchedTicket.ticketStatusId !== TICKET_STATUS_IDS.CERRADO &&
-            matchedTicket.ticketStatusId !== TICKET_STATUS_IDS.RESUELTO;
+            !areGuidsEqual(matchedTicket.ticketStatusId, TICKET_STATUS_IDS.CERRADO) &&
+            !areGuidsEqual(matchedTicket.ticketStatusId, TICKET_STATUS_IDS.RESUELTO);
 
           let stCode: ChatItemDisplay["status"] = "ACTIVA";
-          if (c.conversationStatusId === CONVERSATION_STATUS_IDS.CERRADA) {
+          if (areGuidsEqual(c.conversationStatusId, CONVERSATION_STATUS_IDS.CERRADA)) {
             stCode = "CERRADA";
-          } else if (c.conversationStatusId === CONVERSATION_STATUS_IDS.ATENDIDA_HUMANO) {
+          } else if (areGuidsEqual(c.conversationStatusId, CONVERSATION_STATUS_IDS.ATENDIDA_HUMANO)) {
             stCode = "ATENDIDA_HUMANO";
           } else if (isTicketPending) {
             stCode = "ESCALADA";
-          } else if (c.conversationStatusId === CONVERSATION_STATUS_IDS.ESCALADA) {
+          } else if (areGuidsEqual(c.conversationStatusId, CONVERSATION_STATUS_IDS.ESCALADA)) {
             stCode = isTicketPending ? "ESCALADA" : "ACTIVA";
           } else {
             stCode = "ACTIVA";
@@ -532,6 +556,10 @@ export function AtencionAsesorView() {
     loadData();
   }, [loadData]);
 
+  useEffect(() => {
+    chatsRef.current = chats;
+  }, [chats]);
+
   const loadMessages = useCallback(async (convId: string, isSilent = false) => {
     if (!convId) {
       setMessages([]);
@@ -539,10 +567,13 @@ export function AtencionAsesorView() {
     }
     if (!isSilent) setLoadingMessages(true);
     try {
-      const currentChat = chats.find((c) => c.id === convId || c.allConversationIds?.includes(convId));
-      const targetIds = currentChat?.allConversationIds && currentChat.allConversationIds.length > 0
-        ? currentChat.allConversationIds
-        : [convId];
+      const currentChat = chatsRef.current.find(
+        (c) => c.id === convId || c.allConversationIds?.includes(convId)
+      );
+      const targetIds =
+        currentChat?.allConversationIds && currentChat.allConversationIds.length > 0
+          ? currentChat.allConversationIds
+          : [convId];
 
       const allResults = await Promise.all(
         targetIds.map((id: string) => chatbotService.getConversationMessages(id).catch(() => []))
@@ -581,12 +612,14 @@ export function AtencionAsesorView() {
       if (!isSilent) setMessages([]);
     } finally {
       if (!isSilent) setLoadingMessages(false);
-      setTimeout(scrollToBottom, 100);
+      // Initial open: always jump to latest. Silent poll: only if user is already near bottom.
+      setTimeout(() => scrollToBottom(!isSilent), 100);
     }
   }, [scrollToBottom, showToast]);
 
   useEffect(() => {
     if (selectedChatId) {
+      stickToBottomRef.current = true;
       readSetRef.current.add(selectedChatId);
       setUnreadMap((prev) => ({ ...prev, [selectedChatId]: 0 }));
       setChats((prev) =>
@@ -699,7 +732,7 @@ export function AtencionAsesorView() {
           ? "Mensaje enviado a WhatsApp haciéndose pasar por NexusBot (Camuflaje IA)."
           : "Mensaje enviado a WhatsApp como Asesor Humano de Recepción."
       );
-      setTimeout(scrollToBottom, 50);
+      setTimeout(() => scrollToBottom(true), 50);
     } catch (err: any) {
       console.error("Error al enviar mensaje:", err);
       const errMsg = err?.response?.data?.message || err?.message || "No se pudo entregar el mensaje. Error de conexión con el servidor.";
@@ -718,8 +751,15 @@ export function AtencionAsesorView() {
     else if (newStatus === "CERRADA") statusGuid = CONVERSATION_STATUS_IDS.CERRADA;
 
     const targetConvId = selectedChat.id;
+    const convIdsToUpdate =
+      selectedChat.allConversationIds && selectedChat.allConversationIds.length > 0
+        ? selectedChat.allConversationIds
+        : [targetConvId];
+    const previousStatus = selectedChat.status;
+    const previousTicket = selectedChat.ticket;
     readSetRef.current.add(targetConvId);
 
+    // Optimistic UI
     setChats((prev) =>
       prev.map((c) =>
         c.id === targetConvId
@@ -746,24 +786,38 @@ export function AtencionAsesorView() {
     }
 
     try {
-      await chatbotService.updateConversation(targetConvId, {
-        conversationStatusId: statusGuid,
-        patientId: selectedChat.patientId,
-        closedAt: newStatus === "CERRADA" ? new Date().toISOString() : undefined,
-      });
+      // Close/update every JID/LID twin so phone-grouped chats stay consistent.
+      await Promise.all(
+        convIdsToUpdate.map((id) =>
+          chatbotService.updateConversation(id, {
+            conversationStatusId: statusGuid,
+            patientId: selectedChat.patientId,
+            closedAt: newStatus === "CERRADA" ? new Date().toISOString() : undefined,
+          })
+        )
+      );
 
+      // "Devolver a Bot" resumes auto-replies. "Cerrar" must NOT call resume —
+      // FastAPI resume reopens the Oracle conversation as ACTIVA via obtener_o_crear_conversacion.
       if (newStatus === "ACTIVA") {
         await chatbotService.resumeConversation(selectedChat.chatIdentifier, false).catch(() => null);
-      } else if (newStatus === "CERRADA") {
-        await chatbotService.resumeConversation(selectedChat.chatIdentifier, true).catch(() => null);
       }
 
-      if (selectedChat.ticket) {
-        if (newStatus === "CERRADA" || newStatus === "ACTIVA") {
+      const ticketId = selectedChat.ticket?.id;
+      if (ticketId && isValidGuid(ticketId) && (newStatus === "CERRADA" || newStatus === "ACTIVA")) {
+        const returnToBot = newStatus === "ACTIVA";
+        try {
           await chatbotService.resolveTicket(
-            selectedChat.ticket.id,
-            newStatus === "ACTIVA" ? "Devuelto al bot para atención automática." : "Atendido y cerrado por recepcionista."
-          ).catch(() => null);
+            ticketId,
+            returnToBot
+              ? "Devuelto al bot para atención automática."
+              : "Atendido y cerrado por recepcionista.",
+            returnToBot
+          );
+        } catch (ticketErr) {
+          // Conversation status already persisted; ticket failure should not undo Cerrar in the UI.
+          if (newStatus !== "CERRADA") throw ticketErr;
+          console.warn("Ticket resolve failed after conversation close:", ticketErr);
         }
       }
 
@@ -774,12 +828,23 @@ export function AtencionAsesorView() {
           ? "Caso devuelto al bot NexusBot para respuestas automáticas."
           : "Caso resuelto y marcado como cerrado."
       );
-    } catch (err) {
+
+      // Refresh list so CERRADA sticks after silent poll
+      setTimeout(() => loadData(true), 200);
+    } catch (err: any) {
       console.warn("Could not update conversation status via API:", err);
-    } finally {
-      setTimeout(() => {
-        loadMessages(targetConvId);
-      }, 100);
+      setChats((prev) =>
+        prev.map((c) =>
+          c.id === targetConvId
+            ? { ...c, status: previousStatus, ticket: previousTicket }
+            : c
+        )
+      );
+      const errMsg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "No se pudo actualizar el estado del caso. Intenta de nuevo.";
+      showErrorToast(errMsg);
     }
   };
 
@@ -1305,7 +1370,11 @@ export function AtencionAsesorView() {
               </div>
 
               {/* LISTA DE MENSAJES DE LA CONVERSACIÓN */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-800 bg-slate-100/40 dark:bg-slate-950/40">
+              <div
+                ref={messagesContainerRef}
+                onScroll={handleMessagesScroll}
+                className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-800 bg-slate-100/40 dark:bg-slate-950/40"
+              >
                 {loadingMessages ? (
                   <div className="flex flex-col items-center justify-center h-full text-slate-400 space-y-3">
                     <RefreshCw size={20} className="animate-spin text-teal-500" />
