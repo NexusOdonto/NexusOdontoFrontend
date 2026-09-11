@@ -679,16 +679,16 @@ function OdontogramaUI() {
 
   return (
     <div className="space-y-6 text-slate-900 dark:text-slate-100 pb-8">
-      {/* Toasts (CAPA SUPERIOR ABSOLUTA z-[99999]) */}
+      {/* Toasts (CAPA SUPERIOR ABSOLUTA z-[99999] EN ESQUINA INFERIOR DERECHA) */}
       {successToast && (
-        <div className="fixed top-6 right-6 z-[99999] flex items-center gap-2.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 px-5 py-3.5 rounded-2xl shadow-2xl border border-teal-500/40 animate-scaleIn backdrop-blur-md">
+        <div className="fixed bottom-6 right-6 z-[99999] flex items-center gap-2.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 px-5 py-3.5 rounded-2xl shadow-2xl border border-teal-500/40 animate-slideUp backdrop-blur-md">
           <CheckCircle2 size={18} className="text-teal-400 dark:text-teal-600 flex-shrink-0" />
           <span className="text-xs font-semibold">{successToast}</span>
         </div>
       )}
 
       {errorToast && (
-        <div className="fixed top-6 right-6 z-[99999] flex items-center gap-2.5 bg-rose-950 text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-rose-500/50 animate-scaleIn backdrop-blur-md">
+        <div className="fixed bottom-6 right-6 z-[99999] flex items-center gap-2.5 bg-rose-950 text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-rose-500/50 animate-slideUp backdrop-blur-md">
           <AlertTriangle size={18} className="text-rose-400 flex-shrink-0" />
           <span className="text-xs font-semibold">{errorToast}</span>
         </div>
@@ -696,33 +696,33 @@ function OdontogramaUI() {
 
       {/* Encabezado Principal de Nivel Ejecutivo */}
       <div className="relative z-30 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between animate-slideDown">
-        <div>
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-slate-900 dark:text-white drop-shadow-sm">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-prata font-bold tracking-tight text-slate-900 dark:text-white whitespace-nowrap">
             Odontograma Interactivo FDI
           </h1>
-          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-1 font-medium max-w-2xl leading-relaxed">
+          <p className="text-xs sm:text-sm font-instrument text-slate-500 dark:text-slate-400 truncate mt-0.5">
             Registro visual anatómico de patologías, tratamientos y estado dental por superficie.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-start gap-3 flex-shrink-0">
           {/* Selector de Paciente en Cápsula de Cristal Personalizada */}
           <div ref={patientDropdownRef} className="relative z-40">
             <button
               type="button"
               onClick={() => setIsPatientDropdownOpen((prev) => !prev)}
-              className="flex items-center gap-3 px-4 py-2 bg-white/80 dark:bg-slate-900/70 hover:bg-white dark:hover:bg-slate-900/90 border border-slate-200/80 dark:border-white/10 hover:border-cyan-500/40 dark:hover:border-cyan-400/40 rounded-2xl backdrop-blur-2xl shadow-lg shadow-slate-900/5 dark:shadow-[0_12px_36px_rgba(0,0,0,0.5)] text-xs font-bold cursor-pointer transition-all active:scale-98 group"
+              className="flex items-center gap-3 px-4 py-2.5 bg-white/80 dark:bg-slate-900/70 hover:bg-white dark:hover:bg-slate-900/90 border border-slate-200/80 dark:border-white/10 hover:border-cyan-500/40 dark:hover:border-cyan-400/40 rounded-2xl backdrop-blur-2xl shadow-lg shadow-slate-900/5 dark:shadow-[0_12px_36px_rgba(0,0,0,0.5)] text-xs font-bold cursor-pointer transition-all active:scale-98 group h-[46px]"
               title="Cambiar paciente actual"
             >
-              <div className="h-8 w-8 rounded-xl bg-cyan-500/15 text-cyan-600 dark:text-cyan-300 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
-                <User size={16} />
+              <div className="h-7 w-7 rounded-xl bg-cyan-500/15 text-cyan-600 dark:text-cyan-300 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                <User size={15} />
               </div>
               <div className="flex flex-col text-left">
-                <span className="text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-400 font-bold leading-none mb-1">
+                <span className="text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-400 font-bold leading-none mb-0.5">
                   Paciente Actual
                 </span>
                 <div className="flex items-center gap-2">
-                  <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white leading-tight">
+                  <span className="font-bold text-xs text-slate-900 dark:text-white leading-tight">
                     {selectedPaciente?.nombre || "Seleccionar Paciente"}
                   </span>
                   <span className="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-white/10 px-1.5 py-0.5 rounded-md border border-slate-200/50 dark:border-white/10">
@@ -731,7 +731,7 @@ function OdontogramaUI() {
                 </div>
               </div>
               <ChevronDown
-                size={16}
+                size={15}
                 className={`text-slate-400 group-hover:text-cyan-400 transition-transform duration-200 ml-1.5 ${
                   isPatientDropdownOpen ? "rotate-180 text-cyan-500" : ""
                 }`}
@@ -754,14 +754,14 @@ function OdontogramaUI() {
                         setSelectedPaciente(pac);
                         setIsPatientDropdownOpen(false);
                       }}
-                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-left ${
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer text-left ${
                         isSelected
                           ? "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30"
                           : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5"
                       }`}
                     >
                       <div className="flex flex-col">
-                        <span className="font-black text-slate-900 dark:text-white">
+                        <span className="font-bold text-slate-900 dark:text-white">
                           {pac.nombre}
                         </span>
                         <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
@@ -778,49 +778,53 @@ function OdontogramaUI() {
             )}
           </div>
 
-          {/* Selector de Profesional Responsable (A-04, F-08) */}
-          <div className="flex items-center gap-2 px-3.5 py-2 bg-white/80 dark:bg-slate-900/70 border border-slate-200/80 dark:border-white/10 rounded-2xl backdrop-blur-2xl shadow-lg shadow-slate-900/5 dark:shadow-[0_12px_36px_rgba(0,0,0,0.5)]">
-            <ShieldCheck size={16} className="text-teal-600 dark:text-teal-400 flex-shrink-0" />
-            <div className="flex flex-col">
-              <span className="text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-400 font-bold leading-none mb-0.5">
-                Odontólogo Responsable
-              </span>
-              <select
-                value={selectedProfessionalId}
-                onChange={(e) => setSelectedProfessionalId(e.target.value)}
-                className="bg-transparent text-xs font-black text-slate-900 dark:text-white outline-none cursor-pointer border-none p-0 pr-2"
-              >
-                <option value="" className="bg-white dark:bg-slate-900 text-slate-500">
-                  -- Seleccionar Odontólogo --
-                </option>
-                {profesionalesList.map((pr) => (
-                  <option key={pr.id} value={pr.id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
-                    {pr.nombre} ({pr.specialty})
+          {/* Columna Derecha: Odontólogo Responsable + Botón Guardar debajo */}
+          <div className="flex flex-col gap-2 min-w-[220px]">
+            {/* Selector de Profesional Responsable (A-04, F-08) */}
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-white/80 dark:bg-slate-900/70 border border-slate-200/80 dark:border-white/10 rounded-2xl backdrop-blur-2xl shadow-lg shadow-slate-900/5 dark:shadow-[0_12px_36px_rgba(0,0,0,0.5)] h-[46px]">
+              <ShieldCheck size={16} className="text-teal-600 dark:text-teal-400 flex-shrink-0" />
+              <div className="flex flex-col flex-1 min-w-0">
+                <span className="text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-400 font-bold leading-none mb-0.5">
+                  Odontólogo Responsable
+                </span>
+                <select
+                  value={selectedProfessionalId}
+                  onChange={(e) => setSelectedProfessionalId(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-slate-900 dark:text-white outline-none cursor-pointer border-none p-0 pr-1 truncate w-full"
+                >
+                  <option value="" className="bg-white dark:bg-slate-900 text-slate-500">
+                    -- Seleccionar Odontólogo --
                   </option>
-                ))}
-              </select>
+                  {profesionalesList.map((pr) => (
+                    <option key={pr.id} value={pr.id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
+                      {pr.nombre} ({pr.specialty})
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
+
+            {/* Botón de Acción Principal Guardar (Debajo del selector de Odontólogo) */}
+            <button
+              type="button"
+              onClick={handleSaveNotes}
+              disabled={isSyncingServer}
+              className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 text-xs font-bold text-white dark:text-slate-950 shadow-md shadow-cyan-500/20 dark:shadow-[0_0_20px_rgba(34,211,238,0.3)] transition-all active:scale-95 cursor-pointer transform hover:-translate-y-0.5"
+              title="Guardar estado del odontograma y notas clínicas"
+            >
+              {isSyncingServer ? (
+                <>
+                  <RefreshCw size={14} className="animate-spin" />
+                  <span>Sincronizando...</span>
+                </>
+              ) : (
+                <>
+                  <Save size={15} strokeWidth={2.4} />
+                  <span>Guardar Odontograma</span>
+                </>
+              )}
+            </button>
           </div>
-
-          {/* Indicador de Sincronización en Tiempo Real (F-07) */}
-          {isSyncingServer && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 rounded-xl text-xs font-bold animate-pulse">
-              <RefreshCw size={13} className="animate-spin" />
-              <span>Sincronizando...</span>
-            </div>
-          )}
-
-          {/* Botón de Acción Principal Guardar */}
-          <button
-            type="button"
-            onClick={handleSaveNotes}
-            disabled={isSyncingServer}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3 text-xs sm:text-sm font-black text-white dark:text-slate-950 shadow-lg shadow-cyan-500/25 dark:shadow-[0_0_25px_rgba(34,211,238,0.4)] transition-all active:scale-95 cursor-pointer transform hover:-translate-y-0.5"
-            title="Guardar estado del odontograma y notas clínicas"
-          >
-            <Save size={17} strokeWidth={2.4} />
-            <span>Guardar</span>
-          </button>
         </div>
       </div>
 

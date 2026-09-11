@@ -524,7 +524,7 @@ export function UsuariosView() {
       {/* Toast Notification (BUG-06: Error vs Success styling & icon) */}
       {toast && (
         <div
-          className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl animate-slideUp backdrop-blur-xl ${
+          className={`fixed bottom-6 right-6 z-[99999] flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl animate-slideUp backdrop-blur-xl ${
             toast.type === "error"
               ? "bg-rose-950/90 text-rose-100 border border-rose-500/50 shadow-rose-950/50"
               : "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 border border-cyan-500/30 shadow-cyan-950/50"

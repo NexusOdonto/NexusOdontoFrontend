@@ -39,6 +39,16 @@ const defaultSeedDoctors: SelectOption[] = [
   { label: "Dra. Patricia Silva", subLabel: "Especialidad: Endodoncia Microscópica" },
 ];
 
+const defaultSeedServices: { id: string; name: string }[] = [
+  { id: "30000000-0000-0000-0000-000000000001", name: "Valoración General Odontológica" },
+  { id: "30000000-0000-0000-0000-000000000002", name: "Profilaxis y Limpieza Dental" },
+  { id: "30000000-0000-0000-0000-000000000003", name: "Blanqueamiento Dental Clínico" },
+  { id: "30000000-0000-0000-0000-000000000004", name: "Restauración en Resina Compuesta" },
+  { id: "30000000-0000-0000-0000-000000000005", name: "Control de Ortodoncia" },
+  { id: "30000000-0000-0000-0000-000000000006", name: "Extracción Dental Simple" },
+  { id: "30000000-0000-0000-0000-000000000007", name: "Endodoncia / Tratamiento de Conductos" },
+];
+
 const citasFallback: Cita[] = [];
 
 export function CitasView() {
@@ -54,14 +64,8 @@ export function CitasView() {
 
   const [citas, setCitas] = useState<Cita[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [servicesList, setServicesList] = useState<string[]>([
-    "Limpieza y Valoración General",
-    "Blanqueamiento Dental Láser",
-    "Calza en Resina Simple",
-    "Extracción Dental Cordal",
-    "Control de Ortodoncia",
-  ]);
-  const [servicesRaw, setServicesRaw] = useState<{ id: string; name: string }[]>([]);
+  const [servicesList, setServicesList] = useState<string[]>(defaultSeedServices.map((s) => s.name));
+  const [servicesRaw, setServicesRaw] = useState<{ id: string; name: string }[]>(defaultSeedServices);
   const [professionalsList, setProfessionalsList] = useState<string[]>([
     "Dra. Laura Gómez",
     "Dr. Roberto Martínez",
@@ -188,6 +192,7 @@ export function CitasView() {
 
   // Formulario de creación/solicitud
   const [formPaciente, setFormPaciente] = useState("");
+  const [selectedServiceId, setSelectedServiceId] = useState<string>("");
   const [formServicio, setFormServicio] = useState("Valoración General Odontológica");
   const [formFecha, setFormFecha] = useState(() => {
     const d = new Date();
@@ -292,9 +297,14 @@ export function CitasView() {
         setServicesRaw(translatedServices);
         const names = translatedServices.map((s: any) => s.name);
         setServicesList(names);
-        setFormServicio(names[0]);
+        setSelectedServiceId((prev) => (prev && translatedServices.some((t: any) => t.id === prev) ? prev : translatedServices[0].id));
+        setFormServicio((prev) => (prev && names.includes(prev) ? prev : names[0]));
       } else {
-        setFormServicio("Valoración General Odontológica");
+        setServicesRaw(defaultSeedServices);
+        const names = defaultSeedServices.map((s) => s.name);
+        setServicesList(names);
+        setSelectedServiceId((prev) => (prev && defaultSeedServices.some((s) => s.id === prev) ? prev : defaultSeedServices[0].id));
+        setFormServicio((prev) => (prev && names.includes(prev) ? prev : names[0]));
       }
 
       // Catálogo y opciones de profesionales
@@ -670,19 +680,27 @@ export function CitasView() {
     }
 
     // 3. Resolver Service ID (GUID) sin fallback dummy
-    let targetServiceId = "";
-    const matchedService = servicesEntities.find((s) => 
-      s.name?.toLowerCase() === formServicio.toLowerCase() ||
-      areGuidsEqual(s.id, formServicio)
-    );
-    if (matchedService?.id) {
-      targetServiceId = matchedService.id;
-    } else if (servicesRaw.length > 0) {
-      const rawMatch = servicesRaw.find((s) => s.name?.toLowerCase() === formServicio.toLowerCase() || areGuidsEqual(s.id, formServicio));
-      if (rawMatch?.id) targetServiceId = rawMatch.id;
+    let targetServiceId = selectedServiceId;
+    if (!targetServiceId && formServicio) {
+      const matchedService = servicesEntities.find((s) => 
+        s.name?.toLowerCase() === formServicio.toLowerCase() ||
+        areGuidsEqual(s.id, formServicio)
+      );
+      if (matchedService?.id) {
+        targetServiceId = matchedService.id;
+      } else if (servicesRaw.length > 0) {
+        const rawMatch = servicesRaw.find((s) => s.name?.toLowerCase() === formServicio.toLowerCase() || areGuidsEqual(s.id, formServicio));
+        if (rawMatch?.id) targetServiceId = rawMatch.id;
+      }
     }
 
-    if (!targetServiceId) {
+    if (!targetServiceId && servicesRaw.length > 0) {
+      targetServiceId = servicesRaw[0].id;
+    } else if (!targetServiceId && servicesEntities.length > 0) {
+      targetServiceId = servicesEntities[0].id;
+    }
+
+    if (!targetServiceId || targetServiceId.trim() === "") {
       const msg = "Por favor selecciona un servicio o tratamiento válido del catálogo.";
       setFormError(msg);
       setErrorMessage(msg);
@@ -1109,16 +1127,16 @@ export function CitasView() {
 
   return (
     <div className="space-y-6 text-slate-900 dark:text-slate-100">
-      {/* TOASTS DE CONFIRMACIÓN Y ERROR (CAPA SUPERIOR ABSOLUTA z-99999) */}
+      {/* TOASTS DE CONFIRMACIÓN Y ERROR (CAPA SUPERIOR ABSOLUTA z-[99999] EN ESQUINA INFERIOR DERECHA) */}
       {successToast && (
-        <div className="fixed top-6 right-6 z-99999 flex items-center gap-2.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 px-5 py-3.5 rounded-2xl shadow-2xl border border-teal-500/40 animate-scaleIn backdrop-blur-md">
+        <div className="fixed bottom-6 right-6 z-[99999] flex items-center gap-2.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 px-5 py-3.5 rounded-2xl shadow-2xl border border-teal-500/40 animate-slideUp backdrop-blur-md">
           <CheckCircle2 size={18} className="text-teal-400 dark:text-teal-600 shrink-0" />
           <span className="text-xs font-semibold">{successToast}</span>
         </div>
       )}
 
       {errorMessage && (
-        <div className="fixed top-6 right-6 z-99999 flex items-center gap-2.5 bg-rose-950 text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-rose-500/50 animate-scaleIn backdrop-blur-md">
+        <div className="fixed bottom-6 right-6 z-[99999] flex items-center gap-2.5 bg-rose-950 text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-rose-500/50 animate-slideUp backdrop-blur-md">
           <AlertCircle size={18} className="text-rose-400 shrink-0" />
           <span className="text-xs font-semibold">{errorMessage}</span>
         </div>
@@ -1157,6 +1175,12 @@ export function CitasView() {
               setFormHora(defaultHour);
               setFormMotivo("");
               setFormError(null);
+              if (servicesRaw.length > 0) {
+                if (!selectedServiceId || !servicesRaw.some(s => areGuidsEqual(s.id, selectedServiceId))) {
+                  setSelectedServiceId(servicesRaw[0].id);
+                  setFormServicio(servicesRaw[0].name);
+                }
+              }
               setShowRequestModal(true);
             }}
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-linear-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 px-5 py-2.5 text-sm font-semibold text-white dark:text-slate-950 shadow-md dark:shadow-[0_0_25px_rgba(34,211,238,0.3)] transition-all active:scale-95 cursor-pointer"
@@ -1334,19 +1358,38 @@ export function CitasView() {
               )}
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                <label htmlFor="serviceSelect" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   Servicio o Tratamiento <span className="text-rose-500">*</span>
                 </label>
                 <select
-                  value={formServicio}
-                  onChange={(e) => setFormServicio(e.target.value)}
+                  id="serviceSelect"
+                  value={selectedServiceId}
+                  onChange={(e) => {
+                    const chosenId = e.target.value;
+                    setSelectedServiceId(chosenId);
+                    const found = servicesRaw.find((s) => areGuidsEqual(s.id, chosenId)) ||
+                                  servicesEntities.find((s) => areGuidsEqual(s.id, chosenId));
+                    if (found) {
+                      setFormServicio(found.name);
+                    }
+                    setFormError(null);
+                  }}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all shadow-sm cursor-pointer"
                 >
-                  {servicesList.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
+                  <option value="" disabled>
+                    Selecciona un servicio...
+                  </option>
+                  {servicesRaw.length > 0
+                    ? servicesRaw.map((service) => (
+                        <option key={service.id} value={service.id}>
+                          {service.name}
+                        </option>
+                      ))
+                    : servicesList.map((s, idx) => (
+                        <option key={s} value={`fallback-srv-${idx}`}>
+                          {s}
+                        </option>
+                      ))}
                 </select>
               </div>
 
