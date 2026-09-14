@@ -3,7 +3,8 @@ export type EstadoCita =
   | "Confirmada"
   | "En Atención"
   | "Completada"
-  | "Cancelada";
+  | "Cancelada"
+  | "No Asistió";
 
 export interface Cita {
   id: number;
@@ -21,4 +22,6 @@ export interface Cita {
   hora: string;
   estado: EstadoCita;
   motivo?: string;
+  canBeAttended?: boolean;
+  attendanceMessage?: string;
 }

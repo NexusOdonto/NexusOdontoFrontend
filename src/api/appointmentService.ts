@@ -1,3 +1,22 @@
+
+export interface AppointmentClinicalContextDto {
+  appointmentId: string;
+  patientId: string;
+  patientFullName: string;
+  patientDocument?: string;
+  patientEmail?: string;
+  patientPhone?: string;
+  clinicalHistoryId: string;
+  professionalId?: string;
+  professionalFullName?: string;
+  serviceName?: string;
+  startsAt: string;
+  endsAt: string;
+  statusName: string;
+  canBeAttended: boolean;
+  attendanceMessage?: string;
+  latestOdontogram?: any;
+}
 import axiosClient from './axiosClient';
 
 export interface AppointmentResponseDto {
@@ -22,6 +41,8 @@ export interface AppointmentResponseDto {
   professionalName?: string;
   serviceName?: string;
   statusName?: string;
+  canBeAttended?: boolean;
+  attendanceMessage?: string;
 }
 
 export interface CreateAppointmentDto {
@@ -97,6 +118,15 @@ export const appointmentService = {
     return response.data;
   },
 
+    getClinicalContext: async (id: string): Promise<AppointmentClinicalContextDto> => {
+    const response = await axiosClient.get(`/v1/Appointments/${id}/clinical-context`);
+    return response.data;
+  },
+
+  markNoShow: async (id: string, reason?: string): Promise<AppointmentResponseDto> => {
+    const response = await axiosClient.post(`/v1/Appointments/${id}/no-show`, { reason });
+    return response.data;
+  },
   getOrigins: async (): Promise<AppointmentOriginDto[]> => {
     const response = await axiosClient.get('/v1/AppointmentOrigins');
     return response.data;

@@ -1,3 +1,45 @@
+
+export interface DentalFindingItemDto {
+  findingTypeCode: string;
+  surfaceCode?: string;
+  severityCode?: string;
+  description?: string;
+}
+
+export interface OdontogramToothItemDto {
+  fdiNumber: number;
+  stateCode: string;
+  findings?: DentalFindingItemDto[];
+}
+
+export interface SaveFullOdontogramRequestDto {
+  clinicalHistoryId?: string;
+  patientId?: string;
+  clinicalAttentionId?: string;
+  professionalId?: string;
+  notes?: string;
+  teeth: OdontogramToothItemDto[];
+}
+
+export interface FullOdontogramResponseDto {
+  id: string;
+  clinicalHistoryId: string;
+  clinicalAttentionId?: string;
+  professionalId?: string;
+  recordedAt: string;
+  notes?: string;
+  teeth: {
+    id: string;
+    fdiNumber: number;
+    stateCode: string;
+    findings: {
+      id: string;
+      findingTypeCode: string;
+      surfaceCode?: string;
+      description?: string;
+    }[];
+  }[];
+}
 import axiosClient from './axiosClient';
 
 export interface OdontogramResponseDto {
@@ -111,6 +153,20 @@ export const odontogramService = {
   },
 
 
+    saveFull: async (data: SaveFullOdontogramRequestDto): Promise<FullOdontogramResponseDto> => {
+    const response = await axiosClient.post('/v1/Odontograms/full', data);
+    return response.data;
+  },
+
+  getLatestByPatient: async (patientId: string): Promise<FullOdontogramResponseDto> => {
+    const response = await axiosClient.get(`/v1/Odontograms/patient/${patientId}/latest`);
+    return response.data;
+  },
+
+  getFullById: async (id: string): Promise<FullOdontogramResponseDto> => {
+    const response = await axiosClient.get(`/v1/Odontograms/${id}/full`);
+    return response.data;
+  },
   getFindings: async (): Promise<DentalFindingResponseDto[]> => {
     const response = await axiosClient.get('/v1/DentalFindings');
     return response.data;

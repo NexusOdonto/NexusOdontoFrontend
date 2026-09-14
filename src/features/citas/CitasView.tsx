@@ -434,7 +434,8 @@ export function CitasView() {
             estadoName = "Pendiente";
           } else if (a.statusName) {
             const sn = a.statusName.toUpperCase();
-            if (sn.includes("PEND") || sn.includes("AGEN")) estadoName = "Pendiente";
+            if (sn.includes("NO_ASIST") || sn.includes("NO ASIST")) estadoName = "No Asistió";
+            else if (sn.includes("PEND") || sn.includes("AGEN")) estadoName = "Pendiente";
             else if (sn.includes("CONFIRM")) estadoName = "Confirmada";
             else if (sn.includes("ATTEND") || sn.includes("EN ATENCIÓN")) estadoName = "En Atención";
             else if (sn.includes("COMPLET")) estadoName = "Completada";
@@ -454,6 +455,8 @@ export function CitasView() {
             hora: startTime,
             estado: estadoName,
             motivo: a.reasonForVisit || a.notes || "Consulta Odontológica",
+            canBeAttended: a.canBeAttended,
+            attendanceMessage: a.attendanceMessage,
           };
         });
 
@@ -784,11 +787,24 @@ export function CitasView() {
       "En Atención": "10000000-0000-0000-0000-000000000003",
       Completada: "10000000-0000-0000-0000-000000000004",
       Cancelada: "10000000-0000-0000-0000-000000000005",
+      "No Asistió": "10000000-0000-0000-0000-000000000006",
     };
 
     const { startsAt, endsAt } = calculateEndDateTime(targetCita.fecha, targetCita.hora || "09:00", 45);
 
     if (targetCita.appointmentId) {
+      if (nuevoEstado === "No Asistió") {
+        try {
+          await appointmentService.markNoShow(targetCita.appointmentId, "No asistió a la cita programada");
+          setCitas((prev) => prev.map((c) => (c.id === citaId ? { ...c, estado: "No Asistió" } : c)));
+          refreshNotifications();
+          setSuccessToast("Cita registrada como No Asistió");
+          setTimeout(() => setSuccessToast(null), 3000);
+          return;
+        } catch (err) {
+          console.warn("Fallo al marcar no-show:", err);
+        }
+      }
       const matchedProf = profsEntities.find((p) =>
         `${p.firstName || ""} ${p.lastName || ""}`.toLowerCase().includes(targetCita.profesional?.toLowerCase() || "")
       );
@@ -1002,6 +1018,7 @@ export function CitasView() {
       "En Atención": "10000000-0000-0000-0000-000000000003",
       "Completada": "10000000-0000-0000-0000-000000000004",
       "Cancelada": "10000000-0000-0000-0000-000000000005",
+      "No Asistió": "10000000-0000-0000-0000-000000000006",
     };
 
     const { startsAt, endsAt } = calculateEndDateTime(editFecha, horaEditValida, 45);
@@ -1710,6 +1727,7 @@ export function CitasView() {
                     <option value="En Atención">En Atención</option>
                     <option value="Completada">Completada</option>
                     <option value="Cancelada">Cancelada</option>
+                    <option value="No Asistió">No Asistió</option>
                   </select>
                 </div>
               )}
