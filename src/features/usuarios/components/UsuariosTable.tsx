@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 
 import type { Usuario } from "../../../types/usuarios";
-import { areGuidsEqual } from "../../../utils/roleUtils";
+import { areGuidsEqual, isSeedAdminUser } from "../../../utils/roleUtils";
 
 interface UsuariosTableProps {
   usuarios: Usuario[];
@@ -161,11 +161,13 @@ export function UsuariosTable({
             {usuarios.map((usuario) => {
               const roleInfo = getRoleBadge(usuario.roleCode, usuario.roleName);
               const modulesCount = usuario.modulesList?.length || usuario.permissionsCount || 0;
+              const isProtectedAdmin = isSeedAdminUser(usuario);
               const isSelf = Boolean(
                 (currentUser?.id && areGuidsEqual(currentUser.id, usuario.id)) ||
                 (currentUser?.personId && areGuidsEqual(currentUser.personId, usuario.personId)) ||
                 (currentUser?.email && usuario.email && currentUser.email.toLowerCase() === usuario.email.toLowerCase())
               );
+              const cannotToggle = isProtectedAdmin || isSelf;
 
               return (
                 <tr
@@ -250,17 +252,19 @@ export function UsuariosTable({
 
                       <button
                         type="button"
-                        disabled={isSelf}
-                        onClick={() => !isSelf && onToggleStatus?.(usuario)}
+                        disabled={cannotToggle}
+                        onClick={() => !cannotToggle && onToggleStatus?.(usuario)}
                         className={`p-2 rounded-xl border transition-all shadow-sm ${
-                          isSelf
+                          cannotToggle
                             ? "opacity-30 cursor-not-allowed pointer-events-none border-slate-200 dark:border-white/10 bg-slate-100/50 dark:bg-slate-900/30 text-slate-400"
                             : usuario.isActive
                             ? "border-slate-200 dark:border-white/10 bg-white/80 dark:bg-slate-900/60 hover:bg-rose-500/10 text-slate-400 hover:text-rose-500 hover:border-rose-500/30 cursor-pointer"
                             : "border-emerald-500/40 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25 hover:border-emerald-500 shadow-sm cursor-pointer"
                         }`}
                         title={
-                          isSelf
+                          isProtectedAdmin
+                            ? "El administrador del sistema (AD001) no puede ser desactivado"
+                            : isSelf
                             ? "No puedes desactivar tu propia cuenta de administrador"
                             : usuario.isActive
                             ? "Desactivar usuario"
@@ -283,11 +287,13 @@ export function UsuariosTable({
         {usuarios.map((usuario) => {
           const roleInfo = getRoleBadge(usuario.roleCode, usuario.roleName);
           const modulesCount = usuario.modulesList?.length || usuario.permissionsCount || 0;
+          const isProtectedAdmin = isSeedAdminUser(usuario);
           const isSelf = Boolean(
             (currentUser?.id && areGuidsEqual(currentUser.id, usuario.id)) ||
             (currentUser?.personId && areGuidsEqual(currentUser.personId, usuario.personId)) ||
             (currentUser?.email && usuario.email && currentUser.email.toLowerCase() === usuario.email.toLowerCase())
           );
+          const cannotToggle = isProtectedAdmin || isSelf;
 
           return (
             <article
@@ -340,17 +346,19 @@ export function UsuariosTable({
 
                   <button
                     type="button"
-                    disabled={isSelf}
-                    onClick={() => !isSelf && onToggleStatus?.(usuario)}
+                    disabled={cannotToggle}
+                    onClick={() => !cannotToggle && onToggleStatus?.(usuario)}
                     className={`p-1.5 rounded-xl border transition-all ${
-                      isSelf
+                      cannotToggle
                         ? "opacity-30 cursor-not-allowed pointer-events-none border-slate-200 text-slate-400"
                         : usuario.isActive
                         ? "border-slate-200 dark:border-white/10 text-slate-400 hover:text-rose-500 hover:border-rose-500/30"
                         : "border-emerald-500/40 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                     }`}
                     title={
-                      isSelf
+                      isProtectedAdmin
+                        ? "El administrador del sistema (AD001) no puede ser desactivado"
+                        : isSelf
                         ? "No puedes desactivar tu propia cuenta de administrador"
                         : usuario.isActive
                         ? "Desactivar usuario"

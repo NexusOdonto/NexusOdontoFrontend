@@ -60,3 +60,21 @@ export const areGuidsEqual = (a?: unknown, b?: unknown): boolean => {
   if (!strA || !strB) return false;
   return strA === strB;
 };
+
+/** Seeded system administrator (AD001 / Carlos Administrator) — must not be deactivated. */
+export const SEED_ADMIN_USER_ID = "1b000000-0000-0000-0000-000000000002";
+export const SEED_ADMIN_PERSON_ID = "1b000000-0000-0000-0000-000000000001";
+export const SEED_ADMIN_EMAIL = "admin@nexusodonto.com";
+
+export const isSeedAdminUser = (usuario?: {
+  id?: string;
+  personId?: string;
+  email?: string;
+} | null): boolean => {
+  if (!usuario) return false;
+  return (
+    areGuidsEqual(usuario.id, SEED_ADMIN_USER_ID) ||
+    areGuidsEqual(usuario.personId, SEED_ADMIN_PERSON_ID) ||
+    Boolean(usuario.email && usuario.email.trim().toLowerCase() === SEED_ADMIN_EMAIL)
+  );
+};
