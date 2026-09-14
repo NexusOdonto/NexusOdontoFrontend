@@ -82,6 +82,13 @@ function estadoBadge(estado: EstadoCita) {
           Completada
         </span>
       );
+        case "No Asistió":
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
+          <XCircle size={13} />
+          No Asistió
+        </span>
+      );
     case "Cancelada":
       return (
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30">
@@ -283,23 +290,44 @@ export function CitasTable({
                 {isOdontologo && onUpdateStatus && (
                   <>
                     {cita.estado === "Confirmada" && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onUpdateStatus(cita.id, "En Atención");
-                        }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold transition-all cursor-pointer shadow-sm active:scale-95 text-xs"
-                      >
-                        <PlayCircle size={14} />
-                        <span>Atender</span>
-                      </button>
+                      cita.canBeAttended === false ? (
+                        <button
+                          type="button"
+                          disabled
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-200/80 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 font-semibold cursor-not-allowed text-xs border border-slate-300/50 dark:border-slate-700/50"
+                          title={cita.attendanceMessage || "Fuera de la ventana de atención"}
+                        >
+                          <Clock3 size={14} />
+                          <span>{cita.attendanceMessage?.includes("expir") || cita.attendanceMessage?.includes("pas") ? "Cita Vencida" : "Fuera de horario"}</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onUpdateStatus(cita.id, "En Atención");
+                            navigate("/odontograma", {
+                              state: {
+                                appointmentId: cita.appointmentId,
+                                patientId: cita.patientId,
+                                professionalId: cita.professionalId,
+                                patientName: cita.paciente,
+                                patientDocument: cita.pacienteCedula,
+                              },
+                            });
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold transition-all cursor-pointer shadow-sm active:scale-95 text-xs"
+                        >
+                          <PlayCircle size={14} />
+                          <span>Atender</span>
+                        </button>
+                      )
                     )}
                     {cita.estado === "En Atención" && (
                       <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
-                          onClick={() => navigate("/odontograma")}
+                          onClick={() => navigate("/odontograma", { state: { appointmentId: cita.appointmentId, patientId: cita.patientId, professionalId: cita.professionalId, patientName: cita.paciente, patientDocument: cita.pacienteCedula } })}
                           className="p-1.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 transition-all cursor-pointer active:scale-95"
                           title="Abrir Odontograma"
                         >
@@ -376,16 +404,31 @@ export function CitasTable({
             )}
 
             {isOdontologo && cita.estado === "Confirmada" && onUpdateStatus && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onUpdateStatus(cita.id, "En Atención");
-                }}
-                className="w-full py-2.5 rounded-xl bg-linear-to-r from-blue-600 to-cyan-600 text-white font-bold text-xs text-center shadow-md active:scale-95"
-              >
-                Iniciar Consulta
-              </button>
+              cita.canBeAttended === false ? (
+                <div className="w-full py-2 px-3 rounded-xl bg-slate-200/80 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 font-semibold text-xs text-center border border-slate-300/50 dark:border-slate-700/50">
+                  {cita.attendanceMessage?.includes("expir") || cita.attendanceMessage?.includes("pas") ? "Cita Vencida (No Asistió)" : (cita.attendanceMessage || "Fuera de horario")}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onUpdateStatus(cita.id, "En Atención");
+                    navigate("/odontograma", {
+                      state: {
+                        appointmentId: cita.appointmentId,
+                        patientId: cita.patientId,
+                        professionalId: cita.professionalId,
+                        patientName: cita.paciente,
+                        patientDocument: cita.pacienteCedula,
+                      },
+                    });
+                  }}
+                  className="w-full py-2.5 rounded-xl bg-linear-to-r from-blue-600 to-cyan-600 text-white font-bold text-xs text-center shadow-md active:scale-95"
+                >
+                  Iniciar Consulta / Odontograma
+                </button>
+              )
             )}
           </div>
         ))}
