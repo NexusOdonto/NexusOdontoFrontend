@@ -25,7 +25,6 @@ import {
   type RegisterOptionItem,
 } from "../../api/authService";
 import { useAuth } from "./AuthContext";
-import { GoogleAuthButton } from "./components/GoogleAuthButton";
 import fondoLoginLight from "../../assets/fondo-Login-ligh.webp";
 import fondoLoginDark from "../../assets/fondoLogin.webp";
 import logoNexus from "../../assets/nexus-odonto-logo.webp";
@@ -896,25 +895,6 @@ export default function RegisterPage() {
                   </span>
                 )}
               </button>
-
-              {!isGoogle && (
-                <>
-                  <div className="relative flex items-center justify-center my-2">
-                    <div className="border-t border-white/10 w-full" />
-
-                    <span className="bg-slate-950/80 px-3 text-xs text-slate-400 font-medium uppercase tracking-wider whitespace-nowrap">
-                      O regístrate con
-                    </span>
-
-                    <div className="border-t border-white/10 w-full" />
-                  </div>
-
-                  <GoogleAuthButton
-                    text="Registrarme con Google"
-                    onError={(msg) => setError(msg)}
-                  />
-                </>
-              )}
 
               <div className="text-center pt-2">
                 <p className="text-sm text-slate-300">
