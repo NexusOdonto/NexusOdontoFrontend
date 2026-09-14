@@ -63,6 +63,7 @@ export function AgendaView() {
   ]);
 
   const [mostrarModal, setMostrarModal] = useState(false);
+  const [citaDetalle, setCitaDetalle] = useState<Cita | null>(null);
   const [fechaSeleccionada, setFechaSeleccionada] = useState("");
   const [horaActual, setHoraActual] = useState(new Date());
 
@@ -596,17 +597,114 @@ export function AgendaView() {
     }
   };
 
-  const obtenerPosicionEvento = (cita: Cita) => {
-    const [horaInicio, minutosInicio] = cita.horaInicio.split(":").map(Number);
-    const [horaFin, minutosFin] = cita.horaFin.split(":").map(Number);
-    const inicioMinutos = (horaInicio - 7) * 60 + (minutosInicio || 0);
-    const finMinutos = (horaFin - 7) * 60 + (minutosFin || 0);
-    const duracion = finMinutos - inicioMinutos;
+  interface CitaPosicionada extends Cita {
+    top: number;
+    height: number;
+    leftStyle: string;
+    widthStyle: string;
+  }
 
-    return {
-      top: `${inicioMinutos}px`,
-      height: `${Math.max(duracion, 64)}px`,
-    };
+  const calcularPosicionesDia = (citasList: Cita[]): CitaPosicionada[] => {
+    if (citasList.length === 0) return [];
+
+    const parseadas = citasList.map((cita) => {
+      const [hIni, mIni] = (cita.horaInicio || "07:00").split(":").map(Number);
+      const [hFin, mFin] = (cita.horaFin || "08:00").split(":").map(Number);
+      const safeHIni = isNaN(hIni) ? 7 : hIni;
+      const safeMIni = isNaN(mIni) ? 0 : mIni;
+      const safeHFin = isNaN(hFin) ? safeHIni + 1 : hFin;
+      const safeMFin = isNaN(mFin) ? 0 : mFin;
+
+      const inicioMinutos = (safeHIni - 7) * 60 + safeMIni;
+      const finMinutos = (safeHFin - 7) * 60 + safeMFin;
+      const duracion = Math.max(finMinutos - inicioMinutos, 20);
+
+      return {
+        ...cita,
+        inicioMinutos,
+        finMinutos: inicioMinutos + duracion,
+        duracionMinutos: duracion,
+      };
+    });
+
+    parseadas.sort((a, b) => {
+      if (a.inicioMinutos !== b.inicioMinutos) {
+        return a.inicioMinutos - b.inicioMinutos;
+      }
+      return b.duracionMinutos - a.duracionMinutos;
+    });
+
+    // Agrupar en clusters que se solapan en tiempo
+    const clusters: typeof parseadas[] = [];
+    let clusterActual: typeof parseadas = [];
+    let clusterFinMax = -1;
+
+    parseadas.forEach((cita) => {
+      if (clusterActual.length === 0) {
+        clusterActual.push(cita);
+        clusterFinMax = cita.finMinutos;
+      } else {
+        if (cita.inicioMinutos < clusterFinMax) {
+          clusterActual.push(cita);
+          clusterFinMax = Math.max(clusterFinMax, cita.finMinutos);
+        } else {
+          clusters.push(clusterActual);
+          clusterActual = [cita];
+          clusterFinMax = cita.finMinutos;
+        }
+      }
+    });
+    if (clusterActual.length > 0) {
+      clusters.push(clusterActual);
+    }
+
+    const resultado: CitaPosicionada[] = [];
+
+    clusters.forEach((cluster) => {
+      const columnasFin: number[] = [];
+      const asignaciones: { cita: (typeof parseadas)[0]; colIndex: number }[] = [];
+
+      cluster.forEach((cita) => {
+        let colIndex = columnasFin.findIndex((fin) => fin <= cita.inicioMinutos);
+        if (colIndex === -1) {
+          colIndex = columnasFin.length;
+          columnasFin.push(cita.finMinutos);
+        } else {
+          columnasFin[colIndex] = cita.finMinutos;
+        }
+        asignaciones.push({ cita, colIndex });
+      });
+
+      const totalColumnas = Math.max(columnasFin.length, 1);
+
+      asignaciones.forEach(({ cita, colIndex }) => {
+        // Separación vertical de 1-2px para evitar cualquier choque en citas consecutivas
+        const top = cita.inicioMinutos + 1;
+        const height = Math.max(cita.duracionMinutos - 2, 22);
+
+        let leftStyle: string;
+        let widthStyle: string;
+
+        if (totalColumnas === 1) {
+          leftStyle = "4px";
+          widthStyle = "calc(100% - 8px)";
+        } else {
+          const colWidthPct = 100 / totalColumnas;
+          leftStyle = `calc(${colIndex * colWidthPct}% + 2px)`;
+          widthStyle = `calc(${colWidthPct}% - 4px)`;
+        }
+
+        resultado.push({
+          ...cita,
+          top,
+          height,
+          leftStyle,
+          widthStyle,
+        });
+      });
+    });
+
+    return resultado;
   };
 
   const obtenerPosicionHoraActual = () => {
@@ -858,6 +956,7 @@ export function AgendaView() {
                       {/* 7 Columnas de Días */}
                       {diasSemana.map((dia, idx) => {
                         const citasDia = obtenerCitasDia(dia);
+                        const citasPosicionadas = calcularPosicionesDia(citasDia);
                         const esHoy =
                           formatoFechaInput(dia) === formatoFechaInput(horaActual);
 
@@ -887,44 +986,105 @@ export function AgendaView() {
                             ))}
 
                             {/* Citas / Eventos */}
-                            {citasDia.map((cita) => {
-                              const posicion = obtenerPosicionEvento(cita);
+                            {citasPosicionadas.map((cita) => {
                               const colorEvento = obtenerColorEvento(cita.estado);
 
                               return (
                                 <div
                                   key={cita.id}
+                                  onClick={() => setCitaDetalle(cita)}
                                   style={{
-                                    top: posicion.top,
-                                    height: posicion.height,
-                                    minHeight: "64px",
+                                    top: `${cita.top}px`,
+                                    height: `${cita.height}px`,
+                                    left: cita.leftStyle,
+                                    width: cita.widthStyle,
                                   }}
-                                  className={`group absolute left-1 right-1 z-20 overflow-hidden rounded-xl border px-2.5 py-1.5 shadow-sm transition hover:scale-[1.01] hover:z-30 cursor-pointer flex flex-col justify-between ${colorEvento.contenedor}`}
+                                  title={`${cita.paciente} • ${cita.servicio} (${cita.horaInicio} - ${cita.horaFin}) • ${cita.odontologo}`}
+                                  className={`group absolute z-20 overflow-hidden rounded-xl border shadow-xs transition-all hover:scale-[1.01] hover:z-30 cursor-pointer ${colorEvento.contenedor}`}
                                 >
-                                  <div className="min-w-0">
-                                    <div className="flex items-start justify-between gap-1">
-                                      <p className="truncate text-xs font-bold leading-tight">
-                                        {cita.paciente}
-                                      </p>
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          eliminarCita(cita.id, cita.rawGuid);
-                                        }}
-                                        className="opacity-0 group-hover:opacity-100 transition p-0.5 hover:text-rose-500 shrink-0 cursor-pointer"
-                                        title="Eliminar cita"
-                                      >
-                                        <Trash2 size={12} />
-                                      </button>
+                                  {cita.height < 36 ? (
+                                    // Modo Ultra-Compacto (<= 30 min)
+                                    <div className="flex h-full items-center justify-between gap-1.5 px-2 py-0.5">
+                                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                        <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${colorEvento.punto}`} />
+                                        <span className="truncate text-[11px] font-bold leading-none">
+                                          {cita.paciente}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        <span className="text-[9.5px] font-mono font-medium opacity-85 leading-none">
+                                          {cita.horaInicio}-{cita.horaFin}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            eliminarCita(cita.id, cita.rawGuid);
+                                          }}
+                                          className="opacity-0 group-hover:opacity-100 transition p-0.5 hover:text-rose-500 shrink-0 cursor-pointer"
+                                          title="Eliminar cita"
+                                        >
+                                          <Trash2 size={11} />
+                                        </button>
+                                      </div>
                                     </div>
-                                    <p className="truncate text-[10.5px] opacity-90 leading-tight mt-0.5">
-                                      {cita.servicio}
-                                    </p>
-                                  </div>
-                                  <p className="text-[10px] opacity-80 font-mono font-medium leading-none shrink-0 mt-1 pb-0.5">
-                                    {cita.horaInicio} - {cita.horaFin}
-                                  </p>
+                                  ) : cita.height < 54 ? (
+                                    // Modo Compacto (35 - 50 min)
+                                    <div className="flex h-full flex-col justify-between px-2 py-1">
+                                      <div className="flex items-center justify-between gap-1 min-w-0">
+                                        <p className="truncate text-xs font-bold leading-tight">
+                                          {cita.paciente}
+                                        </p>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            eliminarCita(cita.id, cita.rawGuid);
+                                          }}
+                                          className="opacity-0 group-hover:opacity-100 transition p-0.5 hover:text-rose-500 shrink-0 cursor-pointer"
+                                          title="Eliminar cita"
+                                        >
+                                          <Trash2 size={12} />
+                                        </button>
+                                      </div>
+                                      <div className="flex items-center justify-between gap-1 min-w-0 text-[10px]">
+                                        <span className="truncate opacity-90 leading-tight">
+                                          {cita.servicio}
+                                        </span>
+                                        <span className="opacity-80 font-mono font-medium shrink-0">
+                                          {cita.horaInicio}-{cita.horaFin}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    // Modo Completo (>= 55 min)
+                                    <div className="flex h-full flex-col justify-between px-2.5 py-1.5">
+                                      <div className="min-w-0">
+                                        <div className="flex items-start justify-between gap-1">
+                                          <p className="truncate text-xs font-bold leading-tight">
+                                            {cita.paciente}
+                                          </p>
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              eliminarCita(cita.id, cita.rawGuid);
+                                            }}
+                                            className="opacity-0 group-hover:opacity-100 transition p-0.5 hover:text-rose-500 shrink-0 cursor-pointer"
+                                            title="Eliminar cita"
+                                          >
+                                            <Trash2 size={12} />
+                                          </button>
+                                        </div>
+                                        <p className="truncate text-[10.5px] opacity-90 leading-tight mt-0.5">
+                                          {cita.servicio}
+                                        </p>
+                                      </div>
+                                      <p className="text-[10px] opacity-80 font-mono font-medium leading-none shrink-0 mt-1 pb-0.5">
+                                        {cita.horaInicio} - {cita.horaFin}
+                                      </p>
+                                    </div>
+                                  )}
                                 </div>
                               );
                             })}
@@ -1044,6 +1204,81 @@ export function AgendaView() {
           </div>
         </div>
       </div>
+
+      {/* Modal Detalle de Cita */}
+      {citaDetalle && (
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xl animate-scaleIn text-slate-900 dark:text-white">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">Detalle de la Cita</h2>
+                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                  {citaDetalle.fecha} · {citaDetalle.horaInicio} - {citaDetalle.horaFin}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCitaDetalle(null)}
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                <X size={19} />
+              </button>
+            </div>
+
+            <div className="mt-5 space-y-4 text-sm">
+              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Paciente</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{citaDetalle.paciente}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Servicio</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{citaDetalle.servicio}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Odontólogo</span>
+                  <span className="font-semibold text-cyan-600 dark:text-cyan-400">{citaDetalle.odontologo}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Horario</span>
+                  <span className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    {citaDetalle.horaInicio} a {citaDetalle.horaFin}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Estado</span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30">
+                    <span className="h-1.5 w-1.5 rounded-full bg-cyan-500" />
+                    {citaDetalle.estado}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-between gap-3 border-t border-slate-200 dark:border-slate-800 pt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  eliminarCita(citaDetalle.id, citaDetalle.rawGuid);
+                  setCitaDetalle(null);
+                }}
+                className="flex items-center gap-1.5 rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 px-4 py-2.5 text-xs font-bold text-rose-600 dark:text-rose-400 transition hover:bg-rose-100 dark:hover:bg-rose-900/60 cursor-pointer"
+              >
+                <Trash2 size={14} />
+                <span>Eliminar Cita</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setCitaDetalle(null)}
+                className="rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-5 py-2.5 text-xs font-bold text-slate-800 dark:text-slate-200 transition cursor-pointer"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal Agendar Cita */}
       {mostrarModal && (
