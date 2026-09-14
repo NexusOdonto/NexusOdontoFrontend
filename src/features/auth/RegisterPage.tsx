@@ -25,6 +25,10 @@ import {
   type RegisterOptionItem,
 } from "../../api/authService";
 import { useAuth } from "./AuthContext";
+import {
+  isReservedServiceAccount,
+  RESERVED_ACCOUNT_REGISTER_MESSAGE,
+} from "./reservedServiceAccounts";
 import fondoLoginLight from "../../assets/fondo-Login-ligh.webp";
 import fondoLoginDark from "../../assets/fondoLogin.webp";
 import logoNexus from "../../assets/nexus-odonto-logo.webp";
@@ -260,6 +264,14 @@ export default function RegisterPage() {
 
     if (!documentTypeId || !cleanDocNumber) {
       setError("Por favor especifica tu tipo y número de documento.");
+      return;
+    }
+
+    if (
+      isReservedServiceAccount(cleanDocNumber) ||
+      isReservedServiceAccount(cleanEmail)
+    ) {
+      setError(RESERVED_ACCOUNT_REGISTER_MESSAGE);
       return;
     }
 

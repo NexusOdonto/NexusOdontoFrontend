@@ -2,6 +2,10 @@
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../../api/authService';
 import { formatRoleName } from '../../utils/roleUtils';
+import {
+  isBotServiceUser,
+  RESERVED_ACCOUNT_LOGIN_MESSAGE,
+} from './reservedServiceAccounts';
 
 export interface User {
   id: string;
@@ -55,6 +59,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const navigate = useNavigate();
 
+  const clearSessionStorage = useCallback(() => {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('nexus_token');
+    localStorage.removeItem('auth_user');
+    localStorage.removeItem('nexus_user');
+    localStorage.removeItem('refresh_token');
+  }, []);
+
   const parseProfileToUser = (profile: any, fallbackPrev?: User | null): User => {
     const userObj = profile.user || profile;
     const perms = profile.permissions || userObj.permissions || fallbackPrev?.permissions || [];
@@ -99,6 +111,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const profile = await authService.getProfile();
       if (profile) {
         const userData = parseProfileToUser(profile);
+        if (isBotServiceUser(userData)) {
+          clearSessionStorage();
+          setUser(null);
+          navigate('/login', { replace: true });
+          return false;
+        }
         setUser(userData);
         localStorage.setItem('auth_user', JSON.stringify(userData));
 
@@ -137,7 +155,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [navigate]);
+  }, [navigate, clearSessionStorage]);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -158,6 +176,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           if (profile) {
             setUser((prev) => {
               const updated = parseProfileToUser(profile, prev);
+              if (isBotServiceUser(updated)) {
+                clearSessionStorage();
+                navigate('/login', { replace: true });
+                return null;
+              }
               localStorage.setItem('auth_user', JSON.stringify(updated));
               return updated;
             });
@@ -166,10 +189,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         .catch((err) => {
           console.warn('Sesión previa inválida o expirada:', err?.message || err);
           if (err?.response?.status === 401) {
-            localStorage.removeItem('auth_token');
-            localStorage.removeItem('nexus_token');
-            localStorage.removeItem('auth_user');
-            localStorage.removeItem('nexus_user');
+            clearSessionStorage();
             setUser(null);
             navigate('/login', { replace: true });
           }
@@ -180,7 +200,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } else {
       setIsLoading(false);
     }
-  }, [navigate, loginWithGoogleCallback]);
+  }, [navigate, loginWithGoogleCallback, clearSessionStorage]);
 
   const updateUser = (updatedData: Partial<User>) => {
     setUser((prev) => {
@@ -235,6 +255,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           userData = parseProfileToUser(profile || { user: backendUser, permissions });
         } catch {
           userData = parseProfileToUser({ user: backendUser, permissions });
+        }
+
+        if (isBotServiceUser(userData)) {
+          clearSessionStorage();
+          setUser(null);
+          return { success: false, error: RESERVED_ACCOUNT_LOGIN_MESSAGE };
         }
 
         // Si la contraseña ingresada es la misma cédula o la API retornó mustChangePassword
@@ -296,9 +322,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     }
     
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('auth_user');
-    localStorage.removeItem('refresh_token');
+    clearSessionStorage();
     setUser(null);
     navigate('/login', { replace: true });
   };

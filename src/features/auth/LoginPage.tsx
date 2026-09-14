@@ -6,6 +6,10 @@ import { LoginButton } from './components/LoginButton';
 import { GoogleAuthButton } from './components/GoogleAuthButton';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from './AuthContext';
+import {
+  isReservedServiceAccount,
+  RESERVED_ACCOUNT_LOGIN_MESSAGE,
+} from './reservedServiceAccounts';
 import fondoLoginLight from '../../assets/fondo-Login-ligh.webp';
 import fondoLoginDark from '../../assets/fondoLogin.webp';
 import logoNexus from '../../assets/nexus-odonto-logo.webp';
@@ -93,6 +97,11 @@ export default function LoginPage() {
 
     if (!cleanIdentifier || !cleanPassword) {
       setError('Por favor ingresa tu cédula (o código de empleado) y tu contraseña.');
+      return;
+    }
+
+    if (isReservedServiceAccount(cleanIdentifier)) {
+      setError(RESERVED_ACCOUNT_LOGIN_MESSAGE);
       return;
     }
 

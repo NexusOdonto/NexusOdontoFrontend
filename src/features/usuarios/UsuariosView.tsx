@@ -152,7 +152,11 @@ export function UsuariosView() {
         documentTypeService.getAll().catch(() => [])
       ]);
       const humanRoles = (rolesData || []).filter(
-        (r: any) => !r.code?.toUpperCase().includes("BOT") && !r.name?.toLowerCase().includes("bot") && !r.name?.toLowerCase().includes("chatbot")
+        (r: any) =>
+          r.code?.toUpperCase() !== "BOT_SERVICE" &&
+          !r.code?.toUpperCase().includes("BOT") &&
+          !r.name?.toLowerCase().includes("bot") &&
+          !r.name?.toLowerCase().includes("chatbot")
       );
       setRoles(humanRoles);
       setDocumentTypes(docTypesData);

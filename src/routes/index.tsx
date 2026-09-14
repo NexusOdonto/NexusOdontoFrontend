@@ -1,4 +1,4 @@
-﻿import { Suspense, lazy } from "react";
+import { Suspense, lazy } from "react";
 import { Route, Routes } from "react-router-dom";
 
 import ProtectedRoute from "./ProtectedRoute";
