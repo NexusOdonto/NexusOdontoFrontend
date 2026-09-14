@@ -44,15 +44,19 @@ export const formatRoleName = (role?: string | null): string => {
 /**
  * Normaliza un GUID o UUID para comparaciones insensibles a mayúsculas y espacios.
  */
-export const normalizeGuid = (guid?: string | null): string => {
-  if (!guid) return "";
-  return guid.trim().toLowerCase();
+export const normalizeGuid = (guid?: unknown): string => {
+  if (guid === null || guid === undefined) return "";
+  if (typeof guid === "string") return guid.trim().toLowerCase();
+  return String(guid).trim().toLowerCase();
 };
 
 /**
- * Compara dos identificadores GUID / RAW(16) de Oracle garantizando consistencia.
+ * Compara dos identificadores GUID / RAW(16) de Oracle garantizando consistencia y seguridad de tipos.
  */
-export const areGuidsEqual = (a?: string | null, b?: string | null): boolean => {
-  if (!a || !b) return false;
-  return a.trim().toLowerCase() === b.trim().toLowerCase();
+export const areGuidsEqual = (a?: unknown, b?: unknown): boolean => {
+  if (a === null || a === undefined || b === null || b === undefined) return false;
+  const strA = typeof a === "string" ? a.trim().toLowerCase() : String(a).trim().toLowerCase();
+  const strB = typeof b === "string" ? b.trim().toLowerCase() : String(b).trim().toLowerCase();
+  if (!strA || !strB) return false;
+  return strA === strB;
 };

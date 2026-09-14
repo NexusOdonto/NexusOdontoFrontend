@@ -563,7 +563,27 @@ export function AgendaView() {
       await fetchAgendaData();
     } catch (error: any) {
       console.error("Error capturado al guardar cita en /agenda:", error.response?.data || error);
-      const errorMsg = error?.response?.data?.message || error?.message || "No se pudo registrar la cita en el servidor.";
+      const serverMsg = String(error?.response?.data?.message || error?.message || "").toLowerCase();
+      const details = error?.response?.data?.details;
+      let detailsMsg = "";
+      if (details && typeof details === "object") {
+        const allDetails = Object.values(details).flat().filter(Boolean);
+        if (allDetails.length > 0) {
+          detailsMsg = allDetails.join(". ");
+        }
+      }
+
+      let errorMsg = "No se pudo registrar la cita en el servidor.";
+      if (serverMsg.includes("outside the professional's active availability") || serverMsg.includes("availability")) {
+        errorMsg = "El horario seleccionado está fuera de la jornada de atención (08:00 a 12:00 y 14:00 a 17:00). Por favor selecciona una hora de inicio válida (ej. 08:00 a 11:30 o 14:00 a 16:30).";
+      } else if (error?.response?.status === 409 || serverMsg.includes("conflict") || serverMsg.includes("overlap")) {
+        errorMsg = "El odontólogo ya tiene una cita asignada en ese rango horario. Por favor selecciona otra hora u otro profesional.";
+      } else if (detailsMsg) {
+        errorMsg = detailsMsg;
+      } else if (error?.response?.data?.message) {
+        errorMsg = error.response.data.message;
+      }
+
       setFormError(errorMsg);
       setErrorMessage(errorMsg);
       setTimeout(() => setErrorMessage(null), 6000);

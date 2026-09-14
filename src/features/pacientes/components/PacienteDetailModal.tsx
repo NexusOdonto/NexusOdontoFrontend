@@ -1,6 +1,8 @@
 import type { Paciente } from "../../../types/pacientes";
-import { X, Calendar, Phone, Mail, FileText, Activity, AlertTriangle, ShieldCheck, Clock } from "lucide-react";
+import { X, Calendar, Phone, Mail, FileText, Activity, AlertTriangle, ShieldCheck, Clock, MessageSquare } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../auth/AuthContext";
+import { getUserRole } from "../../../utils/routePermissions";
 
 interface PacienteDetailModalProps {
   paciente: Paciente | null;
@@ -9,6 +11,9 @@ interface PacienteDetailModalProps {
 
 export function PacienteDetailModal({ paciente, onClose }: PacienteDetailModalProps) {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const role = getUserRole(user);
+  const isClinicianOrAdmin = role === "ADMINISTRADOR" || role === "ODONTOLOGO";
 
   if (!paciente) return null;
 
@@ -110,7 +115,7 @@ export function PacienteDetailModal({ paciente, onClose }: PacienteDetailModalPr
           </div>
         </div>
 
-        {/* Acciones: Enlaces interactivos con micro-animaciones */}
+        {/* Acciones: Enlaces interactivos con micro-animaciones según rol */}
         <div className="flex flex-wrap items-center gap-6 sm:gap-8 pt-1">
           <button
             type="button"
@@ -124,29 +129,59 @@ export function PacienteDetailModal({ paciente, onClose }: PacienteDetailModalPr
             <span className="hover:underline underline-offset-4">Agendar Cita</span>
           </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              onClose();
-              navigate("/odontograma");
-            }}
-            className="group inline-flex items-center gap-2 text-sm font-sans font-bold text-teal-700 dark:text-[#d4a373] hover:text-teal-900 dark:hover:text-[#e6b88a] transition-all cursor-pointer"
-          >
-            <Activity size={15} className="icon-animated-interactive group-hover:scale-125 group-hover:animate-icon-pulse" />
-            <span className="hover:underline underline-offset-4">Odontograma</span>
-          </button>
+          {isClinicianOrAdmin ? (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  navigate("/odontograma");
+                }}
+                className="group inline-flex items-center gap-2 text-sm font-sans font-bold text-teal-700 dark:text-[#d4a373] hover:text-teal-900 dark:hover:text-[#e6b88a] transition-all cursor-pointer"
+              >
+                <Activity size={15} className="icon-animated-interactive group-hover:scale-125 group-hover:animate-icon-pulse" />
+                <span className="hover:underline underline-offset-4">Odontograma</span>
+              </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              onClose();
-              navigate("/historia-clinica");
-            }}
-            className="group inline-flex items-center gap-2 text-sm font-sans font-bold text-teal-700 dark:text-[#d4a373] hover:text-teal-900 dark:hover:text-[#e6b88a] transition-all cursor-pointer"
-          >
-            <FileText size={15} className="icon-animated-interactive group-hover:scale-125 group-hover:animate-icon-wiggle" />
-            <span className="hover:underline underline-offset-4">Historia Clínica</span>
-          </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  navigate("/historia-clinica");
+                }}
+                className="group inline-flex items-center gap-2 text-sm font-sans font-bold text-teal-700 dark:text-[#d4a373] hover:text-teal-900 dark:hover:text-[#e6b88a] transition-all cursor-pointer"
+              >
+                <FileText size={15} className="icon-animated-interactive group-hover:scale-125 group-hover:animate-icon-wiggle" />
+                <span className="hover:underline underline-offset-4">Historia Clínica</span>
+              </button>
+            </>
+          ) : (
+            <>
+              {paciente.telefono && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.open(`tel:${paciente.telefono}`);
+                  }}
+                  className="group inline-flex items-center gap-2 text-sm font-sans font-bold text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 dark:hover:text-emerald-300 transition-all cursor-pointer"
+                >
+                  <Phone size={15} className="icon-animated-interactive group-hover:scale-125 group-hover:animate-icon-bounce" />
+                  <span className="hover:underline underline-offset-4">Llamar Paciente</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  navigate("/atencion-chat");
+                }}
+                className="group inline-flex items-center gap-2 text-sm font-sans font-bold text-teal-700 dark:text-[#d4a373] hover:text-teal-900 dark:hover:text-[#e6b88a] transition-all cursor-pointer"
+              >
+                <MessageSquare size={15} className="icon-animated-interactive group-hover:scale-125 group-hover:animate-icon-pulse" />
+                <span className="hover:underline underline-offset-4">Atención WhatsApp</span>
+              </button>
+            </>
+          )}
         </div>
 
         {/* Pie de Página: Copyright / Protección + Botón de Cierre Adaptable */}

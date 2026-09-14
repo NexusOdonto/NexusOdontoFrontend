@@ -16,20 +16,22 @@ import {
 
 interface ServiciosTableProps {
   servicios: Servicio[];
-  onEditar: (servicio: Servicio) => void;
-  onEliminar: (id: number | string) => void;
-  onToggleActivo: (servicio: Servicio) => void;
+  onEditar?: (servicio: Servicio) => void;
+  onEliminar?: (id: number | string) => void;
+  onToggleActivo?: (servicio: Servicio) => void;
 }
 
 function getServiceDetails(servicio: Servicio) {
   const n = servicio.nombre.toLowerCase();
   const code = servicio.codigo || `SRV-${String(servicio.id).padStart(3, "0")}`;
+  const esFrecuente = n.includes("blanqueamiento") || n.includes("profilaxis") || n.includes("limpieza");
 
   if (servicio.categoria) {
     const cat = servicio.categoria.toLowerCase();
     if (cat.includes("estética")) {
       return {
         code,
+        esFrecuente,
         categoria: servicio.categoria,
         badgeClass: "bg-purple-500/15 text-purple-300 border-purple-500/30",
         Icon: Sparkles,
@@ -40,6 +42,7 @@ function getServiceDetails(servicio: Servicio) {
     if (cat.includes("operatoria") || cat.includes("resina")) {
       return {
         code,
+        esFrecuente,
         categoria: servicio.categoria,
         badgeClass: "bg-sky-500/15 text-sky-300 border-sky-500/30",
         Icon: ShieldCheck,
@@ -50,6 +53,7 @@ function getServiceDetails(servicio: Servicio) {
     if (cat.includes("cirugía")) {
       return {
         code,
+        esFrecuente,
         categoria: servicio.categoria,
         badgeClass: "bg-amber-500/15 text-amber-300 border-amber-500/30",
         Icon: Scissors,
@@ -60,6 +64,7 @@ function getServiceDetails(servicio: Servicio) {
     if (cat.includes("higiene") || cat.includes("prevención")) {
       return {
         code,
+        esFrecuente,
         categoria: servicio.categoria,
         badgeClass: "bg-teal-500/15 text-teal-300 border-teal-500/30",
         Icon: Smile,
@@ -70,6 +75,7 @@ function getServiceDetails(servicio: Servicio) {
     if (cat.includes("endodoncia")) {
       return {
         code,
+        esFrecuente,
         categoria: servicio.categoria,
         badgeClass: "bg-rose-500/15 text-rose-300 border-rose-500/30",
         Icon: Activity,
@@ -83,6 +89,7 @@ function getServiceDetails(servicio: Servicio) {
   if (n.includes("blanqueamiento")) {
     return {
       code,
+      esFrecuente,
       categoria: "Estética Dental",
       badgeClass: "bg-purple-500/15 text-purple-300 border-purple-500/30",
       Icon: Sparkles,
@@ -93,6 +100,7 @@ function getServiceDetails(servicio: Servicio) {
   if (n.includes("resina") || n.includes("calza") || n.includes("restauracion")) {
     return {
       code,
+      esFrecuente,
       categoria: "Operatoria Dental",
       badgeClass: "bg-sky-500/15 text-sky-300 border-sky-500/30",
       Icon: ShieldCheck,
@@ -103,6 +111,7 @@ function getServiceDetails(servicio: Servicio) {
   if (n.includes("extracción") || n.includes("extraccion") || n.includes("cirugía") || n.includes("cirugia")) {
     return {
       code,
+      esFrecuente,
       categoria: "Cirugía Oral",
       badgeClass: "bg-amber-500/15 text-amber-300 border-amber-500/30",
       Icon: Scissors,
@@ -113,6 +122,7 @@ function getServiceDetails(servicio: Servicio) {
   if (n.includes("profilaxis") || n.includes("limpieza") || n.includes("detartraje")) {
     return {
       code,
+      esFrecuente,
       categoria: "Higiene y Prevención",
       badgeClass: "bg-teal-500/15 text-teal-300 border-teal-500/30",
       Icon: Smile,
@@ -123,6 +133,7 @@ function getServiceDetails(servicio: Servicio) {
   if (n.includes("endodoncia") || n.includes("conducto")) {
     return {
       code,
+      esFrecuente,
       categoria: "Endodoncia",
       badgeClass: "bg-rose-500/15 text-rose-300 border-rose-500/30",
       Icon: Activity,
@@ -132,6 +143,7 @@ function getServiceDetails(servicio: Servicio) {
   }
   return {
     code,
+    esFrecuente,
     categoria: "Odontología General",
     badgeClass: "bg-cyan-500/15 text-cyan-300 border-cyan-500/30",
     Icon: Stethoscope,
@@ -174,7 +186,7 @@ export function ServiciosTable({
               <th className="py-4 px-5">Duración</th>
               <th className="py-4 px-5">Tarifa Oficial</th>
               <th className="py-4 px-5">Estado</th>
-              <th className="py-4 px-5 text-right">Acciones</th>
+              {(onEditar || onEliminar) && <th className="py-4 px-5 text-right">Acciones</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200/80 dark:divide-white/10 text-xs sm:text-sm">
@@ -198,106 +210,142 @@ export function ServiciosTable({
                   <td className="py-4 px-5">
                     <div className="flex items-center gap-3.5">
                       <div
-                        className={`h-10 w-10 rounded-2xl flex items-center justify-center flex-shrink-0 border shadow-sm ${details.iconBg}`}
+                        className={`h-11 w-11 rounded-2xl flex items-center justify-center border shadow-sm shrink-0 ${details.iconBg}`}
                       >
-                        <Icon size={19} className={details.iconColor} />
+                        <Icon size={20} className={details.iconColor} />
                       </div>
                       <div className="min-w-0">
-                        <p className="font-black text-slate-900 dark:text-white line-clamp-1">
-                          {servicio.nombre}
-                        </p>
-                        <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-1 max-w-md font-medium">
-                          {servicio.descripcion}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-black text-slate-900 dark:text-white leading-tight">
+                            {servicio.nombre}
+                          </span>
+                          {details.esFrecuente && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-amber-700 bg-amber-500/15 border border-amber-500/30 dark:text-amber-300 dark:bg-amber-500/20 px-2 py-0.5 rounded-md">
+                              Frecuente
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-1 max-w-md font-medium">
+                          {servicio.descripcion || "Sin descripción clínica registrada."}
                         </p>
                       </div>
                     </div>
                   </td>
 
-                  {/* Especialidad */}
+                  {/* Especialidad / Categoría */}
                   <td className="py-4 px-5 whitespace-nowrap">
                     <span
-                      className={`inline-block text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-md border ${details.badgeClass}`}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-black border ${details.badgeClass}`}
                     >
-                      {details.categoria}
+                      <Tag size={12} />
+                      <span>{details.categoria}</span>
                     </span>
                   </td>
 
                   {/* Duración */}
                   <td className="py-4 px-5 whitespace-nowrap">
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 font-mono text-xs font-bold">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-100 dark:bg-white/[0.06] border border-slate-200 dark:border-white/10 text-xs text-slate-700 dark:text-slate-200 font-mono font-bold">
                       <Clock size={13} className="text-cyan-600 dark:text-cyan-400" />
                       <span>{servicio.duracion} min</span>
-                    </div>
+                    </span>
                   </td>
 
-                  {/* Tarifa */}
+                  {/* Tarifa Oficial */}
                   <td className="py-4 px-5 whitespace-nowrap">
                     <span className="font-mono font-black text-base text-teal-700 dark:text-emerald-300">
                       {formatCurrency(servicio.precio)}
                     </span>
                   </td>
 
-                  {/* Estado con Toggle interactivo y Radar Pulse */}
+                  {/* Estado */}
                   <td className="py-4 px-5 whitespace-nowrap">
-                    <button
-                      type="button"
-                      onClick={() => onToggleActivo(servicio)}
-                      className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-black border transition-all cursor-pointer shadow-sm ${
-                        servicio.activo
-                          ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 border-emerald-500/30 hover:bg-emerald-500/25"
-                          : "bg-slate-100 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-700"
-                      }`}
-                      title={servicio.activo ? "Clic para desactivar" : "Clic para activar"}
-                    >
-                      {servicio.activo ? (
-                        <>
-                          <span className="relative flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    {onToggleActivo ? (
+                      <button
+                        type="button"
+                        onClick={() => onToggleActivo(servicio)}
+                        className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-black border transition-all cursor-pointer shadow-sm ${
+                          servicio.activo
+                            ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 border-emerald-500/30 hover:bg-emerald-500/25"
+                            : "bg-slate-100 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-700"
+                        }`}
+                        title={servicio.activo ? "Clic para desactivar" : "Clic para activar"}
+                      >
+                        {servicio.activo ? (
+                          <>
+                            <span className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                            </span>
+                            <span>Activo</span>
+                          </>
+                        ) : (
+                          <>
+                            <XCircle size={13} className="text-slate-400" />
+                            <span>Inactivo</span>
+                          </>
+                        )}
+                      </button>
+                    ) : (
+                      <span
+                        className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-black border shadow-sm ${
+                          servicio.activo
+                            ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 border-emerald-500/30"
+                            : "bg-slate-100 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-700"
+                        }`}
+                      >
+                        {servicio.activo ? (
+                          <>
                             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                          </span>
-                          <span>Activo</span>
-                        </>
-                      ) : (
-                        <>
-                          <XCircle size={13} className="text-slate-400" />
-                          <span>Inactivo</span>
-                        </>
-                      )}
-                    </button>
+                            <span>Activo</span>
+                          </>
+                        ) : (
+                          <>
+                            <XCircle size={13} className="text-slate-400" />
+                            <span>Inactivo</span>
+                          </>
+                        )}
+                      </span>
+                    )}
                   </td>
 
                   {/* Acciones */}
-                  <td className="py-4 px-5 text-right whitespace-nowrap">
-                    <div className="inline-flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => onEditar(servicio)}
-                        className="p-2 rounded-xl bg-slate-100 hover:bg-cyan-50 dark:bg-white/5 dark:hover:bg-cyan-500/20 text-slate-600 hover:text-cyan-700 dark:text-slate-300 dark:hover:text-cyan-200 transition-all border border-slate-200 dark:border-white/10 cursor-pointer shadow-sm"
-                        title="Editar servicio"
-                        aria-label="Editar"
-                      >
-                        <Edit2 size={13} strokeWidth={2.2} />
-                      </button>
+                  {(onEditar || onEliminar) && (
+                    <td className="py-4 px-5 text-right whitespace-nowrap">
+                      <div className="inline-flex items-center gap-1.5">
+                        {onEditar && (
+                          <button
+                            type="button"
+                            onClick={() => onEditar(servicio)}
+                            className="p-2 rounded-xl bg-slate-100 hover:bg-cyan-50 dark:bg-white/5 dark:hover:bg-cyan-500/20 text-slate-600 hover:text-cyan-700 dark:text-slate-300 dark:hover:text-cyan-200 transition-all border border-slate-200 dark:border-white/10 cursor-pointer shadow-sm"
+                            title="Editar servicio"
+                            aria-label="Editar"
+                          >
+                            <Edit2 size={13} strokeWidth={2.2} />
+                          </button>
+                        )}
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              `¿Seguro que deseas eliminar el procedimiento "${servicio.nombre}"?`
-                            )
-                          ) {
-                            onEliminar(servicio.id);
-                          }
-                        }}
-                        className="p-2 rounded-xl bg-slate-100 hover:bg-rose-50 dark:bg-white/5 dark:hover:bg-rose-500/20 text-slate-600 hover:text-rose-700 dark:text-slate-300 dark:hover:text-rose-200 transition-all border border-slate-200 dark:border-white/10 cursor-pointer shadow-sm"
-                        title="Eliminar servicio"
-                        aria-label="Eliminar"
-                      >
-                        <Trash2 size={13} strokeWidth={2.2} />
-                      </button>
-                    </div>
-                  </td>
+                        {onEliminar && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (
+                                window.confirm(
+                                  `¿Seguro que deseas eliminar el procedimiento "${servicio.nombre}"?`
+                                )
+                              ) {
+                                onEliminar(servicio.id);
+                              }
+                            }}
+                            className="p-2 rounded-xl bg-slate-100 hover:bg-rose-50 dark:bg-white/5 dark:hover:bg-rose-500/20 text-slate-600 hover:text-rose-700 dark:text-slate-300 dark:hover:text-rose-200 transition-all border border-slate-200 dark:border-white/10 cursor-pointer shadow-sm"
+                            title="Eliminar servicio"
+                            aria-label="Eliminar"
+                          >
+                            <Trash2 size={13} strokeWidth={2.2} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  )}
                 </tr>
               );
             })}

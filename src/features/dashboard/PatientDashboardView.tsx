@@ -7,13 +7,13 @@ import {
   Stethoscope,
   Plus,
   Smile,
-  ShieldCheck,
   CheckCircle2,
   Calendar,
   DollarSign,
   HeartPulse,
-  MessageSquare,
   FileCheck2,
+  Sparkles,
+  UserCircle,
 } from "lucide-react";
 import { appointmentService } from "../../api/appointmentService";
 import { serviceCatalogService } from "../../api/serviceCatalogService";
@@ -75,9 +75,7 @@ export function PatientDashboardView({ user }: PatientDashboardViewProps) {
           return false;
         });
 
-        const listToMap = filtered.length > 0 ? filtered : allCitas.slice(0, 3);
-
-        const mapped: PatientAppointmentItem[] = listToMap.map((dto: any, idx: number) => {
+        const mapped: PatientAppointmentItem[] = filtered.map((dto: any, idx: number) => {
           const servName = dto.serviceName || dto.servicio || "Consulta Odontológica";
           let servPrice = 80000;
           if (dto.serviceId && servicePriceMap[String(dto.serviceId).toLowerCase()]) {
@@ -116,7 +114,7 @@ export function PatientDashboardView({ user }: PatientDashboardViewProps) {
 
   const proximaCita = myAppointments.find((c) => c.estado === "Confirmada" || c.estado === "Pendiente");
   const citasCompletadasCount = myAppointments.filter((c) => c.estado === "Completada").length;
-  const tratamientosActivosCount = Math.max(1, myAppointments.filter((c) => c.estado !== "Cancelada").length);
+  const tratamientosActivosCount = myAppointments.filter((c) => c.estado !== "Cancelada").length;
   const saldoPendiente = 0;
 
   return (
@@ -473,33 +471,45 @@ export function PatientDashboardView({ user }: PatientDashboardViewProps) {
               >
                 <div className="flex items-center gap-2.5">
                   <Calendar size={16} className="text-cyan-600 dark:text-cyan-400 group-hover:scale-110 transition-transform" />
-                  <span>Mis Citas Médicas</span>
+                  <span>Mis Citas Odontológicas</span>
                 </div>
                 <ArrowRight size={13} className="text-slate-400 group-hover:text-cyan-500 group-hover:translate-x-0.5 transition-all" />
               </button>
 
               <button
                 type="button"
-                onClick={() => navigate("/perfil")}
+                onClick={() => navigate("/servicios")}
                 className="w-full p-3 rounded-xl border border-slate-200/70 dark:border-white/10 hover:border-teal-500/50 bg-slate-50/80 dark:bg-slate-900/50 hover:bg-teal-500/10 text-slate-800 dark:text-slate-200 flex items-center justify-between transition-all cursor-pointer group"
               >
                 <div className="flex items-center gap-2.5">
-                  <ShieldCheck size={16} className="text-teal-600 dark:text-teal-400 group-hover:scale-110 transition-transform" />
-                  <span>Mi Perfil y Documentos</span>
+                  <Sparkles size={16} className="text-teal-600 dark:text-teal-400 group-hover:scale-110 transition-transform" />
+                  <span>Catálogo de Servicios y Tarifas</span>
                 </div>
                 <ArrowRight size={13} className="text-slate-400 group-hover:text-teal-500 group-hover:translate-x-0.5 transition-all" />
               </button>
 
               <button
                 type="button"
-                onClick={() => navigate("/atencion-chat")}
-                className="w-full p-3 rounded-xl border border-slate-200/70 dark:border-white/10 hover:border-emerald-500/50 bg-slate-50/80 dark:bg-slate-900/50 hover:bg-emerald-500/10 text-slate-800 dark:text-slate-200 flex items-center justify-between transition-all cursor-pointer group"
+                onClick={() => navigate("/profesionales")}
+                className="w-full p-3 rounded-xl border border-slate-200/70 dark:border-white/10 hover:border-blue-500/50 bg-slate-50/80 dark:bg-slate-900/50 hover:bg-blue-500/10 text-slate-800 dark:text-slate-200 flex items-center justify-between transition-all cursor-pointer group"
               >
                 <div className="flex items-center gap-2.5">
-                  <MessageSquare size={16} className="text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform" />
-                  <span>Atención WhatsApp y Soporte</span>
+                  <Stethoscope size={16} className="text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform" />
+                  <span>Especialistas Odontológicos</span>
                 </div>
-                <ArrowRight size={13} className="text-slate-400 group-hover:text-emerald-500 group-hover:translate-x-0.5 transition-all" />
+                <ArrowRight size={13} className="text-slate-400 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => navigate("/perfil")}
+                className="w-full p-3 rounded-xl border border-slate-200/70 dark:border-white/10 hover:border-purple-500/50 bg-slate-50/80 dark:bg-slate-900/50 hover:bg-purple-500/10 text-slate-800 dark:text-slate-200 flex items-center justify-between transition-all cursor-pointer group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <UserCircle size={16} className="text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform" />
+                  <span>Mi Perfil y Datos Personales</span>
+                </div>
+                <ArrowRight size={13} className="text-slate-400 group-hover:text-purple-500 group-hover:translate-x-0.5 transition-all" />
               </button>
             </div>
           </div>

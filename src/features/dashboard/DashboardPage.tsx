@@ -15,6 +15,7 @@ import {
   Calendar,
   Layers,
   DollarSign,
+  MessageSquare,
 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { getUserRole } from "../../utils/routePermissions";
@@ -322,7 +323,7 @@ export default function DashboardPage() {
             <span>{cantidadTratamientos} tratamientos</span>
             <span
               className="font-bold text-teal-600 dark:text-teal-400 cursor-pointer hover:underline group-hover:translate-x-0.5 transition-transform"
-              onClick={() => navigate("/catalogo-servicios")}
+              onClick={() => navigate("/servicios")}
             >
               Tarifas catálogo →
             </span>
@@ -349,8 +350,11 @@ export default function DashboardPage() {
           </div>
           <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-white/10 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-instrument">
             <span>3 doctores en turno</span>
-            <span className="font-bold text-purple-600 dark:text-purple-400 cursor-pointer hover:underline group-hover:translate-x-0.5 transition-transform" onClick={() => navigate("/profesionales")}>
-              Turnos →
+            <span
+              className="font-bold text-purple-600 dark:text-purple-400 cursor-pointer hover:underline group-hover:translate-x-0.5 transition-transform"
+              onClick={() => navigate(role === "ODONTOLOGO" ? "/agenda" : "/profesionales")}
+            >
+              {role === "ODONTOLOGO" ? "Ver Agenda →" : "Turnos →"}
             </span>
           </div>
         </div>
@@ -528,63 +532,141 @@ export default function DashboardPage() {
             </h3>
 
             <div className="space-y-2 text-xs font-semibold font-instrument">
-              <button
-                type="button"
-                onClick={() => navigate("/odontograma")}
-                className="w-full p-3 rounded-xl border border-slate-200/70 dark:border-white/10 hover:border-cyan-500/50 bg-slate-50/80 dark:bg-slate-900/50 hover:bg-cyan-500/10 text-slate-800 dark:text-slate-200 flex items-center justify-between transition-all cursor-pointer group"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Smile size={16} className="text-cyan-600 dark:text-cyan-400 group-hover:scale-110 transition-transform" />
-                  <span>Odontograma Interactivo FDI</span>
-                </div>
-                <ArrowRight size={13} className="text-slate-400 group-hover:text-cyan-500 group-hover:translate-x-0.5 transition-all" />
-              </button>
+              {role === "RECEPCIONISTA" ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/citas")}
+                    className="w-full p-3 rounded-xl border border-slate-200/70 dark:border-white/10 hover:border-cyan-500/50 bg-slate-50/80 dark:bg-slate-900/50 hover:bg-cyan-500/10 text-slate-800 dark:text-slate-200 flex items-center justify-between transition-all cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <CalendarDays size={16} className="text-cyan-600 dark:text-cyan-400 group-hover:scale-110 transition-transform" />
+                      <span>Gestión de Citas y Turnos</span>
+                    </div>
+                    <ArrowRight size={13} className="text-slate-400 group-hover:text-cyan-500 group-hover:translate-x-0.5 transition-all" />
+                  </button>
 
-              <button
-                type="button"
-                onClick={() => navigate("/historia-clinica")}
-                className="w-full p-3 rounded-xl border border-slate-200/70 dark:border-white/10 hover:border-teal-500/50 bg-slate-50/80 dark:bg-slate-900/50 hover:bg-teal-500/10 text-slate-800 dark:text-slate-200 flex items-center justify-between transition-all cursor-pointer group"
-              >
-                <div className="flex items-center gap-2.5">
-                  <FileText size={16} className="text-teal-600 dark:text-teal-400 group-hover:scale-110 transition-transform" />
-                  <span>Historias Clínicas y Evolución</span>
-                </div>
-                <ArrowRight size={13} className="text-slate-400 group-hover:text-teal-500 group-hover:translate-x-0.5 transition-all" />
-              </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/agenda")}
+                    className="w-full p-3 rounded-xl border border-slate-200/70 dark:border-white/10 hover:border-blue-500/50 bg-slate-50/80 dark:bg-slate-900/50 hover:bg-blue-500/10 text-slate-800 dark:text-slate-200 flex items-center justify-between transition-all cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Calendar size={16} className="text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform" />
+                      <span>Calendario de Sillones</span>
+                    </div>
+                    <ArrowRight size={13} className="text-slate-400 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all" />
+                  </button>
 
-              <button
-                type="button"
-                onClick={() => navigate("/agenda")}
-                className="w-full p-3 rounded-xl border border-slate-200/70 dark:border-white/10 hover:border-blue-500/50 bg-slate-50/80 dark:bg-slate-900/50 hover:bg-blue-500/10 text-slate-800 dark:text-slate-200 flex items-center justify-between transition-all cursor-pointer group"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Calendar size={16} className="text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform" />
-                  <span>Calendario de Sillones</span>
-                </div>
-                <ArrowRight size={13} className="text-slate-400 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all" />
-              </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/pacientes/nuevo")}
+                    className="w-full p-3 rounded-xl border border-slate-200/70 dark:border-white/10 hover:border-emerald-500/50 bg-slate-50/80 dark:bg-slate-900/50 hover:bg-emerald-500/10 text-slate-800 dark:text-slate-200 flex items-center justify-between transition-all cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Plus size={16} className="text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform" />
+                      <span>Registrar Nuevo Paciente</span>
+                    </div>
+                    <ArrowRight size={13} className="text-slate-400 group-hover:text-emerald-500 group-hover:translate-x-0.5 transition-all" />
+                  </button>
 
-              <button
-                type="button"
-                onClick={() => navigate("/roles-permisos")}
-                className="w-full p-3 rounded-xl border border-slate-200/70 dark:border-white/10 hover:border-purple-500/50 bg-slate-50/80 dark:bg-slate-900/50 hover:bg-purple-500/10 text-slate-800 dark:text-slate-200 flex items-center justify-between transition-all cursor-pointer group"
-              >
-                <div className="flex items-center gap-2.5">
-                  <ShieldCheck size={16} className="text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform" />
-                  <span>Roles y Matriz de Permisos</span>
-                </div>
-                <ArrowRight size={13} className="text-slate-400 group-hover:text-purple-500 group-hover:translate-x-0.5 transition-all" />
-              </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/atencion-chat")}
+                    className="w-full p-3 rounded-xl border border-slate-200/70 dark:border-white/10 hover:border-teal-500/50 bg-slate-50/80 dark:bg-slate-900/50 hover:bg-teal-500/10 text-slate-800 dark:text-slate-200 flex items-center justify-between transition-all cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <MessageSquare size={16} className="text-teal-600 dark:text-teal-400 group-hover:scale-110 transition-transform" />
+                      <span>Atención y WhatsApp Bot</span>
+                    </div>
+                    <ArrowRight size={13} className="text-slate-400 group-hover:text-teal-500 group-hover:translate-x-0.5 transition-all" />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/odontograma")}
+                    className="w-full p-3 rounded-xl border border-slate-200/70 dark:border-white/10 hover:border-cyan-500/50 bg-slate-50/80 dark:bg-slate-900/50 hover:bg-cyan-500/10 text-slate-800 dark:text-slate-200 flex items-center justify-between transition-all cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Smile size={16} className="text-cyan-600 dark:text-cyan-400 group-hover:scale-110 transition-transform" />
+                      <span>Odontograma Interactivo FDI</span>
+                    </div>
+                    <ArrowRight size={13} className="text-slate-400 group-hover:text-cyan-500 group-hover:translate-x-0.5 transition-all" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => navigate("/historia-clinica")}
+                    className="w-full p-3 rounded-xl border border-slate-200/70 dark:border-white/10 hover:border-teal-500/50 bg-slate-50/80 dark:bg-slate-900/50 hover:bg-teal-500/10 text-slate-800 dark:text-slate-200 flex items-center justify-between transition-all cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <FileText size={16} className="text-teal-600 dark:text-teal-400 group-hover:scale-110 transition-transform" />
+                      <span>Historias Clínicas y Evolución</span>
+                    </div>
+                    <ArrowRight size={13} className="text-slate-400 group-hover:text-teal-500 group-hover:translate-x-0.5 transition-all" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => navigate("/agenda")}
+                    className="w-full p-3 rounded-xl border border-slate-200/70 dark:border-white/10 hover:border-blue-500/50 bg-slate-50/80 dark:bg-slate-900/50 hover:bg-blue-500/10 text-slate-800 dark:text-slate-200 flex items-center justify-between transition-all cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Calendar size={16} className="text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform" />
+                      <span>Calendario de Sillones</span>
+                    </div>
+                    <ArrowRight size={13} className="text-slate-400 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all" />
+                  </button>
+
+                  {role === "ADMINISTRADOR" ? (
+                    <button
+                      type="button"
+                      onClick={() => navigate("/roles-permisos")}
+                      className="w-full p-3 rounded-xl border border-slate-200/70 dark:border-white/10 hover:border-purple-500/50 bg-slate-50/80 dark:bg-slate-900/50 hover:bg-purple-500/10 text-slate-800 dark:text-slate-200 flex items-center justify-between transition-all cursor-pointer group"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <ShieldCheck size={16} className="text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform" />
+                        <span>Roles y Matriz de Permisos</span>
+                      </div>
+                      <ArrowRight size={13} className="text-slate-400 group-hover:text-purple-500 group-hover:translate-x-0.5 transition-all" />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => navigate("/pacientes")}
+                      className="w-full p-3 rounded-xl border border-slate-200/70 dark:border-white/10 hover:border-teal-500/50 bg-slate-50/80 dark:bg-slate-900/50 hover:bg-teal-500/10 text-slate-800 dark:text-slate-200 flex items-center justify-between transition-all cursor-pointer group"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Users size={16} className="text-teal-600 dark:text-teal-400 group-hover:scale-110 transition-transform" />
+                        <span>Directorio de Pacientes</span>
+                      </div>
+                      <ArrowRight size={13} className="text-slate-400 group-hover:text-teal-500 group-hover:translate-x-0.5 transition-all" />
+                    </button>
+                  )}
+                </>
+              )}
             </div>
           </div>
 
-          {/* RECORDATORIO / ESTADO DEL SISTEMA */}
+          {/* RECORDATORIO / ESTADO DEL SISTEMA SEGÚN ROL */}
           <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-start gap-3 text-xs">
             <AlertCircle size={17} className="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
             <div className="space-y-0.5">
-              <p className="font-bold text-amber-800 dark:text-amber-300">Aviso Operativo de Recepción</p>
+              <p className="font-bold text-amber-800 dark:text-amber-300">
+                {role === "ODONTOLOGO"
+                  ? "Aviso Clínico de Turno"
+                  : role === "ADMINISTRADOR"
+                  ? "Estado Operativo de la Clínica"
+                  : "Aviso Operativo de Recepción"}
+              </p>
               <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
-                2 citas programadas para la tarde tienen recordatorio automático enviado al paciente.
+                {role === "ODONTOLOGO"
+                  ? "Recuerda registrar la evolución clínica y actualizar el odontograma interactivo al finalizar cada atención de paciente."
+                  : role === "ADMINISTRADOR"
+                  ? "Todos los módulos clínicos, registros de auditoría y catálogos se encuentran sincronizados."
+                  : "2 citas programadas para la tarde tienen recordatorio automático enviado al paciente."}
               </p>
             </div>
           </div>

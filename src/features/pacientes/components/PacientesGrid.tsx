@@ -1,6 +1,8 @@
 import type { Paciente } from "../../../types/pacientes";
-import { CalendarPlus, FileText, Phone, IdCard, Activity, MoreVertical } from "lucide-react";
+import { CalendarPlus, FileText, Phone, IdCard, Activity, MoreVertical, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../auth/AuthContext";
+import { getUserRole } from "../../../utils/routePermissions";
 
 interface PacientesGridProps {
   pacientes: Paciente[];
@@ -21,6 +23,9 @@ export function PacientesGrid({
   onSelectPaciente,
 }: PacientesGridProps) {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const role = getUserRole(user);
+  const isClinicianOrAdmin = role === "ADMINISTRADOR" || role === "ODONTOLOGO";
 
   const getInitials = (nombre: string) => {
     const parts = nombre.trim().split(" ");
@@ -129,11 +134,14 @@ export function PacientesGrid({
               </div>
             </div>
 
-            {/* Acciones Rápidas */}
+            {/* Acciones Rápidas adaptadas según rol */}
             <div className="mt-4 pt-2 grid grid-cols-3 gap-2">
               <button
                 type="button"
-                onClick={() => navigate("/citas")}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate("/citas");
+                }}
                 className="flex flex-col items-center justify-center gap-1 p-2 rounded-xl bg-slate-100/90 dark:bg-slate-900/75 hover:bg-cyan-50 dark:hover:bg-cyan-500/30 border border-slate-200/80 dark:border-white/20 hover:border-cyan-400/50 text-slate-700 dark:text-slate-200 hover:text-cyan-700 dark:hover:text-white transition-all text-[11px] font-semibold cursor-pointer active:scale-95 shadow-sm"
                 title="Agendar Cita"
               >
@@ -141,25 +149,67 @@ export function PacientesGrid({
                 <span>Agendar</span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => navigate("/odontograma")}
-                className="flex flex-col items-center justify-center gap-1 p-2 rounded-xl bg-slate-100/90 dark:bg-slate-900/75 hover:bg-teal-50 dark:hover:bg-teal-500/30 border border-slate-200/80 dark:border-white/20 hover:border-teal-400/50 text-slate-700 dark:text-slate-200 hover:text-teal-700 dark:hover:text-white transition-all text-[11px] font-semibold cursor-pointer active:scale-95 shadow-sm"
-                title="Ver Odontograma"
-              >
-                <Activity size={15} className="text-teal-600 dark:text-teal-400" />
-                <span>Dientes</span>
-              </button>
+              {isClinicianOrAdmin ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate("/odontograma");
+                    }}
+                    className="flex flex-col items-center justify-center gap-1 p-2 rounded-xl bg-slate-100/90 dark:bg-slate-900/75 hover:bg-teal-50 dark:hover:bg-teal-500/30 border border-slate-200/80 dark:border-white/20 hover:border-teal-400/50 text-slate-700 dark:text-slate-200 hover:text-teal-700 dark:hover:text-white transition-all text-[11px] font-semibold cursor-pointer active:scale-95 shadow-sm"
+                    title="Ver Odontograma"
+                  >
+                    <Activity size={15} className="text-teal-600 dark:text-teal-400" />
+                    <span>Dientes</span>
+                  </button>
 
-              <button
-                type="button"
-                onClick={() => navigate("/historia-clinica")}
-                className="flex flex-col items-center justify-center gap-1 p-2 rounded-xl bg-slate-100/90 dark:bg-slate-900/75 hover:bg-blue-50 dark:hover:bg-blue-500/30 border border-slate-200/80 dark:border-white/20 hover:border-blue-400/50 text-slate-700 dark:text-slate-200 hover:text-blue-700 dark:hover:text-white transition-all text-[11px] font-semibold cursor-pointer active:scale-95 shadow-sm"
-                title="Ver Historia Clínica"
-              >
-                <FileText size={15} className="text-blue-600 dark:text-blue-400" />
-                <span>Historia</span>
-              </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate("/historia-clinica");
+                    }}
+                    className="flex flex-col items-center justify-center gap-1 p-2 rounded-xl bg-slate-100/90 dark:bg-slate-900/75 hover:bg-blue-50 dark:hover:bg-blue-500/30 border border-slate-200/80 dark:border-white/20 hover:border-blue-400/50 text-slate-700 dark:text-slate-200 hover:text-blue-700 dark:hover:text-white transition-all text-[11px] font-semibold cursor-pointer active:scale-95 shadow-sm"
+                    title="Ver Historia Clínica"
+                  >
+                    <FileText size={15} className="text-blue-600 dark:text-blue-400" />
+                    <span>Historia</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectPaciente?.(paciente);
+                    }}
+                    className="flex flex-col items-center justify-center gap-1 p-2 rounded-xl bg-slate-100/90 dark:bg-slate-900/75 hover:bg-teal-50 dark:hover:bg-teal-500/30 border border-slate-200/80 dark:border-white/20 hover:border-teal-400/50 text-slate-700 dark:text-slate-200 hover:text-teal-700 dark:hover:text-white transition-all text-[11px] font-semibold cursor-pointer active:scale-95 shadow-sm"
+                    title="Ver Ficha del Paciente"
+                  >
+                    <Eye size={15} className="text-teal-600 dark:text-teal-400" />
+                    <span>Ver Ficha</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (paciente.telefono) {
+                        window.open(`tel:${paciente.telefono}`);
+                      } else {
+                        onSelectPaciente?.(paciente);
+                      }
+                    }}
+                    className="flex flex-col items-center justify-center gap-1 p-2 rounded-xl bg-slate-100/90 dark:bg-slate-900/75 hover:bg-emerald-50 dark:hover:bg-emerald-500/30 border border-slate-200/80 dark:border-white/20 hover:border-emerald-400/50 text-slate-700 dark:text-slate-200 hover:text-emerald-700 dark:hover:text-white transition-all text-[11px] font-semibold cursor-pointer active:scale-95 shadow-sm"
+                    title={paciente.telefono ? `Llamar a ${paciente.telefono}` : "Sin teléfono registrado"}
+                  >
+                    <Phone size={15} className="text-emerald-600 dark:text-emerald-400" />
+                    <span>Contactar</span>
+                  </button>
+                </>
+              )}
             </div>
           </div>
         ))}

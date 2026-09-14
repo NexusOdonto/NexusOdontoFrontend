@@ -30,6 +30,7 @@ export const ROLE_ALLOWED_ROUTES: Record<SystemRole, string[]> = {
     "/agenda",
     "/pacientes",
     "/pacientes/nuevo",
+    "/servicios",
     "/historia-clinica",
     "/odontograma",
     "/perfil",
@@ -48,6 +49,8 @@ export const ROLE_ALLOWED_ROUTES: Record<SystemRole, string[]> = {
   PACIENTE: [
     "/dashboard",
     "/citas",
+    "/servicios",
+    "/profesionales",
     "/perfil",
   ],
 };
@@ -109,6 +112,14 @@ export function getUserRole(user: unknown): SystemRole {
   return "PACIENTE";
 }
 
+const ROUTE_ALIASES: Record<string, string> = {
+  "/catalogo-servicios": "/servicios",
+  "/tarifas": "/servicios",
+  "/catalogo": "/servicios",
+  "/consultorios": "/profesionales",
+  "/turnos": "/profesionales",
+};
+
 /**
  * Valida de forma estricta si un usuario tiene acceso a una ruta específica según su rol.
  * El dashboard y perfil siempre son accesibles para todo usuario autenticado.
@@ -118,9 +129,10 @@ export function hasRouteAccess(user: unknown, path: string): boolean {
 
   // Normalizar ruta para evitar discrepancias por query params o barras finales
   const cleanPath = path.split("?")[0].replace(/\/$/, "") || "/";
+  const targetPath = ROUTE_ALIASES[cleanPath] || cleanPath;
 
   // /dashboard, /perfil y / siempre son accesibles para cualquier usuario autenticado
-  if (cleanPath === "/dashboard" || cleanPath === "/perfil" || cleanPath === "/") {
+  if (targetPath === "/dashboard" || targetPath === "/perfil" || targetPath === "/") {
     return true;
   }
 
@@ -132,5 +144,5 @@ export function hasRouteAccess(user: unknown, path: string): boolean {
   }
 
   const allowedRoutes = ROLE_ALLOWED_ROUTES[role] || [];
-  return allowedRoutes.includes(cleanPath);
+  return allowedRoutes.includes(targetPath);
 }

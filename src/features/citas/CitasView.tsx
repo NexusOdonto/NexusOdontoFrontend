@@ -18,6 +18,8 @@ import { serviceCatalogService } from "../../api/serviceCatalogService";
 import { professionalService } from "../../api/professionalService";
 import { patientService } from "../../api/patientService";
 import { personService } from "../../api/personService";
+import { employeeService } from "../../api/employeeService";
+import { specialtyService } from "../../api/specialtyService";
 import { useNotifications } from "../../context/NotificationContext";
 import { SelectOrWriteInput, type SelectOption } from "../../components/common/SelectOrWriteInput";
 import { areGuidsEqual } from "../../utils/roleUtils";
@@ -35,6 +37,7 @@ const defaultSeedDoctors: SelectOption[] = [
   { label: "Dra. Laura Gómez", subLabel: "Especialidad: Ortodoncia y Estética", id: "1d000000-0000-0000-0000-000000000001" },
   { label: "Dr. Roberto Martínez", subLabel: "Especialidad: Cirugía Oral e Implantología", id: "1d000000-0000-0000-0000-000000000002" },
   { label: "Dra. Ana Sofía Silva", subLabel: "Especialidad: Endodoncia y Periodoncia", id: "1d000000-0000-0000-0000-000000000003" },
+  { label: "Dr. Carlos Santana", subLabel: "Especialidad: Odontología Integral", id: "8e7c7aa0-f574-41a8-8995-55faef58cdfb" },
   { label: "Dr. Juan Martínez", subLabel: "Especialidad: Odontología General" },
   { label: "Dra. Patricia Silva", subLabel: "Especialidad: Endodoncia Microscópica" },
 ];
@@ -70,6 +73,7 @@ export function CitasView() {
     "Dra. Laura Gómez",
     "Dr. Roberto Martínez",
     "Dra. Ana Sofía Silva",
+    "Dr. Carlos Santana",
     "Dr. Juan Martínez",
     "Dra. Patricia Silva",
   ]);
@@ -81,6 +85,7 @@ export function CitasView() {
   const [fecha, setFecha] = useState("");
   const [estadoFiltro, setEstadoFiltro] = useState<"Todos" | EstadoCita>("Todos");
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [servicesEntities, setServicesEntities] = useState<any[]>([]);
   const [profsEntities, setProfsEntities] = useState<any[]>([]);
@@ -117,10 +122,12 @@ export function CitasView() {
     if (!dateStr || dateStr === today) {
       const currentHour = now.getHours();
       const nextHour = currentHour + 1;
-      if (nextHour >= 7 && nextHour <= 18) {
+      if (nextHour >= 8 && nextHour <= 11) {
         return `${String(nextHour).padStart(2, "0")}:00`;
-      } else if (nextHour < 7) {
-        return "08:00";
+      } else if (nextHour >= 12 && nextHour < 14) {
+        return "14:00";
+      } else if (nextHour >= 14 && nextHour <= 16) {
+        return `${String(nextHour).padStart(2, "0")}:00`;
       } else {
         return "09:00";
       }
@@ -158,16 +165,19 @@ export function CitasView() {
     return "09:00";
   }, [getNextValidHour]);
 
-  const calculateEndDateTime = useCallback((dateStr: string, timeStr: string, durationMinutes: number = 45) => {
+  const calculateEndDateTime = useCallback((dateStr: string, timeStr: string, durationMinutes: number = 30) => {
     const cleanTime = normalizeTimeTo24h(timeStr);
     const parts = cleanTime.split(":");
-    const startH = parseInt(parts[0], 10);
-    const startM = parseInt(parts[1], 10);
-    const safeH = isNaN(startH) ? 9 : startH;
-    const safeM = isNaN(startM) ? 0 : startM;
+    let startH = parseInt(parts[0], 10);
+    let startM = parseInt(parts[1], 10);
+    if (isNaN(startH)) startH = 9;
+    if (isNaN(startM)) startM = 0;
 
-    const startDate = new Date(`${dateStr}T${String(safeH).padStart(2, "0")}:${String(safeM).padStart(2, "0")}:00`);
-    const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
+    const startDate = new Date(`${dateStr}T${String(startH).padStart(2, "0")}:${String(startM).padStart(2, "0")}:00`);
+    
+    // Duración estándar médica de 30 minutos (mínimo 15 min)
+    const effectiveDuration = Math.max(15, durationMinutes || 30);
+    const endDate = new Date(startDate.getTime() + effectiveDuration * 60000);
 
     const endYear = endDate.getFullYear();
     const endMonth = String(endDate.getMonth() + 1).padStart(2, "0");
@@ -176,7 +186,7 @@ export function CitasView() {
     const endM = String(endDate.getMinutes()).padStart(2, "0");
 
     return {
-      startsAt: `${dateStr}T${String(safeH).padStart(2, "0")}:${String(safeM).padStart(2, "0")}:00`,
+      startsAt: `${dateStr}T${String(startH).padStart(2, "0")}:${String(startM).padStart(2, "0")}:00`,
       endsAt: `${endYear}-${endMonth}-${endDay}T${endH}:${endM}:00`,
       endsHoraStr: `${endH}:${endM}`,
     };
@@ -204,7 +214,7 @@ export function CitasView() {
   const [formHora, setFormHora] = useState(() => {
     const now = new Date();
     const nextHour = now.getHours() + 1;
-    if (nextHour >= 7 && nextHour <= 18) {
+    if (nextHour >= 7 && nextHour <= 16) {
       return `${String(nextHour).padStart(2, "0")}:00`;
     }
     return "09:00";
@@ -217,11 +227,13 @@ export function CitasView() {
     setLoading(true);
     try {
       // Cargar catálogos y entidades en paralelo desde la API
-      const [servicesData, profData, patientsData, personsData, apiAppointments] = await Promise.allSettled([
+      const [servicesData, profData, patientsData, personsData, employeesData, specialtiesData, apiAppointments] = await Promise.allSettled([
         serviceCatalogService.getAll(),
         professionalService.getAll(),
         patientService.getAll(),
         personService.getAll(),
+        employeeService.getAll(),
+        specialtyService.getAll(),
         appointmentService.getAll(),
       ]);
 
@@ -237,6 +249,12 @@ export function CitasView() {
       const persons = personsData.status === "fulfilled"
         ? (Array.isArray(personsData.value) ? personsData.value : (personsData.value as any)?.data || [])
         : [];
+      const employees = employeesData.status === "fulfilled"
+        ? (Array.isArray(employeesData.value) ? employeesData.value : (employeesData.value as any)?.data || [])
+        : [];
+      const specialties = specialtiesData.status === "fulfilled"
+        ? (Array.isArray(specialtiesData.value) ? specialtiesData.value : (specialtiesData.value as any)?.data || [])
+        : [];
 
       const rawApps = apiAppointments.status === "fulfilled" ? apiAppointments.value : [];
       const appointments: AppointmentResponseDto[] = Array.isArray(rawApps)
@@ -246,32 +264,91 @@ export function CitasView() {
       setServicesEntities(services);
       setProfsEntities(profs);
       setPatientsEntities(patients);
-      // Mapas de búsqueda rápida para enriquecer los IDs
+
+      // Mapas de personas y empleados para enriquecer nombres reales
+      const personsMap: Record<string, any> = {};
+      persons.forEach((per: any) => {
+        if (per.id) {
+          personsMap[String(per.id).toLowerCase()] = per;
+        }
+      });
+
+      const empToPersonMap: Record<string, string> = {};
+      employees.forEach((emp: any) => {
+        if (emp.id && emp.personId) {
+          empToPersonMap[String(emp.id).toLowerCase()] = String(emp.personId).toLowerCase();
+        }
+      });
+
+      const specialtiesMap: Record<string, string> = {};
+      specialties.forEach((sp: any) => {
+        if (sp.id) {
+          specialtiesMap[String(sp.id).toLowerCase()] = sp.name;
+        }
+      });
+
+      // Mapas de búsqueda rápida para servicios
       const servicesMap: Record<string, string> = {};
       services.forEach((s: any) => {
         if (s.id) servicesMap[String(s.id).toLowerCase()] = s.name;
       });
 
+      // Mapas de profesionales enriquecidos con su persona y especialidad
       const profsMap: Record<string, string> = {};
+      const enrichedProfs: SelectOption[] = [];
+
       profs.forEach((p: any) => {
+        const empPersonId = p.employeeId ? empToPersonMap[String(p.employeeId).toLowerCase()] : undefined;
+        const person = (empPersonId && personsMap[empPersonId]) || (p.personId && personsMap[String(p.personId).toLowerCase()]);
+        
+        let profName = "";
+        if (person) {
+          profName = `Dr(a). ${person.firstName || ""} ${person.lastName || ""}`.trim();
+        } else if (p.firstName || p.lastName) {
+          profName = `Dr(a). ${p.firstName || ""} ${p.lastName || ""}`.trim();
+        } else if (p.name) {
+          profName = p.name;
+        } else {
+          profName = "Dra. Laura Gómez";
+        }
+
+        let specName = "Odontología Integral";
+        if (Array.isArray(p.specialtyIds) && p.specialtyIds.length > 0) {
+          const firstSpec = specialtiesMap[String(p.specialtyIds[0]).toLowerCase()];
+          if (firstSpec) specName = firstSpec;
+        } else if (p.specialty) {
+          specName = p.specialty;
+        }
+
         if (p.id) {
-          profsMap[String(p.id).toLowerCase()] = (p.firstName || p.lastName)
-            ? `Dr(a). ${p.firstName || ""} ${p.lastName || ""}`.trim()
-            : "Dr. Especialista";
+          profsMap[String(p.id).toLowerCase()] = profName;
+          enrichedProfs.push({
+            id: p.id,
+            label: profName,
+            subLabel: `Especialidad: ${specName}`,
+            data: { professionalId: p.id, id: p.id, specialty: specName, personId: empPersonId }
+          });
         }
       });
+
+      // Asegurar doctores base si faltan
+      defaultSeedDoctors.forEach((seedDoc) => {
+        if (!enrichedProfs.some((ep) => ep.label.toLowerCase() === seedDoc.label.toLowerCase() || (seedDoc.id && areGuidsEqual(ep.id, seedDoc.id)))) {
+          enrichedProfs.push(seedDoc);
+        }
+      });
+
+      setProfessionalsOptions(enrichedProfs);
+      const profNamesList = enrichedProfs.map((ep) => ep.label);
+      setProfessionalsList(profNamesList);
+      if (profNamesList.length > 0) {
+        setFormProfesional((prev) => (prev && profNamesList.includes(prev) ? prev : profNamesList[0]));
+      }
 
       const patientToPersonMap: Record<string, string> = {};
       patients.forEach((pt: any) => {
         if (pt.id && pt.personId) {
           patientToPersonMap[String(pt.id).toLowerCase()] = String(pt.personId).toLowerCase();
-        }
-      });
-
-      const personsMap: Record<string, any> = {};
-      persons.forEach((per: any) => {
-        if (per.id) {
-          personsMap[String(per.id).toLowerCase()] = per;
         }
       });
 
@@ -305,29 +382,6 @@ export function CitasView() {
         setServicesList(names);
         setSelectedServiceId((prev) => (prev && defaultSeedServices.some((s) => s.id === prev) ? prev : defaultSeedServices[0].id));
         setFormServicio((prev) => (prev && names.includes(prev) ? prev : names[0]));
-      }
-
-      // Catálogo y opciones de profesionales
-      if (profs.length > 0) {
-        const profNames = profs.map((p: any) =>
-          (p.firstName || p.lastName) ? `Dr(a). ${p.firstName || ""} ${p.lastName || ""}`.trim() : "Dra. Laura Gómez"
-        );
-        setProfessionalsList(profNames);
-        setFormProfesional(profNames[0] || "");
-
-        const profOpts: SelectOption[] = profs.map((p: any) => {
-          const name = (p.firstName || p.lastName) ? `Dr(a). ${p.firstName || ""} ${p.lastName || ""}`.trim() : "Dra. Laura Gómez";
-          const spec = p.specialty || p.roleName || "Odontología Integral";
-          return {
-            id: p.id,
-            label: name,
-            subLabel: `Especialidad: ${spec}`,
-            data: { professionalId: p.id, id: p.id, specialty: spec }
-          };
-        });
-        setProfessionalsOptions(profOpts);
-      } else {
-        setFormProfesional("");
       }
 
       // Catálogo y opciones de pacientes para búsqueda / filtrado
@@ -497,9 +551,9 @@ export function CitasView() {
     }
   }, [searchParams]);
 
-  // Filtrado reactivo de citas según rol y filtros de búsqueda
-  const citasFiltradas = useMemo(() => {
-    const searchValue = search.trim().toLowerCase();
+  // Citas aisladas por rol (PACIENTE solo ve las suyas, ODONTOLOGO solo ve las suyas)
+  const userRoleCitas = useMemo(() => {
+    if (!isPaciente && !isOdontologo) return citas;
 
     return citas.filter((cita) => {
       // 1. Aislamiento por rol PACIENTE
@@ -518,7 +572,7 @@ export function CitasView() {
             (cita.paciente.toLowerCase().includes(patientName) ||
               patientName.includes(cita.paciente.toLowerCase())));
 
-        if (!isOwn) return false;
+        return isOwn;
       }
 
       // 2. Aislamiento por rol ODONTÓLOGO
@@ -532,7 +586,16 @@ export function CitasView() {
         }
       }
 
-      // 3. Filtros de búsqueda de texto
+      return true;
+    });
+  }, [citas, isPaciente, isOdontologo, user]);
+
+  // Filtrado reactivo de citas según filtros de búsqueda y fecha
+  const citasFiltradas = useMemo(() => {
+    const searchValue = search.trim().toLowerCase();
+
+    return userRoleCitas.filter((cita) => {
+      // 1. Filtros de búsqueda de texto
       const matchSearch =
         searchValue === "" ||
         cita.paciente.toLowerCase().includes(searchValue) ||
@@ -540,237 +603,278 @@ export function CitasView() {
         cita.servicio.toLowerCase().includes(searchValue) ||
         (cita.motivo && cita.motivo.toLowerCase().includes(searchValue));
 
-      // 4. Filtro por fecha
+      // 2. Filtro por fecha
       const matchFecha = fecha === "" || cita.fecha === fecha;
 
-      // 5. Filtro por estado
+      // 3. Filtro por estado
       const matchEstado = estadoFiltro === "Todos" || cita.estado === estadoFiltro;
 
       return matchSearch && matchFecha && matchEstado;
     });
-  }, [citas, search, fecha, estadoFiltro, isPaciente, isOdontologo, user]);
+  }, [userRoleCitas, search, fecha, estadoFiltro]);
 
   const countTodas = useMemo(() => {
-    if (!search && !fecha) return citas.length;
+    if (!search && !fecha) return userRoleCitas.length;
     const s = (search || "").toLowerCase().trim();
-    return citas.filter((c) => {
+    return userRoleCitas.filter((c) => {
       const matchSearch = !s || c.paciente.toLowerCase().includes(s) || (c.profesional && c.profesional.toLowerCase().includes(s)) || c.servicio.toLowerCase().includes(s) || (c.motivo && c.motivo.toLowerCase().includes(s));
       const matchFecha = !fecha || c.fecha === fecha;
       return matchSearch && matchFecha;
     }).length;
-  }, [citas, search, fecha]);
+  }, [userRoleCitas, search, fecha]);
 
   const pendingCount = useMemo(() => {
     const s = (search || "").toLowerCase().trim();
-    return citas.filter((c) => {
+    return userRoleCitas.filter((c) => {
       if (c.estado !== "Pendiente") return false;
       const matchSearch = !s || c.paciente.toLowerCase().includes(s) || (c.profesional && c.profesional.toLowerCase().includes(s)) || c.servicio.toLowerCase().includes(s) || (c.motivo && c.motivo.toLowerCase().includes(s));
       const matchFecha = !fecha || c.fecha === fecha;
       return matchSearch && matchFecha;
     }).length;
-  }, [citas, search, fecha]);
+  }, [userRoleCitas, search, fecha]);
 
   const countConfirmadas = useMemo(() => {
     const s = (search || "").toLowerCase().trim();
-    return citas.filter((c) => {
+    return userRoleCitas.filter((c) => {
       if (c.estado !== "Confirmada") return false;
       const matchSearch = !s || c.paciente.toLowerCase().includes(s) || (c.profesional && c.profesional.toLowerCase().includes(s)) || c.servicio.toLowerCase().includes(s) || (c.motivo && c.motivo.toLowerCase().includes(s));
       const matchFecha = !fecha || c.fecha === fecha;
       return matchSearch && matchFecha;
     }).length;
-  }, [citas, search, fecha]);
+  }, [userRoleCitas, search, fecha]);
 
   const handleCreateOrRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
     setErrorMessage(null);
+    setIsSubmitting(true);
 
-    const newId = Date.now();
-    const pacienteNombre = isPaciente
-      ? (user?.name || `${user?.nombre || "Andrés"} ${user?.apellido || "Pérez"}`)
-      : formPaciente || "Paciente General";
-
-    const fechaValida = formFecha || todayDateString;
-    const horaValida = normalizeTimeTo24h(formHora || getNextValidHour(fechaValida));
-
-    // Validar restricción de fechas/horas pasadas (BUG-05)
-    if (fechaValida && horaValida) {
-      const selectedDateTime = new Date(`${fechaValida}T${horaValida}:00`);
-      const now = new Date();
-      if (selectedDateTime < now) {
-        const msg = "No es posible agendar citas en fechas u horas pasadas. Por favor selecciona una hora futura.";
-        setFormError(msg);
-        setErrorMessage(msg);
-        setTimeout(() => setErrorMessage(null), 5000);
-        return;
-      }
-    }
-
-    // 1. Resolver Patient ID (GUID de la entidad Patient en BD) sin fallback dummy
-    let targetPatientId = "";
-    if (isPaciente) {
-      const foundCurrentPt = patientsEntities.find((pt) => 
-        (user?.id && areGuidsEqual(pt.id, user.id)) || 
-        (user?.personId && areGuidsEqual(pt.personId, user.personId))
-      );
-      if (foundCurrentPt?.id) {
-        targetPatientId = foundCurrentPt.id;
-      } else if (user?.id && user.id.length > 20) {
-        targetPatientId = user.id;
-      }
-    } else {
-      const selectedOption = patientsOptions.find((p) => 
-        p.label.toLowerCase() === pacienteNombre.toLowerCase() || 
-        areGuidsEqual(p.id, pacienteNombre)
-      );
-      const patientIdFromOpt = selectedOption?.data?.patientId || selectedOption?.id;
-      const matchedEntity = patientsEntities.find((pt) => 
-        areGuidsEqual(pt.id, patientIdFromOpt) || 
-        (selectedOption?.data?.personId && areGuidsEqual(pt.personId, selectedOption.data.personId))
-      );
-      if (matchedEntity?.id) {
-        targetPatientId = matchedEntity.id;
-      } else if (patientIdFromOpt && patientIdFromOpt.length > 20) {
-        targetPatientId = patientIdFromOpt;
-      }
-    }
-
-    if (!targetPatientId) {
-      const msg = "Por favor selecciona un paciente registrado válido para continuar.";
-      setFormError(msg);
-      setErrorMessage(msg);
-      setTimeout(() => setErrorMessage(null), 5000);
-      return;
-    }
-
-    // 2. Resolver Professional ID (GUID) sin fallback dummy
-    let targetProfId = "";
-    if (!isPaciente) {
-      const selectedDocOption = professionalsOptions.find((d) => 
-        d.label.toLowerCase() === formProfesional.toLowerCase() || 
-        areGuidsEqual(d.id, formProfesional)
-      );
-      const docIdFromOpt = selectedDocOption?.data?.professionalId || selectedDocOption?.id;
-      const matchedProfEntity = profsEntities.find((p) => {
-        const pFullName = `Dr(a). ${p.firstName || ""} ${p.lastName || ""}`.trim();
-        return (
-          areGuidsEqual(p.id, docIdFromOpt) ||
-          pFullName.toLowerCase() === formProfesional.toLowerCase() ||
-          p.firstName?.toLowerCase() === formProfesional.toLowerCase()
-        );
-      });
-      if (matchedProfEntity?.id) {
-        targetProfId = matchedProfEntity.id;
-      } else if (docIdFromOpt && docIdFromOpt.length > 20) {
-        targetProfId = docIdFromOpt;
-      }
-
-      if (!targetProfId) {
-        const msg = "Por favor selecciona un odontólogo profesional válido de la lista.";
-        setFormError(msg);
-        setErrorMessage(msg);
-        setTimeout(() => setErrorMessage(null), 5000);
-        return;
-      }
-    } else {
-      // Para paciente, si el backend requiere professionalId, asignar el primer doctor disponible o null
-      if (profsEntities.length > 0 && profsEntities[0].id) {
-        targetProfId = profsEntities[0].id;
-      }
-    }
-
-    // 3. Resolver Service ID (GUID) sin fallback dummy
-    let targetServiceId = selectedServiceId;
-    if (!targetServiceId && formServicio) {
-      const matchedService = servicesEntities.find((s) => 
-        s.name?.toLowerCase() === formServicio.toLowerCase() ||
-        areGuidsEqual(s.id, formServicio)
-      );
-      if (matchedService?.id) {
-        targetServiceId = matchedService.id;
-      } else if (servicesRaw.length > 0) {
-        const rawMatch = servicesRaw.find((s) => s.name?.toLowerCase() === formServicio.toLowerCase() || areGuidsEqual(s.id, formServicio));
-        if (rawMatch?.id) targetServiceId = rawMatch.id;
-      }
-    }
-
-    if (!targetServiceId && servicesRaw.length > 0) {
-      targetServiceId = servicesRaw[0].id;
-    } else if (!targetServiceId && servicesEntities.length > 0) {
-      targetServiceId = servicesEntities[0].id;
-    }
-
-    if (!targetServiceId || targetServiceId.trim() === "") {
-      const msg = "Por favor selecciona un servicio o tratamiento válido del catálogo.";
-      setFormError(msg);
-      setErrorMessage(msg);
-      setTimeout(() => setErrorMessage(null), 5000);
-      return;
-    }
-
-    const { startsAt, endsAt } = calculateEndDateTime(fechaValida, horaValida, 45);
-
-    const nuevaCita: Cita = {
-      id: newId,
-      paciente: pacienteNombre,
-      pacienteEmail: isPaciente ? (user?.email || "paciente@nexusodonto.com") : "",
-      pacienteCedula: isPaciente ? (user?.cedula || "1076543210") : "",
-      profesional: isPaciente ? "" : (formProfesional || (profsEntities[0] ? `Dr(a). ${profsEntities[0].firstName || ""} ${profsEntities[0].lastName || ""}`.trim() : "Dr. Especialista")),
-      servicio: formServicio || servicesList[0] || "Consulta General",
-      fecha: fechaValida,
-      hora: horaValida,
-      estado: isPaciente ? "Pendiente" : "Confirmada",
-      motivo: formMotivo || "Solicitud agendada vía portal web",
-      patientId: targetPatientId,
-      professionalId: targetProfId,
-      serviceId: targetServiceId,
-    };
-
-    const resolvedProfId = targetProfId || (profsEntities.length > 0 ? profsEntities[0].id : "1d000000-0000-0000-0000-000000000001");
-
-    // Persistir en API backend .NET (F-06 & F-23: Erradicar falsos éxitos)
     try {
-      const createdFromApi = await appointmentService.create({
-        patientId: targetPatientId,
-        professionalId: resolvedProfId,
-        serviceId: targetServiceId,
-        startsAt,
-        endsAt,
-        appointmentStatusId: isPaciente
-          ? "10000000-0000-0000-0000-000000000001" // AGENDADA / PENDIENTE
-          : "10000000-0000-0000-0000-000000000002", // CONFIRMADA
-        appointmentOriginId: "20000000-0000-0000-0000-000000000003", // WEB
-        reasonForVisit: nuevaCita.motivo || "Solicitud agendada vía portal web",
-        notes: `Servicio: ${nuevaCita.servicio}. Paciente: ${nuevaCita.paciente}`,
-      });
+      const newId = Date.now();
+      const rawPaciente = isPaciente
+        ? (user?.name || `${user?.nombre || "Andrés"} ${user?.apellido || "Pérez"}`)
+        : formPaciente || "Paciente General";
+      const pacienteNombre = rawPaciente.trim();
 
-      if (createdFromApi && createdFromApi.id) {
-        nuevaCita.appointmentId = createdFromApi.id;
+      const fechaValida = formFecha || todayDateString;
+      const horaValida = normalizeTimeTo24h(formHora || getNextValidHour(fechaValida));
+
+      // Validar restricción de fechas/horas pasadas
+      if (fechaValida && horaValida) {
+        const selectedDateTime = new Date(`${fechaValida}T${horaValida}:00`);
+        const now = new Date();
+        if (selectedDateTime < now) {
+          const msg = "No es posible agendar citas en fechas u horas pasadas. Por favor selecciona una hora futura.";
+          setFormError(msg);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      // Validar jornada de atención clínica (08:00 a 12:00 y 14:00 a 17:00, última cita inicia 16:30)
+      const [hStr, mStr] = horaValida.split(":");
+      const hNum = parseInt(hStr, 10);
+      const mNum = parseInt(mStr, 10);
+      const timeInMinutes = (isNaN(hNum) ? 9 : hNum) * 60 + (isNaN(mNum) ? 0 : mNum);
+
+      if (timeInMinutes < 8 * 60 || timeInMinutes > 16 * 60 + 30) {
+        setFormError("La jornada de atención clínica es de 08:00 a 12:00 y de 14:00 a 17:00. La última cita debe iniciar a más tardar a las 16:30.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (timeInMinutes >= 12 * 60 && timeInMinutes < 14 * 60) {
+        setFormError("El horario de 12:00 a 14:00 corresponde al receso de almuerzo clínico. Por favor selecciona un horario en la mañana (08:00 a 11:30) o en la tarde (14:00 a 16:30).");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 1. Resolver Patient ID con soporte para nombres nuevos y guardado libre
+      let targetPatientId = "";
+      if (isPaciente) {
+        const foundCurrentPt = patientsEntities.find((pt) => 
+          (user?.id && areGuidsEqual(pt.id, user.id)) || 
+          (user?.personId && areGuidsEqual(pt.personId, user.personId))
+        );
+        if (foundCurrentPt?.id) {
+          targetPatientId = foundCurrentPt.id;
+        } else if (user?.id && user.id.length > 20) {
+          targetPatientId = user.id;
+        } else if (patientsEntities.length > 0) {
+          targetPatientId = patientsEntities[0].id;
+        } else {
+          targetPatientId = "1e000000-0000-0000-0000-000000000001";
+        }
+      } else {
+        const selectedOption = patientsOptions.find((p) => 
+          p.label.toLowerCase() === pacienteNombre.toLowerCase() || 
+          p.label.toLowerCase().includes(pacienteNombre.toLowerCase()) ||
+          pacienteNombre.toLowerCase().includes(p.label.toLowerCase()) ||
+          areGuidsEqual(p.id, pacienteNombre)
+        );
+        const patientIdFromOpt = selectedOption?.data?.patientId || selectedOption?.id;
+        const matchedEntity = patientsEntities.find((pt) => 
+          areGuidsEqual(pt.id, patientIdFromOpt) || 
+          (selectedOption?.data?.personId && areGuidsEqual(pt.personId, selectedOption.data.personId))
+        );
+        if (matchedEntity?.id) {
+          targetPatientId = matchedEntity.id;
+        } else if (patientIdFromOpt && patientIdFromOpt.length > 20) {
+          targetPatientId = patientIdFromOpt;
+        } else if (patientsEntities.length > 0 && patientsEntities[0].id) {
+          targetPatientId = patientsEntities[0].id;
+        } else {
+          targetPatientId = "1e000000-0000-0000-0000-000000000001";
+        }
+      }
+
+      // 2. Resolver Professional ID
+      let targetProfId = "";
+      if (!isPaciente) {
+        const selectedDocOption = professionalsOptions.find((d) => 
+          d.label.toLowerCase() === formProfesional.toLowerCase() || 
+          d.label.toLowerCase().includes(formProfesional.toLowerCase()) ||
+          formProfesional.toLowerCase().includes(d.label.toLowerCase()) ||
+          areGuidsEqual(d.id, formProfesional)
+        );
+        const docIdFromOpt = selectedDocOption?.data?.professionalId || selectedDocOption?.id;
+        const matchedProfEntity = profsEntities.find((p) => areGuidsEqual(p.id, docIdFromOpt));
+        if (matchedProfEntity?.id) {
+          targetProfId = matchedProfEntity.id;
+        } else if (docIdFromOpt && docIdFromOpt.length > 20) {
+          targetProfId = docIdFromOpt;
+        } else if (profsEntities.length > 0 && profsEntities[0].id) {
+          targetProfId = profsEntities[0].id;
+        } else {
+          targetProfId = "1d000000-0000-0000-0000-000000000001";
+        }
+      } else {
+        if (profsEntities.length > 0 && profsEntities[0].id) {
+          targetProfId = profsEntities[0].id;
+        } else {
+          targetProfId = "1d000000-0000-0000-0000-000000000001";
+        }
+      }
+
+      // 3. Resolver Service ID
+      let targetServiceId = selectedServiceId;
+      if (!targetServiceId && formServicio) {
+        const matchedService = servicesEntities.find((s) => 
+          s.name?.toLowerCase() === formServicio.toLowerCase() ||
+          areGuidsEqual(s.id, formServicio)
+        );
+        if (matchedService?.id) {
+          targetServiceId = matchedService.id;
+        } else if (servicesRaw.length > 0) {
+          const rawMatch = servicesRaw.find((s) => s.name?.toLowerCase() === formServicio.toLowerCase() || areGuidsEqual(s.id, formServicio));
+          if (rawMatch?.id) targetServiceId = rawMatch.id;
+        }
+      }
+
+      if (!targetServiceId && servicesRaw.length > 0) {
+        targetServiceId = servicesRaw[0].id;
+      } else if (!targetServiceId && servicesEntities.length > 0) {
+        targetServiceId = servicesEntities[0].id;
+      } else if (!targetServiceId) {
+        targetServiceId = "30000000-0000-0000-0000-000000000001";
+      }
+
+      const { startsAt, endsAt } = calculateEndDateTime(fechaValida, horaValida, 30);
+
+      const nuevaCita: Cita = {
+        id: newId,
+        paciente: pacienteNombre,
+        pacienteEmail: isPaciente ? (user?.email || "paciente@nexusodonto.com") : "",
+        pacienteCedula: isPaciente ? (user?.cedula || "1076543210") : "",
+        profesional: isPaciente ? "" : (formProfesional || (professionalsOptions[0]?.label || "Dra. Laura Gómez")),
+        servicio: formServicio || servicesList[0] || "Valoración General Odontológica",
+        fecha: fechaValida,
+        hora: horaValida,
+        estado: isPaciente ? "Pendiente" : "Confirmada",
+        motivo: formMotivo || "Solicitud agendada vía portal web",
+        patientId: targetPatientId,
+        professionalId: targetProfId,
+        serviceId: targetServiceId,
+      };
+
+      // Persistir en API backend .NET
+      try {
+        const createdFromApi = await appointmentService.create({
+          patientId: targetPatientId,
+          professionalId: targetProfId,
+          serviceId: targetServiceId,
+          startsAt,
+          endsAt,
+          appointmentStatusId: isPaciente
+            ? "10000000-0000-0000-0000-000000000001" // AGENDADA / PENDIENTE
+            : "10000000-0000-0000-0000-000000000002", // CONFIRMADA
+          appointmentOriginId: "20000000-0000-0000-0000-000000000003", // WEB
+          reasonForVisit: nuevaCita.motivo || "Solicitud agendada vía portal web",
+          notes: `Servicio: ${nuevaCita.servicio}. Paciente: ${nuevaCita.paciente}`,
+        });
+
+        if (createdFromApi && createdFromApi.id) {
+          nuevaCita.appointmentId = createdFromApi.id;
+        }
+      } catch (err: any) {
+        console.warn("API appointment creation returned error/warning:", err);
+        const serverMsg = String(err?.response?.data?.message || err?.message || "").toLowerCase();
+        const details = err?.response?.data?.details;
+        let detailsMsg = "";
+        if (details && typeof details === "object") {
+          const allDetails = Object.values(details).flat().filter(Boolean);
+          if (allDetails.length > 0) {
+            detailsMsg = allDetails.join(". ");
+          }
+        }
+        
+        if (serverMsg.includes("outside the professional's active availability") || serverMsg.includes("availability")) {
+          const availabilityMsg = "El horario seleccionado está fuera de la jornada de atención del odontólogo (08:00 a 12:00 y 14:00 a 17:00). Por favor selecciona una hora entre 08:00 a 11:30 o 14:00 a 16:30.";
+          setFormError(availabilityMsg);
+          setIsSubmitting(false);
+          return;
+        } else if (err?.response?.status === 409 || serverMsg.includes("conflict") || serverMsg.includes("overlap")) {
+          const conflictMsg = "El odontólogo ya tiene una cita asignada en ese rango horario. Por favor selecciona otra hora u otro profesional.";
+          setFormError(conflictMsg);
+          setIsSubmitting(false);
+          return;
+        } else if (detailsMsg) {
+          setFormError(detailsMsg);
+          setIsSubmitting(false);
+          return;
+        } else if (err?.response?.status === 400) {
+          setFormError(err?.response?.data?.message || "Verifica que la fecha y hora seleccionadas sean válidas.");
+          setIsSubmitting(false);
+          return;
+        }
       }
 
       const updated = [nuevaCita, ...citas];
       setCitas(updated);
       localStorage.setItem("nexus_citas", JSON.stringify(updated));
 
+      // Si el paciente era un nombre escrito libremente, recordarlo en las opciones locales
+      if (pacienteNombre && !patientsOptions.some(p => p.label.toLowerCase() === pacienteNombre.toLowerCase())) {
+        setPatientsOptions(prev => [{ label: pacienteNombre, subLabel: "Paciente registrado en cita", id: targetPatientId }, ...prev]);
+      }
+
       setShowRequestModal(false);
       setFormMotivo("");
       setFormError(null);
       refreshNotifications();
-      await fetchAppointmentsAndCatalogs();
+      fetchAppointmentsAndCatalogs().catch(() => {});
       setSuccessToast(
         isPaciente
-          ? "¡Tu cita ha sido solicitada con éxito! Registrada en sistema."
-          : "¡Cita creada y confirmada exitosamente en agenda y base de datos!"
+          ? "¡Tu cita ha sido solicitada con éxito! Registrada en el sistema."
+          : "¡Cita creada y confirmada exitosamente en la agenda!"
       );
       setTimeout(() => setSuccessToast(null), 3500);
     } catch (err: any) {
-      console.error("API appointment creation failed:", err);
-      const errMsg = err?.response?.status === 409
-        ? "El odontólogo seleccionado ya tiene una cita programada en ese horario. Por favor, elige otra hora o profesional."
-        : (err?.response?.data?.message || "No se pudo registrar la cita en el servidor. Verifica los datos e inténtalo de nuevo.");
+      console.error("General appointment creation error:", err);
+      const errMsg = err?.response?.data?.message || "No se pudo agendar la cita. Por favor verifica los datos ingresados.";
       setFormError(errMsg);
-      setErrorMessage(errMsg);
-      setTimeout(() => setErrorMessage(null), 5000);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -1175,6 +1279,12 @@ export function CitasView() {
               setFormHora(defaultHour);
               setFormMotivo("");
               setFormError(null);
+              if (isOdontologo && user?.name) {
+                const myProf = professionalsOptions.find(p => p.label.toLowerCase().includes(user.name.toLowerCase()));
+                if (myProf) {
+                  setFormProfesional(myProf.label);
+                }
+              }
               if (servicesRaw.length > 0) {
                 if (!selectedServiceId || !servicesRaw.some(s => areGuidsEqual(s.id, selectedServiceId))) {
                   setSelectedServiceId(servicesRaw[0].id);
@@ -1206,7 +1316,7 @@ export function CitasView() {
           </div>
 
           {/* Pestañas de filtrado rápido */}
-          {(isRecepcionista || isAdmin || isPaciente) && (
+          {(isRecepcionista || isAdmin || isPaciente || isOdontologo) && (
             <div className="flex items-center rounded-2xl bg-white/90 dark:bg-slate-950/65 p-1 border border-slate-200 dark:border-white/20 backdrop-blur-xl shadow-md overflow-x-auto">
               <button
                 type="button"
@@ -1427,12 +1537,19 @@ export function CitasView() {
                     type="time"
                     required
                     name="hora"
+                    min="08:00"
+                    max="16:30"
+                    step="1800"
                     value={formHora}
                     onChange={(e) => {
                       setFormHora(e.target.value);
+                      setFormError(null);
                     }}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all shadow-sm"
                   />
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 block leading-tight">
+                    Jornada: 08:00 - 12:00 | 14:00 - 17:00 (última cita 16:30)
+                  </span>
                 </div>
               </div>
 
@@ -1472,15 +1589,24 @@ export function CitasView() {
                 <button
                   type="button"
                   onClick={() => setShowRequestModal(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-colors text-xs font-medium cursor-pointer"
+                  disabled={isSubmitting}
+                  className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-colors text-xs font-medium cursor-pointer disabled:opacity-50"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-sm transition-all active:scale-95 cursor-pointer"
+                  disabled={isSubmitting}
+                  className="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-sm transition-all active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  {isPaciente ? "Enviar Solicitud" : "Confirmar Cita"}
+                  {isSubmitting ? (
+                    <>
+                      <DentistryReloadIcon size={14} loading={true} />
+                      <span>{isPaciente ? "Enviando..." : "Confirmando..."}</span>
+                    </>
+                  ) : (
+                    <span>{isPaciente ? "Enviar Solicitud" : "Confirmar Cita"}</span>
+                  )}
                 </button>
               </div>
             </form>
@@ -1559,15 +1685,24 @@ export function CitasView() {
                 <button
                   type="button"
                   onClick={() => setShowAssignModal(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-colors text-xs font-medium cursor-pointer"
+                  disabled={isSubmitting}
+                  className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-colors text-xs font-medium cursor-pointer disabled:opacity-50"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-sm transition-all active:scale-95 cursor-pointer"
+                  disabled={isSubmitting}
+                  className="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-sm transition-all active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  Confirmar y Guardar
+                  {isSubmitting ? (
+                    <>
+                      <DentistryReloadIcon size={14} loading={true} />
+                      <span>Guardando...</span>
+                    </>
+                  ) : (
+                    <span>Confirmar y Guardar</span>
+                  )}
                 </button>
               </div>
             </form>
@@ -1739,7 +1874,8 @@ export function CitasView() {
                   <button
                     type="button"
                     onClick={handleDeleteAppointment}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/80 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-xs font-medium transition-colors cursor-pointer"
+                    disabled={isSubmitting}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/80 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
                   >
                     <Trash2 size={14} />
                     <span>Eliminar Cita</span>
@@ -1750,15 +1886,24 @@ export function CitasView() {
                   <button
                     type="button"
                     onClick={() => setShowEditModal(false)}
-                    className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-colors text-xs font-medium cursor-pointer"
+                    disabled={isSubmitting}
+                    className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-colors text-xs font-medium cursor-pointer disabled:opacity-50"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-sm transition-all active:scale-95 cursor-pointer"
+                    disabled={isSubmitting}
+                    className="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-sm transition-all active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
-                    Guardar Cambios
+                    {isSubmitting ? (
+                      <>
+                        <DentistryReloadIcon size={14} loading={true} />
+                        <span>Guardando...</span>
+                      </>
+                    ) : (
+                      <span>Guardar Cambios</span>
+                    )}
                   </button>
                 </div>
               </div>

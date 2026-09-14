@@ -33,6 +33,8 @@ import {
   professionalService,
   type ProfessionalResponseDto,
 } from "../../api/professionalService";
+import { useAuth } from "../auth/AuthContext";
+import { getUserRole } from "../../utils/routePermissions";
 
 interface TurnoDisponibilidad {
   dia: string;
@@ -195,6 +197,13 @@ const DOCTOR_FALLBACK_PROFILES = [
 
 export function ProfesionalesView() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const userRole = getUserRole(user);
+  const isOdontologo = userRole === "ODONTOLOGO";
+  const isRecepcionista = userRole === "RECEPCIONISTA";
+  const isAdmin = userRole === "ADMINISTRADOR";
+  const canCreateProfessional = isAdmin || isRecepcionista;
+
   const [profesionales, setProfesionales] = useState<ProfessionalFull[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -292,16 +301,15 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
       } else {
         const fallbacks: ProfessionalFull[] = DOCTOR_FALLBACK_PROFILES.map((f, idx) => ({
           id: `prof-fallback-${idx + 1}`,
-          personId: `person-fallback-${idx + 1}`,
-          specialtyId: `esp-${idx + 1}`,
-          licenseNumber: f.registro,
-          bio: f.bio,
+          employeeId: `emp-fallback-${idx + 1}`,
           isActive: true,
           createdAt: new Date().toISOString(),
           nombreCompleto: f.nombre,
           especialidad: f.especialidad,
+          licenseNumber: f.registro,
           email: f.email,
           phone: f.phone,
+          bio: f.bio,
           turnos: getTurnosForDoctor(idx),
           rating: f.rating,
           pacientesAtendidos: f.pacientesAtendidos,
@@ -310,8 +318,26 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
         }));
         setProfesionales(fallbacks);
       }
-    } catch (error) {
-      console.warn("Could not load professionals from API:", error);
+    } catch (err) {
+      console.error("Error al cargar profesionales:", err);
+      const fallbacks: ProfessionalFull[] = DOCTOR_FALLBACK_PROFILES.map((f, idx) => ({
+        id: `prof-fallback-${idx + 1}`,
+        employeeId: `emp-fallback-${idx + 1}`,
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        nombreCompleto: f.nombre,
+        especialidad: f.especialidad,
+        licenseNumber: f.registro,
+        email: f.email,
+        phone: f.phone,
+        bio: f.bio,
+        turnos: getTurnosForDoctor(idx),
+        rating: f.rating,
+        pacientesAtendidos: f.pacientesAtendidos,
+        experienciaAnios: f.experienciaAnios,
+        colorTheme: SPECIALTY_STYLES[f.especialidad] || SPECIALTY_STYLES["Odontología General"],
+      }));
+      setProfesionales(fallbacks);
     } finally {
       setLoading(false);
     }
@@ -321,55 +347,46 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
     fetchProfessionals();
   }, [fetchProfessionals]);
 
-  // Manejo de Creación de nuevo profesional con inserción en Backend Oracle
+  // Alta de nuevo odontólogo
   const handleCreateProfessional = async (e: FormEvent) => {
     e.preventDefault();
-    if (!formNombre.trim()) return;
+    if (!formNombre.trim() || !formRegistro.trim()) {
+      showToast("Por favor completa los campos obligatorios (*)");
+      return;
+    }
 
     setCreating(true);
-    const timestamp = Date.now();
-
-    const nameParts = formNombre.replace(/dr\(a\)\.|dra\.|dr\./gi, "").trim().split(/\s+/);
-    const firstName = nameParts[0] || "Doctor";
-    const lastName = nameParts.slice(1).join(" ") || "Especialista";
-    const specialtyId = SPECIALTY_ID_MAP[formEspecialidad] || "18000000-0000-0000-0000-000000000001";
-    const licenseNumber = formRegistro.trim() || `COL-${timestamp.toString().slice(-5)}`;
-    const email = formEmail.trim() || `prof_${timestamp}@nexusodonto.com`;
-    const phone = formTelefono.trim() || "+57 300 123 4567";
-
     try {
-      // 1. Registro completo multi-tabla en Oracle (Persons -> Employees -> Professionals)
-      const createdProf = await professionalService.registerComplete({
+      const parts = formNombre.trim().split(" ");
+      const firstName = parts[0] || "Dr.";
+      const lastName = parts.slice(1).join(" ") || "Especialista";
+      const email = formEmail.trim() || `${firstName.toLowerCase()}.${lastName.toLowerCase()}@nexusodonto.com`;
+      const phone = formTelefono.trim() || "+57 300 123 4567";
+
+      const created = await professionalService.registerComplete({
         firstName,
         lastName,
-        email,
-        phone,
-        professionalLicense: licenseNumber,
-        specialtyIds: [specialtyId],
-        bio: formBio || "Especialista clínico en NexusOdonto.",
+        documentNumber: formRegistro.trim(),
+        email: email,
+        phone: phone,
+        professionalLicense: formRegistro.trim(),
+        specialtyIds: [SPECIALTY_ID_MAP[formEspecialidad] || "18000000-0000-0000-0000-000000000001"],
+        bio: formBio.trim() || `Especialista en ${formEspecialidad} con dedicación al cuidado integral del paciente.`,
       });
 
       const theme = SPECIALTY_STYLES[formEspecialidad] || SPECIALTY_STYLES["Odontología General"];
-
       const newFullProf: ProfessionalFull = {
-        id: createdProf?.id || `prof-${timestamp}`,
-        employeeId: createdProf?.employeeId,
-        personId: createdProf?.personId,
-        specialtyId: specialtyId,
-        specialtyIds: [specialtyId],
-        licenseNumber: licenseNumber,
-        professionalLicense: licenseNumber,
-        bio: formBio || "Especialista clínico en NexusOdonto.",
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        nombreCompleto: /^dr|^dra/i.test(formNombre) ? formNombre : `Dr(a). ${firstName} ${lastName}`,
+        ...created,
+        nombreCompleto: `Dr(a). ${firstName} ${lastName}`.trim(),
         especialidad: formEspecialidad,
+        licenseNumber: formRegistro.trim(),
         email: email,
         phone: phone,
+        bio: formBio.trim() || `Especialista en ${formEspecialidad} de NexusOdonto.`,
         turnos: DIAS_SEMANA_DEFAULT.map(t => ({ ...t, sillon: formSillon })),
         rating: 5.0,
-        pacientesAtendidos: 1,
-        experienciaAnios: 5,
+        pacientesAtendidos: 0,
+        experienciaAnios: 4,
         colorTheme: theme,
       };
 
@@ -380,22 +397,28 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
       setFormEmail("");
       setFormTelefono("");
       setFormBio("");
-      showToast("¡Odontólogo registrado con éxito en base de datos y agenda!");
-    } catch (err) {
-      console.warn("Error creating professional in API:", err);
-      // Fallback reactivo en caso de error de red o permisos
+      showToast("¡Odontólogo registrado con éxito en el staff clínico!");
+    } catch (err: any) {
+      console.warn("No se pudo crear en API REST, guardando localmente:", err);
+      const parts = formNombre.trim().split(" ");
+      const firstName = parts[0] || "Dr.";
+      const lastName = parts.slice(1).join(" ") || "Especialista";
+      const email = formEmail.trim() || `${firstName.toLowerCase()}@nexusodonto.com`;
+      const phone = formTelefono.trim() || "+57 300 000 0000";
+
       const theme = SPECIALTY_STYLES[formEspecialidad] || SPECIALTY_STYLES["Odontología General"];
       const newFullProf: ProfessionalFull = {
-        id: `prof-${timestamp}`,
-        specialtyId: specialtyId,
-        licenseNumber: licenseNumber,
-        bio: formBio || "Especialista clínico en NexusOdonto.",
+        id: `prof-local-${Date.now()}`,
+        employeeId: `emp-local-${Date.now()}`,
+        professionalLicense: formRegistro.trim(),
+        licenseNumber: formRegistro.trim(),
         isActive: true,
         createdAt: new Date().toISOString(),
         nombreCompleto: /^dr|^dra/i.test(formNombre) ? formNombre : `Dr(a). ${firstName} ${lastName}`,
         especialidad: formEspecialidad,
         email: email,
         phone: phone,
+        bio: formBio || "Especialista clínico en NexusOdonto.",
         turnos: DIAS_SEMANA_DEFAULT.map(t => ({ ...t, sillon: formSillon })),
         rating: 5.0,
         pacientesAtendidos: 1,
@@ -481,10 +504,12 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div className="space-y-2">
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-slate-900 dark:text-white drop-shadow-sm font-prata">
-              Profesionales & Especialidades
+              {isOdontologo ? "Mis Compañeros de Trabajo" : "Profesionales & Especialidades"}
             </h1>
             <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm max-w-2xl font-medium font-sans">
-              Gestión clínica del staff de especialistas, sillones de atención, quirófanos y disponibilidad semanal en NexusOdonto.
+              {isOdontologo
+                ? "Directorio clínico del equipo de odontólogos, especialidades activas y disponibilidad de consultorios de tus colegas."
+                : "Gestión clínica del staff de especialistas, sillones de atención, quirófanos y disponibilidad semanal en NexusOdonto."}
             </p>
           </div>
 
@@ -498,14 +523,16 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
               <DentistryReloadIcon size={22} loading={loading} />
             </button>
 
-            <button
-              type="button"
-              onClick={() => setShowCreateModal(true)}
-              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-teal-400 via-cyan-400 to-cyan-500 hover:from-teal-300 hover:to-cyan-400 px-6 py-3.5 text-xs sm:text-sm font-black text-slate-950 shadow-lg shadow-cyan-500/30 transition-all active:scale-95 cursor-pointer transform hover:-translate-y-0.5"
-            >
-              <Plus size={18} strokeWidth={2.5} />
-              <span>Nuevo Odontólogo</span>
-            </button>
+            {canCreateProfessional && (
+              <button
+                type="button"
+                onClick={() => setShowCreateModal(true)}
+                className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-teal-400 via-cyan-400 to-cyan-500 hover:from-teal-300 hover:to-cyan-400 px-6 py-3.5 text-xs sm:text-sm font-black text-slate-950 shadow-lg shadow-cyan-500/30 transition-all active:scale-95 cursor-pointer transform hover:-translate-y-0.5"
+              >
+                <Plus size={18} strokeWidth={2.5} />
+                <span>Nuevo Odontólogo</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -515,7 +542,7 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
         <div className="p-5 rounded-3xl bg-white/85 dark:bg-slate-950/70 border border-slate-200/80 dark:border-white/10 backdrop-blur-xl shadow-lg relative overflow-hidden group hover:border-cyan-500/40 transition-all">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Especialistas Activos
+              {isOdontologo ? "Colegas en Staff" : "Especialistas Activos"}
             </span>
             <div className="p-2.5 rounded-2xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 icon-animated-interactive group-hover:scale-110 group-hover:bg-cyan-500/20 transition-all">
               <UserCheck size={20} className="group-hover:animate-icon-bounce" />
@@ -523,7 +550,7 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-3xl font-black text-slate-900 dark:text-white">{stats.activos}</span>
-            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">/ {stats.total} en staff</span>
+            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">/ {stats.total} especialistas</span>
           </div>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-medium">100% Certificados ante RETHUS</p>
         </div>
@@ -563,17 +590,32 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
         <div className="p-5 rounded-3xl bg-white/85 dark:bg-slate-950/70 border border-slate-200/80 dark:border-white/10 backdrop-blur-xl shadow-lg relative overflow-hidden group hover:border-cyan-500/40 transition-all">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Calificación Pacientes
+              {isOdontologo ? "Mi Turno Clínico" : "Calificación Pacientes"}
             </span>
             <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 icon-animated-interactive group-hover:scale-110 group-hover:bg-amber-500/20 transition-all">
-              <Star size={20} className="fill-amber-400 text-amber-400 group-hover:animate-icon-bounce" />
+              {isOdontologo ? (
+                <Clock size={20} className="text-amber-500 group-hover:animate-icon-bounce" />
+              ) : (
+                <Star size={20} className="fill-amber-400 text-amber-400 group-hover:animate-icon-bounce" />
+              )}
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-black text-slate-900 dark:text-white">4.9</span>
-            <span className="text-xs font-bold text-amber-600 dark:text-amber-400">/ 5.0 (98%)</span>
+            {isOdontologo ? (
+              <>
+                <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">08:00 - 17:00</span>
+                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Activo</span>
+              </>
+            ) : (
+              <>
+                <span className="text-3xl font-black text-slate-900 dark:text-white">4.9</span>
+                <span className="text-xs font-bold text-amber-600 dark:text-amber-400">/ 5.0 (98%)</span>
+              </>
+            )}
           </div>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-medium">+2,400 reseñas verificadas</p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-medium">
+            {isOdontologo ? "Jornada habitual asignada en agenda" : "+2,400 reseñas verificadas"}
+          </p>
         </div>
       </div>
 
@@ -693,12 +735,15 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 animate-fadeIn">
           {profesionalesFiltrados.map((prof) => {
             const initials = getInitials(prof.nombreCompleto);
-            const activeTurno = prof.turnos?.find((t) => t.activo) || prof.turnos[0];
+            const isMe = isOdontologo && Boolean(user?.name && prof.nombreCompleto.toLowerCase().includes(user.name.toLowerCase().trim()));
+            const activeTurno = prof.turnos?.[0];
 
             return (
               <div
                 key={prof.id}
-                className="rounded-3xl bg-white/90 dark:bg-slate-950/75 border border-slate-200/90 dark:border-white/10 p-6 backdrop-blur-xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden flex flex-col justify-between group"
+                className={`rounded-3xl bg-white/90 dark:bg-slate-950/75 border p-6 backdrop-blur-xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden flex flex-col justify-between group ${
+                  isMe ? "border-cyan-500/60 ring-2 ring-cyan-500/20" : "border-slate-200/90 dark:border-white/10"
+                }`}
               >
                 {/* Acento superior sutil de color */}
                 <div
@@ -724,9 +769,16 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                       </div>
 
                       <div>
-                        <h3 className="font-black text-slate-900 dark:text-white text-base leading-snug group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
-                          {prof.nombreCompleto}
-                        </h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-black text-slate-900 dark:text-white text-base leading-snug group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
+                            {prof.nombreCompleto}
+                          </h3>
+                          {isMe && (
+                            <span className="px-2 py-0.5 rounded-lg bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 font-bold text-[10px] border border-cyan-500/30">
+                              Tú (Mi Perfil)
+                            </span>
+                          )}
+                        </div>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <ShieldCheck size={13} className="text-cyan-500 flex-shrink-0" />
                           <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
@@ -797,23 +849,36 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
 
                 {/* Acciones de la Tarjeta */}
                 <div className="pt-5 border-t border-slate-200/80 dark:border-white/10 flex items-center gap-2 mt-4">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedProfForSchedule(prof)}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-95"
-                  >
-                    <Calendar size={14} className="text-cyan-500" />
-                    <span>Ver Horarios</span>
-                  </button>
+                  {isOdontologo ? (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedProfForSchedule(prof)}
+                      className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-95"
+                    >
+                      <Calendar size={14} className="text-cyan-500" />
+                      <span>Ver Horarios y Disponibilidad</span>
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedProfForSchedule(prof)}
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-95"
+                      >
+                        <Calendar size={14} className="text-cyan-500" />
+                        <span>Ver Horarios</span>
+                      </button>
 
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/citas`)}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-400 hover:to-cyan-400 text-slate-950 text-xs font-black transition-all cursor-pointer shadow-md shadow-cyan-500/20 active:scale-95"
-                  >
-                    <Send size={13} />
-                    <span>Agendar</span>
-                  </button>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/citas`)}
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-400 hover:to-cyan-400 text-slate-950 text-xs font-black transition-all cursor-pointer shadow-md shadow-cyan-500/20 active:scale-95"
+                      >
+                        <Send size={13} />
+                        <span>Agendar</span>
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             );
@@ -913,22 +978,36 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
 
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedProfForSchedule(prof)}
-                            className="p-1.5 rounded-lg border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 transition-colors"
-                            title="Ver horarios y sillones"
-                          >
-                            <Calendar size={14} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => navigate(`/citas`)}
-                            className="p-1.5 rounded-lg bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-500/25 transition-colors font-bold"
-                            title="Agendar cita con este doctor"
-                          >
-                            <Send size={14} />
-                          </button>
+                          {isOdontologo ? (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedProfForSchedule(prof)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 text-xs font-semibold transition-colors cursor-pointer"
+                              title="Ver horarios y sillones"
+                            >
+                              <Calendar size={13} className="text-cyan-500" />
+                              <span>Horarios</span>
+                            </button>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedProfForSchedule(prof)}
+                                className="p-1.5 rounded-lg border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
+                                title="Ver horarios y sillones"
+                              >
+                                <Calendar size={14} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => navigate(`/citas`)}
+                                className="p-1.5 rounded-lg bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-500/25 transition-colors font-bold cursor-pointer"
+                                title="Agendar cita con este doctor"
+                              >
+                                <Send size={14} />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -1017,7 +1096,7 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
       )}
 
       {/* MODAL NUEVO ODONTÓLOGO */}
-      {showCreateModal && (
+      {showCreateModal && canCreateProfessional && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
           <div className="w-full max-w-lg rounded-3xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/20 p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">

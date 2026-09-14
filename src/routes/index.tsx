@@ -1,5 +1,5 @@
 import { Suspense, lazy } from "react";
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes, Navigate } from "react-router-dom";
 
 import ProtectedRoute from "./ProtectedRoute";
 import PublicOnlyRoute from "./PublicOnlyRoute";
@@ -285,6 +285,12 @@ export default function AppRoutes() {
               </DashboardLayout>
             }
           />
+          {/* Redirecciones de navegación para evitar 404s en enlaces directos y alias */}
+          <Route path="/catalogo-servicios" element={<Navigate to="/servicios" replace />} />
+          <Route path="/tarifas" element={<Navigate to="/servicios" replace />} />
+          <Route path="/catalogo" element={<Navigate to="/servicios" replace />} />
+          <Route path="/consultorios" element={<Navigate to="/profesionales" replace />} />
+          <Route path="/turnos" element={<Navigate to="/profesionales" replace />} />
         </Route>
 
         <Route path="*" element={<NotFoundPage />} />

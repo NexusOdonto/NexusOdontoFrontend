@@ -286,38 +286,40 @@ export function ServiciosGrid({
                 </span>
 
                 {/* Acciones de edición / eliminación */}
-                <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200 dark:border-white/15">
-                  {onEditar && (
-                    <button
-                      type="button"
-                      onClick={() => onEditar(servicio)}
-                      className="p-2 rounded-xl bg-slate-100 hover:bg-cyan-50 dark:bg-white/5 dark:hover:bg-cyan-500/20 text-slate-600 hover:text-cyan-700 dark:text-slate-300 dark:hover:text-cyan-200 border border-slate-200 dark:border-white/10 transition-all cursor-pointer shadow-sm"
-                      title="Editar servicio"
-                      aria-label="Editar"
-                    >
-                      <Edit2 size={13} strokeWidth={2.2} />
-                    </button>
-                  )}
-                  {onEliminar && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (
-                          window.confirm(
-                            `¿Seguro que deseas eliminar el procedimiento "${servicio.nombre}"?`
-                          )
-                        ) {
-                          onEliminar(servicio.id);
-                        }
-                      }}
-                      className="p-2 rounded-xl bg-slate-100 hover:bg-rose-50 dark:bg-white/5 dark:hover:bg-rose-500/20 text-slate-600 hover:text-rose-700 dark:text-slate-300 dark:hover:text-rose-200 border border-slate-200 dark:border-white/10 transition-all cursor-pointer shadow-sm"
-                      title="Eliminar servicio"
-                      aria-label="Eliminar"
-                    >
-                      <Trash2 size={13} strokeWidth={2.2} />
-                    </button>
-                  )}
-                </div>
+                {(onEditar || onEliminar) && (
+                  <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200 dark:border-white/15">
+                    {onEditar && (
+                      <button
+                        type="button"
+                        onClick={() => onEditar(servicio)}
+                        className="p-2 rounded-xl bg-slate-100 hover:bg-cyan-50 dark:bg-white/5 dark:hover:bg-cyan-500/20 text-slate-600 hover:text-cyan-700 dark:text-slate-300 dark:hover:text-cyan-200 border border-slate-200 dark:border-white/10 transition-all cursor-pointer shadow-sm"
+                        title="Editar servicio"
+                        aria-label="Editar"
+                      >
+                        <Edit2 size={13} strokeWidth={2.2} />
+                      </button>
+                    )}
+                    {onEliminar && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `¿Seguro que deseas eliminar el procedimiento "${servicio.nombre}"?`
+                            )
+                          ) {
+                            onEliminar(servicio.id);
+                          }
+                        }}
+                        className="p-2 rounded-xl bg-slate-100 hover:bg-rose-50 dark:bg-white/5 dark:hover:bg-rose-500/20 text-slate-600 hover:text-rose-700 dark:text-slate-300 dark:hover:text-rose-200 border border-slate-200 dark:border-white/10 transition-all cursor-pointer shadow-sm"
+                        title="Eliminar servicio"
+                        aria-label="Eliminar"
+                      >
+                        <Trash2 size={13} strokeWidth={2.2} />
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>

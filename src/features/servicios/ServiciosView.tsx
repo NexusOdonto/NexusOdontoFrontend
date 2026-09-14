@@ -6,6 +6,8 @@ import type { Servicio } from "../../types/servicios";
 import { serviceCatalogService } from "../../api/serviceCatalogService";
 import { formatCurrency } from "../../utils/currency";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
+import { useAuth } from "../auth/AuthContext";
+import { getUserRole } from "../../utils/routePermissions";
 import {
   Plus,
   Filter,
@@ -147,6 +149,10 @@ const translateService = (item: { name?: string; description?: string; category?
 };
 
 export function ServiciosView() {
+  const { user } = useAuth();
+  const role = getUserRole(user);
+  const canManageServices = role === "ADMINISTRADOR" || role === "RECEPCIONISTA";
+
   const [servicios, setServicios] = useState<Servicio[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorCarga, setErrorCarga] = useState<string | null>(null);
@@ -439,14 +445,16 @@ export function ServiciosView() {
             <DentistryReloadIcon size={22} loading={loading} />
           </button>
 
-          <button
-            type="button"
-            onClick={handleAbrirCrear}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 px-6 py-3 text-xs sm:text-sm font-black text-white dark:text-slate-950 shadow-lg shadow-cyan-500/25 transition-all active:scale-95 cursor-pointer transform hover:-translate-y-0.5"
-          >
-            <Plus size={19} strokeWidth={2.6} />
-            <span>Nuevo Servicio</span>
-          </button>
+          {canManageServices && (
+            <button
+              type="button"
+              onClick={handleAbrirCrear}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 px-6 py-3 text-xs sm:text-sm font-black text-white dark:text-slate-950 shadow-lg shadow-cyan-500/25 transition-all active:scale-95 cursor-pointer transform hover:-translate-y-0.5"
+            >
+              <Plus size={19} strokeWidth={2.6} />
+              <span>Nuevo Servicio</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -690,16 +698,16 @@ export function ServiciosView() {
         {vista === "grid" ? (
           <ServiciosGrid
             servicios={serviciosProcesados}
-            onEditar={handleAbrirEditar}
-            onEliminar={handleEliminar}
-            onToggleActivo={handleToggleActivo}
+            onEditar={canManageServices ? handleAbrirEditar : undefined}
+            onEliminar={canManageServices ? handleEliminar : undefined}
+            onToggleActivo={canManageServices ? handleToggleActivo : undefined}
           />
         ) : (
           <ServiciosTable
             servicios={serviciosProcesados}
-            onEditar={handleAbrirEditar}
-            onEliminar={handleEliminar}
-            onToggleActivo={handleToggleActivo}
+            onEditar={canManageServices ? handleAbrirEditar : undefined}
+            onEliminar={canManageServices ? handleEliminar : undefined}
+            onToggleActivo={canManageServices ? handleToggleActivo : undefined}
           />
         )}
       </div>
