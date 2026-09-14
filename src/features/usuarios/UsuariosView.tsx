@@ -12,7 +12,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { UsuariosTable } from "./components/UsuariosTable";
 import { useAuth } from "../auth/AuthContext";
-import { areGuidsEqual } from "../../utils/roleUtils";
+import { areGuidsEqual, isSeedAdminUser } from "../../utils/roleUtils";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
 
 import type {
@@ -420,6 +420,11 @@ export function UsuariosView() {
 
   // Toggle de Estado Activo/Inactivo (Activar <-> Desactivar)
   const handleToggleStatus = async (usuario: Usuario) => {
+    if (isSeedAdminUser(usuario)) {
+      showToast("El administrador del sistema (AD001) no puede ser desactivado ni eliminado.", "error");
+      return;
+    }
+
     // Guard clause: Prevención de auto-desactivación de la cuenta propia (BUG-01)
     const isSelf = Boolean(
       (user?.id && areGuidsEqual(user.id, usuario.id)) ||
