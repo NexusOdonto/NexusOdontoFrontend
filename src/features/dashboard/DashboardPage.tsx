@@ -352,9 +352,9 @@ export default function DashboardPage() {
             <span>3 doctores en turno</span>
             <span
               className="font-bold text-purple-600 dark:text-purple-400 cursor-pointer hover:underline group-hover:translate-x-0.5 transition-transform"
-              onClick={() => navigate(role === "ODONTOLOGO" ? "/agenda" : "/profesionales")}
+              onClick={() => navigate("/profesionales")}
             >
-              {role === "ODONTOLOGO" ? "Ver Agenda →" : "Turnos →"}
+              {role === "ODONTOLOGO" ? "Ver Colegas →" : "Turnos →"}
             </span>
           </div>
         </div>

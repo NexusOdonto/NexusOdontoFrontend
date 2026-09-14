@@ -23,6 +23,7 @@ import { specialtyService } from "../../api/specialtyService";
 import { useNotifications } from "../../context/NotificationContext";
 import { SelectOrWriteInput, type SelectOption } from "../../components/common/SelectOrWriteInput";
 import { areGuidsEqual } from "../../utils/roleUtils";
+import { resolveOrCreatePatient } from "../../utils/patientResolution";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
 import { AlertCircle } from "lucide-react";
 
@@ -90,6 +91,7 @@ export function CitasView() {
   const [servicesEntities, setServicesEntities] = useState<any[]>([]);
   const [profsEntities, setProfsEntities] = useState<any[]>([]);
   const [patientsEntities, setPatientsEntities] = useState<any[]>([]);
+  const [personsEntities, setPersonsEntities] = useState<any[]>([]);
 
   // Modales
   const [showRequestModal, setShowRequestModal] = useState(false);
@@ -264,6 +266,7 @@ export function CitasView() {
       setServicesEntities(services);
       setProfsEntities(profs);
       setPatientsEntities(patients);
+      setPersonsEntities(persons);
 
       // Mapas de personas y empleados para enriquecer nombres reales
       const personsMap: Record<string, any> = {};
@@ -692,44 +695,16 @@ export function CitasView() {
         return;
       }
 
-      // 1. Resolver Patient ID con soporte para nombres nuevos y guardado libre
-      let targetPatientId = "";
-      if (isPaciente) {
-        const foundCurrentPt = patientsEntities.find((pt) => 
-          (user?.id && areGuidsEqual(pt.id, user.id)) || 
-          (user?.personId && areGuidsEqual(pt.personId, user.personId))
-        );
-        if (foundCurrentPt?.id) {
-          targetPatientId = foundCurrentPt.id;
-        } else if (user?.id && user.id.length > 20) {
-          targetPatientId = user.id;
-        } else if (patientsEntities.length > 0) {
-          targetPatientId = patientsEntities[0].id;
-        } else {
-          targetPatientId = "1e000000-0000-0000-0000-000000000001";
-        }
-      } else {
-        const selectedOption = patientsOptions.find((p) => 
-          p.label.toLowerCase() === pacienteNombre.toLowerCase() || 
-          p.label.toLowerCase().includes(pacienteNombre.toLowerCase()) ||
-          pacienteNombre.toLowerCase().includes(p.label.toLowerCase()) ||
-          areGuidsEqual(p.id, pacienteNombre)
-        );
-        const patientIdFromOpt = selectedOption?.data?.patientId || selectedOption?.id;
-        const matchedEntity = patientsEntities.find((pt) => 
-          areGuidsEqual(pt.id, patientIdFromOpt) || 
-          (selectedOption?.data?.personId && areGuidsEqual(pt.personId, selectedOption.data.personId))
-        );
-        if (matchedEntity?.id) {
-          targetPatientId = matchedEntity.id;
-        } else if (patientIdFromOpt && patientIdFromOpt.length > 20) {
-          targetPatientId = patientIdFromOpt;
-        } else if (patientsEntities.length > 0 && patientsEntities[0].id) {
-          targetPatientId = patientsEntities[0].id;
-        } else {
-          targetPatientId = "1e000000-0000-0000-0000-000000000001";
-        }
-      }
+      // 1. Resolver Patient ID con soporte para nombres nuevos y creación al vuelo
+      const resolvedPatient = await resolveOrCreatePatient({
+        identifierOrName: pacienteNombre,
+        patientsEntities,
+        personsEntities,
+        currentUser: user,
+        isPacienteRole: isPaciente,
+      });
+      const targetPatientId = resolvedPatient.patientId;
+      const finalPatientName = resolvedPatient.patientName || pacienteNombre;
 
       // 2. Resolver Professional ID
       let targetProfId = "";
@@ -786,7 +761,7 @@ export function CitasView() {
 
       const nuevaCita: Cita = {
         id: newId,
-        paciente: pacienteNombre,
+        paciente: finalPatientName,
         pacienteEmail: isPaciente ? (user?.email || "paciente@nexusodonto.com") : "",
         pacienteCedula: isPaciente ? (user?.cedula || "1076543210") : "",
         profesional: isPaciente ? "" : (formProfesional || (professionalsOptions[0]?.label || "Dra. Laura Gómez")),
@@ -1127,12 +1102,27 @@ export function CitasView() {
 
     const { startsAt, endsAt } = calculateEndDateTime(editFecha, horaEditValida, 45);
 
+    let resolvedPatientId = selectedCitaToEdit.patientId;
+    let finalEditPacienteName = editPaciente;
+    if (editPaciente) {
+      const resolvedPt = await resolveOrCreatePatient({
+        identifierOrName: editPaciente,
+        patientsEntities,
+        personsEntities,
+        currentUser: user,
+        isPacienteRole: false,
+      });
+      resolvedPatientId = resolvedPt.patientId;
+      finalEditPacienteName = resolvedPt.patientName || editPaciente;
+    }
+
     const resolvedProfId = matchedProfId || selectedCitaToEdit.professionalId || (profsEntities[0]?.id || "1d000000-0000-0000-0000-000000000001");
     const resolvedServId = matchedServiceId || selectedCitaToEdit.serviceId || (servicesEntities[0]?.id || "30000000-0000-0000-0000-000000000001");
 
     if (selectedCitaToEdit.appointmentId) {
       try {
         await appointmentService.update(selectedCitaToEdit.appointmentId, {
+          patientId: resolvedPatientId,
           professionalId: resolvedProfId,
           serviceId: resolvedServId,
           startsAt,
@@ -1140,7 +1130,7 @@ export function CitasView() {
           appointmentStatusId: statusMap[editEstado] || "10000000-0000-0000-0000-000000000002",
           appointmentOriginId: "20000000-0000-0000-0000-000000000003",
           reasonForVisit: editMotivo,
-          notes: `Editado: ${editPaciente} con ${editProfesional}`,
+          notes: `Editado: ${finalEditPacienteName} con ${editProfesional}`,
         });
 
         setCitas((prev) => {
@@ -1148,7 +1138,8 @@ export function CitasView() {
             c.id === selectedCitaToEdit.id
               ? {
                   ...c,
-                  paciente: editPaciente,
+                  paciente: finalEditPacienteName,
+                  patientId: resolvedPatientId,
                   profesional: editProfesional,
                   professionalId: matchedProfId,
                   servicio: editServicio,

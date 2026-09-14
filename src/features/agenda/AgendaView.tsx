@@ -37,6 +37,7 @@ import { patientService } from "../../api/patientService";
 import { personService } from "../../api/personService";
 import { SelectOrWriteInput, type SelectOption } from "../../components/common/SelectOrWriteInput";
 import { areGuidsEqual } from "../../utils/roleUtils";
+import { resolveOrCreatePatient } from "../../utils/patientResolution";
 
 export function AgendaView() {
   const { user } = useAuth();
@@ -51,6 +52,7 @@ export function AgendaView() {
   const [profesionalesEntities, setProfesionalesEntities] = useState<any[]>([]);
   const [serviciosEntities, setServiciosEntities] = useState<ServiceResponseDto[]>([]);
   const [pacientesEntities, setPacientesEntities] = useState<any[]>([]);
+  const [personsEntities, setPersonsEntities] = useState<any[]>([]);
   const [patientOptions, setPatientOptions] = useState<SelectOption[]>([]);
   const [listaOdontologos, setListaOdontologos] = useState(odontologosFallback);
   const [successToast, setSuccessToast] = useState<string | null>(null);
@@ -154,6 +156,7 @@ export function AgendaView() {
       const ptsList = pts.status === "fulfilled" && Array.isArray(pts.value) ? pts.value : [];
       const persList = pers.status === "fulfilled" && Array.isArray(pers.value) ? pers.value : [];
       setPacientesEntities(ptsList);
+      setPersonsEntities(persList);
 
       const personsMap: Record<string, any> = {};
       persList.forEach((p: any) => {
@@ -505,21 +508,21 @@ export function AgendaView() {
         return;
       }
 
-      const matchedPatient =
-        pacientesEntities.find((pt) => {
-          return (nuevaCita.patientId && (areGuidsEqual(pt.id, nuevaCita.patientId) || areGuidsEqual(pt.personId, nuevaCita.patientId))) ||
-                 (isPaciente && user?.id && areGuidsEqual(pt.id, user.id)) ||
-                 (isPaciente && user?.personId && areGuidsEqual(pt.personId, user.personId));
-        }) ||
-        pacientesEntities.find((pt) => {
-          const ptName = `${pt.firstName || ""} ${pt.lastName || ""}`.toLowerCase().trim();
-          return nuevaCita.paciente && ptName.includes(nuevaCita.paciente.toLowerCase().trim());
-        });
+      // Resolución dinámica de paciente (búsqueda o creación al vuelo para evitar fallbacks erróneos)
+      const resolvedPatient = await resolveOrCreatePatient({
+        identifierOrName: nuevaCita.patientId || nuevaCita.paciente,
+        patientsEntities: pacientesEntities,
+        personsEntities: personsEntities,
+        currentUser: user,
+        isPacienteRole: isPaciente,
+      });
 
-      const patientIdToUse = matchedPatient?.id || (nuevaCita.patientId && pacientesEntities.some(p => areGuidsEqual(p.id, nuevaCita.patientId)) ? nuevaCita.patientId : null);
+      const patientIdToUse = resolvedPatient.patientId;
+      const patientNameToUse = resolvedPatient.patientName || nuevaCita.paciente;
+
       if (!patientIdToUse) {
-        setFormError("Debes seleccionar un paciente registrado activo de la clínica.");
-        setErrorMessage("Debes seleccionar un paciente registrado válido.");
+        setFormError("Debes seleccionar o ingresar un paciente válido.");
+        setErrorMessage("Debes ingresar un paciente válido.");
         setTimeout(() => setErrorMessage(null), 5000);
         setIsSubmitting(false);
         return;
@@ -547,7 +550,7 @@ export function AgendaView() {
             ? "10000000-0000-0000-0000-000000000001"
             : "10000000-0000-0000-0000-000000000002",
         appointmentOriginId: "20000000-0000-0000-0000-000000000003",
-        reasonForVisit: `Agendado desde agenda interactiva para ${nuevaCita.paciente}`,
+        reasonForVisit: `Agendado desde agenda interactiva para ${patientNameToUse}`,
         notes: `Servicio: ${nuevaCita.servicio}. Odontólogo: ${nuevaCita.odontologo}`,
       };
 

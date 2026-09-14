@@ -30,6 +30,7 @@ export const ROLE_ALLOWED_ROUTES: Record<SystemRole, string[]> = {
     "/agenda",
     "/pacientes",
     "/pacientes/nuevo",
+    "/profesionales",
     "/servicios",
     "/historia-clinica",
     "/odontograma",

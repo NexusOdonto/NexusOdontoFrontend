@@ -35,6 +35,7 @@ export function Sidebar({
 
   const role = getUserRole(user);
   const isPaciente = role === "PACIENTE";
+  const isOdontologo = role === "ODONTOLOGO";
 
   const menuItems = [
     {
@@ -63,7 +64,7 @@ export function Sidebar({
       path: "/pacientes",
     },
     {
-      label: "Profesionales",
+      label: isOdontologo ? "Compañeros" : "Profesionales",
       icon: Stethoscope,
       path: "/profesionales",
     },
