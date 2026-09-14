@@ -597,6 +597,8 @@ export function AgendaView() {
     }
   };
 
+  const HORA_ALTURA_PX = 80;
+
   interface CitaPosicionada extends Cita {
     top: number;
     height: number;
@@ -678,9 +680,9 @@ export function AgendaView() {
       const totalColumnas = Math.max(columnasFin.length, 1);
 
       asignaciones.forEach(({ cita, colIndex }) => {
-        // Separación vertical de 1-2px para evitar cualquier choque en citas consecutivas
-        const top = cita.inicioMinutos + 1;
-        const height = Math.max(cita.duracionMinutos - 2, 22);
+        // Separación vertical limpia usando escala HORA_ALTURA_PX
+        const top = (cita.inicioMinutos / 60) * HORA_ALTURA_PX + 1;
+        const height = Math.max((cita.duracionMinutos / 60) * HORA_ALTURA_PX - 2, 38);
 
         let leftStyle: string;
         let widthStyle: string;
@@ -720,7 +722,7 @@ export function AgendaView() {
     if (hora < 7 || hora > 18) {
       return null;
     }
-    return (hora - 7) * 60 + minutos;
+    return ((hora - 7) + minutos / 60) * HORA_ALTURA_PX;
   };
 
   const posicionHoraActual = obtenerPosicionHoraActual();
@@ -923,7 +925,7 @@ export function AgendaView() {
                       className="relative grid bg-white/70 dark:bg-slate-900/40"
                       style={{
                         gridTemplateColumns,
-                        height: "720px",
+                        height: `${12 * HORA_ALTURA_PX}px`,
                       }}
                     >
                       {/* Línea Hora Actual */}
@@ -945,7 +947,7 @@ export function AgendaView() {
                             <div
                               key={hora}
                               className="absolute right-2 text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400"
-                              style={{ top: `${i * 60 - 7}px` }}
+                              style={{ top: `${i * HORA_ALTURA_PX - 7}px` }}
                             >
                               {`${String(hora).padStart(2, "0")}:00`}
                             </div>
@@ -979,8 +981,8 @@ export function AgendaView() {
                                 }
                                 className="absolute left-0 right-0 border-b border-slate-200/70 dark:border-slate-800/40 hover:bg-cyan-500/10 dark:hover:bg-slate-800/20 cursor-pointer transition-colors"
                                 style={{
-                                  top: `${i * 60}px`,
-                                  height: "60px",
+                                  top: `${i * HORA_ALTURA_PX}px`,
+                                  height: `${HORA_ALTURA_PX}px`,
                                 }}
                               />
                             ))}
@@ -1002,19 +1004,16 @@ export function AgendaView() {
                                   title={`${cita.paciente} • ${cita.servicio} (${cita.horaInicio} - ${cita.horaFin}) • ${cita.odontologo}`}
                                   className={`group absolute z-20 overflow-hidden rounded-xl border shadow-xs transition-all hover:scale-[1.01] hover:z-30 cursor-pointer ${colorEvento.contenedor}`}
                                 >
-                                  {cita.height < 36 ? (
-                                    // Modo Ultra-Compacto (<= 30 min)
-                                    <div className="flex h-full items-center justify-between gap-1.5 px-2 py-0.5">
-                                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                        <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${colorEvento.punto}`} />
-                                        <span className="truncate text-[11px] font-bold leading-none">
-                                          {cita.paciente}
-                                        </span>
-                                      </div>
-                                      <div className="flex items-center gap-1 shrink-0">
-                                        <span className="text-[9.5px] font-mono font-medium opacity-85 leading-none">
-                                          {cita.horaInicio}-{cita.horaFin}
-                                        </span>
+                                  {cita.height < 52 ? (
+                                    // Modo Compacto (30-40 min)
+                                    <div className="flex h-full flex-col justify-between px-2.5 py-1 min-w-0">
+                                      <div className="flex items-center justify-between gap-1 min-w-0">
+                                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                          <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${colorEvento.punto}`} />
+                                          <p className="truncate text-xs font-bold leading-tight">
+                                            {cita.paciente}
+                                          </p>
+                                        </div>
                                         <button
                                           type="button"
                                           onClick={(e) => {
@@ -1027,43 +1026,27 @@ export function AgendaView() {
                                           <Trash2 size={11} />
                                         </button>
                                       </div>
-                                    </div>
-                                  ) : cita.height < 54 ? (
-                                    // Modo Compacto (35 - 50 min)
-                                    <div className="flex h-full flex-col justify-between px-2 py-1">
-                                      <div className="flex items-center justify-between gap-1 min-w-0">
-                                        <p className="truncate text-xs font-bold leading-tight">
-                                          {cita.paciente}
-                                        </p>
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            eliminarCita(cita.id, cita.rawGuid);
-                                          }}
-                                          className="opacity-0 group-hover:opacity-100 transition p-0.5 hover:text-rose-500 shrink-0 cursor-pointer"
-                                          title="Eliminar cita"
-                                        >
-                                          <Trash2 size={12} />
-                                        </button>
-                                      </div>
-                                      <div className="flex items-center justify-between gap-1 min-w-0 text-[10px]">
-                                        <span className="truncate opacity-90 leading-tight">
+
+                                      <div className="flex items-center justify-between gap-1 min-w-0 text-[10px] leading-tight">
+                                        <span className="truncate opacity-90 font-medium">
                                           {cita.servicio}
                                         </span>
-                                        <span className="opacity-80 font-mono font-medium shrink-0">
-                                          {cita.horaInicio}-{cita.horaFin}
+                                        <span className="font-mono text-[9px] opacity-80 shrink-0 font-medium">
+                                          {cita.horaInicio} - {cita.horaFin}
                                         </span>
                                       </div>
                                     </div>
                                   ) : (
-                                    // Modo Completo (>= 55 min)
-                                    <div className="flex h-full flex-col justify-between px-2.5 py-1.5">
+                                    // Modo Completo (>= 45 min)
+                                    <div className="flex h-full flex-col justify-between px-2.5 py-1.5 min-w-0">
                                       <div className="min-w-0">
-                                        <div className="flex items-start justify-between gap-1">
-                                          <p className="truncate text-xs font-bold leading-tight">
-                                            {cita.paciente}
-                                          </p>
+                                        <div className="flex items-start justify-between gap-1 min-w-0">
+                                          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                            <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${colorEvento.punto}`} />
+                                            <p className="truncate text-xs font-bold leading-tight">
+                                              {cita.paciente}
+                                            </p>
+                                          </div>
                                           <button
                                             type="button"
                                             onClick={(e) => {
@@ -1076,11 +1059,11 @@ export function AgendaView() {
                                             <Trash2 size={12} />
                                           </button>
                                         </div>
-                                        <p className="truncate text-[10.5px] opacity-90 leading-tight mt-0.5">
+                                        <p className="truncate text-[10.5px] opacity-90 leading-tight mt-1">
                                           {cita.servicio}
                                         </p>
                                       </div>
-                                      <p className="text-[10px] opacity-80 font-mono font-medium leading-none shrink-0 mt-1 pb-0.5">
+                                      <p className="text-[10px] opacity-80 font-mono font-medium leading-none shrink-0 pb-0.5">
                                         {cita.horaInicio} - {cita.horaFin}
                                       </p>
                                     </div>
