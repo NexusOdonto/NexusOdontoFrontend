@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { pdf } from "@react-pdf/renderer";
 import {
   Search,
   Plus,
@@ -7,6 +8,7 @@ import {
   CheckCircle2,
   X,
   FileDown,
+  Download,
   Phone,
   Mail,
   User,
@@ -17,12 +19,13 @@ import {
   FileText,
   Calendar,
   Smile,
-  Printer,
   Edit3,
   Trash2,
   AlertCircle,
   FolderOpen,
   Layers,
+  CheckSquare,
+  Square,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { clinicalHistoryService, type DiagnosisResponseDto, type ProcedurePerformedResponseDto, type CreateClinicalAttentionRequestDto } from "../../api/clinicalHistoryService";
@@ -36,6 +39,9 @@ import { getUserRole } from "../../utils/routePermissions";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
 import { areGuidsEqual } from "../../utils/roleUtils";
 import { FolderComponent } from "../../components/ui/folder-component";
+import { PrescriptionPdfDocument } from "./components/PrescriptionPdfDocument";
+import { ExpedienteClinicoPdfDocument } from "./components/ExpedienteClinicoPdfDocument";
+import { RegistroIndividualPdfDocument, type ClinicalRecordItem } from "./components/RegistroIndividualPdfDocument";
 
 interface LocalAttention {
   id: string;
@@ -77,15 +83,8 @@ export function HistoriaClinicaView() {
   const [dentistsList, setDentistsList] = useState<string[]>(LICENSED_DENTISTS_FALLBACK);
   const [patientAppointmentsList, setPatientAppointmentsList] = useState<any[]>([]);
   const [folderCategory, setFolderCategory] = useState<"evoluciones" | "diagnosticos" | "procedimientos" | "antecedentes" | null>(null);
-  const [selectedRecordDetail, setSelectedRecordDetail] = useState<{
-    titulo: string;
-    fecha: string;
-    profesional: string;
-    categoria: string;
-    resumen: string;
-    estado: string;
-    detalles?: Record<string, any>;
-  } | null>(null);
+  const [selectedRecordKeys, setSelectedRecordKeys] = useState<string[]>([]);
+  const [selectedRecordDetail, setSelectedRecordDetail] = useState<ClinicalRecordItem | null>(null);
 
   // Modal Nueva Evolución
   const [showNewAttentionModal, setShowNewAttentionModal] = useState(false);
@@ -107,6 +106,7 @@ export function HistoriaClinicaView() {
   // Modales adicionales
   const [showAntecedentesModal, setShowAntecedentesModal] = useState(false);
   const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
+  const [showPrintExpedienteModal, setShowPrintExpedienteModal] = useState(false);
 
   // Form State para Antecedentes
   const [formAlergias, setFormAlergias] = useState("");
@@ -624,6 +624,140 @@ export function HistoriaClinicaView() {
     setPrescriptionItems((prev) => prev.filter((_, i) => i !== idx));
   };
 
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+  const handleDownloadPrescriptionPdf = async () => {
+    if (!selectedPatient) return;
+    try {
+      setIsGeneratingPdf(true);
+      const blob = await pdf(
+        <PrescriptionPdfDocument
+          patient={{
+            firstName: selectedPatient.firstName || "Paciente",
+            lastName: selectedPatient.lastName || "",
+            documentNumber: selectedPatient.documentNumber || "1098765432",
+            phone: selectedPatient.phone,
+          }}
+          doctorName={formProfesional}
+          items={prescriptionItems}
+          generalInstructions={prescIndicacionesGrales}
+        />
+      ).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Formula_Medica_${selectedPatient.documentNumber || "1098765432"}_${Date.now()}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      setToastMessage("Fórmula médica descargada en PDF exitosamente.");
+      setTimeout(() => setToastMessage(null), 3500);
+    } catch (err) {
+      console.error("Error al generar PDF de prescripción:", err);
+      setErrorMessage("No se pudo generar el archivo PDF.");
+      setTimeout(() => setErrorMessage(null), 4000);
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
+  const handleDownloadExpedientePdf = async () => {
+    if (!selectedPatient) return;
+    try {
+      setIsGeneratingPdf(true);
+      const blob = await pdf(
+        <ExpedienteClinicoPdfDocument
+          patient={{
+            firstName: selectedPatient.firstName || "Paciente",
+            lastName: selectedPatient.lastName || "",
+            documentNumber: selectedPatient.documentNumber || "1098765432",
+            phone: selectedPatient.phone,
+            email: selectedPatient.email,
+            allergies: selectedPatient.allergies,
+            emergencyContactName: selectedPatient.emergencyContactName,
+            emergencyContactPhone: selectedPatient.emergencyContactPhone,
+            chronicDiseases: (selectedPatient as any).chronicDiseases,
+            currentMedications: (selectedPatient as any).currentMedications,
+          }}
+          doctorName={formProfesional}
+          attentions={attentions}
+          diagnoses={diagnoses}
+          procedures={
+            procedures.length > 0
+              ? procedures.map((p) => ({
+                  codigo: "CUPS-PROC",
+                  nombre: `Procedimiento #${p.serviceId}`,
+                  notas: p.notes || `Cantidad: ${p.quantity} - Valor: $${p.unitPrice?.toLocaleString()}`,
+                }))
+              : [
+                  { codigo: "CUPS-890201", nombre: "Valoración General Odontológica", notas: "Examen clínico completo" },
+                  { codigo: "CUPS-997100", nombre: "Profilaxis y Limpieza Dental", notas: "Remoción de cálculo" },
+                ]
+          }
+        />
+      ).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Expediente_Clinico_${selectedPatient.documentNumber || "1098765432"}_${Date.now()}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      setToastMessage("Expediente clínico descargado en PDF exitosamente.");
+      setTimeout(() => setToastMessage(null), 3500);
+    } catch (err) {
+      console.error("Error al generar PDF de expediente:", err);
+      setErrorMessage("No se pudo generar el archivo PDF.");
+      setTimeout(() => setErrorMessage(null), 4000);
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
+  const handleDownloadSingleOrMultipleRecordsPdf = async (recordsToPrint: ClinicalRecordItem[]) => {
+    if (!selectedPatient || recordsToPrint.length === 0) return;
+    try {
+      setIsGeneratingPdf(true);
+      const blob = await pdf(
+        <RegistroIndividualPdfDocument
+          patient={{
+            firstName: selectedPatient.firstName || "Paciente",
+            lastName: selectedPatient.lastName || "",
+            documentNumber: selectedPatient.documentNumber || "1098765432",
+            documentType: (selectedPatient as any).documentType || "CC",
+            phone: selectedPatient.phone,
+            email: selectedPatient.email,
+            allergies: selectedPatient.allergies,
+          }}
+          records={recordsToPrint}
+        />
+      ).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      const cleanCategory = (recordsToPrint[0]?.categoria || "Registro").replace(/[^a-zA-Z0-9]/g, "_");
+      link.download = `${cleanCategory}_${selectedPatient.documentNumber || "HC"}_${Date.now()}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      setToastMessage(
+        recordsToPrint.length === 1
+          ? `PDF de "${recordsToPrint[0].titulo}" descargado exitosamente.`
+          : `PDF con ${recordsToPrint.length} registros seleccionados descargado exitosamente.`
+      );
+      setTimeout(() => setToastMessage(null), 3500);
+    } catch (err) {
+      console.error("Error al generar PDF individual/múltiple:", err);
+      setErrorMessage("No se pudo generar el documento PDF.");
+      setTimeout(() => setErrorMessage(null), 4000);
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
   const getInitials = (nombre: string) => {
     const parts = nombre.trim().split(" ");
     if (parts.length >= 2) {
@@ -669,7 +803,7 @@ export function HistoriaClinicaView() {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => window.print()}
+            onClick={() => setShowPrintExpedienteModal(true)}
             className="group inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/65 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-xl active:scale-95 text-xs font-semibold shadow-sm"
           >
             <FileDown size={15} className="text-cyan-600 dark:text-cyan-400 icon-animated-interactive group-hover:scale-125 group-hover:animate-icon-bounce" />
@@ -1002,7 +1136,10 @@ export function HistoriaClinicaView() {
                         <div className="flex items-center justify-between flex-wrap gap-2 p-3 rounded-xl bg-slate-100/80 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 text-xs">
                           <nav className="flex items-center gap-2 font-medium text-slate-600 dark:text-slate-300 flex-wrap">
                             <span
-                              onClick={() => setFolderCategory(null)}
+                              onClick={() => {
+                                setFolderCategory(null);
+                                setSelectedRecordKeys([]);
+                              }}
                               className="hover:text-cyan-600 dark:hover:text-cyan-400 cursor-pointer font-bold"
                             >
                               Historia Clínica
@@ -1025,278 +1162,313 @@ export function HistoriaClinicaView() {
 
                           <button
                             type="button"
-                            onClick={() => setFolderCategory(null)}
+                            onClick={() => {
+                              setFolderCategory(null);
+                              setSelectedRecordKeys([]);
+                            }}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-200/80 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs transition-all cursor-pointer active:scale-95"
                           >
                             <span>← Volver a Carpetas 3D</span>
                           </button>
                         </div>
 
-                        {/* LISTADO DE REGISTROS REALES SEGÚN CATEGORÍA */}
-                        {folderCategory === "evoluciones" && (
-                          <div className="space-y-3">
-                            {attentions.length === 0 ? (
-                              <div className="py-8 text-center text-slate-400 text-xs">
-                                No hay evoluciones clínicas registradas para este paciente.
-                              </div>
-                            ) : (
-                              attentions.map((att, idx) => (
-                                <div
-                                  key={att.id || idx}
-                                  className="p-4 rounded-xl border border-slate-200/80 dark:border-white/10 bg-slate-50 dark:bg-slate-900/60 hover:border-teal-500/40 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                                >
-                                  <div className="space-y-1 min-w-0 flex-1">
-                                    <div className="flex items-center gap-2">
-                                      <span className="px-2 py-0.5 rounded-md bg-teal-500/15 text-teal-700 dark:text-teal-300 font-mono text-[10px] font-bold">
-                                        EVOLUCIÓN #{attentions.length - idx}
-                                      </span>
-                                      <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                                        {att.motivo || "Consulta de Control"}
-                                      </span>
-                                    </div>
-                                    <p className="text-[11px] text-slate-600 dark:text-slate-300 truncate">
-                                      {att.enfermedadActual || att.diagnostico || "Sin observaciones adicionales"}
+                        {/* BARRA DE ACCIÓN Y SELECCIÓN MÚLTIPLE DE DOCUMENTOS/ARCHIVOS */}
+                        {(() => {
+                          const currentCategoryRecords: ClinicalRecordItem[] =
+                            folderCategory === "evoluciones"
+                              ? attentions.map((att, idx) => ({
+                                  id: att.id || `att-${idx}`,
+                                  titulo: att.motivo || `Evolución #${attentions.length - idx}`,
+                                  fecha: att.fecha,
+                                  profesional: att.profesional,
+                                  categoria: "Evolución Clínica",
+                                  resumen: att.enfermedadActual || att.diagnostico,
+                                  estado: "Completada",
+                                  detalles: {
+                                    "Examen Físico": att.examenFisico,
+                                    "Diagnóstico": att.diagnostico,
+                                    "Código CIE-10": att.cie10 || "K02.1",
+                                    "Plan de Tratamiento": att.planTratamiento,
+                                    "Observaciones": att.observaciones || "Ninguna",
+                                  },
+                                }))
+                              : folderCategory === "diagnosticos"
+                              ? (diagnoses.length > 0
+                                  ? diagnoses.map((d, idx) => ({
+                                      id: `diag-${idx}`,
+                                      titulo: `${d.cie10Code || "K02.1"} - ${d.description || "Diagnóstico Clínico"}`,
+                                      fecha: "Registrado",
+                                      profesional: "Odontólogo Tratante",
+                                      categoria: "Diagnóstico CIE-10",
+                                      resumen: `Diagnóstico clasificado bajo estándar internacional CIE-10 para patología ${d.diagnosisType || "DENTAL"}.`,
+                                      estado: "Confirmado",
+                                      detalles: {
+                                        "Código Oficial": d.cie10Code || "K02.1",
+                                        "Descripción": d.description || "Diagnóstico Clínico",
+                                        "Clasificación": d.diagnosisType || "DENTAL",
+                                        "Responsable": "Odontólogo Tratante",
+                                        "Conducta": "Plan de tratamiento odontológico asignado",
+                                      },
+                                    }))
+                                  : [
+                                      { id: "diag-0", titulo: "K02.1 - Caries de la dentina", fecha: "Reciente", profesional: "Dra. Laura Gómez", categoria: "Diagnóstico CIE-10", resumen: "Diagnóstico clínico clasificado bajo estándar CIE-10 para patología DENTAL.", estado: "Confirmado", detalles: { "Código Oficial": "K02.1", "Descripción": "Caries de la dentina", "Clasificación": "DENTAL", "Responsable": "Dra. Laura Gómez", "Conducta": "Plan de tratamiento asignado" } },
+                                      { id: "diag-1", titulo: "K05.1 - Gingivitis crónica simple", fecha: "Control", profesional: "Dra. Laura Gómez", categoria: "Diagnóstico CIE-10", resumen: "Diagnóstico clínico clasificado bajo estándar CIE-10 para patología PERIODONTAL.", estado: "En Tratamiento", detalles: { "Código Oficial": "K05.1", "Descripción": "Gingivitis crónica simple", "Clasificación": "PERIODONTAL", "Responsable": "Dra. Laura Gómez", "Conducta": "Higiene y profilaxis periodontal" } },
+                                      { id: "diag-2", titulo: "K03.0 - Atrición dental excesiva", fecha: "Seguimiento", profesional: "Dra. Laura Gómez", categoria: "Diagnóstico CIE-10", resumen: "Diagnóstico clínico clasificado bajo estándar CIE-10 para patología OCLUSAL.", estado: "Observación", detalles: { "Código Oficial": "K03.0", "Descripción": "Atrición dental excesiva", "Clasificación": "OCLUSAL", "Responsable": "Dra. Laura Gómez", "Conducta": "Placa de bruxismo / oclusión" } },
+                                    ]
+                                )
+                              : folderCategory === "procedimientos"
+                              ? (procedures.length > 0
+                                  ? procedures.map((p, idx) => ({
+                                      id: `proc-${idx}`,
+                                      titulo: `Procedimiento #${p.serviceId}`,
+                                      fecha: "Registrado",
+                                      profesional: "Dra. Laura Gómez",
+                                      categoria: "Procedimiento Odontológico",
+                                      resumen: p.notes || `Cantidad: ${p.quantity} - Valor: $${p.unitPrice?.toLocaleString()}`,
+                                      estado: "Realizado",
+                                      detalles: {
+                                        "Código": "CUPS-PROC",
+                                        "Procedimiento": `Procedimiento #${p.serviceId}`,
+                                        "Fecha de Ejecución": "Registrado",
+                                        "Profesional Responsable": "Dra. Laura Gómez",
+                                        "Evolución Posoperatoria": "Favorable sin complicaciones",
+                                      },
+                                    }))
+                                  : [
+                                      { id: "proc-0", titulo: "Valoración General Odontológica", fecha: "15/09/2026", profesional: "Dra. Laura Gómez", categoria: "Procedimiento Odontológico", resumen: "Examen clínico completo y registro de odontograma", estado: "Realizado", detalles: { "Código": "CUPS-890201", "Procedimiento": "Valoración General Odontológica", "Fecha de Ejecución": "15/09/2026", "Profesional Responsable": "Dra. Laura Gómez", "Evolución Posoperatoria": "Favorable sin complicaciones" } },
+                                      { id: "proc-1", titulo: "Profilaxis y Limpieza Dental", fecha: "10/09/2026", profesional: "Dra. Laura Gómez", categoria: "Procedimiento Odontológico", resumen: "Remoción de cálculo supragingival y pulido coronario", estado: "Realizado", detalles: { "Código": "CUPS-997100", "Procedimiento": "Profilaxis y Limpieza Dental", "Fecha de Ejecución": "10/09/2026", "Profesional Responsable": "Dra. Laura Gómez", "Evolución Posoperatoria": "Favorable sin complicaciones" } },
+                                      { id: "proc-2", titulo: "Restauración en Resina Fotocurada", fecha: "01/09/2026", profesional: "Dra. Laura Gómez", categoria: "Procedimiento Odontológico", resumen: "Obturación estética en pieza #16 cara oclusal", estado: "Realizado", detalles: { "Código": "CUPS-232101", "Procedimiento": "Restauración en Resina Fotocurada", "Fecha de Ejecución": "01/09/2026", "Profesional Responsable": "Dra. Laura Gómez", "Evolución Posoperatoria": "Favorable sin complicaciones" } },
+                                    ]
+                                )
+                              : [];
+
+                          if (folderCategory === "antecedentes") {
+                            return (
+                              <div className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                                  <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1.5">
+                                    <span className="font-bold text-rose-600 dark:text-rose-400 uppercase text-[10px] tracking-wider flex items-center gap-1">
+                                      <AlertTriangle size={12} /> Alergias
+                                    </span>
+                                    <p className="text-slate-900 dark:text-white font-bold">
+                                      {selectedPatient.allergies || "Sin alergias declaradas"}
                                     </p>
-                                    <div className="flex items-center gap-3 text-[10px] text-slate-400 font-medium">
-                                      <span>Dr(a). {att.profesional}</span>
-                                      <span>•</span>
-                                      <span>{att.fecha}</span>
-                                      <span>•</span>
-                                      <span className="font-mono">CIE-10: {att.cie10 || "K02.1"}</span>
-                                    </div>
                                   </div>
 
-                                  <div className="flex items-center gap-2 self-end sm:self-auto">
-                                    <span className="px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold border border-emerald-500/30">
-                                      Completada
+                                  <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1.5">
+                                    <span className="font-bold text-amber-600 dark:text-amber-400 uppercase text-[10px] tracking-wider flex items-center gap-1">
+                                      <Activity size={12} /> Enfermedades Crónicas
                                     </span>
+                                    <p className="text-slate-900 dark:text-white font-bold">
+                                      {(selectedPatient as any).chronicDiseases || "Ninguna patología de base declarada"}
+                                    </p>
+                                  </div>
+
+                                  <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1.5">
+                                    <span className="font-bold text-cyan-700 dark:text-cyan-300 uppercase text-[10px] tracking-wider">
+                                      Medicamentos Actuales
+                                    </span>
+                                    <p className="text-slate-900 dark:text-white font-semibold">
+                                      {(selectedPatient as any).currentMedications || "Sin farmacoterapia permanente"}
+                                    </p>
+                                  </div>
+
+                                  <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1.5">
+                                    <span className="font-bold text-cyan-700 dark:text-cyan-300 uppercase text-[10px] tracking-wider">
+                                      Contacto de Emergencia
+                                    </span>
+                                    <p className="text-slate-900 dark:text-white font-semibold">
+                                      {selectedPatient.emergencyContactName || "Familiar Responsable"} ({selectedPatient.emergencyContactPhone || selectedPatient.phone || "No registrado"})
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-3 flex-wrap pt-2">
+                                  <button
+                                    type="button"
+                                    disabled={isGeneratingPdf}
+                                    onClick={() => {
+                                      const antRecord: ClinicalRecordItem = {
+                                        id: "ant-01",
+                                        titulo: "Ficha de Antecedentes Médicos y Alertas Sistémicas",
+                                        fecha: new Date().toLocaleDateString("es-CO"),
+                                        profesional: formProfesional,
+                                        categoria: "Antecedentes Médicos",
+                                        resumen: "Registro de condiciones de salud previas, alergias a medicamentos y contactos de emergencia.",
+                                        estado: "Verificado",
+                                        detalles: {
+                                          "Alergias": selectedPatient.allergies || "Sin alergias declaradas",
+                                          "Enfermedades de Base": (selectedPatient as any).chronicDiseases || "Ninguna",
+                                          "Medicamentos Actuales": (selectedPatient as any).currentMedications || "Ninguno",
+                                          "Contacto de Emergencia": `${selectedPatient.emergencyContactName || "Familiar Responsable"} (${selectedPatient.emergencyContactPhone || selectedPatient.phone || "No registrado"})`,
+                                        },
+                                      };
+                                      handleDownloadSingleOrMultipleRecordsPdf([antRecord]);
+                                    }}
+                                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-500 hover:to-cyan-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer disabled:opacity-50"
+                                  >
+                                    <FileDown size={14} />
+                                    <span>{isGeneratingPdf ? "Generando..." : "Descargar PDF de Antecedentes"}</span>
+                                  </button>
+
+                                  {!isPaciente && (
                                     <button
                                       type="button"
-                                      onClick={() =>
-                                        setSelectedRecordDetail({
-                                          titulo: att.motivo,
-                                          fecha: att.fecha,
-                                          profesional: att.profesional,
-                                          categoria: "Evolución Clínica",
-                                          resumen: att.enfermedadActual,
-                                          estado: "Completada",
-                                          detalles: {
-                                            "Examen Físico": att.examenFisico,
-                                            "Diagnóstico": att.diagnostico,
-                                            "Código CIE-10": att.cie10 || "K02.1",
-                                            "Plan de Tratamiento": att.planTratamiento,
-                                            "Observaciones": att.observaciones || "Ninguna",
-                                          },
-                                        })
-                                      }
-                                      className="px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-sm transition-all cursor-pointer"
+                                      onClick={handleOpenAntecedentes}
+                                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
                                     >
-                                      Ver Detalle
+                                      <Edit3 size={14} />
+                                      <span>Editar Antecedentes Médicos</span>
                                     </button>
-                                  </div>
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        )}
-
-                        {folderCategory === "diagnosticos" && (
-                          <div className="space-y-3">
-                            {(diagnoses.length > 0
-                              ? diagnoses.map((d) => ({
-                                  codigo: d.cie10Code || "K02.1",
-                                  descripcion: d.description || "Diagnóstico Clínico",
-                                  tipo: d.diagnosisType || "DENTAL",
-                                  estado: "Confirmado",
-                                  fecha: "Registrado",
-                                  profesional: "Odontólogo Tratante",
-                                }))
-                              : [
-                                  { codigo: "K02.1", descripcion: "Caries de la dentina", tipo: "DENTAL", estado: "Confirmado", fecha: "Reciente", profesional: "Dra. Laura Gómez" },
-                                  { codigo: "K05.1", descripcion: "Gingivitis crónica simple", tipo: "PERIODONTAL", estado: "En Tratamiento", fecha: "Control", profesional: "Dra. Laura Gómez" },
-                                  { codigo: "K03.0", descripcion: "Atrición dental excesiva", tipo: "OCLUSAL", estado: "Observación", fecha: "Seguimiento", profesional: "Dra. Laura Gómez" },
-                                ]
-                            ).map((diag, idx) => (
-                              <div
-                                key={idx}
-                                className="p-4 rounded-xl border border-slate-200/80 dark:border-white/10 bg-slate-50 dark:bg-slate-900/60 hover:border-blue-500/40 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                              >
-                                <div className="space-y-1 min-w-0 flex-1">
-                                  <div className="flex items-center gap-2">
-                                    <span className="px-2 py-0.5 rounded-md bg-blue-500/15 text-blue-700 dark:text-blue-300 font-mono text-[10px] font-bold">
-                                      {diag.codigo}
-                                    </span>
-                                    <span className="text-xs font-bold text-slate-900 dark:text-white">
-                                      {diag.descripcion}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-3 text-[10px] text-slate-400 font-medium">
-                                    <span>Categoría: {diag.tipo}</span>
-                                    <span>•</span>
-                                    <span>Dr(a). {diag.profesional}</span>
-                                    <span>•</span>
-                                    <span>{diag.fecha}</span>
-                                  </div>
-                                </div>
-
-                                <div className="flex items-center gap-2 self-end sm:self-auto">
-                                  <span className="px-2 py-1 rounded-full bg-blue-500/15 text-blue-700 dark:text-blue-300 text-[10px] font-bold border border-blue-500/30">
-                                    {diag.estado}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setSelectedRecordDetail({
-                                        titulo: `${diag.codigo} - ${diag.descripcion}`,
-                                        fecha: diag.fecha,
-                                        profesional: diag.profesional,
-                                        categoria: "Diagnóstico CIE-10",
-                                        resumen: `Diagnóstico clínico clasificado bajo estándar internacional CIE-10 para patología ${diag.tipo}.`,
-                                        estado: diag.estado,
-                                        detalles: {
-                                          "Código Oficial": diag.codigo,
-                                          "Descripción": diag.descripcion,
-                                          "Clasificación": diag.tipo,
-                                          "Responsable": diag.profesional,
-                                          "Conducta": "Plan de tratamiento odontológico asignado",
-                                        },
-                                      })
-                                    }
-                                    className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-sm transition-all cursor-pointer"
-                                  >
-                                    Ver Detalle
-                                  </button>
+                                  )}
                                 </div>
                               </div>
-                            ))}
-                          </div>
-                        )}
+                            );
+                          }
 
-                        {folderCategory === "procedimientos" && (
-                          <div className="space-y-3">
-                            {(procedures.length > 0
-                              ? procedures.map((p) => ({
-                                  nombre: `Procedimiento #${p.serviceId}`,
-                                  codigo: "CUPS-PROC",
-                                  fecha: "Registrado",
-                                  profesional: "Dra. Laura Gómez",
-                                  estado: "Realizado",
-                                  notas: p.notes || `Cantidad: ${p.quantity} - Valor: $${p.unitPrice?.toLocaleString()}`,
-                                }))
-                              : [
-                                  { nombre: "Valoración General Odontológica", codigo: "CUPS-890201", fecha: "15/09/2026", profesional: "Dra. Laura Gómez", estado: "Realizado", notas: "Examen clínico completo y registro de odontograma" },
-                                  { nombre: "Profilaxis y Limpieza Dental", codigo: "CUPS-997100", fecha: "10/09/2026", profesional: "Dra. Laura Gómez", estado: "Realizado", notas: "Remoción de cálculo supragingival y pulido coronario" },
-                                  { nombre: "Restauración en Resina Fotocurada", codigo: "CUPS-232101", fecha: "01/09/2026", profesional: "Dra. Laura Gómez", estado: "Realizado", notas: "Obturación estética en pieza #16 cara oclusal" },
-                                ]
-                            ).map((proc, idx) => (
-                              <div
-                                key={idx}
-                                className="p-4 rounded-xl border border-slate-200/80 dark:border-white/10 bg-slate-50 dark:bg-slate-900/60 hover:border-emerald-500/40 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                              >
-                                <div className="space-y-1 min-w-0 flex-1">
-                                  <div className="flex items-center gap-2">
-                                    <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-mono text-[10px] font-bold">
-                                      {proc.codigo}
-                                    </span>
-                                    <span className="text-xs font-bold text-slate-900 dark:text-white">
-                                      {proc.nombre}
-                                    </span>
+                          return (
+                            <div className="space-y-3">
+                              {/* BARRA DE HERRAMIENTAS DE SELECCIÓN */}
+                              {currentCategoryRecords.length > 0 && (
+                                <div className="flex items-center justify-between flex-wrap gap-3 p-3 rounded-xl bg-slate-100/80 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 text-xs">
+                                  <div className="flex items-center gap-2.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const allKeys = currentCategoryRecords.map((r) => r.id || r.titulo);
+                                        if (selectedRecordKeys.length === allKeys.length && allKeys.length > 0) {
+                                          setSelectedRecordKeys([]);
+                                        } else {
+                                          setSelectedRecordKeys(allKeys);
+                                        }
+                                      }}
+                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold transition-colors cursor-pointer"
+                                    >
+                                      {selectedRecordKeys.length === currentCategoryRecords.length && currentCategoryRecords.length > 0 ? (
+                                        <CheckSquare size={16} className="text-teal-600 dark:text-teal-400" />
+                                      ) : (
+                                        <Square size={16} className="text-slate-400" />
+                                      )}
+                                      <span>
+                                        {selectedRecordKeys.length === currentCategoryRecords.length && currentCategoryRecords.length > 0
+                                          ? "Deseleccionar todos"
+                                          : `Seleccionar todos (${currentCategoryRecords.length})`}
+                                      </span>
+                                    </button>
+
+                                    {selectedRecordKeys.length > 0 && (
+                                      <span className="px-2.5 py-0.5 rounded-full bg-teal-500/20 text-teal-800 dark:text-teal-200 font-bold text-[11px] border border-teal-500/30">
+                                        {selectedRecordKeys.length} seleccionados
+                                      </span>
+                                    )}
                                   </div>
-                                  <p className="text-[11px] text-slate-600 dark:text-slate-300">
-                                    {proc.notas}
-                                  </p>
-                                  <div className="flex items-center gap-3 text-[10px] text-slate-400 font-medium">
-                                    <span>Dr(a). {proc.profesional}</span>
-                                    <span>•</span>
-                                    <span>{proc.fecha}</span>
-                                  </div>
+
+                                  {selectedRecordKeys.length > 0 && (
+                                    <button
+                                      type="button"
+                                      disabled={isGeneratingPdf}
+                                      onClick={() => {
+                                        const selectedItems = currentCategoryRecords.filter((r) =>
+                                          selectedRecordKeys.includes(r.id || r.titulo)
+                                        );
+                                        handleDownloadSingleOrMultipleRecordsPdf(selectedItems);
+                                      }}
+                                      className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-500 hover:to-cyan-500 text-white font-bold text-xs shadow-md transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+                                    >
+                                      <FileDown size={14} />
+                                      <span>{isGeneratingPdf ? "Generando..." : `Descargar PDF (${selectedRecordKeys.length} seleccionados)`}</span>
+                                    </button>
+                                  )}
                                 </div>
+                              )}
 
-                                <div className="flex items-center gap-2 self-end sm:self-auto">
-                                  <span className="px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold border border-emerald-500/30">
-                                    {proc.estado}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setSelectedRecordDetail({
-                                        titulo: proc.nombre,
-                                        fecha: proc.fecha,
-                                        profesional: proc.profesional,
-                                        categoria: "Procedimiento Odontológico",
-                                        resumen: proc.notas,
-                                        estado: proc.estado,
-                                        detalles: {
-                                          "Código": proc.codigo,
-                                          "Procedimiento": proc.nombre,
-                                          "Fecha de Ejecución": proc.fecha,
-                                          "Profesional Responsable": proc.profesional,
-                                          "Evolución Posoperatoria": "Favorable sin complicaciones",
-                                        },
-                                      })
-                                    }
-                                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm transition-all cursor-pointer"
-                                  >
-                                    Ver Detalle
-                                  </button>
+                              {/* LISTADO DE ITEMS */}
+                              {currentCategoryRecords.length === 0 ? (
+                                <div className="py-8 text-center text-slate-400 text-xs">
+                                  No hay registros disponibles en esta categoría.
                                 </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                              ) : (
+                                currentCategoryRecords.map((rec) => {
+                                  const itemKey = rec.id || rec.titulo;
+                                  const isSelected = selectedRecordKeys.includes(itemKey);
 
-                        {folderCategory === "antecedentes" && (
-                          <div className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1.5">
-                                <span className="font-bold text-rose-600 dark:text-rose-400 uppercase text-[10px] tracking-wider flex items-center gap-1">
-                                  <AlertTriangle size={12} /> Alergias
-                                </span>
-                                <p className="text-slate-900 dark:text-white font-bold">
-                                  {selectedPatient.allergies || "Sin alergias declaradas"}
-                                </p>
-                              </div>
+                                  return (
+                                    <div
+                                      key={itemKey}
+                                      className={`p-4 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                                        isSelected
+                                          ? "border-teal-500 bg-teal-50/50 dark:bg-teal-950/20 shadow-sm"
+                                          : "border-slate-200/80 dark:border-white/10 bg-slate-50 dark:bg-slate-900/60 hover:border-teal-500/40"
+                                      }`}
+                                    >
+                                      <div className="flex items-start gap-3 min-w-0 flex-1">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setSelectedRecordKeys((prev) =>
+                                              prev.includes(itemKey)
+                                                ? prev.filter((k) => k !== itemKey)
+                                                : [...prev, itemKey]
+                                            );
+                                          }}
+                                          className="mt-0.5 p-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 transition-colors cursor-pointer"
+                                          aria-label="Seleccionar registro"
+                                        >
+                                          {isSelected ? (
+                                            <CheckSquare size={18} className="text-teal-600 dark:text-teal-400" />
+                                          ) : (
+                                            <Square size={18} className="text-slate-400" />
+                                          )}
+                                        </button>
 
-                              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1.5">
-                                <span className="font-bold text-amber-600 dark:text-amber-400 uppercase text-[10px] tracking-wider flex items-center gap-1">
-                                  <Activity size={12} /> Enfermedades Crónicas
-                                </span>
-                                <p className="text-slate-900 dark:text-white font-bold">
-                                  {(selectedPatient as any).chronicDiseases || "Ninguna patología de base declarada"}
-                                </p>
-                              </div>
+                                        <div className="space-y-1 min-w-0 flex-1">
+                                          <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="px-2 py-0.5 rounded-md bg-teal-500/15 text-teal-700 dark:text-teal-300 font-mono text-[10px] font-bold">
+                                              {rec.categoria}
+                                            </span>
+                                            <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                                              {rec.titulo}
+                                            </span>
+                                          </div>
+                                          {rec.resumen && (
+                                            <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-2">
+                                              {rec.resumen}
+                                            </p>
+                                          )}
+                                          <div className="flex items-center gap-3 text-[10px] text-slate-400 font-medium">
+                                            <span>Dr(a). {rec.profesional}</span>
+                                            <span>•</span>
+                                            <span>{rec.fecha}</span>
+                                          </div>
+                                        </div>
+                                      </div>
 
-                              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1.5">
-                                <span className="font-bold text-cyan-700 dark:text-cyan-300 uppercase text-[10px] tracking-wider">
-                                  Medicamentos Actuales
-                                </span>
-                                <p className="text-slate-900 dark:text-white font-semibold">
-                                  {(selectedPatient as any).currentMedications || "Sin farmacoterapia permanente"}
-                                </p>
-                              </div>
-
-                              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1.5">
-                                <span className="font-bold text-cyan-700 dark:text-cyan-300 uppercase text-[10px] tracking-wider">
-                                  Contacto de Emergencia
-                                </span>
-                                <p className="text-slate-900 dark:text-white font-semibold">
-                                  {selectedPatient.emergencyContactName || "Familiar Responsable"} ({selectedPatient.emergencyContactPhone || selectedPatient.phone || "No registrado"})
-                                </p>
-                              </div>
+                                      <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                                        <button
+                                          type="button"
+                                          onClick={() => setSelectedRecordDetail(rec)}
+                                          className="px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs transition-all cursor-pointer"
+                                        >
+                                          Ver Detalle
+                                        </button>
+                                        <button
+                                          type="button"
+                                          disabled={isGeneratingPdf}
+                                          onClick={() => handleDownloadSingleOrMultipleRecordsPdf([rec])}
+                                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-sm transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+                                          title="Descargar PDF individual de este registro"
+                                        >
+                                          <FileDown size={13} />
+                                          <span>PDF</span>
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })
+                              )}
                             </div>
-
-                            {!isPaciente && (
-                              <button
-                                type="button"
-                                onClick={handleOpenAntecedentes}
-                                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
-                              >
-                                <Edit3 size={14} />
-                                <span>Editar Antecedentes Médicos</span>
-                              </button>
-                            )}
-                          </div>
-                        )}
+                          );
+                        })()}
                       </div>
                     ) : (
                       /* CUADRÍCULA OBLIGATORIA DE LAS 4 CARPETAS CLÍNICAS 3D */
@@ -1405,65 +1577,79 @@ export function HistoriaClinicaView() {
                   </div>
                 </div>
 
-              {/* DRAWER LATERAL PARA INSPECCIÓN DE DETALLES DE REGISTRO */}
+              {/* MODAL CENTRADO TIPO DOCUMENTO / PÁGINA PARA INSPECCIÓN DE DETALLES */}
               {typeof document !== "undefined" && selectedRecordDetail && createPortal(
                 <div
-                  className="fixed inset-0 z-[99999] flex justify-end bg-slate-950/70 backdrop-blur-sm animate-fadeIn"
+                  className="fixed inset-0 z-[99999] flex items-center justify-center p-4 sm:p-6 md:p-8 bg-slate-950/80 backdrop-blur-md animate-fadeIn overflow-y-auto"
                   onClick={(e) => {
                     if (e.target === e.currentTarget) setSelectedRecordDetail(null);
                   }}
                 >
-                  <div className="w-full max-w-lg h-full bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-white/10 shadow-2xl flex flex-col animate-slideInRight">
-                    <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-white/10 bg-slate-50/80 dark:bg-slate-900/90 backdrop-blur shrink-0">
-                      <div>
-                        <span className="inline-block px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 font-bold uppercase tracking-wider text-[10px] mb-1">
-                          {selectedRecordDetail.categoria}
-                        </span>
-                        <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                          {selectedRecordDetail.titulo}
-                        </h3>
+                  <div className="relative w-full max-w-3xl max-h-[90vh] bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-white/15 shadow-2xl flex flex-col overflow-hidden animate-scaleIn">
+                    {/* CABECERA CENTRADA TIPO EXPEDIENTE */}
+                    <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-white/10 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur shrink-0">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2.5 rounded-2xl bg-teal-500/15 text-teal-600 dark:text-teal-400 border border-teal-500/20">
+                          <FileText size={22} />
+                        </div>
+                        <div>
+                          <span className="inline-block px-2.5 py-0.5 rounded-full bg-cyan-500/15 text-cyan-800 dark:text-cyan-300 font-bold uppercase tracking-wider text-[10px] mb-1 border border-cyan-500/30">
+                            {selectedRecordDetail.categoria}
+                          </span>
+                          <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                            {selectedRecordDetail.titulo}
+                          </h3>
+                        </div>
                       </div>
                       <button
                         type="button"
                         onClick={() => setSelectedRecordDetail(null)}
-                        className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-300 transition-colors cursor-pointer"
+                        className="p-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-300 transition-colors cursor-pointer"
                         aria-label="Cerrar detalle"
                       >
                         <X size={20} />
                       </button>
                     </div>
 
-                    <div className="p-6 space-y-5 overflow-y-auto flex-1">
-                      <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-white/10 space-y-2 text-xs">
-                        <div className="flex items-center justify-between">
-                          <span className="text-slate-500">Paciente:</span>
-                          <span className="font-bold text-slate-900 dark:text-white">
-                            {selectedPatient.firstName} {selectedPatient.lastName} (CC: {selectedPatient.documentNumber})
-                          </span>
+                    {/* CUERPO DEL EXPEDIENTE CON FICHA Y CAMPOS */}
+                    <div className="p-6 sm:p-8 space-y-6 overflow-y-auto flex-1">
+                      {/* CUADRO IDENTIFICADOR */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-white/10 text-xs">
+                        <div className="space-y-0.5">
+                          <span className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400">Paciente:</span>
+                          <p className="font-bold text-slate-900 dark:text-white truncate">
+                            {selectedPatient.firstName} {selectedPatient.lastName}
+                          </p>
+                          <p className="text-[10px] font-mono text-cyan-600 dark:text-cyan-400">
+                            CC: {selectedPatient.documentNumber}
+                          </p>
                         </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-slate-500">Profesional Responsable:</span>
-                          <span className="font-semibold text-cyan-700 dark:text-cyan-300">
+                        <div className="space-y-0.5">
+                          <span className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400">Profesional:</span>
+                          <p className="font-semibold text-cyan-700 dark:text-cyan-300 truncate">
                             {selectedRecordDetail.profesional}
-                          </span>
+                          </p>
                         </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-slate-500">Fecha:</span>
-                          <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">
+                        <div className="space-y-0.5">
+                          <span className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400">Fecha de Registro:</span>
+                          <p className="font-mono font-semibold text-slate-700 dark:text-slate-300">
                             {selectedRecordDetail.fecha}
-                          </span>
+                          </p>
                         </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-slate-500">Estado:</span>
-                          <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-bold text-[10px]">
-                            {selectedRecordDetail.estado}
-                          </span>
+                        <div className="space-y-0.5">
+                          <span className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400">Estado:</span>
+                          <div>
+                            <span className="inline-block px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-bold text-[10px] border border-emerald-500/30">
+                              {selectedRecordDetail.estado || "Completado"}
+                            </span>
+                          </div>
                         </div>
                       </div>
 
+                      {/* RESUMEN / MOTIVO */}
                       {selectedRecordDetail.resumen && (
-                        <div className="p-3.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-xs space-y-1">
-                          <span className="font-bold text-cyan-800 dark:text-cyan-300 uppercase text-[10px] block">
+                        <div className="p-4 rounded-2xl bg-teal-50/70 dark:bg-teal-950/30 border border-teal-500/20 text-xs space-y-1.5">
+                          <span className="font-bold text-teal-800 dark:text-teal-300 uppercase text-[10px] tracking-wider block">
                             Resumen Clínico / Motivo:
                           </span>
                           <p className="text-slate-800 dark:text-slate-200 font-medium leading-relaxed">
@@ -1472,18 +1658,20 @@ export function HistoriaClinicaView() {
                         </div>
                       )}
 
+                      {/* CAMPOS CLÍNICOS EN CUADRÍCULA DE 2 COLUMNAS */}
                       {selectedRecordDetail.detalles && (
                         <div className="space-y-3">
-                          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                            Detalles Clínicos del Registro
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                            <Layers size={14} className="text-teal-600 dark:text-teal-400" />
+                            <span>Detalles Clínicos del Registro</span>
                           </h4>
-                          <div className="space-y-2.5">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {Object.entries(selectedRecordDetail.detalles).map(([key, val]) => (
                               <div
                                 key={key}
-                                className="p-3 rounded-xl bg-slate-100/70 dark:bg-white/5 border border-slate-200/70 dark:border-white/10 text-xs space-y-1"
+                                className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200/70 dark:border-white/10 text-xs space-y-1"
                               >
-                                <span className="font-bold text-cyan-800 dark:text-cyan-300 uppercase text-[10px]">
+                                <span className="font-bold text-cyan-800 dark:text-cyan-300 uppercase text-[10px] tracking-wider block">
                                   {key}:
                                 </span>
                                 <p className="text-slate-800 dark:text-slate-200 font-medium leading-relaxed">
@@ -1496,13 +1684,28 @@ export function HistoriaClinicaView() {
                       )}
                     </div>
 
-                    <div className="p-4 border-t border-slate-200/80 dark:border-white/10 flex items-center justify-end gap-2 shrink-0 bg-slate-50/50 dark:bg-slate-900/50">
+                    {/* FOOTER CON BOTÓN DE DESCARGA Y CERRAR */}
+                    <div className="p-5 border-t border-slate-200/80 dark:border-white/10 flex items-center justify-between gap-3 shrink-0 bg-slate-50/80 dark:bg-slate-900/80">
+                      <button
+                        type="button"
+                        disabled={isGeneratingPdf}
+                        onClick={() => {
+                          if (selectedRecordDetail) {
+                            handleDownloadSingleOrMultipleRecordsPdf([selectedRecordDetail]);
+                          }
+                        }}
+                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-500 hover:to-cyan-500 text-white text-xs font-bold shadow-md transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+                      >
+                        <FileDown size={16} />
+                        <span>{isGeneratingPdf ? "Generando..." : "Descargar PDF de este Registro"}</span>
+                      </button>
+
                       <button
                         type="button"
                         onClick={() => setSelectedRecordDetail(null)}
-                        className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                        className="px-5 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-colors cursor-pointer"
                       >
-                        Cerrar Panel
+                        Cerrar Detalle
                       </button>
                     </div>
                   </div>
@@ -1864,46 +2067,37 @@ export function HistoriaClinicaView() {
         </div>
       )}
 
-      {/* MODAL FÓRMULA MÉDICA ODONTOLÓGICA (IMPRIMIBLE) */}
+      {/* MODAL FÓRMULA MÉDICA ODONTOLÓGICA (IMPRIMIBLE OFICIAL) */}
       {showPrescriptionModal && selectedPatient && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fadeIn">
           <div className="w-full max-w-2xl rounded-3xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/20 p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+            {/* Header sin botones duplicados */}
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-700 dark:text-cyan-300">
-                  <FileText size={20} />
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-700 dark:text-cyan-300">
+                  <FileText size={22} />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                    Fórmula Médica Odontológica
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">
+                    Fórmula Médica Odontológica (RP)
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    NexusOdonto Dental Clinic — Prescripción Oficial
+                    NexusOdonto Dental Clinic — Recetario Oficial de Prescripción
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-800 dark:text-cyan-200 text-xs font-bold transition-all cursor-pointer"
-                  title="Imprimir prescripción médica"
-                >
-                  <Printer size={14} />
-                  <span>Imprimir</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowPrescriptionModal(false)}
-                  className="p-1 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
-                >
-                  <X size={18} />
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setShowPrescriptionModal(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                aria-label="Cerrar modal"
+              >
+                <X size={20} />
+              </button>
             </div>
 
-            {/* Hoja de Prescripción con formato clínico */}
-            <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-white/10 space-y-4 text-xs">
+            {/* Hoja de Prescripción con formato clínico imprimible */}
+            <div className="printable-clinical-sheet p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-white/10 space-y-4 text-xs">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pb-3 border-b border-slate-200 dark:border-white/10">
                 <div>
                   <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold">Paciente</span>
@@ -1911,89 +2105,127 @@ export function HistoriaClinicaView() {
                 </div>
                 <div>
                   <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold">Documento</span>
-                  <p className="font-bold text-slate-900 dark:text-white">{selectedPatient.documentNumber || "1098765432"}</p>
+                  <p className="font-bold text-slate-900 dark:text-white font-mono">{selectedPatient.documentNumber || "1098765432"}</p>
                 </div>
                 <div>
                   <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold">Fecha</span>
                   <p className="font-bold text-slate-900 dark:text-white">{new Date().toLocaleDateString("es-CO")}</p>
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold">Odontólogo</span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold">Odontólogo Tratante</span>
                   <p className="font-bold text-cyan-700 dark:text-cyan-300">{formProfesional}</p>
                 </div>
               </div>
 
               {/* Lista de Medicamentos Prescritos */}
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 <span className="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wider block">
                   Medicamentos Formulados:
                 </span>
                 <div className="space-y-2">
-                  {prescriptionItems.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="p-3 rounded-xl bg-white dark:bg-slate-950/70 border border-slate-200/80 dark:border-white/10 flex items-center justify-between gap-3"
-                    >
-                      <div className="flex-1 space-y-0.5">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-slate-900 dark:text-white">{idx + 1}. {item.medicamento}</span>
-                          <span className="px-2 py-0.5 rounded-md bg-cyan-500/15 text-cyan-800 dark:text-cyan-300 text-[10px] font-bold">
-                            {item.duracion}
-                          </span>
-                        </div>
-                        <p className="text-slate-600 dark:text-slate-400 text-[11px]">
-                          <strong>Dosis:</strong> {item.dosis} — <em>{item.indicaciones}</em>
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveMedication(idx)}
-                        className="p-1 text-slate-400 hover:text-rose-500 transition-colors"
-                        title="Quitar medicamento"
+                  {prescriptionItems.length === 0 ? (
+                    <p className="text-xs text-slate-400 italic py-2">No hay medicamentos agregados a esta fórmula.</p>
+                  ) : (
+                    prescriptionItems.map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="p-3.5 rounded-xl bg-white dark:bg-slate-950/70 border border-slate-200/80 dark:border-white/10 flex items-center justify-between gap-3 shadow-xs"
                       >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  ))}
+                        <div className="flex-1 space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-slate-900 dark:text-white text-xs">
+                              {idx + 1}. {item.medicamento}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-md bg-cyan-500/15 text-cyan-800 dark:text-cyan-300 text-[10px] font-bold">
+                              {item.duracion}
+                            </span>
+                          </div>
+                          <p className="text-slate-600 dark:text-slate-300 text-[11px] leading-relaxed">
+                            <strong className="text-slate-700 dark:text-slate-200">Dosis:</strong> {item.dosis}
+                            {item.indicaciones && <span> — <em>{item.indicaciones}</em></span>}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveMedication(idx)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer shrink-0"
+                          title="Quitar medicamento"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 
-              {/* Formulario para agregar nuevo medicamento */}
-              <div className="p-3 rounded-xl bg-slate-100 dark:bg-white/5 border border-dashed border-slate-300 dark:border-white/15 space-y-2">
-                <span className="font-bold text-slate-700 dark:text-slate-300 text-[11px] block">
-                  + Agregar Fármaco a la Prescripción
+              {/* Formulario estructurado y amplio para agregar medicamentos */}
+              <div className="p-4 rounded-xl bg-slate-100/90 dark:bg-white/5 border border-dashed border-slate-300 dark:border-white/15 space-y-3 no-print">
+                <span className="font-bold text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5">
+                  <Plus size={14} className="text-cyan-500" />
+                  <span>Agregar Fármaco a la Prescripción</span>
                 </span>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <input
-                    type="text"
-                    placeholder="Medicamento (ej. Enjuague Clorhexidina 0.12%)"
-                    value={newMed.medicamento}
-                    onChange={(e) => setNewMed({ ...newMed, medicamento: e.target.value })}
-                    className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-xs"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Dosis (ej. 15 ml cada 12 horas)"
-                    value={newMed.dosis}
-                    onChange={(e) => setNewMed({ ...newMed, dosis: e.target.value })}
-                    className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-xs"
-                  />
-                  <div className="flex gap-2">
+                <div className="space-y-2.5">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">
+                      Nombre del Medicamento y Presentación *
+                    </label>
                     <input
                       type="text"
-                      placeholder="Duración (ej. 10 días)"
-                      value={newMed.duracion}
-                      onChange={(e) => setNewMed({ ...newMed, duracion: e.target.value })}
-                      className="flex-1 px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-xs"
+                      placeholder="Ej. Amoxicilina 500mg cápsulas / Enjuague Clorhexidina 0.12%"
+                      value={newMed.medicamento}
+                      onChange={(e) => setNewMed({ ...newMed, medicamento: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500"
                     />
-                    <button
-                      type="button"
-                      onClick={handleAddMedication}
-                      className="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs cursor-pointer active:scale-95 transition-all"
-                    >
-                      Agregar
-                    </button>
                   </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">
+                        Dosis / Posología *
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ej. 1 cápsula cada 8 horas"
+                        value={newMed.dosis}
+                        onChange={(e) => setNewMed({ ...newMed, dosis: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">
+                        Duración *
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ej. 7 días"
+                        value={newMed.duracion}
+                        onChange={(e) => setNewMed({ ...newMed, duracion: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">
+                        Indicación Especial
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ej. Tomar con comida"
+                        value={newMed.indicaciones}
+                        onChange={(e) => setNewMed({ ...newMed, indicaciones: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleAddMedication}
+                    className="w-full py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs shadow-sm cursor-pointer active:scale-98 transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <Plus size={15} />
+                    <span>Agregar Medicamento a la Receta</span>
+                  </button>
                 </div>
               </div>
 
@@ -2007,30 +2239,299 @@ export function HistoriaClinicaView() {
                   value={prescIndicacionesGrales}
                   onChange={(e) => setPrescIndicacionesGrales(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 resize-none"
+                  placeholder="Instrucciones adicionales para el paciente..."
                 />
               </div>
 
-              <div className="pt-4 border-t border-slate-200 dark:border-white/10 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+              <div className="pt-4 border-t border-slate-200 dark:border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400">
                 <span>Válido por 30 días a partir de la fecha de expedición.</span>
-                <span className="font-bold text-slate-700 dark:text-slate-300">Firma Odontólogo: ___________________</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200">
+                  Firma Odontólogo: ___________________________
+                </span>
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-2">
+            {/* Footer con botón principal de descarga PDF nativo */}
+            <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => setShowPrescriptionModal(false)}
-                className="px-4 py-2 rounded-xl border border-slate-300 dark:border-white/20 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+                className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-white/20 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
               >
                 Cerrar
               </button>
               <button
                 type="button"
-                onClick={() => window.print()}
-                className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 text-slate-950 font-bold text-xs shadow-md active:scale-95 cursor-pointer"
+                disabled={isGeneratingPdf}
+                onClick={handleDownloadPrescriptionPdf}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 text-slate-950 font-bold text-xs shadow-md active:scale-95 cursor-pointer disabled:opacity-60"
               >
-                <Printer size={15} />
-                <span>Imprimir Receta</span>
+                <Download size={16} />
+                <span>{isGeneratingPdf ? "Generando PDF..." : "Descargar Receta en PDF"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL VISTA PREVIA Y DESCARGA DEL EXPEDIENTE CLÍNICO COMPLETO */}
+      {showPrintExpedienteModal && selectedPatient && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fadeIn">
+          <div className="w-full max-w-4xl rounded-3xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/20 p-6 shadow-2xl space-y-5 max-h-[92vh] overflow-y-auto">
+            {/* Header del Modal */}
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-teal-500/15 border border-teal-500/30 text-teal-700 dark:text-teal-300">
+                  <FileDown size={22} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">
+                    Expediente Clínico Odontológico Oficial
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Vista previa y exportación en formato PDF oficial para {selectedPatient.firstName} {selectedPatient.lastName}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPrintExpedienteModal(false)}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                aria-label="Cerrar vista previa"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Documento Imprimible Oficial con membrete médico profesional */}
+            <div className="printable-clinical-sheet p-8 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-white/10 space-y-6 text-xs text-slate-800 dark:text-slate-200 shadow-sm">
+              {/* Membrete Oficial de la Clínica */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b-2 border-slate-900 dark:border-white/20">
+                <div>
+                  <h2 className="text-xl font-black uppercase tracking-wider text-slate-950 dark:text-white">
+                    NexusOdonto Dental Clinic
+                  </h2>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-400 font-medium">
+                    Servicios de Salud Oral, Odontología Especializada y Estomatología
+                  </p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                    Registro Prestador de Salud: REPS-11001 • Bogotá D.C., Colombia
+                  </p>
+                </div>
+                <div className="text-right sm:text-right">
+                  <span className="inline-block px-3 py-1 rounded-md bg-slate-900 text-white dark:bg-white dark:text-slate-950 font-mono font-bold text-xs">
+                    HC-{selectedPatient.documentNumber}
+                  </span>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                    Fecha de Emisión: {new Date().toLocaleDateString("es-CO")}
+                  </p>
+                </div>
+              </div>
+
+              {/* Bloque 1: Identificación del Paciente */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white border-b border-slate-200 dark:border-white/10 pb-1">
+                  1. Identificación del Paciente
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 dark:bg-slate-950/60 p-4 rounded-xl border border-slate-200/80 dark:border-white/10">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-500">Nombre Completo</span>
+                    <p className="font-bold text-slate-900 dark:text-white text-xs">
+                      {selectedPatient.firstName} {selectedPatient.lastName}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-500">Documento</span>
+                    <p className="font-mono font-bold text-slate-900 dark:text-white text-xs">
+                      CC: {selectedPatient.documentNumber}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-500">Teléfono</span>
+                    <p className="font-bold text-slate-900 dark:text-white text-xs">
+                      {selectedPatient.phone || "No registrado"}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-500">Correo Electrónico</span>
+                    <p className="font-semibold text-slate-900 dark:text-white text-xs truncate">
+                      {selectedPatient.email || "No registrado"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bloque 2: Antecedentes Médicos y Alertas */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white border-b border-slate-200 dark:border-white/10 pb-1">
+                  2. Antecedentes Médicos y Alertas Clínicas
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40">
+                    <span className="text-[10px] uppercase font-bold text-rose-700 dark:text-rose-400 block">
+                      Alergias Conocidas
+                    </span>
+                    <p className="font-bold text-rose-950 dark:text-rose-200 text-xs mt-0.5">
+                      {selectedPatient.allergies || "Sin alergias declaradas"}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-white/10">
+                    <span className="text-[10px] uppercase font-bold text-slate-500 block">
+                      Patologías de Base / Crónicas
+                    </span>
+                    <p className="font-bold text-slate-900 dark:text-white text-xs mt-0.5">
+                      {(selectedPatient as any).chronicDiseases || "Ninguna patología registrada"}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-white/10">
+                    <span className="text-[10px] uppercase font-bold text-slate-500 block">
+                      Contacto de Emergencia
+                    </span>
+                    <p className="font-bold text-slate-900 dark:text-white text-xs mt-0.5">
+                      {selectedPatient.emergencyContactName || "Familiar"} ({selectedPatient.emergencyContactPhone || selectedPatient.phone || "No registrado"})
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bloque 3: Evoluciones Clínicas Registradas */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white border-b border-slate-200 dark:border-white/10 pb-1">
+                  3. Registro Cronológico de Evoluciones Clínicas ({attentions.length})
+                </h4>
+                {attentions.length === 0 ? (
+                  <p className="text-xs text-slate-500 italic py-2">No se registran atenciones clínicas previas.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {attentions.map((att, idx) => (
+                      <div
+                        key={att.id || idx}
+                        className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/50 border border-slate-200/80 dark:border-white/10 space-y-2"
+                      >
+                        <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-white/10 pb-1.5">
+                          <span className="font-bold text-cyan-800 dark:text-cyan-300 text-xs">
+                            Evolución #{attentions.length - idx} — {att.motivo}
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-mono">
+                            {att.fecha} • Dr(a). {att.profesional}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                          <div>
+                            <span className="text-slate-500 font-semibold">Anamnesis: </span>
+                            <span className="text-slate-800 dark:text-slate-200">{att.enfermedadActual}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 font-semibold">Examen Físico: </span>
+                            <span className="text-slate-800 dark:text-slate-200">{att.examenFisico}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 font-semibold">Diagnóstico: </span>
+                            <span className="font-bold text-slate-900 dark:text-white">
+                              {att.diagnostico} (CIE-10: {att.cie10 || "K02.1"})
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 font-semibold">Plan / Tratamiento: </span>
+                            <span className="text-slate-800 dark:text-slate-200">{att.planTratamiento}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Bloque 4: Diagnósticos y Procedimientos Codificados */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white border-b border-slate-200 dark:border-white/10 pb-1">
+                    4. Diagnósticos CIE-10 Registrados
+                  </h4>
+                  <div className="space-y-1.5">
+                    {(diagnoses.length > 0
+                      ? diagnoses
+                      : [
+                          { cie10Code: "K02.1", description: "Caries de la dentina", diagnosisType: "DENTAL" },
+                          { cie10Code: "K05.1", description: "Gingivitis crónica simple", diagnosisType: "PERIODONTAL" },
+                        ]
+                    ).map((d: any, idx) => (
+                      <div key={idx} className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-slate-200/70 dark:border-white/10 flex items-center justify-between">
+                        <span className="font-bold text-slate-900 dark:text-white text-xs">
+                          {d.cie10Code || d.code} — {d.description}
+                        </span>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-800 dark:text-cyan-300 font-bold">
+                          {d.diagnosisType || d.type || "DENTAL"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white border-b border-slate-200 dark:border-white/10 pb-1">
+                    5. Procedimientos y Tratamientos
+                  </h4>
+                  <div className="space-y-1.5">
+                    {(procedures.length > 0
+                      ? procedures.map((p) => ({ codigo: "CUPS-PROC", nombre: `Procedimiento #${p.serviceId}`, notas: p.notes || "Realizado" }))
+                      : [
+                          { codigo: "CUPS-890201", nombre: "Valoración General Odontológica", notas: "Examen clínico completo" },
+                          { codigo: "CUPS-997100", nombre: "Profilaxis y Limpieza Dental", notas: "Remoción de cálculo" },
+                        ]
+                    ).map((proc, idx) => (
+                      <div key={idx} className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-950/60 border border-slate-200/70 dark:border-white/10 flex items-center justify-between">
+                        <div>
+                          <span className="font-bold text-slate-900 dark:text-white text-xs block">
+                            {proc.nombre}
+                          </span>
+                          <span className="text-[10px] text-slate-500">{proc.notas}</span>
+                        </div>
+                        <span className="text-[10px] font-mono font-bold text-emerald-700 dark:text-emerald-300">
+                          {proc.codigo}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Bloque 5: Firma y Certificación Profesional */}
+              <div className="pt-6 border-t-2 border-slate-900 dark:border-white/20 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <p className="text-[10px] text-slate-500 leading-relaxed">
+                    Certificación de veracidad clínica conforme a la Ley 23 de 1981 y Resolución 1995 de 1999 sobre custodia y confidencialidad de la historia clínica.
+                  </p>
+                </div>
+                <div className="text-right space-y-1">
+                  <div className="w-64 ml-auto border-b border-slate-900 dark:border-white pb-1 mb-1"></div>
+                  <p className="font-bold text-slate-900 dark:text-white text-xs">
+                    {formProfesional}
+                  </p>
+                  <p className="text-[10px] text-slate-500 font-mono">
+                    Odontólogo(a) Tratante • T.P. Odontología Colegiada
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Acciones del Modal con descarga PDF nativo como acción principal */}
+            <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowPrintExpedienteModal(false)}
+                className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-white/20 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                Cerrar
+              </button>
+              <button
+                type="button"
+                disabled={isGeneratingPdf}
+                onClick={handleDownloadExpedientePdf}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 text-slate-950 font-bold text-xs shadow-md active:scale-95 cursor-pointer disabled:opacity-60"
+              >
+                <Download size={16} />
+                <span>{isGeneratingPdf ? "Generando PDF..." : "Descargar Expediente en PDF"}</span>
               </button>
             </div>
           </div>

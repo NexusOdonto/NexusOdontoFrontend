@@ -110,19 +110,25 @@ export const FolderComponent = ({
   const theme = themes[color] ?? themes.teal;
   const scale = sizeScales[size] ?? 1;
   const [isHovered, setIsHovered] = useState(false);
-  const [isOpen, setIsOpen] = useState(false);
+
+  const handleClick = (index: number = 0) => {
+    if (onCardClick) {
+      onCardClick(index);
+    }
+  };
 
   return (
     <div
       data-slot="folder"
       className={cn(
-        "relative flex flex-col items-center justify-center p-3 group/folder",
+        "relative flex flex-col items-center justify-center p-3 group/folder cursor-pointer",
         className,
       )}
+      onClick={() => handleClick(0)}
       {...props}
     >
       <div
-        className="relative cursor-pointer select-none transition-transform duration-300"
+        className="relative cursor-pointer select-none transition-transform duration-200 active:scale-95"
         style={{
           width: BASE_WIDTH * scale,
           height: BASE_HEIGHT * scale,
@@ -130,11 +136,7 @@ export const FolderComponent = ({
           WebkitTapHighlightColor: "transparent",
         }}
         onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => {
-          setIsHovered(false);
-          setIsOpen(false);
-        }}
-        onClick={() => setIsOpen((o) => !o)}
+        onMouseLeave={() => setIsHovered(false)}
       >
         <div
           className="absolute top-1/2 left-1/2"
@@ -158,27 +160,25 @@ export const FolderComponent = ({
             />
           </div>
 
-          {/* Tarjetas que se abren en abanico (Fan out) */}
+          {/* Tarjetas con animación 1 (Hover Preview) */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
             {/* Ficha 3 (Derecha) */}
             <motion.div
               className="absolute cursor-pointer"
               onClick={(e) => {
-                if (isOpen && onCardClick) {
-                  e.stopPropagation();
-                  onCardClick(2);
-                }
+                e.stopPropagation();
+                handleClick(2);
               }}
               animate={{
-                y: isOpen ? -165 : isHovered ? -35 : -10,
-                x: isOpen ? 75 : 40,
-                rotate: isOpen ? 18 : isHovered ? 14 : 10,
+                y: isHovered ? -35 : -10,
+                x: isHovered ? 40 : 25,
+                rotate: isHovered ? 14 : 10,
               }}
               transition={{
                 type: "spring",
                 stiffness: 130,
                 damping: 14,
-                delay: isOpen ? 0.08 : isHovered ? 0.1 : 0,
+                delay: isHovered ? 0.08 : 0,
               }}
             >
               <Card
@@ -194,21 +194,19 @@ export const FolderComponent = ({
             <motion.div
               className="absolute cursor-pointer"
               onClick={(e) => {
-                if (isOpen && onCardClick) {
-                  e.stopPropagation();
-                  onCardClick(1);
-                }
+                e.stopPropagation();
+                handleClick(1);
               }}
               animate={{
-                y: isOpen ? -185 : isHovered ? -42 : -20,
-                x: isOpen ? 0 : 3,
-                rotate: isOpen ? -3 : isHovered ? -1 : 2,
+                y: isHovered ? -42 : -20,
+                x: isHovered ? 0 : 3,
+                rotate: isHovered ? -1 : 2,
               }}
               transition={{
                 type: "spring",
                 stiffness: 130,
                 damping: 14,
-                delay: isOpen ? 0.04 : isHovered ? 0.05 : 0,
+                delay: isHovered ? 0.04 : 0,
               }}
             >
               <Card
@@ -224,15 +222,13 @@ export const FolderComponent = ({
             <motion.div
               className="absolute cursor-pointer"
               onClick={(e) => {
-                if (isOpen && onCardClick) {
-                  e.stopPropagation();
-                  onCardClick(0);
-                }
+                e.stopPropagation();
+                handleClick(0);
               }}
               animate={{
-                y: isOpen ? -175 : isHovered ? -48 : -22,
-                x: isOpen ? -72 : -40,
-                rotate: isOpen ? -15 : isHovered ? -10 : -5,
+                y: isHovered ? -48 : -22,
+                x: isHovered ? -40 : -25,
+                rotate: isHovered ? -10 : -5,
               }}
               transition={{
                 type: "spring",
@@ -260,7 +256,7 @@ export const FolderComponent = ({
               width: 321,
               height: 241,
             }}
-            animate={{ rotateX: isOpen ? -55 : isHovered ? -45 : -15 }}
+            animate={{ rotateX: isHovered ? -45 : -15 }}
             transition={{ type: "spring", stiffness: 130, damping: 14 }}
           >
             <div

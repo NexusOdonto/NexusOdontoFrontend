@@ -373,4 +373,40 @@
 .icon-animated-interactive:hover {
   transform: translateY(-3px) scale(1.18) rotate(6deg);
   filter: drop-shadow(0 4px 12px rgba(6, 182, 212, 0.5));
+}
+
+/* REGLAS OFICIALES DE IMPRESIÓN MÉDICA CLÍNICA */
+@media print {
+  @page {
+    margin: 12mm;
+    size: A4 portrait;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 11pt !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Ocultar elementos de navegación y UI de la aplicación */
+  nav, aside, header, footer, .no-print, button, .lucide-x, [data-slot="folder"] {
+    display: none !important;
+  }
+
+  /* Mostrar y expandir la hoja de documento imprimible */
+  .printable-clinical-sheet {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+    border: none !important;
+    display: block !important;
+  }
 }
