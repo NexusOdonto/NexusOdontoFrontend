@@ -1,6 +1,5 @@
-import { useState, useRef, useEffect, type ChangeEvent } from "react";
+import { useState, useEffect, type ChangeEvent } from "react";
 import {
-  Camera,
   Pencil,
   Save,
   X,
@@ -10,7 +9,6 @@ import {
   CreditCard,
   MapPin,
   CheckCircle,
-  AlertCircle,
   Sparkles,
 } from "lucide-react";
 
@@ -22,11 +20,9 @@ import { formatRoleName } from "../../utils/roleUtils";
 
 export default function PerfilView() {
   const { user, updateUser } = useAuth();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isEditing, setIsEditing] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [uploadError, setUploadError] = useState("");
 
   const userId = user?.id || user?.email || "default_user";
 
@@ -118,44 +114,9 @@ export default function PerfilView() {
     }));
   };
 
-  // Previsualización de nueva foto solo en modo edición
-  const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setUploadError("");
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validación de formato
-    const validTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
-    if (!validTypes.includes(file.type)) {
-      setUploadError("Formato no soportado. Por favor selecciona una imagen PNG, JPG o WebP.");
-      return;
-    }
-
-    // Validación de tamaño (Máx 2MB)
-    const maxSizeInBytes = 2 * 1024 * 1024;
-    if (file.size > maxSizeInBytes) {
-      setUploadError("La imagen no debe superar los 2 MB de tamaño.");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64String = reader.result as string;
-
-      // Actualizar únicamente el estado de previsualización local (no persiste hasta guardar)
-      setProfileData((prev) => ({
-        ...prev,
-        avatar: base64String,
-      }));
-    };
-
-    reader.readAsDataURL(file);
-  };
-
   const handleEdit = () => {
     setIsEditing(true);
     setSaveSuccess(false);
-    setUploadError("");
   };
 
   const handleCancel = () => {
@@ -175,26 +136,16 @@ export default function PerfilView() {
       avatar: savedAvatar,
     });
 
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-
     setIsEditing(false);
-    setUploadError("");
   };
 
   const handleSave = async () => {
-    // 1. Persistir foto en localStorage si fue modificada
-    if (profileData.avatar) {
-      localStorage.setItem(`user_avatar_${userId}`, profileData.avatar);
-    }
-
-    // 2. Actualizar contexto de sesión global
+    // 1. Actualizar contexto de sesión global
     if (updateUser) {
       updateUser(profileData);
     }
 
-    // 3. Persistir en backend API si personId es válido
+    // 2. Persistir en backend API si personId es válido
     if (user?.personId && user.personId.length > 10) {
       try {
         await personService.update(user.personId, {
@@ -213,10 +164,6 @@ export default function PerfilView() {
       }
     }
 
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-
     setIsEditing(false);
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 3000);
@@ -226,15 +173,6 @@ export default function PerfilView() {
 
   return (
     <div className="space-y-6 text-slate-900 dark:text-slate-100 pb-8">
-      {/* Input de archivo oculto */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/png, image/jpeg, image/jpg, image/webp"
-        className="hidden"
-        onChange={handleImageChange}
-      />
-
       {/* Toast Notificación */}
       {saveSuccess && (
         <div className="fixed bottom-6 right-6 z-[99999] flex items-center gap-2.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 px-5 py-3 rounded-2xl shadow-2xl border border-teal-500/30 animate-slideUp backdrop-blur-md">
@@ -250,7 +188,7 @@ export default function PerfilView() {
             Mi Perfil de Usuario
           </h1>
           <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mt-1 font-medium">
-            Información personal, foto de perfil y credenciales de acceso clínico.
+            Información personal, datos de contacto y credenciales de acceso clínico.
           </p>
         </div>
 
@@ -294,61 +232,18 @@ export default function PerfilView() {
         </div>
       </div>
 
-      {/* Alertas de Validación */}
-      {uploadError && (
-        <div className="p-3.5 bg-rose-500/15 border border-rose-500/30 rounded-2xl text-rose-600 dark:text-rose-400 text-xs flex items-center gap-2 animate-fadeIn backdrop-blur-md">
-          <AlertCircle size={16} className="flex-shrink-0" />
-          <span>{uploadError}</span>
-        </div>
-      )}
-
       {/* Tarjeta de Identidad con Efecto Glassmorphism */}
       <div className="p-6 md:p-8 rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl shadow-md flex flex-col md:flex-row items-center gap-6 animate-slideUp animate-stagger-1">
-        <div className="relative group">
-          <div
-            onClick={() => {
-              if (isEditing) {
-                fileInputRef.current?.click();
-              }
-            }}
-            className={`relative overflow-hidden rounded-2xl ring-4 transition-all duration-300 ${
-              isEditing
-                ? "cursor-pointer ring-cyan-500/50 hover:ring-cyan-500/80"
-                : "cursor-default ring-cyan-500/20"
-            }`}
-            title={isEditing ? "Haz clic para seleccionar una nueva foto" : undefined}
-          >
+        <div className="relative">
+          <div className="relative overflow-hidden rounded-2xl ring-4 ring-cyan-500/20 shadow-md">
             <UserAvatar
               avatar={profileData.avatar}
               name={fullName}
               size="xl"
-              className={`w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-cyan-500/10 object-cover transition-transform duration-300 ${
-                isEditing ? "group-hover:scale-105" : ""
-              }`}
+              className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-cyan-500/10 object-cover"
               fallbackClassName="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl flex items-center justify-center font-extrabold text-2xl text-cyan-800 dark:text-cyan-200 bg-gradient-to-br from-teal-500/20 via-cyan-500/20 to-blue-500/20 border border-cyan-500/40"
             />
-
-            {/* Overlay interactivo SOLO visible en modo edición */}
-            {isEditing && (
-              <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center text-white text-[10px] font-semibold gap-1">
-                <Camera size={18} className="text-cyan-300" />
-                <span>Cambiar foto</span>
-              </div>
-            )}
           </div>
-
-          {/* Botón de Cámara SOLO visible en modo edición */}
-          {isEditing && (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="absolute -bottom-2 -right-2 p-2.5 bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 text-white dark:text-slate-950 rounded-xl shadow-lg hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer border border-white/20 animate-fadeIn"
-              title="Seleccionar foto de perfil"
-              aria-label="Seleccionar foto de perfil"
-            >
-              <Camera size={15} />
-            </button>
-          )}
         </div>
 
         <div className="text-center md:text-left space-y-1.5">
@@ -364,11 +259,6 @@ export default function PerfilView() {
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
             {profileData.email}
           </p>
-          {isEditing && (
-            <p className="text-[11px] text-cyan-600 dark:text-cyan-400 font-semibold animate-fadeIn">
-              Haz clic en la foto para cambiarla (Máx. 2 MB)
-            </p>
-          )}
         </div>
       </div>
 
