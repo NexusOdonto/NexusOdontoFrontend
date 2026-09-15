@@ -121,7 +121,7 @@ export default function ChangePasswordPage() {
             <div>
               <span className="text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold block">Paciente Registrado</span>
               <span className="font-bold text-slate-800 dark:text-slate-200">
-                {user?.name || user?.cedula ? `${user?.name || 'Paciente'} (Cédula: ${user?.cedula || ''})` : 'Paciente Nexus Odonto'}
+                {user?.cedula ? `${user?.name || 'Paciente'} (Cédula: ${user.cedula})` : (user?.name || 'Paciente Nexus Odonto')}
               </span>
             </div>
             <UserCheck className="text-teal-500 h-5 w-5" />

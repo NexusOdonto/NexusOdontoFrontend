@@ -255,6 +255,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         try {
           const profile = await authService.getProfile();
           userData = parseProfileToUser(profile || { user: backendUser, permissions });
+        if (!userData.cedula && /^\d+$/.test(cleanIdentifier)) { userData.cedula = cleanIdentifier; }
         } catch {
           userData = parseProfileToUser({ user: backendUser, permissions });
         }

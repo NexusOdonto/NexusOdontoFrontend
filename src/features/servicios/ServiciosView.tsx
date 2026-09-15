@@ -95,7 +95,7 @@ export function ServiciosView() {
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState("todas");
   const [precioMaximo, setPrecioMaximo] = useState("");
   const [duracionMaxima, setDuracionMaxima] = useState("");
-  const [estado, setEstado] = useState<"todos" | "activo" | "inactivo">("todos");
+  const [estado, setEstado] = useState<"todos" | "activo" | "inactivo">("activo");
   const [orden, setOrden] = useState<"nombre" | "precio-asc" | "precio-desc" | "duracion">("nombre");
 
   // Vistas y Modales
@@ -269,7 +269,7 @@ export function ServiciosView() {
     setCategoriaSeleccionada("todas");
     setPrecioMaximo("");
     setDuracionMaxima("");
-    setEstado("todos");
+    setEstado("activo");
     setOrden("nombre");
   }
 
