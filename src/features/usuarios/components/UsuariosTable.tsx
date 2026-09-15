@@ -9,6 +9,7 @@ import {
 
 import type { Usuario } from "../../../types/usuarios";
 import { areGuidsEqual, isSeedAdminUser } from "../../../utils/roleUtils";
+import { UserAvatar } from "../../../components/common/UserAvatar";
 
 interface UsuariosTableProps {
   usuarios: Usuario[];
@@ -177,8 +178,13 @@ export function UsuariosTable({
                   {/* Nombre */}
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500/20 via-cyan-500/20 to-blue-500/20 dark:from-teal-400/30 dark:via-cyan-400/30 dark:to-blue-500/30 border border-cyan-500/40 dark:border-cyan-400/50 text-cyan-800 dark:text-cyan-200 font-extrabold shadow-sm">
-                        <UserRound size={16} className="text-teal-600 dark:text-teal-400" />
+                      <div className="h-9 w-9 shrink-0 rounded-xl overflow-hidden border border-cyan-500/40 dark:border-cyan-400/50 shadow-sm flex items-center justify-center bg-slate-100 dark:bg-slate-900">
+                        <UserAvatar
+                          name={usuario.name || usuario.email}
+                          avatar={usuario.avatar}
+                          className="h-full w-full object-cover"
+                          fallbackClassName="h-full w-full flex items-center justify-center"
+                        />
                       </div>
                       <div>
                         <p className="text-sm font-bold text-slate-900 dark:text-white">
@@ -302,8 +308,13 @@ export function UsuariosTable({
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500/20 via-cyan-500/20 to-blue-500/20 border border-cyan-500/40 text-cyan-800 dark:text-cyan-200 font-extrabold shadow-sm">
-                    <UserRound size={17} className="text-teal-600 dark:text-teal-400" />
+                  <div className="h-10 w-10 shrink-0 rounded-xl overflow-hidden border border-cyan-500/40 dark:border-cyan-400/50 shadow-sm flex items-center justify-center bg-slate-100 dark:bg-slate-900">
+                    <UserAvatar
+                      name={usuario.name || usuario.email}
+                      avatar={usuario.avatar}
+                      className="h-full w-full object-cover"
+                      fallbackClassName="h-full w-full flex items-center justify-center"
+                    />
                   </div>
 
                   <div className="min-w-0">

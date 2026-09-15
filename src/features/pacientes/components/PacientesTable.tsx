@@ -1,4 +1,5 @@
 import type { Paciente } from "../../../types/pacientes";
+import { UserAvatar } from "../../../components/common/UserAvatar";
 
 interface PacientesTableProps {
   pacientes: Paciente[];
@@ -19,13 +20,6 @@ export function PacientesTable({
   onPageChange,
   onSelectPaciente,
 }: PacientesTableProps) {
-  const getInitials = (nombre: string) => {
-    const parts = nombre.trim().split(" ");
-    if (parts.length >= 2) {
-      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-    }
-    return nombre.substring(0, 2).toUpperCase();
-  };
 
   return (
     <section className="min-w-0 max-w-full rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl shadow-md dark:shadow-2xl p-5 sm:p-6 transition-all duration-300">
@@ -83,8 +77,13 @@ export function PacientesTable({
                 >
                   <td className="px-4 py-3.5">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500/20 via-cyan-500/20 to-blue-500/20 dark:from-teal-400/30 dark:via-cyan-400/30 dark:to-blue-500/30 border border-cyan-500/40 dark:border-cyan-400/50 text-cyan-800 dark:text-cyan-200 font-extrabold text-xs shadow-sm group-hover:scale-105 transition-transform duration-200">
-                        {getInitials(paciente.nombre)}
+                      <div className="h-9 w-9 shrink-0 rounded-2xl overflow-hidden border border-cyan-500/40 dark:border-cyan-400/50 shadow-sm bg-slate-100 dark:bg-slate-900 group-hover:scale-105 transition-transform duration-200">
+                        <UserAvatar
+                          name={paciente.nombre}
+                          avatar={paciente.fotoUrl}
+                          className="h-full w-full object-cover"
+                          fallbackClassName="h-full w-full flex items-center justify-center"
+                        />
                       </div>
                       <span className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors">
                         {paciente.nombre}

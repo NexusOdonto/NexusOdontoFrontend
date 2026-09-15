@@ -38,6 +38,7 @@ import { useAuth } from "../auth/AuthContext";
 import { getUserRole } from "../../utils/routePermissions";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
 import { areGuidsEqual } from "../../utils/roleUtils";
+import { UserAvatar } from "../../components/common/UserAvatar";
 import { FolderComponent } from "../../components/ui/folder-component";
 import { PrescriptionPdfDocument } from "./components/PrescriptionPdfDocument";
 import { ExpedienteClinicoPdfDocument } from "./components/ExpedienteClinicoPdfDocument";
@@ -758,14 +759,6 @@ export function HistoriaClinicaView() {
     }
   };
 
-  const getInitials = (nombre: string) => {
-    const parts = nombre.trim().split(" ");
-    if (parts.length >= 2) {
-      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-    }
-    return nombre.substring(0, 2).toUpperCase();
-  };
-
   return (
     <div className="space-y-6 text-slate-900 dark:text-slate-100 font-sans">
       {/* Toast Notificación */}
@@ -890,8 +883,12 @@ export function HistoriaClinicaView() {
                       }`}
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500/20 via-cyan-500/20 to-blue-500/20 border border-cyan-500/40 text-cyan-800 dark:text-cyan-200 font-bold text-xs shadow-sm shrink-0">
-                          {getInitials(fullName)}
+                        <div className="h-9 w-9 shrink-0 rounded-2xl overflow-hidden border border-cyan-500/40 dark:border-cyan-400/50 shadow-sm flex items-center justify-center bg-slate-100 dark:bg-slate-900">
+                          <UserAvatar
+                            name={fullName}
+                            className="h-full w-full object-cover"
+                            fallbackClassName="h-full w-full flex items-center justify-center"
+                          />
                         </div>
                         <div className="min-w-0">
                           <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
@@ -1048,18 +1045,21 @@ export function HistoriaClinicaView() {
               {/* TARJETA DE DATOS DEL PACIENTE (Contenedor Glassmorphic) */}
               <div className="rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl shadow-md p-6 space-y-4">
                 <div className="flex flex-col sm:flex-row items-start gap-4 border-b border-slate-200/80 dark:border-white/10 pb-4">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500/20 via-cyan-500/20 to-blue-500/20 border border-cyan-500/40 text-cyan-800 dark:text-cyan-200 font-bold text-xl shadow-md shrink-0">
-                    {getInitials(`${selectedPatient.firstName} ${selectedPatient.lastName}`)}
+                  <div className="h-16 w-16 shrink-0 rounded-2xl overflow-hidden border border-cyan-500/40 dark:border-cyan-400/50 shadow-md flex items-center justify-center bg-slate-100 dark:bg-slate-900">
+                    <UserAvatar
+                      name={`${selectedPatient.firstName} ${selectedPatient.lastName}`}
+                      className="h-full w-full object-cover"
+                      fallbackClassName="h-full w-full flex items-center justify-center font-bold text-xl"
+                    />
                   </div>
 
                   <div className="space-y-1.5 flex-1">
-                    <div className="flex flex-wrap items-baseline gap-3">
+                    <div className="flex flex-wrap items-center gap-2.5">
                       <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
                         {selectedPatient.firstName} {selectedPatient.lastName}
                       </h2>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-semibold">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
-                        HC-{selectedPatient.documentNumber}
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-cyan-500/15 text-cyan-800 dark:text-cyan-200 text-xs font-mono font-bold border border-cyan-500/30">
+                        CC: {selectedPatient.documentNumber}
                       </span>
                     </div>
                   </div>
@@ -1118,15 +1118,7 @@ export function HistoriaClinicaView() {
                         </p>
                       </div>
 
-                      <div className="flex items-center gap-2 self-start sm:self-auto">
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/15 text-cyan-800 dark:text-cyan-200 text-xs font-mono font-bold border border-cyan-500/30">
-                          <Layers size={13} />
-                          HC-{selectedPatient.documentNumber}
-                        </span>
-                        <span className="px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold border border-emerald-500/30">
-                          Expediente Activo
-                        </span>
-                      </div>
+
                     </div>
 
                     {/* EXPLORADOR INTERNO DE CATEGORÍA (Cuando se hace clic en una carpeta) */}

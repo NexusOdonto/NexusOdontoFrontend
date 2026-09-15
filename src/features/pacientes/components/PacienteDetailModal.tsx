@@ -3,6 +3,7 @@ import { X, Calendar, Phone, Mail, FileText, Activity, AlertTriangle, ShieldChec
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { getUserRole } from "../../../utils/routePermissions";
+import { UserAvatar } from "../../../components/common/UserAvatar";
 
 interface PacienteDetailModalProps {
   paciente: Paciente | null;
@@ -16,14 +17,6 @@ export function PacienteDetailModal({ paciente, onClose }: PacienteDetailModalPr
   const isClinicianOrAdmin = role === "ADMINISTRADOR" || role === "ODONTOLOGO";
 
   if (!paciente) return null;
-
-  const getInitials = (nombre: string) => {
-    const parts = nombre.trim().split(" ");
-    if (parts.length >= 2) {
-      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-    }
-    return nombre.substring(0, 2).toUpperCase();
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-md animate-fadeIn">
@@ -39,21 +32,16 @@ export function PacienteDetailModal({ paciente, onClose }: PacienteDetailModalPr
           <X size={18} strokeWidth={1.5} />
         </button>
 
-        {/* Cabecera: Avatar (Foto o Iniciales Elegantes) + Nombre Elegante + Datos */}
+        {/* Cabecera: Avatar Dinámico + Nombre Elegante + Datos */}
         <div className="flex flex-col sm:flex-row items-start gap-6">
-          {paciente.fotoUrl ? (
-            <div className="relative h-20 w-20 sm:h-24 sm:w-24 rounded-full overflow-hidden border border-slate-200 dark:border-white/20 shadow-md ring-1 ring-slate-200 dark:ring-white/10 shrink-0">
-              <img
-                src={paciente.fotoUrl}
-                alt={paciente.nombre}
-                className="h-full w-full object-cover grayscale contrast-125 brightness-95"
-              />
-            </div>
-          ) : (
-            <div className="relative flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-full border border-teal-500/40 dark:border-cyan-400/40 bg-gradient-to-br from-teal-500/15 via-cyan-500/15 to-blue-500/15 text-teal-800 dark:text-cyan-200 font-sans text-2xl sm:text-3xl font-bold shadow-md ring-1 ring-slate-200 dark:ring-white/10 shrink-0">
-              {getInitials(paciente.nombre)}
-            </div>
-          )}
+          <div className="relative h-20 w-20 sm:h-24 sm:w-24 rounded-3xl overflow-hidden border border-cyan-500/40 dark:border-cyan-400/40 bg-slate-100 dark:bg-slate-900 shadow-md ring-2 ring-cyan-500/20 shrink-0">
+            <UserAvatar
+              name={paciente.nombre}
+              avatar={paciente.fotoUrl}
+              className="h-full w-full object-cover"
+              fallbackClassName="h-full w-full flex items-center justify-center font-bold text-2xl sm:text-3xl"
+            />
+          </div>
 
           <div className="space-y-2 flex-1">
             {/* Nombre prominente + Estado cian sutil */}

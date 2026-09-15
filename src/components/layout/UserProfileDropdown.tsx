@@ -111,7 +111,7 @@ export default function UserProfileDropdown() {
 
       {/* DROPDOWN FLOTANTE ESTILO GITHUB CON ANIMACIÓN SUAVE */}
       {isOpen && (
-        <div className="absolute right-0 top-full z-50 mt-2.5 w-72 origin-top-right rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-[#0d1117] p-2 shadow-2xl backdrop-blur-xl animate-scaleIn transition-all text-slate-900 dark:text-slate-100">
+        <div className="fixed top-16 right-2 left-2 sm:left-auto sm:right-0 sm:absolute sm:top-full z-50 mt-2.5 w-auto sm:w-72 max-w-xs ml-auto origin-top-right rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-[#0d1117] p-2 shadow-2xl backdrop-blur-xl animate-scaleIn transition-all text-slate-900 dark:text-slate-100">
           
           {/* HEADER DEL PERFIL */}
           <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800/60 mb-2">

@@ -45,12 +45,12 @@ export function Sidebar({
     },
     {
       label: isPaciente ? "Mis Citas" : "Citas",
-      icon: CalendarDays,
+      icon: ClipboardList,
       path: "/citas",
     },
     {
       label: "Agenda",
-      icon: ClipboardList,
+      icon: CalendarDays,
       path: "/agenda",
     },
     {

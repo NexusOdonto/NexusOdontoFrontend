@@ -122,14 +122,18 @@ export function CitasView() {
     
     // Si la fecha es hoy o no se especificó
     if (!dateStr || dateStr === today) {
-      const currentHour = now.getHours();
-      const nextHour = currentHour + 1;
-      if (nextHour >= 8 && nextHour <= 11) {
-        return `${String(nextHour).padStart(2, "0")}:00`;
-      } else if (nextHour >= 12 && nextHour < 14) {
+      const future = new Date(now.getTime() + 35 * 60 * 1000);
+      let targetH = future.getHours();
+      let targetM = future.getMinutes() > 30 ? "00" : "30";
+      if (future.getMinutes() > 30) {
+        targetH += 1;
+      }
+      if (targetH >= 8 && targetH <= 11) {
+        return `${String(targetH).padStart(2, "0")}:${targetM}`;
+      } else if (targetH >= 12 && targetH < 14) {
         return "14:00";
-      } else if (nextHour >= 14 && nextHour <= 16) {
-        return `${String(nextHour).padStart(2, "0")}:00`;
+      } else if (targetH >= 14 && targetH <= 16) {
+        return `${String(targetH).padStart(2, "0")}:${targetM}`;
       } else {
         return "09:00";
       }
@@ -744,12 +748,12 @@ export function CitasView() {
       const fechaValida = formFecha || todayDateString;
       const horaValida = normalizeTimeTo24h(formHora || getNextValidHour(fechaValida));
 
-      // Validar restricción de fechas/horas pasadas
+      // Validar restricción de al menos 30 minutos de anticipación
       if (fechaValida && horaValida) {
         const selectedDateTime = new Date(`${fechaValida}T${horaValida}:00`);
-        const now = new Date();
-        if (selectedDateTime < now) {
-          const msg = "No es posible agendar citas en fechas u horas pasadas. Por favor selecciona una hora futura.";
+        const minAllowedDateTime = new Date(Date.now() + 30 * 60 * 1000);
+        if (selectedDateTime < minAllowedDateTime) {
+          const msg = "Las citas deben programarse con al menos 30 minutos de anticipación.";
           setFormError(msg);
           setIsSubmitting(false);
           return;
@@ -1153,12 +1157,12 @@ export function CitasView() {
 
     const horaEditValida = normalizeTimeTo24h(editHora || getNextValidHour(editFecha));
 
-    // Validar restricción de fechas/horas pasadas (BUG-05)
+    // Validar restricción de al menos 30 minutos de anticipación al reprogramar
     if (editFecha && horaEditValida) {
       const selectedDateTime = new Date(`${editFecha}T${horaEditValida}:00`);
-      const now = new Date();
-      if (selectedDateTime < now) {
-        const msg = "No es posible reprogramar citas en fechas u horas pasadas. Por favor selecciona una hora futura.";
+      const minAllowedDateTime = new Date(Date.now() + 30 * 60 * 1000);
+      if (selectedDateTime < minAllowedDateTime) {
+        const msg = "Las citas deben programarse o modificarse con al menos 30 minutos de anticipación.";
         setEditFormError(msg);
         setErrorMessage(msg);
         setTimeout(() => setErrorMessage(null), 5000);
@@ -1346,7 +1350,7 @@ export function CitasView() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between animate-slideDown">
         <div>
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-slate-900 dark:text-white drop-shadow-sm dark:drop-shadow-md">
-            {isPaciente ? "Mis Citas Odontológicas" : "Gestión de Citas y Agenda"}
+            {isPaciente ? "Mis Citas Odontológicas" : "Gestión de Citas"}
           </h1>
           <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mt-1 font-medium">
             {isPaciente

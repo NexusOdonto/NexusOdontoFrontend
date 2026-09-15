@@ -256,15 +256,9 @@ export default function PerfilView() {
               <Sparkles size={11} />
               {formatRoleName(profileData.rol || user?.rol)}
             </span>
-            <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full">
-              Blobatar Activo ✨
-            </span>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
             {profileData.email}
-          </p>
-          <p className="text-[11px] text-slate-400 dark:text-slate-400">
-            Identificador visual geométrico generado determinísticamente a partir de tu nombre. Pasa el cursor para ver su animación.
           </p>
         </div>
       </div>

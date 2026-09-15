@@ -3,6 +3,7 @@ import { CalendarPlus, FileText, Phone, IdCard, Activity, MoreVertical, Eye } fr
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { getUserRole } from "../../../utils/routePermissions";
+import { UserAvatar } from "../../../components/common/UserAvatar";
 
 interface PacientesGridProps {
   pacientes: Paciente[];
@@ -26,14 +27,6 @@ export function PacientesGrid({
   const { user } = useAuth();
   const role = getUserRole(user);
   const isClinicianOrAdmin = role === "ADMINISTRADOR" || role === "ODONTOLOGO";
-
-  const getInitials = (nombre: string) => {
-    const parts = nombre.trim().split(" ");
-    if (parts.length >= 2) {
-      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-    }
-    return nombre.substring(0, 2).toUpperCase();
-  };
 
   if (loading) {
     return (
@@ -85,9 +78,16 @@ export function PacientesGrid({
             <div>
               <div className="flex items-start justify-between gap-3 mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500/20 via-cyan-500/20 to-blue-500/20 dark:from-teal-400/30 dark:via-cyan-400/30 dark:to-blue-500/30 border border-cyan-500/40 dark:border-cyan-400/50 text-cyan-800 dark:text-cyan-200 font-extrabold text-sm shadow-sm group-hover:scale-105 transition-transform duration-300">
-                    {getInitials(paciente.nombre)}
-                    <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-slate-950" />
+                  <div className="relative shrink-0 group-hover:scale-105 transition-transform duration-300">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-500/40 dark:border-cyan-400/50 shadow-sm overflow-hidden bg-slate-100 dark:bg-slate-900">
+                      <UserAvatar
+                        name={paciente.nombre}
+                        avatar={paciente.fotoUrl}
+                        className="h-full w-full object-cover"
+                        fallbackClassName="h-full w-full flex items-center justify-center"
+                      />
+                    </div>
+                    <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-emerald-500 dark:bg-emerald-400 border-2 border-white dark:border-slate-950 shadow-sm" />
                   </div>
 
                   <div>

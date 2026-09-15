@@ -23,6 +23,7 @@ export interface Usuario {
   isActive: boolean;
   status?: string;
   state?: string;
+  avatar?: string | null;
 }
 
 export interface Role {

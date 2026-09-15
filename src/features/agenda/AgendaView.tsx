@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -13,6 +14,11 @@ import {
   Plus,
   AlertCircle,
   Users,
+  Stethoscope,
+  Sparkles,
+  Copy,
+  Calendar,
+  ShieldCheck,
 } from "lucide-react";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
 
@@ -66,49 +72,49 @@ const getDoctorTheme = (docName: string, lista: { nombre: string; color: string 
   const colorClass = getDoctorColorClass(docName, lista);
   if (colorClass.includes("cyan")) {
     return {
-      dot: "bg-cyan-400",
-      badge: "bg-cyan-500/20 text-cyan-300 border-cyan-500/40",
-      borderLeft: "border-l-cyan-400",
-      accent: "text-cyan-400",
+      dot: "bg-cyan-500 dark:bg-cyan-400",
+      badge: "bg-cyan-500/15 text-cyan-800 dark:text-cyan-300 border-cyan-500/30 dark:border-cyan-500/40",
+      borderLeft: "border-l-cyan-500 dark:border-l-cyan-400",
+      accent: "text-cyan-600 dark:text-cyan-400",
     };
   }
   if (colorClass.includes("blue")) {
     return {
-      dot: "bg-blue-400",
-      badge: "bg-blue-500/20 text-blue-300 border-blue-500/40",
-      borderLeft: "border-l-blue-400",
-      accent: "text-blue-400",
+      dot: "bg-blue-500 dark:bg-blue-400",
+      badge: "bg-blue-500/15 text-blue-800 dark:text-blue-300 border-blue-500/30 dark:border-blue-500/40",
+      borderLeft: "border-l-blue-500 dark:border-l-blue-400",
+      accent: "text-blue-600 dark:text-blue-400",
     };
   }
   if (colorClass.includes("purple") || colorClass.includes("violet")) {
     return {
-      dot: "bg-purple-400",
-      badge: "bg-purple-500/20 text-purple-300 border-purple-500/40",
-      borderLeft: "border-l-purple-400",
-      accent: "text-purple-400",
+      dot: "bg-purple-500 dark:bg-purple-400",
+      badge: "bg-purple-500/15 text-purple-800 dark:text-purple-300 border-purple-500/30 dark:border-purple-500/40",
+      borderLeft: "border-l-purple-500 dark:border-l-purple-400",
+      accent: "text-purple-600 dark:text-purple-400",
     };
   }
   if (colorClass.includes("amber") || colorClass.includes("yellow")) {
     return {
-      dot: "bg-amber-400",
-      badge: "bg-amber-500/20 text-amber-300 border-amber-500/40",
-      borderLeft: "border-l-amber-400",
-      accent: "text-amber-400",
+      dot: "bg-amber-500 dark:bg-amber-400",
+      badge: "bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/30 dark:border-amber-500/40",
+      borderLeft: "border-l-amber-500 dark:border-l-amber-400",
+      accent: "text-amber-600 dark:text-amber-400",
     };
   }
   if (colorClass.includes("emerald") || colorClass.includes("green")) {
     return {
-      dot: "bg-emerald-400",
-      badge: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
-      borderLeft: "border-l-emerald-400",
-      accent: "text-emerald-400",
+      dot: "bg-emerald-500 dark:bg-emerald-400",
+      badge: "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-500/30 dark:border-emerald-500/40",
+      borderLeft: "border-l-emerald-500 dark:border-l-emerald-400",
+      accent: "text-emerald-600 dark:text-emerald-400",
     };
   }
   return {
-    dot: "bg-rose-400",
-    badge: "bg-rose-500/20 text-rose-300 border-rose-500/40",
-    borderLeft: "border-l-rose-400",
-    accent: "text-rose-400",
+    dot: "bg-rose-500 dark:bg-rose-400",
+    badge: "bg-rose-500/15 text-rose-800 dark:text-rose-300 border-rose-500/30 dark:border-rose-500/40",
+    borderLeft: "border-l-rose-500 dark:border-l-rose-400",
+    accent: "text-rose-600 dark:text-rose-400",
   };
 };
 
@@ -168,6 +174,7 @@ export function AgendaView() {
 
   const [mostrarModal, setMostrarModal] = useState(false);
   const [citaDetalle, setCitaDetalle] = useState<Cita | null>(null);
+  const [copiadoCita, setCopiadoCita] = useState(false);
   const [fechaSeleccionada, setFechaSeleccionada] = useState("");
   const [horaActual, setHoraActual] = useState(new Date());
   const [loading, setLoading] = useState(false);
@@ -719,6 +726,20 @@ export function AgendaView() {
       const startsAtLocal = `${fechaSeleccionada}T${safeH}:${safeM}:00`;
       const endsAtLocal = `${fechaSeleccionada}T${safeEH}:${safeEM}:00`;
 
+      // Validar que la cita se programe con al menos 30 minutos de anticipación
+      if (fechaSeleccionada && nuevaCita.horaInicio) {
+        const selectedDateTime = new Date(startsAtLocal);
+        const minAllowedDateTime = new Date(Date.now() + 30 * 60 * 1000);
+        if (selectedDateTime < minAllowedDateTime) {
+          const msg = "Las citas deben programarse con al menos 30 minutos de anticipación.";
+          setFormError(msg);
+          setErrorMessage(msg);
+          setTimeout(() => setErrorMessage(null), 5000);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       const payload = {
         patientId: patientIdToUse,
         professionalId: finalProfId,
@@ -805,7 +826,7 @@ export function AgendaView() {
     }
   };
 
-  const HORA_ALTURA_PX = 80;
+  const HORA_ALTURA_PX = 110;
 
   interface CitaPosicionada extends Cita {
     top: number;
@@ -814,6 +835,7 @@ export function AgendaView() {
     widthStyle: string;
     totalColumnas: number;
     colIndex: number;
+    duracionMinutos?: number;
   }
 
   const calcularPosicionesDia = (citasList: Cita[]): CitaPosicionada[] => {
@@ -892,7 +914,7 @@ export function AgendaView() {
       asignaciones.forEach(({ cita, colIndex }) => {
         // Separación vertical limpia usando escala HORA_ALTURA_PX
         const top = (cita.inicioMinutos / 60) * HORA_ALTURA_PX + 1;
-        const height = Math.max((cita.duracionMinutos / 60) * HORA_ALTURA_PX - 2, 38);
+        const height = Math.max((cita.duracionMinutos / 60) * HORA_ALTURA_PX - 2, 54);
 
         let leftStyle: string;
         let widthStyle: string;
@@ -945,8 +967,8 @@ export function AgendaView() {
 
   const posicionHoraActual = obtenerPosicionHoraActual();
 
-  const gridTemplateColumnsSemana = "56px repeat(7, minmax(160px, 1fr))";
-  const gridTemplateColumnsDoctores = `56px repeat(${Math.max(doctoresParaColumnas.length, 1)}, minmax(220px, 1fr))`;
+  const gridTemplateColumnsSemana = "60px repeat(7, minmax(185px, 1fr))";
+  const gridTemplateColumnsDoctores = `60px repeat(${Math.max(doctoresParaColumnas.length, 1)}, minmax(220px, 1fr))`;
   const gridTemplateColumns = modoVista === "semana" ? gridTemplateColumnsSemana : gridTemplateColumnsDoctores;
 
   const renderCitaCard = (cita: CitaPosicionada) => {
@@ -954,6 +976,7 @@ export function AgendaView() {
     const docTheme = getDoctorTheme(cita.odontologo, listaOdontologos);
     const shortDoc = getDoctorShortName(cita.odontologo);
     const isNarrow = cita.totalColumnas > 1;
+    const duracionStr = `${cita.duracionMinutos || 30} min`;
 
     return (
       <div
@@ -965,79 +988,79 @@ export function AgendaView() {
           left: cita.leftStyle,
           width: cita.widthStyle,
         }}
-        className={`group absolute z-20 rounded-xl border border-slate-700/60 border-l-[3.5px] ${docTheme.borderLeft} shadow-md transition-all hover:scale-[1.01] hover:z-50 cursor-pointer bg-slate-900/90 backdrop-blur-md ${colorEvento.contenedor}`}
+        className={`group absolute z-20 rounded-xl border border-slate-200/90 dark:border-slate-700/60 border-l-[4px] ${docTheme.borderLeft} shadow-xs hover:shadow-md transition-all duration-200 hover:scale-[1.012] hover:z-50 cursor-pointer bg-white/95 dark:bg-slate-900/90 backdrop-blur-md ${colorEvento.contenedor}`}
       >
-        {cita.height < 58 ? (
-          // Modo Compacto (Citas de 30 min o corta duración)
-          <div className="flex h-full flex-col justify-between px-2.5 py-1 min-w-0 overflow-hidden">
+        {cita.height < 68 ? (
+          // Modo Compacto / 30 Minutos (Espacioso, 2 filas nítidas)
+          <div className="flex h-full flex-col justify-between p-2 min-w-0 overflow-hidden">
+            {/* Fila 1: Paciente y Horario */}
             <div className="flex items-center justify-between gap-1.5 min-w-0">
               <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                <span className={`h-2 w-2 rounded-full shrink-0 ${docTheme.dot}`} />
-                <span className="truncate text-xs font-bold leading-none text-white dark:text-white" title={cita.paciente}>
+                <span className={`h-2.5 w-2.5 rounded-full shrink-0 shadow-xs ${docTheme.dot}`} />
+                <span className="truncate text-xs font-extrabold leading-none text-slate-900 dark:text-white" title={cita.paciente}>
                   {cita.paciente}
                 </span>
               </div>
-              <span className="font-mono text-[9.5px] font-semibold text-cyan-300 dark:text-cyan-300 shrink-0 whitespace-nowrap">
+              <span className="font-mono text-[10px] font-bold text-cyan-700 dark:text-cyan-300 shrink-0 whitespace-nowrap bg-cyan-500/10 dark:bg-cyan-500/20 px-1.5 py-0.5 rounded">
                 {cita.horaInicio} - {cita.horaFin}
               </span>
             </div>
 
-            <div className="flex items-center justify-between gap-1.5 min-w-0">
-              <span className="truncate text-[10px] text-slate-300 dark:text-slate-300 font-medium leading-none" title={cita.servicio}>
+            {/* Fila 2: Servicio y Estado */}
+            <div className="flex items-center justify-between gap-1.5 min-w-0 mt-0.5">
+              <span className="truncate text-[10.5px] text-slate-600 dark:text-slate-300 font-medium leading-none" title={cita.servicio}>
                 {cita.servicio}
               </span>
-              <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider shrink-0 border ${docTheme.badge}`}>
+              <span className={`px-1.5 py-0.5 rounded text-[8.5px] font-bold uppercase tracking-wider shrink-0 border ${docTheme.badge}`}>
                 {cita.estado}
               </span>
             </div>
           </div>
         ) : isNarrow ? (
-          // Modo Estrecho (Solapamiento lateral de varias citas en la misma franja horaria)
-          <div className="flex h-full flex-col justify-between px-2 py-1.5 min-w-0 overflow-hidden">
+          // Modo Estrecho (Solapamiento lateral de varias citas)
+          <div className="flex h-full flex-col justify-between p-2 min-w-0 overflow-hidden">
             <div className="flex items-center justify-between gap-1 min-w-0">
-              <div className="flex items-center gap-1 min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 min-w-0 flex-1">
                 <span className={`h-2 w-2 rounded-full shrink-0 ${docTheme.dot}`} />
-                <span className="truncate text-[10px] font-bold text-slate-200" title={cita.odontologo}>
+                <span className="truncate text-[10.5px] font-bold text-slate-700 dark:text-slate-200" title={cita.odontologo}>
                   {shortDoc}
                 </span>
               </div>
-              <span className="font-mono text-[9px] font-semibold text-cyan-300 shrink-0 whitespace-nowrap">
+              <span className="font-mono text-[9.5px] font-bold text-cyan-700 dark:text-cyan-300 shrink-0 whitespace-nowrap">
                 {cita.horaInicio}
               </span>
             </div>
 
-            <div className="min-w-0 my-auto">
-              <p className="truncate text-xs font-bold leading-tight text-white group-hover:text-cyan-200" title={cita.paciente}>
+            <div className="min-w-0 my-1">
+              <p className="truncate text-xs font-extrabold leading-tight text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-200" title={cita.paciente}>
                 {cita.paciente}
               </p>
-              {cita.height >= 60 && (
-                <p className="truncate text-[9.5px] text-slate-300/85 leading-tight mt-0.5" title={cita.servicio}>
-                  {cita.servicio}
-                </p>
-              )}
+              <p className="truncate text-[10px] text-slate-600 dark:text-slate-300 font-medium leading-tight mt-0.5" title={cita.servicio}>
+                {cita.servicio}
+              </p>
             </div>
 
-            <div className="flex items-center justify-between gap-1 text-[9px] text-slate-400 font-mono leading-none">
-              <span className="whitespace-nowrap">{cita.horaInicio} - {cita.horaFin}</span>
-              <span className={`px-1 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider ${docTheme.badge}`}>
+            <div className="flex items-center justify-between gap-1 text-[9.5px] text-slate-500 dark:text-slate-400 font-mono leading-none">
+              <span className="whitespace-nowrap font-medium">{cita.horaInicio} - {cita.horaFin}</span>
+              <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider ${docTheme.badge}`}>
                 {cita.estado}
               </span>
             </div>
           </div>
         ) : (
-          // Modo Completo (Cita amplia con >= 58px de altura)
-          <div className="flex h-full flex-col justify-between px-2.5 py-1.5 min-w-0 overflow-hidden">
+          // Modo Completo (Cita estándar 45-60 min o más)
+          <div className="flex h-full flex-col justify-between p-2.5 min-w-0 overflow-hidden">
             <div>
-              <div className="flex items-center justify-between gap-1 min-w-0">
+              <div className="flex items-center justify-between gap-1.5 min-w-0">
                 <div className="flex items-center gap-1.5 min-w-0 flex-1">
                   <span
-                    className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9.5px] font-bold border ${docTheme.badge} shrink-0 max-w-[130px]`}
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border ${docTheme.badge} shrink-0 max-w-[140px]`}
                     title={cita.odontologo}
                   >
                     <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${docTheme.dot}`} />
                     <span className="truncate">{shortDoc}</span>
                   </span>
-                  <p className="truncate text-xs font-bold leading-tight text-white" title={cita.paciente}>
+                  <p className="truncate text-[13px] font-extrabold leading-tight text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors" title={cita.paciente}>
                     {cita.paciente}
                   </p>
                 </div>
@@ -1047,19 +1070,22 @@ export function AgendaView() {
                     e.stopPropagation();
                     eliminarCita(cita.id, cita.rawGuid);
                   }}
-                  className="opacity-0 group-hover:opacity-100 transition p-0.5 hover:text-rose-500 shrink-0 cursor-pointer"
+                  className="opacity-0 group-hover:opacity-100 transition p-1 text-slate-400 hover:text-rose-500 rounded-md hover:bg-rose-50 dark:hover:bg-rose-950/30 shrink-0 cursor-pointer"
                   title="Eliminar cita"
                 >
-                  <Trash2 size={12} />
+                  <Trash2 size={13} />
                 </button>
               </div>
-              <p className="truncate text-[10.5px] text-slate-300/90 leading-tight mt-1" title={cita.servicio}>
-                {cita.servicio}
+              <p className="truncate text-[11px] text-slate-600 dark:text-slate-300 font-medium leading-tight mt-1.5 flex items-center gap-1" title={cita.servicio}>
+                <Sparkles size={11} className="text-cyan-500 shrink-0" />
+                <span>{cita.servicio}</span>
               </p>
             </div>
-            <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
-              <span className="whitespace-nowrap font-medium text-cyan-300/90">{cita.horaInicio} - {cita.horaFin}</span>
-              <span className={`px-1.5 py-0.5 rounded text-[8.5px] font-bold uppercase tracking-wider border ${docTheme.badge}`}>
+            <div className="flex items-center justify-between text-[10.5px] text-slate-500 dark:text-slate-400 font-mono pt-1">
+              <span className="whitespace-nowrap font-semibold text-cyan-700 dark:text-cyan-300 bg-cyan-500/10 dark:bg-cyan-500/20 px-2 py-0.5 rounded-md">
+                {cita.horaInicio} - {cita.horaFin} ({duracionStr})
+              </span>
+              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${docTheme.badge}`}>
                 {cita.estado}
               </span>
             </div>
@@ -1068,19 +1094,19 @@ export function AgendaView() {
 
         {/* Tarjeta flotante con detalles completos en hover */}
         <div
-          className={`pointer-events-none absolute left-1/2 -translate-x-1/2 z-[100] hidden group-hover:flex flex-col w-60 p-3 rounded-xl bg-slate-900/95 border border-cyan-500/50 shadow-2xl backdrop-blur-xl text-left text-xs transition-all animate-fadeIn ${
-            cita.top < 90 ? "top-[calc(100%+6px)]" : "bottom-[calc(100%+6px)]"
+          className={`pointer-events-none absolute left-1/2 -translate-x-1/2 z-[100] hidden group-hover:flex flex-col w-64 p-3.5 rounded-2xl bg-white/95 dark:bg-slate-900/95 border border-slate-200 dark:border-cyan-500/50 shadow-2xl backdrop-blur-xl text-left text-xs transition-all animate-fadeIn ${
+            cita.top < 110 ? "top-[calc(100%+8px)]" : "bottom-[calc(100%+8px)]"
           }`}
         >
-          <div className="flex items-center gap-2 border-b border-slate-800 pb-2 mb-2">
+          <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2 mb-2">
             <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${docTheme.dot}`} />
-            <span className="font-bold text-white truncate text-[11px]">{cita.odontologo}</span>
+            <span className="font-bold text-slate-900 dark:text-white truncate text-[11.5px]">{cita.odontologo}</span>
           </div>
-          <p className="font-bold text-cyan-300 text-xs truncate">{cita.paciente}</p>
-          <p className="text-slate-300 text-[11px] truncate mt-0.5">{cita.servicio}</p>
-          <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-slate-800 text-[10.5px] text-slate-400 font-mono">
+          <p className="font-extrabold text-cyan-700 dark:text-cyan-300 text-xs truncate">{cita.paciente}</p>
+          <p className="text-slate-600 dark:text-slate-300 text-[11px] truncate mt-0.5 font-medium">{cita.servicio}</p>
+          <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-slate-200 dark:border-slate-800 text-[10.5px] text-slate-500 dark:text-slate-400 font-mono">
             <span>⏰ {cita.horaInicio} - {cita.horaFin}</span>
-            <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${docTheme.badge}`}>
+            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${docTheme.badge}`}>
               {cita.estado}
             </span>
           </div>
@@ -1093,8 +1119,8 @@ export function AgendaView() {
     <>
       {/* Toast Notificación (CAPA SUPERIOR ABSOLUTA z-[99999] EN ESQUINA INFERIOR DERECHA) */}
       {successToast && (
-        <div className="fixed bottom-6 right-6 z-[99999] flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-slate-900/95 text-cyan-300 border border-cyan-500/40 shadow-2xl backdrop-blur-xl animate-slideUp">
-          <Check size={18} className="text-cyan-400 shrink-0" />
+        <div className="fixed bottom-6 right-6 z-[99999] flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-white dark:bg-slate-900/95 text-cyan-700 dark:text-cyan-300 border border-cyan-500/40 shadow-2xl backdrop-blur-xl animate-slideUp">
+          <Check size={18} className="text-cyan-600 dark:text-cyan-400 shrink-0" />
           <span className="text-xs font-bold">{successToast}</span>
         </div>
       )}
@@ -1274,7 +1300,7 @@ export function AgendaView() {
 
                 {/* Matriz Calendario */}
                 <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/60">
-                  <div className={modoVista === "semana" ? "min-w-[1180px]" : "min-w-[800px]"}>
+                  <div className={modoVista === "semana" ? "min-w-[1360px]" : "min-w-[800px]"}>
                     {/* Encabezado Columnas Días u Odontólogos */}
                     {modoVista === "semana" ? (
                       <div
@@ -1584,79 +1610,167 @@ export function AgendaView() {
       </div>
 
       {/* Modal Detalle de Cita */}
-      {citaDetalle && (
-        <div className="fixed inset-0 z-100 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xl animate-scaleIn text-slate-900 dark:text-white">
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
-              <div>
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white">Detalle de la Cita</h2>
-                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                  {citaDetalle.fecha} · {citaDetalle.horaInicio} - {citaDetalle.horaFin}
-                </p>
+      <AnimatePresence>
+        {citaDetalle && (
+          <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setCitaDetalle(null)}
+              className="fixed inset-0 bg-slate-950/75 backdrop-blur-md"
+            />
+
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.92, opacity: 0, y: 15 }}
+              transition={{ type: "spring", damping: 26, stiffness: 360 }}
+              className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-slate-200/90 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 shadow-2xl backdrop-blur-2xl text-slate-900 dark:text-white z-10"
+            >
+              {/* Header con gradiente decorativo y fecha */}
+              <div className="relative overflow-hidden bg-gradient-to-r from-cyan-600/15 via-blue-600/10 to-indigo-600/15 dark:from-cyan-500/20 dark:via-blue-500/15 dark:to-indigo-500/20 px-6 py-5 border-b border-slate-200 dark:border-slate-800/80">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-500/20 border border-cyan-500/30 text-cyan-600 dark:text-cyan-400 shadow-inner">
+                      <CalendarDays size={22} />
+                    </div>
+                    <div>
+                      <h2 className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">
+                        Expediente de la Cita
+                      </h2>
+                      <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        <Calendar size={13} className="text-cyan-500" />
+                        <span className="font-semibold capitalize">
+                          {citaDetalle.fecha}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setCitaDetalle(null)}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/80 transition cursor-pointer"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setCitaDetalle(null)}
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-              >
-                <X size={19} />
-              </button>
-            </div>
 
-            <div className="mt-5 space-y-4 text-sm">
-              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50 p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Paciente</span>
-                  <span className="font-bold text-slate-900 dark:text-white">{citaDetalle.paciente}</span>
+              {/* Contenido Principal */}
+              <div className="p-6 space-y-4">
+                {/* Tarjeta Destacada del Paciente */}
+                <div className="flex items-center justify-between gap-3 p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 shadow-xs">
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-600 text-white font-black text-lg shadow-md shadow-cyan-500/20">
+                      {citaDetalle.paciente.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400 bg-cyan-500/10 dark:bg-cyan-500/20 px-2 py-0.5 rounded-md">
+                        Paciente Clínico
+                      </span>
+                      <h3 className="text-base font-extrabold text-slate-900 dark:text-white truncate mt-0.5" title={citaDetalle.paciente}>
+                        {citaDetalle.paciente}
+                      </h3>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const textToCopy = `Cita Odontológica\nPaciente: ${citaDetalle.paciente}\nFecha: ${citaDetalle.fecha}\nHorario: ${citaDetalle.horaInicio} - ${citaDetalle.horaFin}\nServicio: ${citaDetalle.servicio}\nOdontólogo: ${citaDetalle.odontologo}\nEstado: ${citaDetalle.estado}`;
+                      navigator.clipboard.writeText(textToCopy);
+                      setCopiadoCita(true);
+                      setTimeout(() => setCopiadoCita(false), 2000);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition cursor-pointer shrink-0 shadow-xs active:scale-95"
+                    title="Copiar información de la cita"
+                  >
+                    {copiadoCita ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                    <span>{copiadoCita ? "Copiado" : "Copiar"}</span>
+                  </button>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Servicio</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">{citaDetalle.servicio}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Odontólogo</span>
-                  <span className="font-semibold text-cyan-600 dark:text-cyan-400">{citaDetalle.odontologo}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Horario</span>
-                  <span className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    {citaDetalle.horaInicio} a {citaDetalle.horaFin}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Estado</span>
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30">
-                    <span className="h-1.5 w-1.5 rounded-full bg-cyan-500" />
-                    {citaDetalle.estado}
-                  </span>
+
+                {/* Cuadrícula 2x2 de Detalles Clínicos */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  {/* Tratamiento / Servicio */}
+                  <div className="p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 space-y-1">
+                    <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-semibold text-[11px]">
+                      <Sparkles size={14} className="text-cyan-500" />
+                      <span>Tratamiento / Servicio</span>
+                    </div>
+                    <p className="font-bold text-slate-900 dark:text-white text-sm">
+                      {citaDetalle.servicio}
+                    </p>
+                  </div>
+
+                  {/* Odontólogo Asignado */}
+                  <div className="p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 space-y-1">
+                    <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-semibold text-[11px]">
+                      <Stethoscope size={14} className="text-blue-500" />
+                      <span>Odontólogo Asignado</span>
+                    </div>
+                    <p className="font-bold text-cyan-700 dark:text-cyan-400 text-sm truncate">
+                      {citaDetalle.odontologo}
+                    </p>
+                  </div>
+
+                  {/* Horario y Duración */}
+                  <div className="p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 space-y-1">
+                    <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-semibold text-[11px]">
+                      <Clock3 size={14} className="text-amber-500" />
+                      <span>Horario de Atención</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-slate-900 dark:text-white text-sm">
+                        {citaDetalle.horaInicio} - {citaDetalle.horaFin}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Estado de la Cita */}
+                  <div className="p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 space-y-1">
+                    <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-semibold text-[11px]">
+                      <ShieldCheck size={14} className="text-emerald-500" />
+                      <span>Estado Clínico</span>
+                    </div>
+                    <div className="pt-0.5">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-cyan-500/15 text-cyan-800 dark:text-cyan-300 border border-cyan-500/30">
+                        <span className="h-2 w-2 rounded-full bg-cyan-500 animate-pulse" />
+                        {citaDetalle.estado}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="mt-6 flex justify-between gap-3 border-t border-slate-200 dark:border-slate-800 pt-4">
-              <button
-                type="button"
-                onClick={() => {
-                  eliminarCita(citaDetalle.id, citaDetalle.rawGuid);
-                  setCitaDetalle(null);
-                }}
-                className="flex items-center gap-1.5 rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 px-4 py-2.5 text-xs font-bold text-rose-600 dark:text-rose-400 transition hover:bg-rose-100 dark:hover:bg-rose-900/60 cursor-pointer"
-              >
-                <Trash2 size={14} />
-                <span>Eliminar Cita</span>
-              </button>
+              {/* Barra de Acciones Inferior */}
+              <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                <button
+                  type="button"
+                  onClick={() => {
+                    eliminarCita(citaDetalle.id, citaDetalle.rawGuid);
+                    setCitaDetalle(null);
+                  }}
+                  className="flex items-center gap-2 rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 px-4 py-2.5 text-xs font-bold text-rose-600 dark:text-rose-400 transition hover:bg-rose-100 dark:hover:bg-rose-900/60 hover:border-rose-400 cursor-pointer shadow-xs active:scale-95"
+                >
+                  <Trash2 size={15} />
+                  <span>Eliminar Cita</span>
+                </button>
 
-              <button
-                type="button"
-                onClick={() => setCitaDetalle(null)}
-                className="rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-5 py-2.5 text-xs font-bold text-slate-800 dark:text-slate-200 transition cursor-pointer"
-              >
-                Cerrar
-              </button>
-            </div>
+                <button
+                  type="button"
+                  onClick={() => setCitaDetalle(null)}
+                  className="rounded-xl bg-slate-200/80 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 px-6 py-2.5 text-xs font-bold text-slate-800 dark:text-slate-200 transition cursor-pointer shadow-xs active:scale-95"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
       {/* Modal Agendar Cita */}
       {mostrarModal && (

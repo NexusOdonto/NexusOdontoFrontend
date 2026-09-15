@@ -172,14 +172,14 @@ export function ServiciosGrid({
 }: ServiciosGridProps) {
   if (servicios.length === 0) {
     return (
-      <div className="flex min-h-64 w-full flex-col items-center justify-center py-16 text-center rounded-3xl border border-white/20 bg-gradient-to-b from-white/[0.08] via-slate-950/60 to-slate-950/80 backdrop-blur-2xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_12px_32px_rgba(0,0,0,0.4)]">
-        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 shadow-[0_0_20px_rgba(6,182,212,0.2)]">
+      <div className="flex min-h-64 w-full flex-col items-center justify-center py-16 text-center rounded-3xl border border-slate-200/90 dark:border-white/15 bg-white/85 dark:bg-slate-950/70 backdrop-blur-2xl shadow-lg dark:shadow-[0_12px_36px_rgba(0,0,0,0.5)]">
+        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-600 dark:text-cyan-400 shadow-md">
           <Tag size={28} />
         </div>
-        <h3 className="text-lg sm:text-xl font-black text-white">
+        <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
           No se encontraron servicios
         </h3>
-        <p className="mt-1.5 max-w-sm text-xs sm:text-sm text-slate-300">
+        <p className="mt-1.5 max-w-sm text-xs sm:text-sm text-slate-600 dark:text-slate-300">
           Intenta ajustar los criterios de búsqueda o restablecer los filtros seleccionados.
         </p>
       </div>

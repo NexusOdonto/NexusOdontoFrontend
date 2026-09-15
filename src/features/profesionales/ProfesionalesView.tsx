@@ -35,6 +35,7 @@ import {
 } from "../../api/professionalService";
 import { useAuth } from "../auth/AuthContext";
 import { getUserRole } from "../../utils/routePermissions";
+import { UserAvatar } from "../../components/common/UserAvatar";
 
 interface TurnoDisponibilidad {
   dia: string;
@@ -475,17 +476,6 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
     return { total, activos, especialidadesCount, sillonesActivos };
   }, [profesionales]);
 
-  const getInitials = (nombre: string) => {
-    return nombre
-      .replace(/Dr\(a\)\.|Dra\.|Dr\./gi, "")
-      .trim()
-      .split(" ")
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((w) => w.charAt(0).toUpperCase())
-      .join("");
-  };
-
   return (
     <div className="space-y-6 text-slate-900 dark:text-slate-100 font-sans pb-12">
       {/* TOAST DE NOTIFICACIÓN */}
@@ -735,7 +725,6 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
         /* VISTA DE TARJETAS CLÍNICAS 3D (SHOWCASE) */
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 animate-fadeIn">
           {profesionalesFiltrados.map((prof) => {
-            const initials = getInitials(prof.nombreCompleto);
             const isMe = isOdontologo && Boolean(user?.name && prof.nombreCompleto.toLowerCase().includes(user.name.toLowerCase().trim()));
             const activeTurno = prof.turnos?.[0];
 
@@ -757,12 +746,16 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                   {/* Encabezado de la Tarjeta con Avatar */}
                   <div className="flex items-start justify-between gap-3 pt-2">
                     <div className="flex items-center gap-3.5">
-                      <div className="relative">
-                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500 via-teal-500 to-blue-600 flex items-center justify-center text-white font-black text-lg shadow-md">
-                          {initials}
+                      <div className="relative shrink-0">
+                        <div className="w-14 h-14 rounded-2xl overflow-hidden border border-cyan-500/40 dark:border-cyan-400/50 shadow-md flex items-center justify-center bg-slate-100 dark:bg-slate-900">
+                          <UserAvatar
+                            name={prof.nombreCompleto}
+                            className="w-full h-full object-cover"
+                            fallbackClassName="w-full h-full flex items-center justify-center"
+                          />
                         </div>
                         <span
-                          className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white dark:border-slate-950 ${
+                          className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white dark:border-slate-950 shadow-sm ${
                             prof.isActive ? "bg-emerald-500" : "bg-slate-400"
                           }`}
                           title={prof.isActive ? "En Servicio Activo" : "Inactivo"}
@@ -903,7 +896,6 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
               </thead>
               <tbody className="divide-y divide-slate-200/70 dark:divide-white/10">
                 {profesionalesFiltrados.map((prof) => {
-                  const initials = getInitials(prof.nombreCompleto);
                   const activeTurno = prof.turnos?.find((t) => t.activo) || prof.turnos[0];
 
                   return (
@@ -913,8 +905,12 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                     >
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white font-bold text-xs shadow-sm">
-                            {initials}
+                          <div className="w-10 h-10 rounded-xl overflow-hidden border border-cyan-500/40 dark:border-cyan-400/50 shadow-sm flex items-center justify-center bg-slate-100 dark:bg-slate-900 shrink-0">
+                            <UserAvatar
+                              name={prof.nombreCompleto}
+                              className="w-full h-full object-cover"
+                              fallbackClassName="w-full h-full flex items-center justify-center"
+                            />
                           </div>
                           <div>
                             <p className="font-bold text-slate-900 dark:text-white">
