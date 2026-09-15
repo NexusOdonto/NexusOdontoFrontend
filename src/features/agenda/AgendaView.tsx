@@ -12,6 +12,7 @@ import {
   CalendarDays,
   Plus,
   AlertCircle,
+  Users,
 } from "lucide-react";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
 
@@ -39,11 +40,95 @@ import { SelectOrWriteInput, type SelectOption } from "../../components/common/S
 import { areGuidsEqual } from "../../utils/roleUtils";
 import { resolveOrCreatePatient } from "../../utils/patientResolution";
 
+const getDoctorShortName = (fullName: string) => {
+  if (!fullName) return "Dr(a).";
+  const cleaned = fullName.replace(/^Dr\(a\)\.\s*|^Dr\.\s*|^Dra\.\s*/i, "").trim();
+  const parts = cleaned.split(/\s+/);
+  const prefix = fullName.toLowerCase().includes("dra") ? "Dra." : "Dr.";
+  if (parts.length >= 2) {
+    return `${prefix} ${parts[parts.length - 1]}`;
+  }
+  return fullName;
+};
+
+const getDoctorColorClass = (docName: string, lista: { nombre: string; color: string }[]) => {
+  const found = lista.find(
+    (d) => d.nombre.toLowerCase().trim() === (docName || "").toLowerCase().trim()
+  );
+  if (found && found.color) return found.color;
+  const colors = ["bg-cyan-400", "bg-blue-400", "bg-purple-400", "bg-amber-400", "bg-emerald-400", "bg-rose-400"];
+  let hash = 0;
+  for (let i = 0; i < (docName || "").length; i++) hash = (hash + docName.charCodeAt(i)) % colors.length;
+  return colors[hash];
+};
+
+const getDoctorTheme = (docName: string, lista: { nombre: string; color: string }[]) => {
+  const colorClass = getDoctorColorClass(docName, lista);
+  if (colorClass.includes("cyan")) {
+    return {
+      dot: "bg-cyan-400",
+      badge: "bg-cyan-500/20 text-cyan-300 border-cyan-500/40",
+      borderLeft: "border-l-cyan-400",
+      accent: "text-cyan-400",
+    };
+  }
+  if (colorClass.includes("blue")) {
+    return {
+      dot: "bg-blue-400",
+      badge: "bg-blue-500/20 text-blue-300 border-blue-500/40",
+      borderLeft: "border-l-blue-400",
+      accent: "text-blue-400",
+    };
+  }
+  if (colorClass.includes("purple") || colorClass.includes("violet")) {
+    return {
+      dot: "bg-purple-400",
+      badge: "bg-purple-500/20 text-purple-300 border-purple-500/40",
+      borderLeft: "border-l-purple-400",
+      accent: "text-purple-400",
+    };
+  }
+  if (colorClass.includes("amber") || colorClass.includes("yellow")) {
+    return {
+      dot: "bg-amber-400",
+      badge: "bg-amber-500/20 text-amber-300 border-amber-500/40",
+      borderLeft: "border-l-amber-400",
+      accent: "text-amber-400",
+    };
+  }
+  if (colorClass.includes("emerald") || colorClass.includes("green")) {
+    return {
+      dot: "bg-emerald-400",
+      badge: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
+      borderLeft: "border-l-emerald-400",
+      accent: "text-emerald-400",
+    };
+  }
+  return {
+    dot: "bg-rose-400",
+    badge: "bg-rose-500/20 text-rose-300 border-rose-500/40",
+    borderLeft: "border-l-rose-400",
+    accent: "text-rose-400",
+  };
+};
+
+const formatoFechaLarga = (fecha: Date) => {
+  return new Intl.DateTimeFormat("es-CO", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(fecha);
+};
+
 export function AgendaView() {
   const { user } = useAuth();
   const role = getUserRole(user);
   const isPaciente = role === "PACIENTE";
   const isOdontologo = role === "ODONTOLOGO";
+
+  // Modo de visualización: semana completa o vista diaria por odontólogo
+  const [modoVista, setModoVista] = useState<"semana" | "odontologos">("semana");
 
   // Citas locales y de la base de datos
   const [citas, setCitas] = useState<Cita[]>([]);
@@ -412,13 +497,43 @@ export function AgendaView() {
     return Math.max(0, totalSlotsSemana - ocupadasSemana);
   }, [diasSemana, citasSemana, odontologosSeleccionados, listaOdontologos]);
 
-  const cambiarSemana = (direccion: number) => {
-    setFechaActual((fecha) => sumarDias(fecha, direccion * 7));
+  const doctoresParaColumnas = useMemo(() => {
+    const sinTodos = listaOdontologos.filter(
+      (d) => d.nombre !== "Todos los odontólogos"
+    );
+    if (odontologosSeleccionados.includes("Todos los odontólogos")) {
+      return sinTodos;
+    }
+    const filtrados = sinTodos.filter((d) =>
+      odontologosSeleccionados.includes(d.nombre)
+    );
+    return filtrados.length > 0 ? filtrados : sinTodos;
+  }, [listaOdontologos, odontologosSeleccionados]);
+
+  const cambiarFecha = (direccion: number) => {
+    if (modoVista === "semana") {
+      setFechaActual((fecha) => sumarDias(fecha, direccion * 7));
+    } else {
+      setFechaActual((fecha) => sumarDias(fecha, direccion));
+    }
   };
 
   const irHoy = () => {
     setFechaActual(new Date());
   };
+
+  const fechaTextoHeader = useMemo(() => {
+    if (modoVista === "semana") {
+      return obtenerRangoSemana(inicioSemana);
+    }
+    const str = formatoFechaLarga(fechaActual);
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  }, [modoVista, inicioSemana, fechaActual]);
+
+  const citasDiaActual = useMemo(() => {
+    const fechaTexto = formatoFechaInput(fechaActual);
+    return citas.filter((cita) => cita.fecha === fechaTexto);
+  }, [citas, fechaActual]);
 
   const cambiarOdontologo = (nombre: string) => {
     if (nombre === "Todos los odontólogos") {
@@ -447,20 +562,29 @@ export function AgendaView() {
     return citasFiltradas.filter((cita) => cita.fecha === fechaTexto);
   };
 
-  const abrirNuevaCita = (fecha: Date, hora: string) => {
+  const abrirNuevaCita = (fecha: Date, hora: string, odontologoPredeterminado?: string) => {
     const horaNumero = Number(hora.split(":")[0]);
     const horaFin = `${String(horaNumero + 1).padStart(2, "0")}:00`;
 
     setFormError(null);
     setFechaSeleccionada(formatoFechaInput(fecha));
+
+    let docToSelect = odontologoPredeterminado;
+    if (!docToSelect) {
+      if (odontologosSeleccionados.length === 1 && odontologosSeleccionados[0] !== "Todos los odontólogos") {
+        docToSelect = odontologosSeleccionados[0];
+      } else if (listaOdontologos.length > 1) {
+        docToSelect = listaOdontologos[1].nombre;
+      } else {
+        docToSelect = "Dra. Laura Gómez";
+      }
+    }
+
     setNuevaCita({
       paciente: isPaciente ? (user?.name || "Paciente") : "",
       patientId: isPaciente ? (user?.id || "") : "",
       servicio: serviciosEntities.length > 0 ? serviciosEntities[0].name : "Valoración General",
-      odontologo:
-        listaOdontologos.length > 1
-          ? listaOdontologos[1].nombre
-          : "Dra. Laura Gómez",
+      odontologo: docToSelect || "Dra. Laura Gómez",
       horaInicio: hora,
       horaFin,
       estado: isPaciente ? "Pendiente" : "Confirmada",
@@ -642,6 +766,8 @@ export function AgendaView() {
     height: number;
     leftStyle: string;
     widthStyle: string;
+    totalColumnas: number;
+    colIndex: number;
   }
 
   const calcularPosicionesDia = (citasList: Cita[]): CitaPosicionada[] => {
@@ -740,6 +866,8 @@ export function AgendaView() {
           height,
           leftStyle,
           widthStyle,
+          totalColumnas,
+          colIndex,
         });
       });
     });
@@ -749,11 +877,17 @@ export function AgendaView() {
 
   const obtenerPosicionHoraActual = () => {
     const fechaHoy = formatoFechaInput(horaActual);
-    const estaSemana = diasSemana.some(
-      (dia) => formatoFechaInput(dia) === fechaHoy
-    );
-    if (!estaSemana) {
-      return null;
+    if (modoVista === "semana") {
+      const estaSemana = diasSemana.some(
+        (dia) => formatoFechaInput(dia) === fechaHoy
+      );
+      if (!estaSemana) {
+        return null;
+      }
+    } else {
+      if (formatoFechaInput(fechaActual) !== fechaHoy) {
+        return null;
+      }
     }
     const hora = horaActual.getHours();
     const minutos = horaActual.getMinutes();
@@ -765,7 +899,133 @@ export function AgendaView() {
 
   const posicionHoraActual = obtenerPosicionHoraActual();
 
-  const gridTemplateColumns = "48px repeat(7, minmax(100px, 1fr))";
+  const gridTemplateColumnsSemana = "56px repeat(7, minmax(160px, 1fr))";
+  const gridTemplateColumnsDoctores = `56px repeat(${Math.max(doctoresParaColumnas.length, 1)}, minmax(220px, 1fr))`;
+  const gridTemplateColumns = modoVista === "semana" ? gridTemplateColumnsSemana : gridTemplateColumnsDoctores;
+
+  const renderCitaCard = (cita: CitaPosicionada) => {
+    const colorEvento = obtenerColorEvento(cita.estado);
+    const docTheme = getDoctorTheme(cita.odontologo, listaOdontologos);
+    const shortDoc = getDoctorShortName(cita.odontologo);
+    const isNarrow = cita.totalColumnas > 1;
+
+    return (
+      <div
+        key={cita.id}
+        onClick={() => setCitaDetalle(cita)}
+        style={{
+          top: `${cita.top}px`,
+          height: `${cita.height}px`,
+          left: cita.leftStyle,
+          width: cita.widthStyle,
+        }}
+        className={`group absolute z-20 rounded-xl border border-slate-700/60 border-l-[3.5px] ${docTheme.borderLeft} shadow-sm transition-all hover:scale-[1.02] hover:z-50 cursor-pointer ${colorEvento.contenedor}`}
+      >
+        {isNarrow ? (
+          // Modo Compacto (Cuando se solapan 2 o más citas de diferentes doctores en la misma hora)
+          <div className="flex h-full flex-col justify-between px-2 py-1 min-w-0">
+            <div className="flex items-center justify-between gap-1 min-w-0">
+              <div className="flex items-center gap-1 min-w-0 flex-1">
+                <span className={`h-2 w-2 rounded-full shrink-0 ${docTheme.dot}`} />
+                <span className="truncate text-[10px] font-bold text-slate-200" title={cita.odontologo}>
+                  {shortDoc}
+                </span>
+              </div>
+              <span className="font-mono text-[9px] font-semibold text-cyan-300 dark:text-cyan-400 shrink-0 whitespace-nowrap">
+                {cita.horaInicio}
+              </span>
+            </div>
+
+            <div className="min-w-0 my-auto">
+              <p className="truncate text-xs font-bold leading-tight text-white group-hover:text-cyan-200">
+                {cita.paciente}
+              </p>
+              {cita.height >= 46 && (
+                <p className="truncate text-[9.5px] text-slate-300/85 leading-tight mt-0.5">
+                  {cita.servicio}
+                </p>
+              )}
+            </div>
+
+            {cita.height >= 60 && (
+              <div className="flex items-center justify-between gap-1 text-[9px] text-slate-400 font-mono leading-none">
+                <span className="whitespace-nowrap">{cita.horaInicio} - {cita.horaFin}</span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    eliminarCita(cita.id, cita.rawGuid);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 transition p-0.5 hover:text-rose-400 shrink-0 cursor-pointer"
+                  title="Eliminar cita"
+                >
+                  <Trash2 size={11} />
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          // Modo Completo (Ancho normal / sin solapamiento o en columna individual por doctor)
+          <div className="flex h-full flex-col justify-between px-2.5 py-1.5 min-w-0">
+            <div>
+              <div className="flex items-center justify-between gap-1 min-w-0">
+                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                  <span
+                    className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9.5px] font-bold border ${docTheme.badge} shrink-0 max-w-[140px]`}
+                    title={cita.odontologo}
+                  >
+                    <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${docTheme.dot}`} />
+                    <span className="truncate">{shortDoc}</span>
+                  </span>
+                  <p className="truncate text-xs font-bold leading-tight text-white">
+                    {cita.paciente}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    eliminarCita(cita.id, cita.rawGuid);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 transition p-0.5 hover:text-rose-500 shrink-0 cursor-pointer"
+                  title="Eliminar cita"
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
+              <p className="truncate text-[10.5px] text-slate-300/90 leading-tight mt-1">
+                {cita.servicio}
+              </p>
+            </div>
+            <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
+              <span className="whitespace-nowrap font-medium">{cita.horaInicio} - {cita.horaFin}</span>
+              <span className="text-[9px] uppercase tracking-wide opacity-80">{cita.estado}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Tarjeta flotante con detalles completos en hover */}
+        <div
+          className={`pointer-events-none absolute left-1/2 -translate-x-1/2 z-[100] hidden group-hover:flex flex-col w-60 p-3 rounded-xl bg-slate-900/95 border border-cyan-500/50 shadow-2xl backdrop-blur-xl text-left text-xs transition-all animate-fadeIn ${
+            cita.top < 90 ? "top-[calc(100%+6px)]" : "bottom-[calc(100%+6px)]"
+          }`}
+        >
+          <div className="flex items-center gap-2 border-b border-slate-800 pb-2 mb-2">
+            <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${docTheme.dot}`} />
+            <span className="font-bold text-white truncate text-[11px]">{cita.odontologo}</span>
+          </div>
+          <p className="font-bold text-cyan-300 text-xs truncate">{cita.paciente}</p>
+          <p className="text-slate-300 text-[11px] truncate mt-0.5">{cita.servicio}</p>
+          <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-slate-800 text-[10.5px] text-slate-400 font-mono">
+            <span>⏰ {cita.horaInicio} - {cita.horaFin}</span>
+            <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${docTheme.badge}`}>
+              {cita.estado}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <>
@@ -852,23 +1112,53 @@ export function AgendaView() {
                     <div className="flex items-center rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 p-0.5">
                       <button
                         type="button"
-                        onClick={() => cambiarSemana(-1)}
+                        onClick={() => cambiarFecha(-1)}
                         className="rounded-lg p-1.5 text-slate-600 dark:text-slate-400 transition hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white cursor-pointer"
+                        title={modoVista === "semana" ? "Semana anterior" : "Día anterior"}
                       >
                         <ChevronLeft size={16} />
                       </button>
                       <button
                         type="button"
-                        onClick={() => cambiarSemana(1)}
+                        onClick={() => cambiarFecha(1)}
                         className="rounded-lg p-1.5 text-slate-600 dark:text-slate-400 transition hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white cursor-pointer"
+                        title={modoVista === "semana" ? "Semana siguiente" : "Día siguiente"}
                       >
                         <ChevronRight size={16} />
                       </button>
                     </div>
 
                     <p className="text-sm font-bold text-slate-900 dark:text-white">
-                      {obtenerRangoSemana(inicioSemana)}
+                      {fechaTextoHeader}
                     </p>
+
+                    {/* Selector de modo de vista: Semana vs Por Odontólogo */}
+                    <div className="flex items-center rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/80 p-0.5 sm:ml-2">
+                      <button
+                        type="button"
+                        onClick={() => setModoVista("semana")}
+                        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+                          modoVista === "semana"
+                            ? "bg-cyan-500 text-slate-950 shadow-sm"
+                            : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                        }`}
+                      >
+                        <CalendarDays size={14} />
+                        <span>Semana</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setModoVista("odontologos")}
+                        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+                          modoVista === "odontologos"
+                            ? "bg-cyan-500 text-slate-950 shadow-sm"
+                            : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                        }`}
+                      >
+                        <Users size={14} />
+                        <span>Por Odontólogo (Día)</span>
+                      </button>
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -921,42 +1211,85 @@ export function AgendaView() {
 
                 {/* Matriz Calendario */}
                 <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/60">
-                  <div className="min-w-190">
-                    {/* Encabezado Columnas Días */}
-                    <div
-                      className="grid border-b border-slate-200 dark:border-slate-800 text-center bg-slate-50/80 dark:bg-slate-900/60"
-                      style={{ gridTemplateColumns }}
-                    >
-                      <div className="py-2.5 text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                        GMT-5
-                      </div>
+                  <div className={modoVista === "semana" ? "min-w-[1180px]" : "min-w-[800px]"}>
+                    {/* Encabezado Columnas Días u Odontólogos */}
+                    {modoVista === "semana" ? (
+                      <div
+                        className="grid border-b border-slate-200 dark:border-slate-800 text-center bg-slate-50/95 dark:bg-slate-900/90 sticky top-0 z-30 backdrop-blur-md"
+                        style={{ gridTemplateColumns }}
+                      >
+                        <div className="py-2.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 sticky left-0 z-40 bg-slate-50/95 dark:bg-slate-900/90">
+                          GMT-5
+                        </div>
 
-                      {diasSemana.map((dia, idx) => {
-                        const esHoy =
-                          formatoFechaInput(dia) === formatoFechaInput(horaActual);
-                        return (
-                          <div
-                            key={idx}
-                            className={`py-2 text-center border-l border-slate-200 dark:border-slate-800/60 ${
-                              esHoy ? "bg-cyan-500/10 dark:bg-cyan-500/15" : ""
-                            }`}
-                          >
-                            <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                              {nombresDias[dia.getDay()]}
-                            </p>
-                            <p
-                              className={`mt-0.5 text-sm font-bold inline-flex items-center justify-center h-6 w-6 rounded-full ${
-                                esHoy
-                                  ? "bg-cyan-500 text-slate-950 shadow-sm"
-                                  : "text-slate-800 dark:text-slate-200"
+                        {diasSemana.map((dia, idx) => {
+                          const esHoy =
+                            formatoFechaInput(dia) === formatoFechaInput(horaActual);
+                          const esSeleccionado =
+                            formatoFechaInput(dia) === formatoFechaInput(fechaActual);
+                          return (
+                            <div
+                              key={idx}
+                              onClick={() => setFechaActual(dia)}
+                              className={`py-2 text-center border-l border-slate-200 dark:border-slate-800/60 transition-colors cursor-pointer hover:bg-cyan-500/5 ${
+                                esHoy ? "bg-cyan-500/10 dark:bg-cyan-500/15" : esSeleccionado ? "bg-slate-200/50 dark:bg-slate-800/40" : ""
                               }`}
+                              title="Clic para seleccionar este día"
                             >
-                              {dia.getDate()}
-                            </p>
-                          </div>
-                        );
-                      })}
-                    </div>
+                              <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                                {nombresDias[dia.getDay()]}
+                              </p>
+                              <p
+                                className={`mt-0.5 text-sm font-bold inline-flex items-center justify-center h-6 w-6 rounded-full ${
+                                  esHoy
+                                    ? "bg-cyan-500 text-slate-950 shadow-sm"
+                                    : "text-slate-800 dark:text-slate-200"
+                                }`}
+                              >
+                                {dia.getDate()}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div
+                        className="grid border-b border-slate-200 dark:border-slate-800 text-center bg-slate-50/95 dark:bg-slate-900/90 sticky top-0 z-30 backdrop-blur-md"
+                        style={{ gridTemplateColumns }}
+                      >
+                        <div className="py-2.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 sticky left-0 z-40 bg-slate-50/95 dark:bg-slate-900/90">
+                          GMT-5
+                        </div>
+
+                        {doctoresParaColumnas.map((doc, idx) => {
+                          const docTheme = getDoctorTheme(doc.nombre, listaOdontologos);
+                          const citasDocHoy = citasDiaActual.filter((c) => {
+                            const cDoc = (c.odontologo || "").toLowerCase().trim();
+                            const dDoc = doc.nombre.toLowerCase().trim();
+                            return cDoc === dDoc || cDoc.includes(dDoc) || dDoc.includes(cDoc);
+                          });
+
+                          return (
+                            <div
+                              key={idx}
+                              className="py-2.5 px-3 text-center border-l border-slate-200 dark:border-slate-800/60"
+                            >
+                              <div className="flex items-center justify-center gap-1.5 min-w-0">
+                                <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${docTheme.dot}`} />
+                                <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+                                  {doc.nombre}
+                                </p>
+                              </div>
+                              <div className="mt-1 flex items-center justify-center gap-1.5">
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${docTheme.badge}`}>
+                                  {citasDocHoy.length} {citasDocHoy.length === 1 ? "cita hoy" : "citas hoy"}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
 
                     {/* Cuerpo de Horas y Eventos */}
                     <div
@@ -978,7 +1311,7 @@ export function AgendaView() {
                       )}
 
                       {/* Columna Horas Eje Y */}
-                      <div className="relative border-r border-slate-200 dark:border-slate-800 text-right pr-2 bg-slate-50/50 dark:bg-slate-900/30">
+                      <div className="relative border-r border-slate-200 dark:border-slate-800 text-right pr-2 bg-slate-50/50 dark:bg-slate-900/30 sticky left-0 z-25 backdrop-blur-xs">
                         {Array.from({ length: 12 }, (_, i) => {
                           const hora = i + 7;
                           return (
@@ -993,125 +1326,86 @@ export function AgendaView() {
                         })}
                       </div>
 
-                      {/* 7 Columnas de Días */}
-                      {diasSemana.map((dia, idx) => {
-                        const citasDia = obtenerCitasDia(dia);
-                        const citasPosicionadas = calcularPosicionesDia(citasDia);
-                        const esHoy =
-                          formatoFechaInput(dia) === formatoFechaInput(horaActual);
+                      {modoVista === "semana" ? (
+                        // 7 Columnas de Días (Semana Completa)
+                        diasSemana.map((dia, idx) => {
+                          const citasDia = obtenerCitasDia(dia);
+                          const citasPosicionadas = calcularPosicionesDia(citasDia);
+                          const esHoy =
+                            formatoFechaInput(dia) === formatoFechaInput(horaActual);
 
-                        return (
-                          <div
-                            key={idx}
-                            className={`relative border-r border-slate-200 dark:border-slate-800/60 ${
-                              esHoy ? "bg-cyan-500/3 dark:bg-cyan-500/2" : ""
-                            }`}
-                          >
-                            {/* Líneas Horarias */}
-                            {Array.from({ length: 12 }, (_, i) => (
-                              <div
-                                key={i}
-                                onClick={() =>
-                                  abrirNuevaCita(
-                                    dia,
-                                    `${String(i + 7).padStart(2, "0")}:00`
-                                  )
-                                }
-                                className="absolute left-0 right-0 border-b border-slate-200/70 dark:border-slate-800/40 hover:bg-cyan-500/10 dark:hover:bg-slate-800/20 cursor-pointer transition-colors"
-                                style={{
-                                  top: `${i * HORA_ALTURA_PX}px`,
-                                  height: `${HORA_ALTURA_PX}px`,
-                                }}
-                              />
-                            ))}
-
-                            {/* Citas / Eventos */}
-                            {citasPosicionadas.map((cita) => {
-                              const colorEvento = obtenerColorEvento(cita.estado);
-
-                              return (
+                          return (
+                            <div
+                              key={idx}
+                              className={`relative border-r border-slate-200 dark:border-slate-800/60 ${
+                                esHoy ? "bg-cyan-500/3 dark:bg-cyan-500/2" : ""
+                              }`}
+                            >
+                              {/* Líneas Horarias */}
+                              {Array.from({ length: 12 }, (_, i) => (
                                 <div
-                                  key={cita.id}
-                                  onClick={() => setCitaDetalle(cita)}
+                                  key={i}
+                                  onClick={() =>
+                                    abrirNuevaCita(
+                                      dia,
+                                      `${String(i + 7).padStart(2, "0")}:00`
+                                    )
+                                  }
+                                  className="absolute left-0 right-0 border-b border-slate-200/70 dark:border-slate-800/40 hover:bg-cyan-500/10 dark:hover:bg-slate-800/20 cursor-pointer transition-colors"
                                   style={{
-                                    top: `${cita.top}px`,
-                                    height: `${cita.height}px`,
-                                    left: cita.leftStyle,
-                                    width: cita.widthStyle,
+                                    top: `${i * HORA_ALTURA_PX}px`,
+                                    height: `${HORA_ALTURA_PX}px`,
                                   }}
-                                  title={`${cita.paciente} • ${cita.servicio} (${cita.horaInicio} - ${cita.horaFin}) • ${cita.odontologo}`}
-                                  className={`group absolute z-20 overflow-hidden rounded-xl border shadow-xs transition-all hover:scale-[1.01] hover:z-30 cursor-pointer ${colorEvento.contenedor}`}
-                                >
-                                  {cita.height < 52 ? (
-                                    // Modo Compacto (30-40 min)
-                                    <div className="flex h-full flex-col justify-between px-2.5 py-1 min-w-0">
-                                      <div className="flex items-center justify-between gap-1 min-w-0">
-                                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                          <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${colorEvento.punto}`} />
-                                          <p className="truncate text-xs font-bold leading-tight">
-                                            {cita.paciente}
-                                          </p>
-                                        </div>
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            eliminarCita(cita.id, cita.rawGuid);
-                                          }}
-                                          className="opacity-0 group-hover:opacity-100 transition p-0.5 hover:text-rose-500 shrink-0 cursor-pointer"
-                                          title="Eliminar cita"
-                                        >
-                                          <Trash2 size={11} />
-                                        </button>
-                                      </div>
+                                  title={`Agendar para el día ${dia.toLocaleDateString("es-CO")} a las ${String(i + 7).padStart(2, "0")}:00`}
+                                />
+                              ))}
 
-                                      <div className="flex items-center justify-between gap-1 min-w-0 text-[10px] leading-tight">
-                                        <span className="truncate opacity-90 font-medium">
-                                          {cita.servicio}
-                                        </span>
-                                        <span className="font-mono text-[9px] opacity-80 shrink-0 font-medium">
-                                          {cita.horaInicio} - {cita.horaFin}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    // Modo Completo (>= 45 min)
-                                    <div className="flex h-full flex-col justify-between px-2.5 py-1.5 min-w-0">
-                                      <div className="min-w-0">
-                                        <div className="flex items-start justify-between gap-1 min-w-0">
-                                          <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                            <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${colorEvento.punto}`} />
-                                            <p className="truncate text-xs font-bold leading-tight">
-                                              {cita.paciente}
-                                            </p>
-                                          </div>
-                                          <button
-                                            type="button"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              eliminarCita(cita.id, cita.rawGuid);
-                                            }}
-                                            className="opacity-0 group-hover:opacity-100 transition p-0.5 hover:text-rose-500 shrink-0 cursor-pointer"
-                                            title="Eliminar cita"
-                                          >
-                                            <Trash2 size={12} />
-                                          </button>
-                                        </div>
-                                        <p className="truncate text-[10.5px] opacity-90 leading-tight mt-1">
-                                          {cita.servicio}
-                                        </p>
-                                      </div>
-                                      <p className="text-[10px] opacity-80 font-mono font-medium leading-none shrink-0 pb-0.5">
-                                        {cita.horaInicio} - {cita.horaFin}
-                                      </p>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        );
-                      })}
+                              {/* Citas / Eventos */}
+                              {citasPosicionadas.map(renderCitaCard)}
+                            </div>
+                          );
+                        })
+                      ) : (
+                        // Columnas por Odontólogo (Vista Diaria)
+                        doctoresParaColumnas.map((doc, idx) => {
+                          const citasDoc = citasDiaActual.filter((c) => {
+                            const cDoc = (c.odontologo || "").toLowerCase().trim();
+                            const dDoc = doc.nombre.toLowerCase().trim();
+                            return cDoc === dDoc || cDoc.includes(dDoc) || dDoc.includes(cDoc);
+                          });
+                          const citasPosicionadas = calcularPosicionesDia(citasDoc);
+
+                          return (
+                            <div
+                              key={idx}
+                              className="relative border-r border-slate-200 dark:border-slate-800/60"
+                            >
+                              {/* Líneas Horarias */}
+                              {Array.from({ length: 12 }, (_, i) => (
+                                <div
+                                  key={i}
+                                  onClick={() =>
+                                    abrirNuevaCita(
+                                      fechaActual,
+                                      `${String(i + 7).padStart(2, "0")}:00`,
+                                      doc.nombre
+                                    )
+                                  }
+                                  className="absolute left-0 right-0 border-b border-slate-200/70 dark:border-slate-800/40 hover:bg-cyan-500/10 dark:hover:bg-slate-800/20 cursor-pointer transition-colors"
+                                  style={{
+                                    top: `${i * HORA_ALTURA_PX}px`,
+                                    height: `${HORA_ALTURA_PX}px`,
+                                  }}
+                                  title={`Agendar con ${doc.nombre} a las ${String(i + 7).padStart(2, "0")}:00`}
+                                />
+                              ))}
+
+                              {/* Citas del Odontólogo */}
+                              {citasPosicionadas.map(renderCitaCard)}
+                            </div>
+                          );
+                        })
+                      )}
                     </div>
                   </div>
                 </div>

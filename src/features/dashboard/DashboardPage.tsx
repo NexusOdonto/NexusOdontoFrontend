@@ -62,7 +62,6 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(false);
   const [citasHoy, setCitasHoy] = useState<CitaItem[]>([]);
   const [totalPacientes, setTotalPacientes] = useState(0);
-  const [filtroPeriodo, setFiltroPeriodo] = useState<"Hoy" | "Semana" | "Mes">("Hoy");
 
   const currentDateFormatted = useMemo(() => {
     const now = new Date();
@@ -209,25 +208,8 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* Acciones y Filtro de Periodo */}
+        {/* Acciones */}
         <div className="flex items-center gap-2.5 flex-wrap font-instrument">
-          <div className="flex items-center rounded-xl bg-slate-100/90 dark:bg-slate-900/80 p-1 border border-slate-200 dark:border-white/10 text-xs font-semibold shadow-inner">
-            {(["Hoy", "Semana", "Mes"] as const).map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => setFiltroPeriodo(p)}
-                className={`px-3 py-1.5 rounded-lg transition-all duration-300 cursor-pointer ${
-                  filtroPeriodo === p
-                    ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-md font-bold scale-105"
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                }`}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-
           <button
             type="button"
             onClick={loadRealData}
