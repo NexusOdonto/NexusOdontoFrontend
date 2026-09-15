@@ -43,6 +43,7 @@ export function AgendaView() {
   const { user } = useAuth();
   const role = getUserRole(user);
   const isPaciente = role === "PACIENTE";
+  const isOdontologo = role === "ODONTOLOGO";
 
   // Citas locales y de la base de datos
   const [citas, setCitas] = useState<Cita[]>([]);
@@ -128,6 +129,20 @@ export function AgendaView() {
           { nombre: "Todos los odontólogos", color: "bg-cyan-400" },
           ...uniqueDocs,
         ]);
+
+
+        if (isOdontologo) {
+          const docName = (user?.name || user?.nombre || "").toLowerCase();
+          const myDoc = uniqueDocs.find((d) => {
+            const dNorm = d.nombre.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const docNorm = docName.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const parts = docNorm.split(/\s+/).filter((p) => p.length > 2);
+            return parts.length > 0 && parts.every((p) => dNorm.includes(p));
+          });
+          if (myDoc) {
+            setOdontologosSeleccionados([myDoc.nombre]);
+          }
+        }
 
         if (uniqueDocs.length > 0) {
           setNuevaCita((prev) => ({ ...prev, odontologo: uniqueDocs[0].nombre }));
