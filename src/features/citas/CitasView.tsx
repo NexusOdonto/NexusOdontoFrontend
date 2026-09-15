@@ -748,15 +748,27 @@ export function CitasView() {
       const fechaValida = formFecha || todayDateString;
       const horaValida = normalizeTimeTo24h(formHora || getNextValidHour(fechaValida));
 
-      // Validar restricción de al menos 30 minutos de anticipación
+      // Validar fecha y hora según rol
       if (fechaValida && horaValida) {
         const selectedDateTime = new Date(`${fechaValida}T${horaValida}:00`);
-        const minAllowedDateTime = new Date(Date.now() + 30 * 60 * 1000);
-        if (selectedDateTime < minAllowedDateTime) {
-          const msg = "Las citas deben programarse con al menos 30 minutos de anticipación.";
-          setFormError(msg);
-          setIsSubmitting(false);
-          return;
+        if (isPaciente) {
+          const minAllowedDateTime = new Date(Date.now() + 30 * 60 * 1000);
+          if (selectedDateTime < minAllowedDateTime) {
+            const msg = "Las citas deben solicitarse con al menos 30 minutos de anticipación.";
+            setFormError(msg);
+            setIsSubmitting(false);
+            return;
+          }
+        } else {
+          const selectedDay = new Date(`${fechaValida}T00:00:00`);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          if (selectedDay < today) {
+            const msg = "No se pueden crear citas en fechas pasadas.";
+            setFormError(msg);
+            setIsSubmitting(false);
+            return;
+          }
         }
       }
 
@@ -1157,12 +1169,17 @@ export function CitasView() {
 
     const horaEditValida = normalizeTimeTo24h(editHora || getNextValidHour(editFecha));
 
-    // Validar restricción de al menos 30 minutos de anticipación al reprogramar
-    if (editFecha && horaEditValida) {
-      const selectedDateTime = new Date(`${editFecha}T${horaEditValida}:00`);
-      const minAllowedDateTime = new Date(Date.now() + 30 * 60 * 1000);
-      if (selectedDateTime < minAllowedDateTime) {
-        const msg = "Las citas deben programarse o modificarse con al menos 30 minutos de anticipación.";
+    // Validar restricción solo si se cambia la fecha u hora a un día pasado
+    const isDateTimeChanged =
+      selectedCitaToEdit.fecha !== editFecha ||
+      normalizeTimeTo24h(selectedCitaToEdit.hora) !== horaEditValida;
+
+    if (isDateTimeChanged && editFecha) {
+      const selectedDay = new Date(`${editFecha}T00:00:00`);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (selectedDay < today) {
+        const msg = "No se pueden reprogramar citas a fechas pasadas.";
         setEditFormError(msg);
         setErrorMessage(msg);
         setTimeout(() => setErrorMessage(null), 5000);

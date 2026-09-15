@@ -726,17 +726,31 @@ export function AgendaView() {
       const startsAtLocal = `${fechaSeleccionada}T${safeH}:${safeM}:00`;
       const endsAtLocal = `${fechaSeleccionada}T${safeEH}:${safeEM}:00`;
 
-      // Validar que la cita se programe con al menos 30 minutos de anticipación
+      // Validar fecha y hora según rol
       if (fechaSeleccionada && nuevaCita.horaInicio) {
         const selectedDateTime = new Date(startsAtLocal);
-        const minAllowedDateTime = new Date(Date.now() + 30 * 60 * 1000);
-        if (selectedDateTime < minAllowedDateTime) {
-          const msg = "Las citas deben programarse con al menos 30 minutos de anticipación.";
-          setFormError(msg);
-          setErrorMessage(msg);
-          setTimeout(() => setErrorMessage(null), 5000);
-          setIsSubmitting(false);
-          return;
+        if (isPaciente) {
+          const minAllowedDateTime = new Date(Date.now() + 30 * 60 * 1000);
+          if (selectedDateTime < minAllowedDateTime) {
+            const msg = "Las citas deben solicitarse con al menos 30 minutos de anticipación.";
+            setFormError(msg);
+            setErrorMessage(msg);
+            setTimeout(() => setErrorMessage(null), 5000);
+            setIsSubmitting(false);
+            return;
+          }
+        } else {
+          const selectedDay = new Date(`${fechaSeleccionada}T00:00:00`);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          if (selectedDay < today) {
+            const msg = "No se pueden programar citas en fechas pasadas.";
+            setFormError(msg);
+            setErrorMessage(msg);
+            setTimeout(() => setErrorMessage(null), 5000);
+            setIsSubmitting(false);
+            return;
+          }
         }
       }
 
