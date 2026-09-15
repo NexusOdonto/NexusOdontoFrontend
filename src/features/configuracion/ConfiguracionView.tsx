@@ -165,7 +165,7 @@ export default function ConfiguracionView() {
           className={`px-4 py-2.5 rounded-2xl transition-all cursor-pointer whitespace-nowrap border text-xs font-bold flex items-center gap-2 backdrop-blur-2xl ${
             tabActiva === "clinica"
               ? "bg-cyan-600 text-white border-cyan-600 shadow-md dark:bg-cyan-500/30 dark:border-cyan-400/70 dark:text-cyan-100"
-              : "bg-white/80 border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-white dark:bg-slate-900/60 dark:border-white/10 dark:text-slate-300 dark:hover:text-white"
+              : "bg-white/80 border-slate-200/90 text-slate-700 hover:text-slate-900 hover:bg-white hover:border-slate-300 dark:bg-slate-900/60 dark:border-white/10 dark:text-slate-300 dark:hover:bg-slate-800/80 dark:hover:border-cyan-400/40 dark:hover:text-white"
           }`}
         >
           <Building2 size={15} />
@@ -178,7 +178,7 @@ export default function ConfiguracionView() {
           className={`px-4 py-2.5 rounded-2xl transition-all cursor-pointer whitespace-nowrap border text-xs font-bold flex items-center gap-2 backdrop-blur-2xl ${
             tabActiva === "agenda"
               ? "bg-cyan-600 text-white border-cyan-600 shadow-md dark:bg-cyan-500/30 dark:border-cyan-400/70 dark:text-cyan-100"
-              : "bg-white/80 border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-white dark:bg-slate-900/60 dark:border-white/10 dark:text-slate-300 dark:hover:text-white"
+              : "bg-white/80 border-slate-200/90 text-slate-700 hover:text-slate-900 hover:bg-white hover:border-slate-300 dark:bg-slate-900/60 dark:border-white/10 dark:text-slate-300 dark:hover:bg-slate-800/80 dark:hover:border-cyan-400/40 dark:hover:text-white"
           }`}
         >
           <Clock size={15} />
@@ -191,7 +191,7 @@ export default function ConfiguracionView() {
           className={`px-4 py-2.5 rounded-2xl transition-all cursor-pointer whitespace-nowrap border text-xs font-bold flex items-center gap-2 backdrop-blur-2xl ${
             tabActiva === "notificaciones"
               ? "bg-cyan-600 text-white border-cyan-600 shadow-md dark:bg-cyan-500/30 dark:border-cyan-400/70 dark:text-cyan-100"
-              : "bg-white/80 border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-white dark:bg-slate-900/60 dark:border-white/10 dark:text-slate-300 dark:hover:text-white"
+              : "bg-white/80 border-slate-200/90 text-slate-700 hover:text-slate-900 hover:bg-white hover:border-slate-300 dark:bg-slate-900/60 dark:border-white/10 dark:text-slate-300 dark:hover:bg-slate-800/80 dark:hover:border-cyan-400/40 dark:hover:text-white"
           }`}
         >
           <Bell size={15} />
@@ -204,7 +204,7 @@ export default function ConfiguracionView() {
           className={`px-4 py-2.5 rounded-2xl transition-all cursor-pointer whitespace-nowrap border text-xs font-bold flex items-center gap-2 backdrop-blur-2xl ${
             tabActiva === "sistema"
               ? "bg-cyan-600 text-white border-cyan-600 shadow-md dark:bg-cyan-500/30 dark:border-cyan-400/70 dark:text-cyan-100"
-              : "bg-white/80 border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-white dark:bg-slate-900/60 dark:border-white/10 dark:text-slate-300 dark:hover:text-white"
+              : "bg-white/80 border-slate-200/90 text-slate-700 hover:text-slate-900 hover:bg-white hover:border-slate-300 dark:bg-slate-900/60 dark:border-white/10 dark:text-slate-300 dark:hover:bg-slate-800/80 dark:hover:border-cyan-400/40 dark:hover:text-white"
           }`}
         >
           <Sliders size={15} />

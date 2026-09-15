@@ -12,8 +12,8 @@ import { appointmentService } from "../../api/appointmentService";
 import { useAuth } from "../auth/AuthContext";
 import { areGuidsEqual } from "../../utils/roleUtils";
 import { getUserRole } from "../../utils/routePermissions";
+import { UserAvatar } from "../../components/common/UserAvatar";
 import {
-  User,
   X,
   FileText,
   Save,
@@ -191,6 +191,7 @@ interface PacienteItem {
   id: string;
   nombre: string;
   cedula: string;
+  personId?: string;
   clinicalHistoryId?: string;
 }
 
@@ -296,8 +297,41 @@ function OdontogramaUI() {
         }
       }
 
-      if (patientsData && patientsData.length > 0) {
-        let mapped: PacienteItem[] = patientsData.map((p, idx) => {
+      if (isPaciente) {
+        const userDoc = user?.cedula || (user as any)?.documentNumber || (user as any)?.documento || "";
+        const userName = user?.name || (user?.nombre ? `${user.nombre} ${user.apellido || ""}`.trim() : "Paciente");
+
+        let matchedPatient: PacienteItem | null = null;
+        if (patientsData && patientsData.length > 0) {
+          const found = patientsData.find((p) =>
+            areGuidsEqual(p.personId, user?.personId) ||
+            areGuidsEqual(p.id, user?.id) ||
+            areGuidsEqual(p.id, user?.personId) ||
+            (userDoc && String(p.documentNumber).trim() === String(userDoc).trim())
+          );
+          if (found) {
+            const history = historiesData?.find((h: any) => areGuidsEqual(h.patientId, found.id));
+            matchedPatient = {
+              id: found.id,
+              personId: found.personId,
+              nombre: userName,
+              cedula: userDoc || found.documentNumber || "",
+              clinicalHistoryId: history?.id,
+            };
+          }
+        }
+
+        const selfPt: PacienteItem = matchedPatient || {
+          id: user?.personId || user?.id || "patient-self",
+          personId: user?.personId || user?.id || "person-self",
+          nombre: userName,
+          cedula: userDoc || "1098765432",
+        };
+
+        setPacientesList([selfPt]);
+        setSelectedPaciente(selfPt);
+      } else if (patientsData && patientsData.length > 0) {
+        const mapped: PacienteItem[] = patientsData.map((p, idx) => {
           const person = personsData.find((per) => per.id === p.personId);
           const fullName = person ? `${person.firstName} ${person.lastName}` : (p.firstName ? `${p.firstName} ${p.lastName}` : `Paciente #${idx + 1}`);
           const doc = person?.documentNumber || p.documentNumber || `10${idx}8765432`;
@@ -305,45 +339,23 @@ function OdontogramaUI() {
           return { id: p.id, personId: p.personId, nombre: fullName, cedula: doc, clinicalHistoryId: history?.id } as any;
         });
 
-        // Aislamiento estricto de privacidad para el PACIENTE
-        if (isPaciente) {
-          const userDoc = (user as any)?.documentNumber || "";
-          const myPt = mapped.find((p: any) =>
-            areGuidsEqual(p.personId, user?.personId) ||
-            areGuidsEqual(p.id, user?.id) ||
-            (userDoc && String(p.cedula).trim() === String(userDoc).trim()) ||
-            (user?.name && p.nombre.toLowerCase().includes(user.name.toLowerCase()))
-          );
-          if (myPt) {
-            mapped = [myPt];
-            setSelectedPaciente(myPt);
-          } else {
-            const fallbackSelf: PacienteItem = {
-              id: user?.personId || user?.id || "patient-self",
-              nombre: user?.name || "Mi Perfil",
-              cedula: userDoc || "1076543210",
-            };
-            mapped = [fallbackSelf];
-            setSelectedPaciente(fallbackSelf);
-          }
-        } else {
-          if (mapped.length > 0) {
-            setSelectedPaciente((prev) => prev || mapped[0]);
-          }
-        }
-
         setPacientesList(mapped);
-      } else if (isPaciente) {
+        setSelectedPaciente((prev) => prev || mapped[0]);
+      }
+    } catch (err) {
+      console.warn("API Patients unavailable in Odontograma:", err);
+      if (isPaciente) {
+        const userDoc = user?.cedula || (user as any)?.documentNumber || (user as any)?.documento || "";
+        const userName = user?.name || (user?.nombre ? `${user.nombre} ${user.apellido || ""}`.trim() : "Paciente");
         const fallbackSelf: PacienteItem = {
           id: user?.personId || user?.id || "patient-self",
-          nombre: user?.name || "Mi Perfil",
-          cedula: (user as any)?.documentNumber || "1076543210",
+          personId: user?.personId || user?.id || "person-self",
+          nombre: userName,
+          cedula: userDoc || "1098765432",
         };
         setPacientesList([fallbackSelf]);
         setSelectedPaciente(fallbackSelf);
       }
-    } catch (err) {
-      console.warn("API Patients unavailable in Odontograma:", err);
     }
   }, [user, isOdontologo, isPaciente]);
 
@@ -600,16 +612,19 @@ function OdontogramaUI() {
   };
 
   const handleSurfaceClick = (toothNumber: number, surface: Surface) => {
+    if (isPaciente) return;
     setSelectedSurface({ toothNumber, surface });
     setSelectedTooth(null);
   };
 
   const handleToothClick = (toothNumber: number) => {
+    if (isPaciente) return;
     setSelectedTooth(toothNumber);
     setSelectedSurface(null);
   };
 
   const applyDiagnosis = (diagnosis: Diagnosis) => {
+    if (isPaciente) return;
     if (!selectedSurface) return;
     const { toothNumber, surface } = selectedSurface;
 
@@ -638,6 +653,7 @@ function OdontogramaUI() {
   };
 
   const handleDiagnosisChange = (diagnosis: Diagnosis) => {
+    if (isPaciente) return;
     setState((prevState) => ({
       ...prevState,
       selectedDiagnosis: diagnosis,
@@ -645,6 +661,7 @@ function OdontogramaUI() {
   };
 
   const handleLimpiar = () => {
+    if (isPaciente) return;
     setState((prevState) => {
       const resetTeeth: Record<number, ToothState> = {};
       const quadrants =
@@ -694,6 +711,7 @@ function OdontogramaUI() {
   };
 
   const handleImport = () => {
+    if (isPaciente) return;
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
@@ -979,8 +997,12 @@ function OdontogramaUI() {
               }`}
               title={isPaciente ? "Tu ficha odontológica personal" : "Cambiar paciente actual"}
             >
-              <div className="h-7 w-7 rounded-xl bg-cyan-500/15 text-cyan-600 dark:text-cyan-300 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
-                <User size={15} />
+              <div className="h-8 w-8 rounded-xl overflow-hidden border border-cyan-500/40 dark:border-cyan-400/50 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform bg-slate-100 dark:bg-slate-900">
+                <UserAvatar
+                  name={isPaciente ? (user?.name || selectedPaciente?.nombre) : (selectedPaciente?.nombre || "Paciente")}
+                  avatar={isPaciente ? (user?.avatarUrl || user?.avatar) : undefined}
+                  size="sm"
+                />
               </div>
               <div className="flex flex-col text-left">
                 <span className="text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-400 font-bold leading-none mb-0.5">
@@ -988,10 +1010,14 @@ function OdontogramaUI() {
                 </span>
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-xs text-slate-900 dark:text-white leading-tight">
-                    {selectedPaciente?.nombre || (isPaciente ? user?.name : "Seleccionar Paciente")}
+                    {isPaciente
+                      ? (user?.name || (selectedPaciente?.nombre && !selectedPaciente.nombre.startsWith("Paciente #") ? selectedPaciente.nombre : "Mi Perfil"))
+                      : (selectedPaciente?.nombre || "Seleccionar Paciente")}
                   </span>
                   <span className="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-white/10 px-1.5 py-0.5 rounded-md border border-slate-200/50 dark:border-white/10">
-                    CC: {selectedPaciente?.cedula || (isPaciente ? (user as any)?.documentNumber || "---" : "---")}
+                    CC: {isPaciente
+                      ? (user?.cedula || (user as any)?.documentNumber || (user as any)?.documento || (selectedPaciente?.cedula && !selectedPaciente.cedula.startsWith("100876") ? selectedPaciente.cedula : "---"))
+                      : (selectedPaciente?.cedula || "---")}
                   </span>
                 </div>
               </div>
@@ -1135,6 +1161,7 @@ function OdontogramaUI() {
             onExport={handleExport}
             onImport={handleImport}
             isDarkMode={isDarkMode}
+            readOnly={isPaciente}
           />
           <input
             ref={fileInputRef}
@@ -1181,9 +1208,11 @@ function OdontogramaUI() {
               {clinicalFindings.counts.caries > 0 && (
                 <button
                   type="button"
-                  onClick={() => handleDiagnosisChange("caries")}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-red-500/15 dark:bg-red-500/25 text-red-700 dark:text-red-300 border border-red-500/40 hover:scale-105 transition-all cursor-pointer shadow-xs"
-                  title="Seleccionar Caries en paleta"
+                  onClick={!isPaciente ? () => handleDiagnosisChange("caries") : undefined}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-red-500/15 dark:bg-red-500/25 text-red-700 dark:text-red-300 border border-red-500/40 shadow-xs ${
+                    !isPaciente ? "hover:scale-105 transition-all cursor-pointer" : "cursor-default"
+                  }`}
+                  title="Caries"
                 >
                   <Flame size={13} className="text-red-500" />
                   <span>Caries: {clinicalFindings.counts.caries}</span>
@@ -1194,9 +1223,11 @@ function OdontogramaUI() {
               {clinicalFindings.counts.restoration > 0 && (
                 <button
                   type="button"
-                  onClick={() => handleDiagnosisChange("restoration")}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-blue-500/15 dark:bg-blue-500/25 text-blue-700 dark:text-blue-300 border border-blue-500/40 hover:scale-105 transition-all cursor-pointer shadow-xs"
-                  title="Seleccionar Obturación en paleta"
+                  onClick={!isPaciente ? () => handleDiagnosisChange("restoration") : undefined}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-blue-500/15 dark:bg-blue-500/25 text-blue-700 dark:text-blue-300 border border-blue-500/40 shadow-xs ${
+                    !isPaciente ? "hover:scale-105 transition-all cursor-pointer" : "cursor-default"
+                  }`}
+                  title="Obturaciones"
                 >
                   <ShieldCheck size={13} className="text-blue-500" />
                   <span>Obturaciones: {clinicalFindings.counts.restoration}</span>
@@ -1207,9 +1238,11 @@ function OdontogramaUI() {
               {clinicalFindings.counts.crown > 0 && (
                 <button
                   type="button"
-                  onClick={() => handleDiagnosisChange("crown")}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-emerald-500/15 dark:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 hover:scale-105 transition-all cursor-pointer shadow-xs"
-                  title="Seleccionar Corona en paleta"
+                  onClick={!isPaciente ? () => handleDiagnosisChange("crown") : undefined}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-emerald-500/15 dark:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 shadow-xs ${
+                    !isPaciente ? "hover:scale-105 transition-all cursor-pointer" : "cursor-default"
+                  }`}
+                  title="Coronas"
                 >
                   <Crown size={13} className="text-emerald-500" />
                   <span>Coronas: {clinicalFindings.counts.crown}</span>
@@ -1220,9 +1253,11 @@ function OdontogramaUI() {
               {clinicalFindings.counts.endodontic > 0 && (
                 <button
                   type="button"
-                  onClick={() => handleDiagnosisChange("endodontic")}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-purple-500/15 dark:bg-purple-500/25 text-purple-700 dark:text-purple-300 border border-purple-500/40 hover:scale-105 transition-all cursor-pointer shadow-xs"
-                  title="Seleccionar Endodoncia en paleta"
+                  onClick={!isPaciente ? () => handleDiagnosisChange("endodontic") : undefined}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-purple-500/15 dark:bg-purple-500/25 text-purple-700 dark:text-purple-300 border border-purple-500/40 shadow-xs ${
+                    !isPaciente ? "hover:scale-105 transition-all cursor-pointer" : "cursor-default"
+                  }`}
+                  title="Endodoncias"
                 >
                   <Zap size={13} className="text-purple-500" />
                   <span>Endodoncias: {clinicalFindings.counts.endodontic}</span>
@@ -1233,9 +1268,11 @@ function OdontogramaUI() {
               {clinicalFindings.counts.implant > 0 && (
                 <button
                   type="button"
-                  onClick={() => handleDiagnosisChange("implant")}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-teal-500/15 dark:bg-teal-500/25 text-teal-700 dark:text-teal-300 border border-teal-500/40 hover:scale-105 transition-all cursor-pointer shadow-xs"
-                  title="Seleccionar Implante en paleta"
+                  onClick={!isPaciente ? () => handleDiagnosisChange("implant") : undefined}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-teal-500/15 dark:bg-teal-500/25 text-teal-700 dark:text-teal-300 border border-teal-500/40 shadow-xs ${
+                    !isPaciente ? "hover:scale-105 transition-all cursor-pointer" : "cursor-default"
+                  }`}
+                  title="Implantes"
                 >
                   <Hexagon size={13} className="text-teal-500" />
                   <span>Implantes: {clinicalFindings.counts.implant}</span>
@@ -1246,9 +1283,11 @@ function OdontogramaUI() {
               {clinicalFindings.counts.extraction > 0 && (
                 <button
                   type="button"
-                  onClick={() => handleDiagnosisChange("extraction")}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-rose-500/15 dark:bg-rose-500/25 text-rose-700 dark:text-rose-300 border border-rose-500/40 hover:scale-105 transition-all cursor-pointer shadow-xs"
-                  title="Seleccionar Extracción en paleta"
+                  onClick={!isPaciente ? () => handleDiagnosisChange("extraction") : undefined}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-rose-500/15 dark:bg-rose-500/25 text-rose-700 dark:text-rose-300 border border-rose-500/40 shadow-xs ${
+                    !isPaciente ? "hover:scale-105 transition-all cursor-pointer" : "cursor-default"
+                  }`}
+                  title="Extracciones"
                 >
                   <XCircle size={13} className="text-rose-500" />
                   <span>Extracciones: {clinicalFindings.counts.extraction}</span>
@@ -1259,9 +1298,11 @@ function OdontogramaUI() {
               {clinicalFindings.counts.fracture > 0 && (
                 <button
                   type="button"
-                  onClick={() => handleDiagnosisChange("fracture")}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-orange-500/15 dark:bg-orange-500/25 text-orange-700 dark:text-orange-300 border border-orange-500/40 hover:scale-105 transition-all cursor-pointer shadow-xs"
-                  title="Seleccionar Fractura en paleta"
+                  onClick={!isPaciente ? () => handleDiagnosisChange("fracture") : undefined}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-orange-500/15 dark:bg-orange-500/25 text-orange-700 dark:text-orange-300 border border-orange-500/40 shadow-xs ${
+                    !isPaciente ? "hover:scale-105 transition-all cursor-pointer" : "cursor-default"
+                  }`}
+                  title="Fracturas"
                 >
                   <AlertTriangle size={13} className="text-orange-500" />
                   <span>Fracturas: {clinicalFindings.counts.fracture}</span>
@@ -1272,9 +1313,11 @@ function OdontogramaUI() {
               {clinicalFindings.counts.sealant > 0 && (
                 <button
                   type="button"
-                  onClick={() => handleDiagnosisChange("sealant")}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-amber-500/15 dark:bg-amber-500/25 text-amber-700 dark:text-amber-300 border border-amber-500/40 hover:scale-105 transition-all cursor-pointer shadow-xs"
-                  title="Seleccionar Sellante en paleta"
+                  onClick={!isPaciente ? () => handleDiagnosisChange("sealant") : undefined}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-amber-500/15 dark:bg-amber-500/25 text-amber-700 dark:text-amber-300 border border-amber-500/40 shadow-xs ${
+                    !isPaciente ? "hover:scale-105 transition-all cursor-pointer" : "cursor-default"
+                  }`}
+                  title="Sellantes"
                 >
                   <Shield size={13} className="text-amber-500" />
                   <span>Sellantes: {clinicalFindings.counts.sealant}</span>
@@ -1285,9 +1328,11 @@ function OdontogramaUI() {
               {clinicalFindings.counts.mobility > 0 && (
                 <button
                   type="button"
-                  onClick={() => handleDiagnosisChange("mobility")}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-yellow-500/15 dark:bg-yellow-500/25 text-yellow-700 dark:text-yellow-300 border border-yellow-500/40 hover:scale-105 transition-all cursor-pointer shadow-xs"
-                  title="Seleccionar Movilidad en paleta"
+                  onClick={!isPaciente ? () => handleDiagnosisChange("mobility") : undefined}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-yellow-500/15 dark:bg-yellow-500/25 text-yellow-700 dark:text-yellow-300 border border-yellow-500/40 shadow-xs ${
+                    !isPaciente ? "hover:scale-105 transition-all cursor-pointer" : "cursor-default"
+                  }`}
+                  title="Movilidad"
                 >
                   <Move size={13} className="text-yellow-500" />
                   <span>Movilidad: {clinicalFindings.counts.mobility}</span>
@@ -1330,16 +1375,25 @@ function OdontogramaUI() {
             <textarea
               rows={3}
               value={notasClinicas}
-              onChange={(e) => setNotasClinicas(e.target.value)}
-              placeholder="Escribe aquí las observaciones clínicas detalladas por cuadrante o pieza dental..."
-              className="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-white/15 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:border-cyan-500 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 resize-none transition-all leading-relaxed"
+              readOnly={isPaciente}
+              onChange={!isPaciente ? (e) => setNotasClinicas(e.target.value) : undefined}
+              placeholder={
+                isPaciente
+                  ? "Observaciones clínicas registradas por el odontólogo tratante en tu historial médico."
+                  : "Escribe aquí las observaciones clínicas detalladas por cuadrante o pieza dental..."
+              }
+              className={`w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-white/15 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 outline-none transition-all leading-relaxed ${
+                isPaciente
+                  ? "cursor-default select-text resize-none"
+                  : "focus:border-cyan-500 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 resize-none"
+              }`}
             />
           </div>
         </div>
       </div>
 
-      {/* Modal de diagnóstico rápido al tocar una cara */}
-      {selectedSurface && (
+      {/* Modal de diagnóstico rápido al tocar una cara (Solo para profesionales) */}
+      {!isPaciente && selectedSurface && (
         <div className="fixed inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-xl flex items-center justify-center p-4 z-50 animate-fadeIn">
           <div className="rounded-3xl bg-white dark:bg-slate-900 backdrop-blur-3xl border border-slate-200 dark:border-white/15 shadow-2xl max-w-md w-full p-6 space-y-4 animate-scaleIn">
             <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 pb-3">

@@ -187,12 +187,18 @@ export function HistoriaClinicaView() {
 
         // Aislamiento estricto de privacidad: Un paciente SOLO ve su propia historia clínica
         if (isPaciente) {
-          const userDoc = (user as any)?.documentNumber || "";
+          const userDoc = user?.cedula || (user as any)?.documentNumber || (user as any)?.documento || "";
+          const userPhone = user?.telefono || (user as any)?.phone || "3001234567";
+          const nameParts = (user?.name || "").trim().split(" ");
+          const userFirstName = user?.nombre || (nameParts.length > 0 && nameParts[0] ? nameParts[0] : "Mi");
+          const userLastName = user?.apellido || (nameParts.length > 1 ? nameParts.slice(1).join(" ") : "");
+
           const myPt = enriched.find((p) =>
             areGuidsEqual(p.personId, user?.personId) ||
             areGuidsEqual(p.id, user?.id) ||
             (userDoc && String(p.documentNumber).trim() === String(userDoc).trim()) ||
-            (user?.email && p.email?.toLowerCase().trim() === user.email.toLowerCase().trim())
+            (user?.email && p.email?.toLowerCase().trim() === user.email.toLowerCase().trim()) ||
+            (user?.name && `${p.firstName} ${p.lastName}`.toLowerCase().includes(user.name.toLowerCase()))
           );
           if (myPt) {
             enriched = [myPt];
@@ -202,10 +208,10 @@ export function HistoriaClinicaView() {
             const fallbackSelf = {
               id: user?.personId || user?.id || "patient-self",
               personId: user?.personId || user?.id || "person-self",
-              firstName: user?.name || "Mi",
-              lastName: "Perfil",
-              documentNumber: userDoc || "1098765432",
-              phone: (user as any)?.phone || "3001234567",
+              firstName: userFirstName,
+              lastName: userLastName,
+              documentNumber: userDoc || "1008765432",
+              phone: userPhone,
               email: user?.email || "paciente@nexus.com",
             } as any;
             enriched = [fallbackSelf];
@@ -219,13 +225,19 @@ export function HistoriaClinicaView() {
         }
       } else {
         if (isPaciente) {
+          const userDoc = user?.cedula || (user as any)?.documentNumber || (user as any)?.documento || "1008765432";
+          const userPhone = user?.telefono || (user as any)?.phone || "3001234567";
+          const nameParts = (user?.name || "").trim().split(" ");
+          const userFirstName = user?.nombre || (nameParts.length > 0 && nameParts[0] ? nameParts[0] : "Mi");
+          const userLastName = user?.apellido || (nameParts.length > 1 ? nameParts.slice(1).join(" ") : "");
+
           const fallbackSelf = {
             id: user?.personId || user?.id || "patient-self",
             personId: user?.personId || user?.id || "person-self",
-            firstName: user?.name || "Mi",
-            lastName: "Perfil",
-            documentNumber: (user as any)?.documentNumber || "1098765432",
-            phone: (user as any)?.phone || "3001234567",
+            firstName: userFirstName,
+            lastName: userLastName,
+            documentNumber: userDoc,
+            phone: userPhone,
             email: user?.email || "paciente@nexus.com",
           } as any;
           setPatients([fallbackSelf]);
@@ -237,13 +249,19 @@ export function HistoriaClinicaView() {
     } catch (err) {
       console.warn("Could not load patients for Historia Clínica:", err);
       if (isPaciente) {
+        const userDoc = user?.cedula || (user as any)?.documentNumber || (user as any)?.documento || "1008765432";
+        const userPhone = user?.telefono || (user as any)?.phone || "3001234567";
+        const nameParts = (user?.name || "").trim().split(" ");
+        const userFirstName = user?.nombre || (nameParts.length > 0 && nameParts[0] ? nameParts[0] : "Mi");
+        const userLastName = user?.apellido || (nameParts.length > 1 ? nameParts.slice(1).join(" ") : "");
+
         const fallbackSelf = {
           id: user?.personId || user?.id || "patient-self",
           personId: user?.personId || user?.id || "person-self",
-          firstName: user?.name || "Mi",
-          lastName: "Perfil",
-          documentNumber: (user as any)?.documentNumber || "1098765432",
-          phone: (user as any)?.phone || "3001234567",
+          firstName: userFirstName,
+          lastName: userLastName,
+          documentNumber: userDoc,
+          phone: userPhone,
           email: user?.email || "paciente@nexus.com",
         } as any;
         setPatients([fallbackSelf]);
@@ -1012,7 +1030,7 @@ export function HistoriaClinicaView() {
                 </button>
               </div>
 
-              {/* Mini Widget 3D Folder Permanente */}
+              {/* Mini Widget 3D Folder Permanente: Dossier Activo */}
               <div className="pt-3 border-t border-slate-200/80 dark:border-white/10 flex flex-col items-center justify-center space-y-2">
                 <FolderComponent
                   color="teal"
@@ -1020,18 +1038,18 @@ export function HistoriaClinicaView() {
                   title="Dossier Activo"
                   subtitle={`${selectedPatient.firstName} ${selectedPatient.lastName}`}
                   items={[
+                    { title: "Odontograma FDI", tag: "3D Dental" },
                     { title: "Evoluciones", tag: `${attentions.length}` },
                     { title: "Diagnósticos", tag: "CIE-10" },
-                    { title: "Fórmulas", tag: "Rx" },
                   ]}
-                  onCardClick={() => setFolderCategory(null)}
+                  onCardClick={() => navigate("/odontograma")}
                 />
                 <button
                   type="button"
-                  onClick={() => setFolderCategory(null)}
+                  onClick={() => navigate("/odontograma")}
                   className="text-[11px] font-bold text-teal-600 dark:text-teal-400 hover:underline cursor-pointer"
                 >
-                  Ver Archivador Digital 3D →
+                  Ver Odontograma Interactivo →
                 </button>
               </div>
             </div>

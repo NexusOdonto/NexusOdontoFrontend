@@ -28,6 +28,7 @@ interface ConvencionesToolbarProps {
   onExport: () => void;
   onImport: () => void;
   isDarkMode: boolean;
+  readOnly?: boolean;
 }
 
 /**
@@ -70,10 +71,12 @@ export function ConvencionesToolbar({
   onExport = () => {},
   onImport = () => {},
   isDarkMode: _isDarkMode,
+  readOnly = false,
 }: ConvencionesToolbarProps) {
   const safeLegend = DIAGNOSIS_LEGEND || [];
 
   const handleConfirmClear = () => {
+    if (readOnly) return;
     if (
       window.confirm(
         "¿Estás seguro de que deseas limpiar todas las piezas del odontograma? Esta acción restablecerá el estado clínico dental."
@@ -128,48 +131,51 @@ export function ConvencionesToolbar({
         <div className="flex items-center justify-between">
           <span className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
             <Activity size={13} className="text-teal-600 dark:text-teal-400" />
-            Diagnósticos
+            {readOnly ? "Convenciones y Simbología" : "Diagnósticos"}
           </span>
           <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
-            Toca una cara dental
+            {readOnly ? "Guía de colores FDI" : "Toca una cara dental"}
           </span>
         </div>
 
-        {/* Botón rápido de Borrador / Sano */}
-        <button
-          type="button"
-          onClick={() => onDiagnosisChange("none")}
-          className={`w-full flex items-center justify-between px-3.5 py-2 rounded-2xl text-xs font-bold transition-all border cursor-pointer ${
-            selectedDiagnosis === "none"
-              ? "bg-slate-200 dark:bg-white/20 text-slate-900 dark:text-white ring-2 ring-slate-400 dark:ring-white border-transparent shadow-sm"
-              : "bg-slate-100/60 dark:bg-slate-950/40 text-slate-600 dark:text-slate-400 border-slate-200/80 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-slate-900"
-          }`}
-          title="Seleccionar para limpiar o marcar pieza como sana"
-        >
-          <span className="flex items-center gap-2">
-            <Eraser size={14} className="text-slate-500 dark:text-slate-300" />
-            <span>Sano / Restaurar cara</span>
-          </span>
-          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-200/70 dark:bg-white/10 text-slate-600 dark:text-slate-300">
-            Limpiar cara
-          </span>
-        </button>
+        {/* Botón rápido de Borrador / Sano — solo si es editable */}
+        {!readOnly && (
+          <button
+            type="button"
+            onClick={() => onDiagnosisChange("none")}
+            className={`w-full flex items-center justify-between px-3.5 py-2 rounded-2xl text-xs font-bold transition-all border cursor-pointer ${
+              selectedDiagnosis === "none"
+                ? "bg-slate-200 dark:bg-white/20 text-slate-900 dark:text-white ring-2 ring-slate-400 dark:ring-white border-transparent shadow-sm"
+                : "bg-slate-100/60 dark:bg-slate-950/40 text-slate-600 dark:text-slate-400 border-slate-200/80 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-slate-900"
+            }`}
+            title="Seleccionar para limpiar o marcar pieza como sana"
+          >
+            <span className="flex items-center gap-2">
+              <Eraser size={14} className="text-slate-500 dark:text-slate-300" />
+              <span>Sano / Restaurar cara</span>
+            </span>
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-200/70 dark:bg-white/10 text-slate-600 dark:text-slate-300">
+              Limpiar cara
+            </span>
+          </button>
+        )}
 
         {/* Grilla de diagnósticos con micro-íconos médicos */}
         <div className="grid grid-cols-2 gap-2">
           {safeLegend.map(({ diagnosis, label, hex, glow, ring }) => {
-            const isSelected = selectedDiagnosis === diagnosis;
+            const isSelected = !readOnly && selectedDiagnosis === diagnosis;
             return (
-              <button
+              <div
                 key={diagnosis}
-                type="button"
-                onClick={() => onDiagnosisChange(diagnosis)}
-                className={`group relative flex items-center gap-2 px-2.5 py-2 rounded-2xl text-xs font-bold transition-all border cursor-pointer ${
-                  isSelected
-                    ? `bg-white dark:bg-slate-950 text-slate-900 dark:text-white border-transparent ring-2 ${ring} ${glow} scale-[1.03] z-10`
-                    : `bg-slate-50/70 dark:bg-slate-950/40 text-slate-700 dark:text-slate-300 border-slate-200/80 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20 hover:bg-white dark:hover:bg-slate-950/70`
+                onClick={!readOnly ? () => onDiagnosisChange(diagnosis) : undefined}
+                className={`group relative flex items-center gap-2 px-2.5 py-2 rounded-2xl text-xs font-bold transition-all border ${
+                  readOnly
+                    ? "bg-slate-50/70 dark:bg-slate-950/40 text-slate-700 dark:text-slate-300 border-slate-200/80 dark:border-white/10 cursor-default"
+                    : isSelected
+                    ? `bg-white dark:bg-slate-950 text-slate-900 dark:text-white border-transparent ring-2 ${ring} ${glow} scale-[1.03] z-10 cursor-pointer`
+                    : `bg-slate-50/70 dark:bg-slate-950/40 text-slate-700 dark:text-slate-300 border-slate-200/80 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20 hover:bg-white dark:hover:bg-slate-950/70 cursor-pointer`
                 }`}
-                title={`Seleccionar ${label} para aplicar en el odontograma`}
+                title={readOnly ? label : `Seleccionar ${label} para aplicar en el odontograma`}
               >
                 {/* Micro-Ícono Médico Ilustrado */}
                 <div
@@ -184,47 +190,61 @@ export function ConvencionesToolbar({
                 </div>
 
                 <span className="truncate text-[11px] sm:text-xs">{label}</span>
-              </button>
+              </div>
             );
           })}
         </div>
       </div>
 
-      {/* 3. Acciones Inferiores Separadas */}
+      {/* 3. Acciones Inferiores */}
       <div className="pt-2 space-y-3 border-t border-slate-200/80 dark:border-white/10">
-        {/* Botón de advertencia: Limpiar Odontograma (Protegido) */}
-        <button
-          type="button"
-          onClick={handleConfirmClear}
-          className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/30 text-xs font-black transition-all cursor-pointer active:scale-95 group shadow-sm"
-          title="Restablecer todas las piezas al estado sano"
-        >
-          <RotateCcw size={14} className="group-hover:-rotate-90 transition-transform duration-300" />
-          <span>Limpiar Odontograma</span>
-        </button>
+        {!readOnly ? (
+          <>
+            {/* Botón de advertencia: Limpiar Odontograma (Protegido) */}
+            <button
+              type="button"
+              onClick={handleConfirmClear}
+              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/30 text-xs font-black transition-all cursor-pointer active:scale-95 group shadow-sm"
+              title="Restablecer todas las piezas al estado sano"
+            >
+              <RotateCcw size={14} className="group-hover:-rotate-90 transition-transform duration-300" />
+              <span>Limpiar Odontograma</span>
+            </button>
 
-        {/* Bloque de Gestión de Datos: Exportar e Importar */}
-        <div className="grid grid-cols-2 gap-2">
+            {/* Bloque de Gestión de Datos: Exportar e Importar */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={onExport}
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-2xl bg-slate-100 dark:bg-white/[0.04] hover:bg-cyan-50 dark:hover:bg-cyan-500/15 text-slate-700 hover:text-cyan-700 dark:text-slate-300 dark:hover:text-cyan-300 border border-slate-200 dark:border-white/10 text-xs font-bold transition-all cursor-pointer active:scale-95 shadow-sm"
+                title="Exportar archivo JSON del odontograma"
+              >
+                <Download size={14} />
+                <span>Exportar</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={onImport}
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-2xl bg-slate-100 dark:bg-white/[0.04] hover:bg-teal-50 dark:hover:bg-teal-500/15 text-slate-700 hover:text-teal-700 dark:text-slate-300 dark:hover:text-teal-300 border border-slate-200 dark:border-white/10 text-xs font-bold transition-all cursor-pointer active:scale-95 shadow-sm"
+                title="Importar archivo JSON del odontograma"
+              >
+                <Upload size={14} />
+                <span>Importar</span>
+              </button>
+            </div>
+          </>
+        ) : (
           <button
             type="button"
             onClick={onExport}
-            className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-2xl bg-slate-100 dark:bg-white/[0.04] hover:bg-cyan-50 dark:hover:bg-cyan-500/15 text-slate-700 hover:text-cyan-700 dark:text-slate-300 dark:hover:text-cyan-300 border border-slate-200 dark:border-white/10 text-xs font-bold transition-all cursor-pointer active:scale-95 shadow-sm"
-            title="Exportar archivo JSON del odontograma"
+            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-100 dark:bg-white/[0.04] hover:bg-cyan-50 dark:hover:bg-cyan-500/15 text-slate-700 hover:text-cyan-700 dark:text-slate-300 dark:hover:text-cyan-300 border border-slate-200 dark:border-white/10 text-xs font-bold transition-all cursor-pointer active:scale-95 shadow-sm"
+            title="Descargar copia de mi odontograma en JSON"
           >
             <Download size={14} />
-            <span>Exportar</span>
+            <span>Descargar Copia de Mi Odontograma</span>
           </button>
-
-          <button
-            type="button"
-            onClick={onImport}
-            className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-2xl bg-slate-100 dark:bg-white/[0.04] hover:bg-teal-50 dark:hover:bg-teal-500/15 text-slate-700 hover:text-teal-700 dark:text-slate-300 dark:hover:text-teal-300 border border-slate-200 dark:border-white/10 text-xs font-bold transition-all cursor-pointer active:scale-95 shadow-sm"
-            title="Importar archivo JSON del odontograma"
-          >
-            <Upload size={14} />
-            <span>Importar</span>
-          </button>
-        </div>
+        )}
       </div>
     </div>
   );

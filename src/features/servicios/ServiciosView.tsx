@@ -512,7 +512,7 @@ export function ServiciosView() {
               className={`px-4 py-2.5 rounded-2xl transition-all duration-200 cursor-pointer whitespace-nowrap border text-xs font-bold backdrop-blur-2xl ${
                 isActive
                   ? "bg-cyan-600 text-white border-cyan-600 shadow-md dark:bg-cyan-500/30 dark:border-cyan-400/70 dark:text-cyan-100"
-                  : "bg-white/80 border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-white dark:bg-slate-900/60 dark:border-white/10 dark:text-slate-300 dark:hover:text-white"
+                  : "bg-white/80 border-slate-200/90 text-slate-700 hover:text-slate-900 hover:bg-white hover:border-slate-300 dark:bg-slate-900/60 dark:border-white/10 dark:text-slate-300 dark:hover:bg-slate-800/80 dark:hover:border-cyan-400/40 dark:hover:text-white"
               }`}
             >
               {cat.label}

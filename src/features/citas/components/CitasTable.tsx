@@ -1,7 +1,6 @@
 import {
   CalendarDays,
   Clock3,
-  UserRound,
   Stethoscope,
   CheckCircle,
   XCircle,
@@ -15,6 +14,7 @@ import { useNavigate } from "react-router-dom";
 import { type Cita, type EstadoCita } from "../types";
 import { useAuth } from "../../auth/AuthContext";
 import { getUserRole } from "../../../utils/routePermissions";
+import { UserAvatar } from "../../../components/common/UserAvatar";
 
 interface CitasTableProps {
   citas: Cita[];
@@ -188,8 +188,12 @@ export function CitasTable({
             >
               {/* PACIENTE */}
               <div className="flex items-center gap-3 min-w-0 pr-2">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-teal-500/20 via-cyan-500/20 to-blue-500/20 dark:from-teal-400/30 dark:via-cyan-400/30 dark:to-blue-500/30 border border-cyan-500/40 dark:border-cyan-400/50 text-cyan-800 dark:text-cyan-200 font-extrabold shadow-sm group-hover:scale-105 transition-transform">
-                  <UserRound size={16} className="text-teal-600 dark:text-teal-400" />
+                <div className="h-9 w-9 shrink-0 rounded-xl overflow-hidden border border-cyan-500/40 dark:border-cyan-400/50 shadow-sm flex items-center justify-center group-hover:scale-105 transition-transform bg-slate-100 dark:bg-slate-900">
+                  <UserAvatar
+                    name={cita.paciente}
+                    className="h-full w-full object-cover"
+                    fallbackClassName="h-full w-full flex items-center justify-center font-bold text-xs"
+                  />
                 </div>
                 <div className="min-w-0">
                   <p className="truncate text-sm font-bold text-slate-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
@@ -401,10 +405,22 @@ export function CitasTable({
             onClick={() => onOpenEditModal && onOpenEditModal(cita)}
             className="p-5 rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl shadow-md space-y-3 cursor-pointer hover:border-teal-500/50 transition-all"
           >
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <p className="font-bold text-sm text-slate-900 dark:text-white">{cita.paciente}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">{cita.servicio}</p>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="h-10 w-10 shrink-0 rounded-xl overflow-hidden border border-cyan-500/40 dark:border-cyan-400/50 shadow-sm flex items-center justify-center bg-slate-100 dark:bg-slate-900">
+                  <UserAvatar
+                    name={cita.paciente}
+                    className="h-full w-full object-cover"
+                    fallbackClassName="h-full w-full flex items-center justify-center font-bold text-xs"
+                  />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-bold text-sm text-slate-900 dark:text-white truncate">{cita.paciente}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{cita.servicio}</p>
+                  {cita.pacienteCedula && (
+                    <p className="text-[10px] text-slate-400 font-mono">CC: {cita.pacienteCedula}</p>
+                  )}
+                </div>
               </div>
               {estadoBadge(cita.estado)}
             </div>

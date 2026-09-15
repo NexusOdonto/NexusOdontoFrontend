@@ -204,6 +204,7 @@ export function ProfesionalesView() {
   const isRecepcionista = userRole === "RECEPCIONISTA";
   const isAdmin = userRole === "ADMINISTRADOR";
   const canCreateProfessional = isAdmin || isRecepcionista;
+  const canScheduleDirectly = isAdmin || isRecepcionista;
 
   const [profesionales, setProfesionales] = useState<ProfessionalFull[]>([]);
   const [loading, setLoading] = useState(true);
@@ -843,16 +844,7 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
 
                 {/* Acciones de la Tarjeta */}
                 <div className="pt-5 border-t border-slate-200/80 dark:border-white/10 flex items-center gap-2 mt-4">
-                  {isOdontologo ? (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedProfForSchedule(prof)}
-                      className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-95"
-                    >
-                      <Calendar size={14} className="text-cyan-500" />
-                      <span>Ver Horarios y Disponibilidad</span>
-                    </button>
-                  ) : (
+                  {canScheduleDirectly ? (
                     <>
                       <button
                         type="button"
@@ -872,6 +864,15 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                         <span>Agendar</span>
                       </button>
                     </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedProfForSchedule(prof)}
+                      className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-95"
+                    >
+                      <Calendar size={14} className="text-cyan-500" />
+                      <span>Ver Horarios y Disponibilidad</span>
+                    </button>
                   )}
                 </div>
               </div>
@@ -975,17 +976,7 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
 
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          {isOdontologo ? (
-                            <button
-                              type="button"
-                              onClick={() => setSelectedProfForSchedule(prof)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 text-xs font-semibold transition-colors cursor-pointer"
-                              title="Ver horarios y sillones"
-                            >
-                              <Calendar size={13} className="text-cyan-500" />
-                              <span>Horarios</span>
-                            </button>
-                          ) : (
+                          {canScheduleDirectly ? (
                             <>
                               <button
                                 type="button"
@@ -1004,6 +995,16 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                                 <Send size={14} />
                               </button>
                             </>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedProfForSchedule(prof)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 text-xs font-semibold transition-colors cursor-pointer"
+                              title="Ver horarios y disponibilidad"
+                            >
+                              <Calendar size={13} className="text-cyan-500" />
+                              <span>Ver Horarios</span>
+                            </button>
                           )}
                         </div>
                       </td>
