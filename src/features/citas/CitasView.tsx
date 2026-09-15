@@ -484,18 +484,62 @@ export function CitasView() {
             ? profsMap[prId] || a.professionalName || "Dra. Laura Gómez"
             : a.professionalName || "";
 
-          let estadoName: EstadoCita = "Confirmada";
-          if (a.cancelledAt) {
+                    const stId = a.appointmentStatusId ? String(a.appointmentStatusId).toLowerCase() : "";
+          let estadoName: EstadoCita = "Pendiente";
+
+          if (a.cancelledAt || stId === "10000000-0000-0000-0000-000000000005") {
             estadoName = "Cancelada";
-          } else if (!a.professionalId || a.professionalId === "00000000-0000-0000-0000-000000000000") {
+          } else if (stId === "10000000-0000-0000-0000-000000000006") {
+            estadoName = "No Asistió";
+          } else if (stId === "10000000-0000-0000-0000-000000000004") {
+            estadoName = "Completada";
+          } else if (stId === "10000000-0000-0000-0000-000000000003") {
+            estadoName = "En Atención";
+          } else if (stId === "10000000-0000-0000-0000-000000000002") {
+            estadoName = "Confirmada";
+          } else if (stId === "10000000-0000-0000-0000-000000000001") {
             estadoName = "Pendiente";
           } else if (a.statusName) {
             const sn = a.statusName.toUpperCase();
-            if (sn.includes("NO_ASIST") || sn.includes("NO ASIST")) estadoName = "No Asistió";
-            else if (sn.includes("PEND") || sn.includes("AGEN")) estadoName = "Pendiente";
+            if (sn.includes("NO_ASIST") || sn.includes("NO ASIST") || sn.includes("NO ATEND")) estadoName = "No Asistió";
+            else if (sn.includes("COMPLET") || sn.includes("ATENDID")) estadoName = "Completada";
+            else if (sn.includes("EN ATENCI") || sn.includes("ATTEND")) estadoName = "En Atención";
+            else if (sn.includes("PEND") || sn.includes("AGEN") || sn.includes("SCHED")) estadoName = "Pendiente";
             else if (sn.includes("CONFIRM")) estadoName = "Confirmada";
-            else if (sn.includes("ATTEND") || sn.includes("EN ATENCIÓN")) estadoName = "En Atención";
+          } else if (!a.professionalId || a.professionalId === "00000000-0000-0000-0000-000000000000") {
+            estadoName = "Pendiente";
+          }
+
+          // Evaluación temporal: Si la cita no fue atendida (Completada / En Atención) y ya pasaron más de 45 minutos de su hora programada o es de un día anterior:
+          if (estadoName !== "Completada" && estadoName !== "En Atención" && estadoName !== "Cancelada") {
+            try {
+              const [sYear, sMonth, sDay] = startDate.split("-").map(Number);
+              const [sHour, sMin] = startTime.split(":").map(Number);
+              const apptDateTime = new Date(sYear, sMonth - 1, sDay, sHour || 0, sMin || 0);
+              const now = new Date();
+              if (!isNaN(apptDateTime.getTime()) && now.getTime() > (apptDateTime.getTime() + 45 * 60 * 1000)) {
+                estadoName = "No Asistió";
+              }
+            } catch {
+              // Ignore
+            }
+          } else if (stId === "10000000-0000-0000-0000-000000000002") {
+            estadoName = "Confirmada";
+          } else if (stId === "10000000-0000-0000-0000-000000000003") {
+            estadoName = "En Atención";
+          } else if (stId === "10000000-0000-0000-0000-000000000004") {
+            estadoName = "Completada";
+          } else if (stId === "10000000-0000-0000-0000-000000000006") {
+            estadoName = "No Asistió";
+          } else if (a.statusName) {
+            const sn = a.statusName.toUpperCase();
+            if (sn.includes("NO_ASIST") || sn.includes("NO ASIST")) estadoName = "No Asistió";
+            else if (sn.includes("PEND") || sn.includes("AGEN") || sn.includes("SCHED")) estadoName = "Pendiente";
+            else if (sn.includes("CONFIRM")) estadoName = "Confirmada";
+            else if (sn.includes("ATTEND") || sn.includes("EN ATENCI") || sn.includes("ATENCION")) estadoName = "En Atención";
             else if (sn.includes("COMPLET")) estadoName = "Completada";
+          } else if (!a.professionalId || a.professionalId === "00000000-0000-0000-0000-000000000000") {
+            estadoName = "Pendiente";
           }
 
           return {

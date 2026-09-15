@@ -10,7 +10,7 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute(_props: ProtectedRouteProps = {}) {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -20,7 +20,8 @@ export default function ProtectedRoute(_props: ProtectedRouteProps = {}) {
     const handlePopState = () => {
       if (window.location.pathname === '/login' || window.location.pathname === '/register') {
         if (user?.mustChangePassword) {
-          navigate('/cambiar-password', { replace: true });
+          logout();
+          navigate('/login', { replace: true });
         } else {
           navigate('/dashboard', { replace: true });
         }
@@ -31,7 +32,7 @@ export default function ProtectedRoute(_props: ProtectedRouteProps = {}) {
     return () => {
       window.removeEventListener('popstate', handlePopState);
     };
-  }, [isAuthenticated, user?.mustChangePassword, navigate]);
+  }, [isAuthenticated, user?.mustChangePassword, navigate, logout]);
 
   if (isLoading) {
     return (

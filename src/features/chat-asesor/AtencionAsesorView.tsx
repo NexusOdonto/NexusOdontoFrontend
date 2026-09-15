@@ -477,10 +477,8 @@ export function AtencionAsesorView() {
             stCode = "CERRADA";
           } else if (areGuidsEqual(c.conversationStatusId, CONVERSATION_STATUS_IDS.ATENDIDA_HUMANO)) {
             stCode = "ATENDIDA_HUMANO";
-          } else if (isTicketPending) {
+          } else if (areGuidsEqual(c.conversationStatusId, CONVERSATION_STATUS_IDS.ESCALADA) || isTicketPending) {
             stCode = "ESCALADA";
-          } else if (areGuidsEqual(c.conversationStatusId, CONVERSATION_STATUS_IDS.ESCALADA)) {
-            stCode = isTicketPending ? "ESCALADA" : "ACTIVA";
           } else {
             stCode = "ACTIVA";
           }

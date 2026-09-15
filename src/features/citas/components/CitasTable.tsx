@@ -5,6 +5,8 @@ import {
   Stethoscope,
   CheckCircle,
   XCircle,
+  Check,
+  X,
   PlayCircle,
   FileText,
   Smile,
@@ -259,17 +261,50 @@ export function CitasTable({
                 {/* 2. RECEPCIONISTA / ADMIN */}
                 {(isRecepcionista || isAdmin) && (
                   <>
-                    {cita.estado === "Pendiente" && onOpenAssignModal && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onOpenAssignModal(cita);
-                        }}
-                        className="px-3 py-1.5 rounded-xl bg-linear-to-r from-teal-500 to-cyan-500 hover:from-teal-400 hover:to-cyan-400 text-white dark:text-slate-950 font-bold transition-all cursor-pointer shadow-sm active:scale-95 text-xs"
-                      >
-                        Asignar / Aprobar
-                      </button>
+                    {cita.estado === "Pendiente" && (
+                      <div className="flex items-center justify-end gap-1.5">
+                        {onUpdateStatus && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onUpdateStatus(cita.id, "Confirmada");
+                            }}
+                            className="px-2.5 py-1 rounded-xl bg-teal-500 hover:bg-teal-600 text-white font-semibold transition-all cursor-pointer shadow-xs active:scale-95 text-xs flex items-center gap-1"
+                            title="Aprobar y Confirmar Cita"
+                          >
+                            <Check size={13} />
+                            <span>Aprobar</span>
+                          </button>
+                        )}
+                        {onUpdateStatus && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onUpdateStatus(cita.id, "Cancelada");
+                            }}
+                            className="px-2.5 py-1 rounded-xl border border-rose-500/40 hover:bg-rose-500/15 text-rose-600 dark:text-rose-400 font-semibold transition-all cursor-pointer text-xs flex items-center gap-1"
+                            title="Rechazar Cita"
+                          >
+                            <X size={13} />
+                            <span>Rechazar</span>
+                          </button>
+                        )}
+                        {onOpenAssignModal && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpenAssignModal(cita);
+                            }}
+                            className="px-2 py-1 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition-all cursor-pointer text-xs"
+                            title="Reasignar Doctor u Horario"
+                          >
+                            Editar
+                          </button>
+                        )}
+                      </div>
                     )}
                     {cita.estado === "Confirmada" && onUpdateStatus && (
                       <button
@@ -390,17 +425,47 @@ export function CitasTable({
             </div>
 
             {/* Acciones Móvil */}
-            {(isRecepcionista || isAdmin) && cita.estado === "Pendiente" && onOpenAssignModal && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOpenAssignModal(cita);
-                }}
-                className="w-full py-2.5 rounded-xl bg-linear-to-r from-teal-500 to-cyan-500 text-white dark:text-slate-950 font-bold text-xs text-center shadow-md active:scale-95"
-              >
-                Aprobar y Asignar Doctor
-              </button>
+            {(isRecepcionista || isAdmin) && cita.estado === "Pendiente" && (
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                {onUpdateStatus && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onUpdateStatus(cita.id, "Confirmada");
+                    }}
+                    className="w-full py-2 rounded-xl bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs text-center shadow-sm active:scale-95 flex items-center justify-center gap-1"
+                  >
+                    <Check size={14} />
+                    <span>Aprobar Cita</span>
+                  </button>
+                )}
+                {onUpdateStatus && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onUpdateStatus(cita.id, "Cancelada");
+                    }}
+                    className="w-full py-2 rounded-xl border border-rose-500/40 text-rose-600 dark:text-rose-400 font-bold text-xs text-center hover:bg-rose-500/10 active:scale-95 flex items-center justify-center gap-1"
+                  >
+                    <X size={14} />
+                    <span>Rechazar Cita</span>
+                  </button>
+                )}
+                {onOpenAssignModal && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenAssignModal(cita);
+                    }}
+                    className="col-span-2 w-full py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs text-center hover:bg-slate-100 dark:hover:bg-slate-800"
+                  >
+                    Reasignar Especialista u Horario
+                  </button>
+                )}
+              </div>
             )}
 
             {isOdontologo && cita.estado === "Confirmada" && onUpdateStatus && (

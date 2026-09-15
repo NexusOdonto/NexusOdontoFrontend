@@ -218,18 +218,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const changePassword = async (newPassword: string): Promise<{ success: boolean; error?: string }> => {
     try {
       await authService.changePassword(newPassword);
-    } catch (e) {
-      console.warn('Servidor changePassword no disponible o diferido:', e);
+
+      setUser((prev) => {
+        if (!prev) return null;
+        const updated = { ...prev, mustChangePassword: false };
+        localStorage.setItem('auth_user', JSON.stringify(updated));
+        return updated;
+      });
+
+      return { success: true };
+    } catch (e: any) {
+      console.error('Error al cambiar contraseña:', e);
+      const serverMessage = e?.response?.data?.message || e?.message || 'Error al actualizar la contraseña en el servidor.';
+      return { success: false, error: serverMessage };
     }
-
-    setUser((prev) => {
-      if (!prev) return null;
-      const updated = { ...prev, mustChangePassword: false };
-      localStorage.setItem('auth_user', JSON.stringify(updated));
-      return updated;
-    });
-
-    return { success: true };
   };
 
   const login = async (identifier: string, password: string): Promise<{ success: boolean; error?: string }> => {

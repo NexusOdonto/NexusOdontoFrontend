@@ -120,12 +120,8 @@ export const authService = {
   },
 
   changePassword: async (newPassword: string): Promise<any> => {
-    try {
-      const response = await axiosClient.post('/auth/change-password', { newPassword });
-      return response.data;
-    } catch {
-      return { success: true };
-    }
+    const response = await axiosClient.post('/auth/change-password', { newPassword });
+    return response.data;
   },
 
   logout: async (refreshToken?: string): Promise<void> => {

@@ -1,6 +1,6 @@
 ﻿import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldAlert, Lock, Eye, EyeOff, CheckCircle2, Circle, KeyRound, ArrowRight, UserCheck } from 'lucide-react';
+import { ShieldAlert, Lock, Eye, EyeOff, CheckCircle2, Circle, KeyRound, ArrowRight, UserCheck, ArrowLeft, LogOut } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from './AuthContext';
 import fondoLoginLight from '../../assets/fondo-Login-ligh.webp';
@@ -10,7 +10,7 @@ import logoNexus from '../../assets/nexus-odonto-logo.webp';
 export default function ChangePasswordPage() {
   const navigate = useNavigate();
   const { theme } = useTheme();
-  const { user, changePassword } = useAuth();
+  const { user, changePassword, logout } = useAuth();
 
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -39,6 +39,15 @@ export default function ChangePasswordPage() {
   };
 
   const strengthInfo = getStrengthLabel();
+
+  const handleBackToLogin = async () => {
+    try {
+      await logout();
+    } catch {
+      // Ignorar fallo de cierre
+    }
+    navigate('/login', { replace: true });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,8 +88,19 @@ export default function ChangePasswordPage() {
 
         <div className="relative z-10 w-full p-8 md:p-10 rounded-3xl backdrop-blur-xl border transition-all duration-500 ease-out flex flex-col gap-5 group-hover:scale-[1.02] group-hover:-translate-y-1 bg-white/85 border-slate-200/80 text-slate-800 shadow-2xl dark:bg-slate-900/80 dark:border-slate-800/80 dark:text-white">
           
-          <div className="flex justify-center select-none -mb-1">
-            <img src={logoNexus} alt="NexusOdonto" className="h-10 w-auto object-contain drop-shadow-md" />
+          <div className="flex items-center justify-between -mb-1">
+            <button
+              type="button"
+              onClick={handleBackToLogin}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-teal-600 dark:text-slate-400 dark:hover:text-teal-400 transition-colors cursor-pointer group/back"
+              title="Volver a la pantalla de inicio de sesión"
+            >
+              <ArrowLeft size={16} className="transition-transform group-hover/back:-translate-x-0.5" />
+              <span>Volver al Login</span>
+            </button>
+            <div className="flex justify-end select-none">
+              <img src={logoNexus} alt="NexusOdonto" className="h-9 w-auto object-contain drop-shadow-md" />
+            </div>
           </div>
 
           <div className="inline-flex items-center gap-2 self-center px-3.5 py-1.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-semibold">
@@ -210,6 +230,17 @@ export default function ChangePasswordPage() {
                 </>
               )}
             </button>
+
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={handleBackToLogin}
+                className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-slate-100/80 hover:bg-slate-200/80 dark:bg-slate-800/60 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/60 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <LogOut size={14} className="text-slate-400 dark:text-slate-500" />
+                <span>Cancelar y volver al inicio de sesión</span>
+              </button>
+            </div>
           </form>
         </div>
       </div>

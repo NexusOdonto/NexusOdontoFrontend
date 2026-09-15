@@ -384,18 +384,37 @@ export function AgendaView() {
             }
             resolvedServiceName = translateServiceName(resolvedServiceName);
 
+            const stId = a.appointmentStatusId ? String(a.appointmentStatusId).toLowerCase() : "";
             let estadoMapeado: EstadoCita = "Confirmada";
             const sn = (a.statusName || "").toUpperCase();
-            if (sn.includes("COMPLET") || sn.includes("ATENDIDA") || sn.includes("FINALIZ")) {
-              estadoMapeado = "Completada";
-            } else if (sn.includes("ATEN") || sn.includes("ATTEND") || sn.includes("PROCESO")) {
-              estadoMapeado = "En Atención";
-            } else if (sn.includes("PEND") || sn.includes("AGEN") || sn.includes("SCHEDULED")) {
-              estadoMapeado = "Pendiente";
-            } else if (sn.includes("CONFIRM") || sn.includes("ACEPT")) {
-              estadoMapeado = "Confirmada";
-            } else if (sn.includes("CANCEL")) {
+
+            if (a.cancelledAt || stId === "10000000-0000-0000-0000-000000000005" || sn.includes("CANCEL")) {
               estadoMapeado = "No disponible";
+            } else if (stId === "10000000-0000-0000-0000-000000000006" || sn.includes("NO_ASIST") || sn.includes("NO ASIST")) {
+              estadoMapeado = "No disponible";
+            } else if (stId === "10000000-0000-0000-0000-000000000004" || sn.includes("COMPLET") || sn.includes("ATENDIDA")) {
+              estadoMapeado = "Completada";
+            } else if (stId === "10000000-0000-0000-0000-000000000003" || sn.includes("ATEN") || sn.includes("ATTEND")) {
+              estadoMapeado = "En Atención";
+            } else if (stId === "10000000-0000-0000-0000-000000000001" || sn.includes("PEND") || sn.includes("AGEN") || sn.includes("SCHEDULED")) {
+              estadoMapeado = "Pendiente";
+            } else if (stId === "10000000-0000-0000-0000-000000000002" || sn.includes("CONFIRM")) {
+              estadoMapeado = "Confirmada";
+            }
+
+            // Expiración temporal si ya venció
+            if (estadoMapeado !== "Completada" && estadoMapeado !== "En Atención" && estadoMapeado !== "No disponible") {
+              try {
+                const [aYear, aMonth, aDay] = fechaStr.split("-").map(Number);
+                const [aHour, aMin] = inicio.split(":").map(Number);
+                const aDate = new Date(aYear, aMonth - 1, aDay, aHour || 0, aMin || 0);
+                const now = new Date();
+                if (!isNaN(aDate.getTime()) && now.getTime() > (aDate.getTime() + 45 * 60 * 1000)) {
+                  estadoMapeado = "No disponible";
+                }
+              } catch {
+                // Ignore
+              }
             }
 
             const profsList = profs.status === "fulfilled" && Array.isArray(profs.value) ? profs.value : [];
