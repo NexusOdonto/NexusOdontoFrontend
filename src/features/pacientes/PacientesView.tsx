@@ -194,28 +194,33 @@ export function PacientesView() {
   };
 
   const handleExportCSV = () => {
-    const headers = ["Nombre", "Documento", "Telefono", "Estado"];
-    const rows = pacientes.map((p) => [p.nombre, p.documento, p.telefono, p.estado]);
-    const content = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    const encodedUri = encodeURI(content);
+    const headers = "ID,Nombre,Documento,Telefono,Estado,Proxima Cita,Correo\n";
+    const rows = pacientesFiltrados
+      .map(
+        (p) =>
+          `"${p.id}","${p.nombre}","${p.documento}","${p.telefono}","${p.estado}","${p.proximaCita || ""}","${p.correo || ""}"`
+      )
+      .join("\n");
+    const blob = new Blob([headers + rows], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "directorio_pacientes_nexusodonto.csv");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `pacientes_${new Date().toISOString().split("T")[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
   return (
-    <div className="space-y-6 text-slate-900 dark:text-slate-100">
-      {/* Encabezado Principal */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between animate-slideDown">
+    <div className="space-y-6 text-slate-900 dark:text-slate-100 pb-10 animate-fadeIn">
+      {/* HEADER DE PÁGINA */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 dark:border-white/10 pb-5 animate-slideDown">
         <div>
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-slate-900 dark:text-white drop-shadow-sm dark:drop-shadow-md">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-slate-900 dark:text-white">
             Directorio de Pacientes
           </h1>
-          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mt-1 font-medium">
-            Gestión integral de expediente clínico y catálogo de pacientes.
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1 font-medium">
+            Gestión integral de expedientes clínicos, registros y estados de pacientes.
           </p>
         </div>
 
@@ -233,8 +238,9 @@ export function PacientesView() {
           <button
             type="button"
             onClick={fetchPacientes}
-            className="group p-2 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/30 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-md active:scale-95 shadow-sm flex items-center justify-center"
-            title="Recargar datos"
+            disabled={loading}
+            className="group p-2 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/30 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-md active:scale-95 shadow-sm flex items-center justify-center disabled:opacity-60"
+            title="Recargar pacientes"
           >
             <DentistryReloadIcon size={20} loading={loading} />
           </button>

@@ -539,7 +539,7 @@ export function CitasView() {
       setErrorMessage("No se pudieron cargar las citas. Intente sincronizar nuevamente.");
       setCitas(citasFallback);
     } finally {
-      setLoading(false);
+      setTimeout(() => setLoading(false), 450);
     }
   }, []);
 
@@ -1306,7 +1306,8 @@ export function CitasView() {
           <button
             type="button"
             onClick={fetchAppointmentsAndCatalogs}
-            className="group p-2 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/30 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-md active:scale-95 shadow-sm flex items-center justify-center"
+            disabled={loading}
+            className="group p-2 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/30 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-md active:scale-95 shadow-sm flex items-center justify-center disabled:opacity-60"
             title="Recargar datos desde la base de datos"
           >
             <DentistryReloadIcon size={20} loading={loading} />

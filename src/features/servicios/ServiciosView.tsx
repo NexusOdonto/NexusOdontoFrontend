@@ -219,7 +219,7 @@ export function ServiciosView() {
         setErrorCarga("No fue posible cargar el catálogo de servicios clínicos.");
       }
     } finally {
-      setLoading(false);
+      setTimeout(() => setLoading(false), 450);
     }
   }, []);
 
@@ -439,7 +439,8 @@ export function ServiciosView() {
           <button
             type="button"
             onClick={fetchServicios}
-            className="group p-2.5 rounded-2xl border border-slate-200/80 bg-white/80 hover:bg-slate-100 dark:border-white/15 dark:bg-slate-900/70 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-2xl active:scale-95 shadow-sm flex items-center justify-center"
+            disabled={loading}
+            className="group p-2.5 rounded-2xl border border-slate-200/80 bg-white/80 hover:bg-slate-100 dark:border-white/15 dark:bg-slate-900/70 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-2xl active:scale-95 shadow-sm flex items-center justify-center disabled:opacity-60"
             title="Recargar catálogo"
           >
             <DentistryReloadIcon size={22} loading={loading} />

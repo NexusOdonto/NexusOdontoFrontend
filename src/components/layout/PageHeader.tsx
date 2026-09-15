@@ -2,7 +2,6 @@ import { useState, useRef, useEffect, type ReactNode } from "react";
 import {
   CircleHelp,
   Menu,
-  Bell,
   X,
   CalendarDays,
   MessageSquare,
@@ -13,6 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { useTheme } from "../../context/ThemeContext";
 import { useNotifications } from "../../context/NotificationContext";
 import UserProfileDropdown from "./UserProfileDropdown";
+import { NotificationBell } from "../ui/notification-bell";
 
 interface PageHeaderProps {
   userName?: string;
@@ -174,19 +174,13 @@ export function PageHeader({
 
         {/* NOTIFICACIONES CON INDICADOR Y PANEL DESPLEGABLE */}
         <div className="relative" ref={notifRef}>
-          <button
-            type="button"
+          <NotificationBell
+            count={pendingAppointmentsCount || unreadCount}
             onClick={() => setShowNotifications(!showNotifications)}
-            className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-600 dark:text-slate-400 relative cursor-pointer"
+            size={36}
+            color="teal"
             aria-label="Notificaciones"
-          >
-            <Bell size={19} />
-            {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 flex items-center justify-center min-w-4.5 h-4.5 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full animate-pulse shadow-sm">
-                {pendingAppointmentsCount || unreadCount}
-              </span>
-            )}
-          </button>
+          />
 
           {/* Panel Desplegable de Notificaciones */}
           {showNotifications && (

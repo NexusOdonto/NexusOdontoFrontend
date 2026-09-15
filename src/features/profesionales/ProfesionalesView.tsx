@@ -339,7 +339,7 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
       }));
       setProfesionales(fallbacks);
     } finally {
-      setLoading(false);
+      setTimeout(() => setLoading(false), 450);
     }
   }, []);
 
@@ -517,7 +517,8 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
             <button
               type="button"
               onClick={fetchProfessionals}
-              className="group p-2.5 rounded-2xl border border-slate-200 dark:border-white/15 bg-slate-100/80 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 text-slate-700 dark:text-white transition-all cursor-pointer backdrop-blur-md active:scale-95 shadow-sm flex items-center justify-center"
+              disabled={loading}
+              className="group p-2.5 rounded-2xl border border-slate-200 dark:border-white/15 bg-slate-100/80 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 text-slate-700 dark:text-white transition-all cursor-pointer backdrop-blur-md active:scale-95 shadow-sm flex items-center justify-center disabled:opacity-60"
               title="Recargar directorio de profesionales"
             >
               <DentistryReloadIcon size={22} loading={loading} />

@@ -38,6 +38,7 @@ import type { ChatbotMessage, SupportTicket } from "../../api/chatbotService";
 import { patientService } from "../../api/patientService";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
 import { areGuidsEqual } from "../../utils/roleUtils";
+import { FluidOrb } from "../../components/ui/fluid-orb";
 
 const GUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -1349,14 +1350,15 @@ export function AtencionAsesorView() {
                           <span className="hidden xs:inline">WhatsApp</span>
                         </span>
                         <span>•</span>
-                        <span className="truncate">
+                        <span className="truncate inline-flex items-center gap-1">
+                          {selectedChat.status === "ACTIVA" && <FluidOrb size={13} color="#06B6D4" />}
                           <strong className="text-slate-800 dark:text-slate-200">
                             {selectedChat.status === "ESCALADA"
                               ? "Esperando Respuesta"
                               : selectedChat.status === "ATENDIDA_HUMANO"
-                              ? "En Atención"
+                              ? "En Atención Asesor"
                               : selectedChat.status === "ACTIVA"
-                              ? "NexusBot"
+                              ? "NexusBot IA"
                               : "Cerrado"}
                           </strong>
                         </span>
@@ -1575,14 +1577,22 @@ export function AtencionAsesorView() {
               </div>
             </>
           ) : (
-            <div className="flex flex-col items-center justify-center h-full text-slate-400 dark:text-slate-500 space-y-4 p-8">
-              <div className="w-20 h-20 rounded-3xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-400 dark:text-slate-600 shadow-xl">
-                <MessageSquare size={38} />
+            <div className="flex flex-col items-center justify-center h-full text-slate-400 dark:text-slate-500 space-y-5 p-8 animate-fadeIn">
+              <div className="relative group flex items-center justify-center">
+                <FluidOrb size={130} color="#0D9488" className="shadow-2xl shadow-teal-500/20" />
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="p-3 rounded-2xl bg-slate-950/40 backdrop-blur-md border border-white/20 text-teal-300 shadow-lg">
+                    <Bot size={28} className="animate-pulse" />
+                  </div>
+                </div>
               </div>
-              <div className="text-center max-w-sm">
-                <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300">Ninguna conversación seleccionada</h3>
-                <p className="text-xs text-slate-500 mt-1">
-                  Selecciona una conversación de la lista lateral para visualizar el historial e intervenir en tiempo real.
+              <div className="text-center max-w-sm space-y-1.5">
+                <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center justify-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
+                  <span>NexusBot Asistente IA en Espera</span>
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Selecciona una conversación de la lista para supervisar las respuestas automáticas de IA o intervenir como asesor humano en tiempo real.
                 </p>
               </div>
             </div>

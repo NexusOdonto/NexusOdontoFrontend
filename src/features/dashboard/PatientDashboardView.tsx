@@ -14,11 +14,16 @@ import {
   FileCheck2,
   Sparkles,
   UserCircle,
+  FileText,
+  X,
+  Printer,
+  Receipt,
 } from "lucide-react";
 import { appointmentService } from "../../api/appointmentService";
 import { serviceCatalogService } from "../../api/serviceCatalogService";
 import { areGuidsEqual } from "../../utils/roleUtils";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
+import { AnimatedCounter } from "../../components/ui/animated-counter";
 
 interface PatientAppointmentItem {
   id: string;
@@ -38,6 +43,7 @@ export function PatientDashboardView({ user }: PatientDashboardViewProps) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [myAppointments, setMyAppointments] = useState<PatientAppointmentItem[]>([]);
+  const [showAccountModal, setShowAccountModal] = useState(false);
 
   const currentDateFormatted = useMemo(() => {
     const now = new Date();
@@ -104,7 +110,7 @@ export function PatientDashboardView({ user }: PatientDashboardViewProps) {
     } catch (err) {
       console.warn("Error cargando dashboard del paciente:", err);
     } finally {
-      setLoading(false);
+      setTimeout(() => setLoading(false), 450);
     }
   }, [user]);
 
@@ -135,8 +141,9 @@ export function PatientDashboardView({ user }: PatientDashboardViewProps) {
           <button
             type="button"
             onClick={loadPatientData}
-            className="group p-2 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-all duration-300 cursor-pointer backdrop-blur-md active:scale-95 shadow-sm flex items-center justify-center hover:shadow-cyan-500/20 hover:border-cyan-500/40"
-            title="Recargar mi información"
+            disabled={loading}
+            className="group p-2 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-all duration-300 cursor-pointer backdrop-blur-md active:scale-95 shadow-sm flex items-center justify-center hover:shadow-cyan-500/20 hover:border-cyan-500/40 disabled:opacity-60"
+            title="Recargar mi información clínica"
           >
             <DentistryReloadIcon size={18} loading={loading} />
           </button>
@@ -206,7 +213,7 @@ export function PatientDashboardView({ user }: PatientDashboardViewProps) {
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-3xl font-black text-slate-900 dark:text-white font-spacemono tracking-tight">
-              {tratamientosActivosCount}
+              <AnimatedCounter value={tratamientosActivosCount} duration={0.8} />
             </span>
             <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 font-instrument">
               Procedimientos
@@ -214,7 +221,7 @@ export function PatientDashboardView({ user }: PatientDashboardViewProps) {
           </div>
           <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-white/10 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-instrument">
             <span>Seguimiento continuo</span>
-            <span className="font-bold text-blue-600 dark:text-blue-400 cursor-pointer hover:underline" onClick={() => navigate("/citas")}>
+            <span className="font-bold text-blue-600 dark:text-blue-400 cursor-pointer hover:underline" onClick={() => navigate("/servicios")}>
               Tratamientos →
             </span>
           </div>
@@ -232,7 +239,7 @@ export function PatientDashboardView({ user }: PatientDashboardViewProps) {
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-3xl font-black text-slate-900 dark:text-white font-spacemono tracking-tight">
-              {citasCompletadasCount}
+              <AnimatedCounter value={citasCompletadasCount} duration={0.8} />
             </span>
             <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 font-instrument">
               Asistidas
@@ -240,8 +247,8 @@ export function PatientDashboardView({ user }: PatientDashboardViewProps) {
           </div>
           <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-white/10 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-instrument">
             <span>Expediente clínico al día</span>
-            <span className="font-bold text-emerald-600 dark:text-emerald-400 cursor-pointer hover:underline" onClick={() => navigate("/citas")}>
-              Historial →
+            <span className="font-bold text-emerald-600 dark:text-emerald-400 cursor-pointer hover:underline" onClick={() => navigate("/historia-clinica")}>
+              Mi Historial →
             </span>
           </div>
         </div>
@@ -258,7 +265,7 @@ export function PatientDashboardView({ user }: PatientDashboardViewProps) {
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-3xl font-black text-slate-900 dark:text-white font-spacemono tracking-tight">
-              ${saldoPendiente}
+              <AnimatedCounter value={saldoPendiente} duration={0.8} prefix="$" />
             </span>
             <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 font-instrument">
               Al día
@@ -266,7 +273,7 @@ export function PatientDashboardView({ user }: PatientDashboardViewProps) {
           </div>
           <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-white/10 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-instrument">
             <span>Sin pagos pendientes</span>
-            <span className="font-bold text-purple-600 dark:text-purple-400 cursor-pointer hover:underline" onClick={() => navigate("/citas")}>
+            <span className="font-bold text-purple-600 dark:text-purple-400 cursor-pointer hover:underline" onClick={() => setShowAccountModal(true)}>
               Comprobantes →
             </span>
           </div>
@@ -478,14 +485,26 @@ export function PatientDashboardView({ user }: PatientDashboardViewProps) {
 
               <button
                 type="button"
-                onClick={() => navigate("/servicios")}
+                onClick={() => navigate("/historia-clinica")}
                 className="w-full p-3 rounded-xl border border-slate-200/70 dark:border-white/10 hover:border-teal-500/50 bg-slate-50/80 dark:bg-slate-900/50 hover:bg-teal-500/10 text-slate-800 dark:text-slate-200 flex items-center justify-between transition-all cursor-pointer group"
               >
                 <div className="flex items-center gap-2.5">
-                  <Sparkles size={16} className="text-teal-600 dark:text-teal-400 group-hover:scale-110 transition-transform" />
-                  <span>Catálogo de Servicios y Tarifas</span>
+                  <FileText size={16} className="text-teal-600 dark:text-teal-400 group-hover:scale-110 transition-transform" />
+                  <span>Mi Historia Clínica Digital</span>
                 </div>
                 <ArrowRight size={13} className="text-slate-400 group-hover:text-teal-500 group-hover:translate-x-0.5 transition-all" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => navigate("/servicios")}
+                className="w-full p-3 rounded-xl border border-slate-200/70 dark:border-white/10 hover:border-cyan-500/50 bg-slate-50/80 dark:bg-slate-900/50 hover:bg-cyan-500/10 text-slate-800 dark:text-slate-200 flex items-center justify-between transition-all cursor-pointer group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Sparkles size={16} className="text-cyan-600 dark:text-cyan-400 group-hover:scale-110 transition-transform" />
+                  <span>Catálogo de Servicios y Tarifas</span>
+                </div>
+                <ArrowRight size={13} className="text-slate-400 group-hover:text-cyan-500 group-hover:translate-x-0.5 transition-all" />
               </button>
 
               <button
@@ -515,6 +534,111 @@ export function PatientDashboardView({ user }: PatientDashboardViewProps) {
           </div>
         </div>
       </div>
+
+      {/* MODAL: ESTADO DE CUENTA Y COMPROBANTES DEL PACIENTE */}
+      {showAccountModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md animate-fadeIn">
+          <div className="w-full max-w-lg rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/15 shadow-2xl overflow-hidden animate-scaleIn">
+            <div className="p-6 border-b border-slate-100 dark:border-white/10 flex items-center justify-between bg-gradient-to-r from-teal-500/10 via-cyan-500/10 to-transparent">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2.5 rounded-2xl bg-teal-500/20 text-teal-600 dark:text-teal-400">
+                  <Receipt size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                    Estado de Cuenta y Comprobantes
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Resumen financiero de tratamientos odontológicos
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAccountModal(false)}
+                className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
+                    Estado Financiero
+                  </span>
+                  <h4 className="text-lg font-bold text-emerald-900 dark:text-emerald-200 mt-0.5">
+                    Paz y Salvo — Al Día
+                  </h4>
+                  <p className="text-xs text-emerald-700 dark:text-emerald-300">
+                    Sin obligaciones o copagos pendientes
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="text-2xl font-black text-emerald-800 dark:text-emerald-200 font-spacemono">
+                    ${saldoPendiente}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                  Historial de Servicios Agendados
+                </h4>
+                <div className="max-h-48 overflow-y-auto space-y-2 pr-1 divide-y divide-slate-100 dark:divide-white/5">
+                  {myAppointments.length > 0 ? (
+                    myAppointments.map((app) => (
+                      <div key={app.id} className="pt-2 flex items-center justify-between text-xs">
+                        <div>
+                          <p className="font-bold text-slate-900 dark:text-white">{app.servicio}</p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400">{app.doctor} • {app.fecha}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-mono font-bold text-slate-900 dark:text-white">${app.valor.toLocaleString("es-CO")}</p>
+                          <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Cancelado</span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-slate-400 italic py-3 text-center">No hay registros de facturación anteriores.</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-white/10 text-xs text-slate-600 dark:text-slate-300 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span>Método de facturación:</span>
+                  <strong className="text-slate-900 dark:text-white font-semibold">Particular / EPS Prepagada</strong>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Nit Clínica:</span>
+                  <strong className="font-mono text-slate-900 dark:text-white">901.458.729-1</strong>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-slate-100 dark:border-white/10 bg-slate-50/80 dark:bg-slate-950/50 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all cursor-pointer"
+              >
+                <Printer size={14} />
+                <span>Imprimir Paz y Salvo</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowAccountModal(false)}
+                className="px-5 py-2 rounded-xl bg-teal-500 hover:bg-teal-600 text-white text-xs font-bold transition-all cursor-pointer shadow-md"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -27,6 +27,8 @@ import { serviceCatalogService } from "../../api/serviceCatalogService";
 import { areGuidsEqual } from "../../utils/roleUtils";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
 import PatientDashboardView from "./PatientDashboardView";
+import { AnimatedCounter } from "../../components/ui/animated-counter";
+import { FolderComponent } from "../../components/ui/folder-component";
 
 interface CitaItem {
   id: string;
@@ -174,7 +176,7 @@ export default function DashboardPage() {
     } catch (err) {
       console.warn("Dashboard using realistic fallback data:", err);
     } finally {
-      setLoading(false);
+      setTimeout(() => setLoading(false), 450);
     }
   }, []);
 
@@ -213,8 +215,9 @@ export default function DashboardPage() {
           <button
             type="button"
             onClick={loadRealData}
-            className="group p-2 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-all duration-300 cursor-pointer backdrop-blur-md active:scale-95 shadow-sm flex items-center justify-center hover:shadow-cyan-500/20 hover:border-cyan-500/40"
-            title="Recargar métricas"
+            disabled={loading}
+            className="group p-2 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-all duration-300 cursor-pointer backdrop-blur-md active:scale-95 shadow-sm flex items-center justify-center hover:shadow-cyan-500/20 hover:border-cyan-500/40 disabled:opacity-60"
+            title="Recargar métricas clínicas"
           >
             <DentistryReloadIcon size={18} loading={loading} />
           </button>
@@ -245,7 +248,7 @@ export default function DashboardPage() {
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-3xl font-black text-slate-900 dark:text-white font-spacemono tracking-tight">
-              {citasHoy.length}
+              <AnimatedCounter value={citasHoy.length} duration={0.8} />
             </span>
             <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 font-instrument flex items-center gap-1">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -272,7 +275,7 @@ export default function DashboardPage() {
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-3xl font-black text-slate-900 dark:text-white font-spacemono tracking-tight">
-              {totalPacientes}
+              <AnimatedCounter value={totalPacientes} duration={0.8} />
             </span>
             <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 font-instrument">
               Expedientes
@@ -298,7 +301,7 @@ export default function DashboardPage() {
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-3xl font-black text-slate-900 dark:text-white font-spacemono tracking-tight">
-              ${totalEstimado.toLocaleString("es-CO")}
+              <AnimatedCounter value={totalEstimado} duration={0.8} prefix="$" separator="," />
             </span>
           </div>
           <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-white/10 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-instrument">
@@ -324,7 +327,7 @@ export default function DashboardPage() {
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-3xl font-black text-slate-900 dark:text-white font-spacemono tracking-tight">
-              {tasaOcupacion}%
+              <AnimatedCounter value={tasaOcupacion} duration={0.8} suffix="%" />
             </span>
             <span className="text-xs font-semibold text-purple-600 dark:text-purple-400 font-instrument">
               Capacidad óptima
@@ -630,6 +633,41 @@ export default function DashboardPage() {
                 </>
               )}
             </div>
+          </div>
+
+          {/* EXPEDIENTE RÁPIDO 3D RARE UI */}
+          <div className="p-5 rounded-2xl border border-slate-200/90 dark:border-white/15 bg-white/95 dark:bg-slate-950/65 backdrop-blur-xl shadow-sm space-y-3 flex flex-col items-center justify-center text-center">
+            <div className="w-full text-left pb-2 border-b border-slate-100 dark:border-white/10 flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                <FileText size={14} className="text-teal-500" />
+                <span>Archivador Clínico 3D</span>
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-500/15 text-teal-700 dark:text-teal-300">
+                NexusOdonto
+              </span>
+            </div>
+            
+            <FolderComponent
+              color="teal"
+              size="sm"
+              title="Dossier Global"
+              subtitle="Acceso directo a expedientes clínicos"
+              items={[
+                { title: "Historias Clínicas", tag: "Evoluciones" },
+                { title: "Odontograma FDI", tag: "3D Dental" },
+                { title: "Recetas y Fórmulas", tag: "Prescripción" },
+              ]}
+              onCardClick={() => navigate("/historia-clinica")}
+            />
+
+            <button
+              type="button"
+              onClick={() => navigate("/historia-clinica")}
+              className="text-xs font-bold text-teal-600 dark:text-teal-400 hover:underline cursor-pointer flex items-center gap-1 pt-1"
+            >
+              <span>Abrir Gestor de Historias Clínicas</span>
+              <ArrowRight size={13} />
+            </button>
           </div>
 
           {/* RECORDATORIO / ESTADO DEL SISTEMA SEGÚN ROL */}

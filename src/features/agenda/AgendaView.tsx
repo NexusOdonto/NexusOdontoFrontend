@@ -121,6 +121,22 @@ const formatoFechaLarga = (fecha: Date) => {
   }).format(fecha);
 };
 
+export const translateServiceName = (name?: string): string => {
+  if (!name) return "Valoración General";
+  const map: Record<string, string> = {
+    "general assessment": "Valoración General",
+    "dental prophylaxis": "Profilaxis Dental",
+    "composite resin filling": "Restauración en Resina",
+    "teeth whitening": "Blanqueamiento Dental",
+    "dental cleaning": "Limpieza Dental",
+    "resin restoration": "Restauración en Resina",
+    "orthodontic control": "Control de Ortodoncia",
+    "tooth extraction": "Extracción Dental",
+    "root canal": "Endodoncia",
+  };
+  return map[name.trim().toLowerCase()] || name;
+};
+
 export function AgendaView() {
   const { user } = useAuth();
   const role = getUserRole(user);
@@ -154,6 +170,7 @@ export function AgendaView() {
   const [citaDetalle, setCitaDetalle] = useState<Cita | null>(null);
   const [fechaSeleccionada, setFechaSeleccionada] = useState("");
   const [horaActual, setHoraActual] = useState(new Date());
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const actualizarHora = () => {
@@ -178,6 +195,7 @@ export function AgendaView() {
 
   // Cargar citas reales y catálogos de backend
   const fetchAgendaData = useCallback(async () => {
+    setLoading(true);
     try {
       const [apiApps, profs, srvs, pts, pers] = await Promise.allSettled([
         appointmentService.getAll(),
@@ -236,8 +254,9 @@ export function AgendaView() {
 
       // 2. Servicios
       if (srvs.status === "fulfilled" && Array.isArray(srvs.value) && srvs.value.length > 0) {
-        setServiciosEntities(srvs.value);
-        setNuevaCita((prev) => ({ ...prev, servicio: srvs.value[0].name }));
+        const translatedServices = srvs.value.map((s: any) => ({ ...s, name: translateServiceName(s.name) }));
+        setServiciosEntities(translatedServices);
+        setNuevaCita((prev) => ({ ...prev, servicio: translatedServices[0].name }));
       } else {
         const fallbackOracleServices: any[] = [
           { id: "30000000-0000-0000-0000-000000000001", name: "Valoración General Odontológica", durationMinutes: 45 },
@@ -363,6 +382,7 @@ export function AgendaView() {
                 resolvedServiceName = srvEntity.name;
               }
             }
+            resolvedServiceName = translateServiceName(resolvedServiceName);
 
             let estadoMapeado: EstadoCita = "Confirmada";
             const sn = (a.statusName || "").toUpperCase();
@@ -387,7 +407,7 @@ export function AgendaView() {
               id: idx + 1000,
               rawGuid: a.id,
               paciente: resolvedPatientName || "Paciente Registrado",
-              servicio: resolvedServiceName || "Consulta Odontológica",
+              servicio: resolvedServiceName || "Valoración General",
               odontologo: resolvedProfName || fallbackDoc,
               fecha: fechaStr,
               horaInicio: inicio,
@@ -415,6 +435,8 @@ export function AgendaView() {
       }
     } catch (err) {
       console.warn("Sincronización inicial de agenda con backend:", err);
+    } finally {
+      setTimeout(() => setLoading(false), 400);
     }
   }, []);
 
@@ -919,11 +941,35 @@ export function AgendaView() {
           left: cita.leftStyle,
           width: cita.widthStyle,
         }}
-        className={`group absolute z-20 rounded-xl border border-slate-700/60 border-l-[3.5px] ${docTheme.borderLeft} shadow-sm transition-all hover:scale-[1.02] hover:z-50 cursor-pointer ${colorEvento.contenedor}`}
+        className={`group absolute z-20 rounded-xl border border-slate-700/60 border-l-[3.5px] ${docTheme.borderLeft} shadow-md transition-all hover:scale-[1.01] hover:z-50 cursor-pointer bg-slate-900/90 backdrop-blur-md ${colorEvento.contenedor}`}
       >
-        {isNarrow ? (
-          // Modo Compacto (Cuando se solapan 2 o más citas de diferentes doctores en la misma hora)
-          <div className="flex h-full flex-col justify-between px-2 py-1 min-w-0">
+        {cita.height < 58 ? (
+          // Modo Compacto (Citas de 30 min o corta duración)
+          <div className="flex h-full flex-col justify-between px-2.5 py-1 min-w-0 overflow-hidden">
+            <div className="flex items-center justify-between gap-1.5 min-w-0">
+              <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                <span className={`h-2 w-2 rounded-full shrink-0 ${docTheme.dot}`} />
+                <span className="truncate text-xs font-bold leading-none text-white dark:text-white" title={cita.paciente}>
+                  {cita.paciente}
+                </span>
+              </div>
+              <span className="font-mono text-[9.5px] font-semibold text-cyan-300 dark:text-cyan-300 shrink-0 whitespace-nowrap">
+                {cita.horaInicio} - {cita.horaFin}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between gap-1.5 min-w-0">
+              <span className="truncate text-[10px] text-slate-300 dark:text-slate-300 font-medium leading-none" title={cita.servicio}>
+                {cita.servicio}
+              </span>
+              <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider shrink-0 border ${docTheme.badge}`}>
+                {cita.estado}
+              </span>
+            </div>
+          </div>
+        ) : isNarrow ? (
+          // Modo Estrecho (Solapamiento lateral de varias citas en la misma franja horaria)
+          <div className="flex h-full flex-col justify-between px-2 py-1.5 min-w-0 overflow-hidden">
             <div className="flex items-center justify-between gap-1 min-w-0">
               <div className="flex items-center gap-1 min-w-0 flex-1">
                 <span className={`h-2 w-2 rounded-full shrink-0 ${docTheme.dot}`} />
@@ -931,53 +977,43 @@ export function AgendaView() {
                   {shortDoc}
                 </span>
               </div>
-              <span className="font-mono text-[9px] font-semibold text-cyan-300 dark:text-cyan-400 shrink-0 whitespace-nowrap">
+              <span className="font-mono text-[9px] font-semibold text-cyan-300 shrink-0 whitespace-nowrap">
                 {cita.horaInicio}
               </span>
             </div>
 
             <div className="min-w-0 my-auto">
-              <p className="truncate text-xs font-bold leading-tight text-white group-hover:text-cyan-200">
+              <p className="truncate text-xs font-bold leading-tight text-white group-hover:text-cyan-200" title={cita.paciente}>
                 {cita.paciente}
               </p>
-              {cita.height >= 46 && (
-                <p className="truncate text-[9.5px] text-slate-300/85 leading-tight mt-0.5">
+              {cita.height >= 60 && (
+                <p className="truncate text-[9.5px] text-slate-300/85 leading-tight mt-0.5" title={cita.servicio}>
                   {cita.servicio}
                 </p>
               )}
             </div>
 
-            {cita.height >= 60 && (
-              <div className="flex items-center justify-between gap-1 text-[9px] text-slate-400 font-mono leading-none">
-                <span className="whitespace-nowrap">{cita.horaInicio} - {cita.horaFin}</span>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    eliminarCita(cita.id, cita.rawGuid);
-                  }}
-                  className="opacity-0 group-hover:opacity-100 transition p-0.5 hover:text-rose-400 shrink-0 cursor-pointer"
-                  title="Eliminar cita"
-                >
-                  <Trash2 size={11} />
-                </button>
-              </div>
-            )}
+            <div className="flex items-center justify-between gap-1 text-[9px] text-slate-400 font-mono leading-none">
+              <span className="whitespace-nowrap">{cita.horaInicio} - {cita.horaFin}</span>
+              <span className={`px-1 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider ${docTheme.badge}`}>
+                {cita.estado}
+              </span>
+            </div>
           </div>
         ) : (
-          // Modo Completo (Ancho normal / sin solapamiento o en columna individual por doctor)
-          <div className="flex h-full flex-col justify-between px-2.5 py-1.5 min-w-0">
+          // Modo Completo (Cita amplia con >= 58px de altura)
+          <div className="flex h-full flex-col justify-between px-2.5 py-1.5 min-w-0 overflow-hidden">
             <div>
               <div className="flex items-center justify-between gap-1 min-w-0">
                 <div className="flex items-center gap-1.5 min-w-0 flex-1">
                   <span
-                    className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9.5px] font-bold border ${docTheme.badge} shrink-0 max-w-[140px]`}
+                    className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9.5px] font-bold border ${docTheme.badge} shrink-0 max-w-[130px]`}
                     title={cita.odontologo}
                   >
                     <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${docTheme.dot}`} />
                     <span className="truncate">{shortDoc}</span>
                   </span>
-                  <p className="truncate text-xs font-bold leading-tight text-white">
+                  <p className="truncate text-xs font-bold leading-tight text-white" title={cita.paciente}>
                     {cita.paciente}
                   </p>
                 </div>
@@ -993,13 +1029,15 @@ export function AgendaView() {
                   <Trash2 size={12} />
                 </button>
               </div>
-              <p className="truncate text-[10.5px] text-slate-300/90 leading-tight mt-1">
+              <p className="truncate text-[10.5px] text-slate-300/90 leading-tight mt-1" title={cita.servicio}>
                 {cita.servicio}
               </p>
             </div>
             <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
-              <span className="whitespace-nowrap font-medium">{cita.horaInicio} - {cita.horaFin}</span>
-              <span className="text-[9px] uppercase tracking-wide opacity-80">{cita.estado}</span>
+              <span className="whitespace-nowrap font-medium text-cyan-300/90">{cita.horaInicio} - {cita.horaFin}</span>
+              <span className={`px-1.5 py-0.5 rounded text-[8.5px] font-bold uppercase tracking-wider border ${docTheme.badge}`}>
+                {cita.estado}
+              </span>
             </div>
           </div>
         )}
@@ -1165,10 +1203,11 @@ export function AgendaView() {
                     <button
                       type="button"
                       onClick={fetchAgendaData}
-                      className="group rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 p-1.5 text-slate-600 dark:text-slate-400 transition hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer flex items-center justify-center"
-                      title="Sincronizar con backend"
+                      disabled={loading}
+                      className="group rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 p-2 text-slate-600 dark:text-slate-400 transition hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer flex items-center justify-center disabled:opacity-50 active:scale-95 shadow-sm"
+                      title="Sincronizar agenda con backend"
                     >
-                      <DentistryReloadIcon size={18} />
+                      <DentistryReloadIcon size={18} loading={loading} />
                     </button>
 
                     <button
@@ -1302,7 +1341,7 @@ export function AgendaView() {
                       {/* Línea Hora Actual */}
                       {posicionHoraActual !== null && (
                         <div
-                          className="pointer-events-none absolute left-0 right-0 z-30 flex items-center"
+                          className="pointer-events-none absolute left-0 right-0 z-10 flex items-center"
                           style={{ top: `${posicionHoraActual}px` }}
                         >
                           <div className="h-2 w-2 rounded-full bg-rose-500 -ml-1" />

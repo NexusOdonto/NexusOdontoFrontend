@@ -22,6 +22,8 @@ import {
   Edit3,
   Trash2,
   AlertCircle,
+  FolderOpen,
+  Layers,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { clinicalHistoryService, type DiagnosisResponseDto, type ProcedurePerformedResponseDto, type CreateClinicalAttentionRequestDto } from "../../api/clinicalHistoryService";
@@ -34,6 +36,7 @@ import { useAuth } from "../auth/AuthContext";
 import { getUserRole } from "../../utils/routePermissions";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
 import { areGuidsEqual } from "../../utils/roleUtils";
+import { FolderComponent } from "../../components/ui/folder-component";
 
 interface LocalAttention {
   id: string;
@@ -74,7 +77,7 @@ export function HistoriaClinicaView() {
   const [nextAppointment, setNextAppointment] = useState<{ servicio: string; profesional: string; fecha: string; hora: string } | null>(null);
   const [dentistsList, setDentistsList] = useState<string[]>(LICENSED_DENTISTS_FALLBACK);
   const [patientAppointmentsList, setPatientAppointmentsList] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<"evoluciones" | "diagnosticos" | "procedimientos" | "antecedentes">("evoluciones");
+  const [activeTab, setActiveTab] = useState<"evoluciones" | "diagnosticos" | "procedimientos" | "antecedentes" | "expediente">("evoluciones");
 
   // Modal Nueva Evolución
   const [showNewAttentionModal, setShowNewAttentionModal] = useState(false);
@@ -161,7 +164,7 @@ export function HistoriaClinicaView() {
       const personList = await personService.getAll().catch(() => []);
 
       if (patientList && patientList.length > 0) {
-        const enriched = patientList.map((p) => {
+        let enriched = patientList.map((p) => {
           const person = personList.find((per) => per.id === p.personId);
           return {
             ...p,
@@ -172,34 +175,94 @@ export function HistoriaClinicaView() {
             email: person?.email || p.email,
           };
         });
+
+        // Aislamiento estricto de privacidad: Un paciente SOLO ve su propia historia clínica
+        if (isPaciente) {
+          const userDoc = (user as any)?.documentNumber || "";
+          const myPt = enriched.find((p) =>
+            areGuidsEqual(p.personId, user?.personId) ||
+            areGuidsEqual(p.id, user?.id) ||
+            (userDoc && String(p.documentNumber).trim() === String(userDoc).trim()) ||
+            (user?.email && p.email?.toLowerCase().trim() === user.email.toLowerCase().trim())
+          );
+          if (myPt) {
+            enriched = [myPt];
+            setSelectedPatientId(String(myPt.id));
+          } else {
+            // Fallback sintético del paciente autenticado
+            const fallbackSelf = {
+              id: user?.personId || user?.id || "patient-self",
+              personId: user?.personId || user?.id || "person-self",
+              firstName: user?.name || "Mi",
+              lastName: "Perfil",
+              documentNumber: userDoc || "1098765432",
+              phone: (user as any)?.phone || "3001234567",
+              email: user?.email || "paciente@nexus.com",
+            } as any;
+            enriched = [fallbackSelf];
+            setSelectedPatientId(String(fallbackSelf.id));
+          }
+        }
+
         setPatients(enriched);
-        if (!selectedPatientId && enriched.length > 0) {
-          setSelectedPatientId(enriched[0].id);
+        if (!isPaciente && !selectedPatientId && enriched.length > 0) {
+          setSelectedPatientId(String(enriched[0].id));
         }
       } else {
-        setPatients([]);
+        if (isPaciente) {
+          const fallbackSelf = {
+            id: user?.personId || user?.id || "patient-self",
+            personId: user?.personId || user?.id || "person-self",
+            firstName: user?.name || "Mi",
+            lastName: "Perfil",
+            documentNumber: (user as any)?.documentNumber || "1098765432",
+            phone: (user as any)?.phone || "3001234567",
+            email: user?.email || "paciente@nexus.com",
+          } as any;
+          setPatients([fallbackSelf]);
+          setSelectedPatientId(String(fallbackSelf.id));
+        } else {
+          setPatients([]);
+        }
       }
     } catch (err) {
       console.warn("Could not load patients for Historia Clínica:", err);
-      setPatients([]);
+      if (isPaciente) {
+        const fallbackSelf = {
+          id: user?.personId || user?.id || "patient-self",
+          personId: user?.personId || user?.id || "person-self",
+          firstName: user?.name || "Mi",
+          lastName: "Perfil",
+          documentNumber: (user as any)?.documentNumber || "1098765432",
+          phone: (user as any)?.phone || "3001234567",
+          email: user?.email || "paciente@nexus.com",
+        } as any;
+        setPatients([fallbackSelf]);
+        setSelectedPatientId(String(fallbackSelf.id));
+      } else {
+        setPatients([]);
+      }
     } finally {
       setLoading(false);
     }
-  }, [selectedPatientId]);
+  }, [selectedPatientId, isPaciente, user]);
 
   useEffect(() => {
     fetchPatients();
   }, [fetchPatients]);
 
   const selectedPatient = useMemo(() => {
-    return patients.find((p) => String(p.id) === String(selectedPatientId)) || patients[0];
+    if (!selectedPatientId) return null;
+    return patients.find((p) => String(p.id) === String(selectedPatientId)) || null;
   }, [patients, selectedPatientId]);
 
   const loadClinicalData = useCallback(async () => {
+    setLoading(true);
     if (!selectedPatientId) {
       setAttentions([]);
       setDiagnoses([]);
       setProcedures([]);
+      setTimeout(() => setLoading(false), 450);
       return;
     }
 
@@ -357,6 +420,8 @@ export function HistoriaClinicaView() {
       console.warn("API clinical history offline, setting empty attentions list:", err);
       setAttentions([]);
       setNextAppointment(null);
+    } finally {
+      setTimeout(() => setLoading(false), 450);
     }
   }, [selectedPatientId, selectedPatient, professionalsEntities, servicesEntities]);
 
@@ -580,11 +645,16 @@ export function HistoriaClinicaView() {
       {/* ENCABEZADO PRINCIPAL */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between animate-slideDown">
         <div>
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-slate-900 dark:text-white drop-shadow-sm">
-            Historia Clínica Odontológica
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-slate-900 dark:text-white drop-shadow-sm flex items-center gap-3">
+            <span className="p-2.5 rounded-2xl bg-gradient-to-br from-teal-500/20 to-cyan-500/20 border border-cyan-500/30 text-cyan-700 dark:text-cyan-300">
+              <FolderOpen size={28} />
+            </span>
+            <span>{isPaciente ? "Mi Historia Clínica Odontológica" : "Historia Clínica Odontológica"}</span>
           </h1>
           <p className="text-sm sm:text-base text-slate-600 dark:text-slate-200 mt-1 font-medium">
-            Expediente digital, seguimiento cronológico de evoluciones y diagnósticos.
+            {isPaciente
+              ? "Consulta tu expediente personal, evoluciones médicas, diagnósticos CIE-10, fórmulas y archivador digital 3D."
+              : "Expediente digital, seguimiento cronológico de evoluciones y diagnósticos de pacientes."}
           </p>
         </div>
 
@@ -612,9 +682,13 @@ export function HistoriaClinicaView() {
 
           <button
             type="button"
-            onClick={loadClinicalData}
-            className="group p-2 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/65 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-xl active:scale-95 shadow-sm flex items-center justify-center"
-            title="Recargar datos"
+            onClick={async () => {
+              await fetchPatients();
+              await loadClinicalData();
+            }}
+            disabled={loading}
+            className="group p-2 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/65 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-xl active:scale-95 shadow-sm flex items-center justify-center disabled:opacity-60"
+            title="Recargar historia clínica y pacientes"
           >
             <DentistryReloadIcon size={20} loading={loading} />
           </button>
@@ -634,69 +708,88 @@ export function HistoriaClinicaView() {
 
       {/* DISPOSICIÓN PRINCIPAL EN 2 COLUMNAS (PANEL IZQUIERDO STICKY + EXPEDIENTE DERECHO FLUIDO CON ANCHO MÁXIMO CONTROLADO) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* PANEL IZQUIERDO STICKY: BUSCADOR PACIENTES + WIDGET RESUMEN SALUD */}
+        {/* PANEL IZQUIERDO STICKY: BUSCADOR PACIENTES (SOLO PROFESIONALES) O ACCESO SEGURO (PACIENTE) + WIDGET RESUMEN SALUD */}
         <div className="lg:col-span-4 lg:sticky lg:top-20 space-y-4 self-start">
-          {/* Widget 1: Buscador y Lista de Pacientes (4) */}
-          <div className="rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl shadow-md p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 pb-3">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <User size={16} className="text-cyan-500" />
-                <span>Pacientes ({patients.length})</span>
-              </h3>
-            </div>
+          {/* Widget 1: Buscador y Lista de Pacientes (Oculto para Pacientes por privacidad estricta) */}
+          {!isPaciente ? (
+            <div className="rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl shadow-md p-5 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 pb-3">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <User size={16} className="text-cyan-500" />
+                  <span>Directorio de Pacientes ({patients.length})</span>
+                </h3>
+              </div>
 
-            {/* Buscador de pacientes */}
-            <div className="relative">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Buscar paciente..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2.5 bg-white/90 dark:bg-slate-950/65 border border-slate-200 dark:border-white/20 rounded-xl text-xs text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:border-cyan-500 transition-all shadow-md font-medium"
-              />
-            </div>
+              {/* Buscador de pacientes */}
+              <div className="relative">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar por nombre, cédula o teléfono..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2.5 bg-white/90 dark:bg-slate-950/65 border border-slate-200 dark:border-white/20 rounded-xl text-xs text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:border-cyan-500 transition-all shadow-md font-medium"
+                />
+              </div>
 
-            {/* Lista de pacientes */}
-            <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
-              {filteredPatients.map((p) => {
-                const isSelected = String(p.id) === String(selectedPatientId);
-                const fullName = `${p.firstName} ${p.lastName}`.trim();
-                return (
-                  <div
-                    key={p.id}
-                    onClick={() => setSelectedPatientId(String(p.id))}
-                    className={`group relative flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
-                      isSelected
-                        ? "bg-cyan-500/15 dark:bg-cyan-500/30 border-cyan-500/40 dark:border-cyan-400/50 shadow-sm"
-                        : "bg-slate-100/70 dark:bg-white/5 border-slate-200/70 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/10"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500/20 via-cyan-500/20 to-blue-500/20 border border-cyan-500/40 text-cyan-800 dark:text-cyan-200 font-bold text-xs shadow-sm shrink-0">
-                        {getInitials(fullName)}
-                      </div>
-                      <div className="min-w-0">
-                        <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                          {fullName}
-                        </h4>
-                        <p className="text-[11px] font-mono text-slate-600 dark:text-slate-300 font-medium">
-                          Doc: {p.documentNumber}
-                        </p>
-                      </div>
-                    </div>
-
-                    <ChevronRight
-                      size={16}
-                      className={`transition-transform ${
-                        isSelected ? "text-cyan-600 dark:text-cyan-400 translate-x-1" : "text-slate-400 group-hover:translate-x-1"
+              {/* Lista de pacientes */}
+              <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
+                {filteredPatients.map((p) => {
+                  const isSelected = String(p.id) === String(selectedPatientId);
+                  const fullName = `${p.firstName} ${p.lastName}`.trim();
+                  return (
+                    <div
+                      key={p.id}
+                      onClick={() => setSelectedPatientId(String(p.id))}
+                      className={`group relative flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
+                        isSelected
+                          ? "bg-cyan-500/15 dark:bg-cyan-500/30 border-cyan-500/40 dark:border-cyan-400/50 shadow-sm"
+                          : "bg-slate-100/70 dark:bg-white/5 border-slate-200/70 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/10"
                       }`}
-                    />
-                  </div>
-                );
-              })}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500/20 via-cyan-500/20 to-blue-500/20 border border-cyan-500/40 text-cyan-800 dark:text-cyan-200 font-bold text-xs shadow-sm shrink-0">
+                          {getInitials(fullName)}
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                            {fullName}
+                          </h4>
+                          <p className="text-[11px] font-mono text-slate-600 dark:text-slate-300 font-medium">
+                            Doc: {p.documentNumber}
+                          </p>
+                        </div>
+                      </div>
+
+                      <ChevronRight
+                        size={16}
+                        className={`transition-transform ${
+                          isSelected ? "text-cyan-600 dark:text-cyan-400 translate-x-1" : "text-slate-400 group-hover:translate-x-1"
+                        }`}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          ) : (
+            /* Tarjeta de Seguridad y Verificación Personal del Paciente */
+            <div className="rounded-2xl border border-cyan-500/30 bg-gradient-to-br from-teal-500/10 via-cyan-500/10 to-blue-500/10 backdrop-blur-xl shadow-md p-5 space-y-3">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-800 dark:text-cyan-300">
+                <ShieldCheck size={16} className="text-cyan-500" />
+                <span>Acceso Seguro del Paciente</span>
+              </div>
+              <p className="text-xs text-slate-700 dark:text-slate-200 font-medium">
+                Estás visualizando exclusivamente tu expediente médico individual bajo estrictas políticas de confidencialidad y Ley Habeas Data.
+              </p>
+              {selectedPatient && (
+                <div className="pt-2 border-t border-cyan-500/20 flex items-center justify-between text-xs">
+                  <span className="font-bold text-slate-900 dark:text-white">{selectedPatient.firstName} {selectedPatient.lastName}</span>
+                  <span className="font-mono text-[11px] font-bold text-cyan-700 dark:text-cyan-300">CC: {selectedPatient.documentNumber}</span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Widget 2: 'RESUMEN DE SALUD DEL PACIENTE' (Alerta Amarilla de Alergia + Citas + Piezas) */}
           {selectedPatient && (
@@ -777,6 +870,29 @@ export function HistoriaClinicaView() {
                   className="inline-flex items-center gap-1 font-semibold text-cyan-700 dark:text-cyan-300 hover:underline cursor-pointer"
                 >
                   <Smile size={13} /> Odontograma
+                </button>
+              </div>
+
+              {/* Mini Widget 3D Folder Permanente */}
+              <div className="pt-3 border-t border-slate-200/80 dark:border-white/10 flex flex-col items-center justify-center space-y-2">
+                <FolderComponent
+                  color="teal"
+                  size="sm"
+                  title="Dossier Activo"
+                  subtitle={`${selectedPatient.firstName} ${selectedPatient.lastName}`}
+                  items={[
+                    { title: "Evoluciones", tag: `${attentions.length}` },
+                    { title: "Diagnósticos", tag: "CIE-10" },
+                    { title: "Fórmulas", tag: "Rx" },
+                  ]}
+                  onCardClick={() => setActiveTab("expediente")}
+                />
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("expediente")}
+                  className="text-[11px] font-bold text-teal-600 dark:text-teal-400 hover:underline cursor-pointer"
+                >
+                  Ver Archivador Digital 3D →
                 </button>
               </div>
             </div>
@@ -898,20 +1014,53 @@ export function HistoriaClinicaView() {
                   <ShieldCheck size={14} />
                   <span>Antecedentes Médicos</span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("expediente")}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                    activeTab === "expediente"
+                      ? "bg-cyan-500/15 dark:bg-cyan-500/30 text-cyan-800 dark:text-cyan-200 border border-cyan-500/30 dark:border-cyan-400/40 shadow-sm"
+                      : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+                  }`}
+                >
+                  <FolderOpen size={14} />
+                  <span>Archivador Digital 3D</span>
+                </button>
               </div>
 
               {/* CONTENIDO DE LAS PESTAÑAS */}
               {activeTab === "evoluciones" && (
                 <div className="space-y-4">
                   {attentions.length === 0 ? (
-                    <div className="py-12 text-center rounded-2xl border border-slate-200 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl p-6 shadow-md">
-                      <FileText size={32} className="mx-auto text-slate-400 mb-2" />
-                      <h4 className="text-base font-bold text-slate-900 dark:text-white">
-                        Sin evoluciones registradas
-                      </h4>
-                      <p className="text-xs text-slate-600 dark:text-slate-300 max-w-sm mx-auto mt-1 font-medium">
-                        Presiona "+ Nueva Evolución" para registrar la primera atención clínica de este paciente.
-                      </p>
+                    <div className="py-10 px-6 text-center rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl p-6 shadow-md space-y-5 animate-fadeIn">
+                      <FolderComponent
+                        color="teal"
+                        size="md"
+                        title={`Expediente de ${selectedPatient.firstName}`}
+                        subtitle="Sin evoluciones registradas para este paciente"
+                        items={[
+                          { title: "Nueva Evolución", tag: "CIE-10" },
+                          { title: "Diagnósticos Odontológicos", tag: "FDI" },
+                          { title: "Prescripción Médica", tag: "Rx" },
+                        ]}
+                        onCardClick={() => !isPaciente && setShowNewAttentionModal(true)}
+                      />
+                      <div className="space-y-3 max-w-sm mx-auto">
+                        <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">
+                          Pasa el cursor sobre la carpeta o haz clic para registrar la primera atención clínica de este paciente.
+                        </p>
+                        {!isPaciente && (
+                          <button
+                            type="button"
+                            onClick={() => setShowNewAttentionModal(true)}
+                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 px-5 py-2.5 text-xs font-bold text-white dark:text-slate-950 shadow-md transition-all active:scale-95 cursor-pointer"
+                          >
+                            <Plus size={16} />
+                            <span>Registrar Primera Evolución</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ) : (
                     attentions.map((att, idx) => (
@@ -1179,13 +1328,204 @@ export function HistoriaClinicaView() {
                   </div>
                 </div>
               )}
+
+              {activeTab === "expediente" && (
+                <div className="space-y-6 animate-fadeIn">
+                  <div className="rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl p-6 shadow-md">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/80 dark:border-white/10 pb-4">
+                      <div>
+                        <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                          <FolderOpen size={18} className="text-cyan-500" />
+                          <span>Archivador Clínico Digital 3D (Rare UI)</span>
+                        </h3>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
+                          Expediente interactivo de <strong>{selectedPatient.firstName} {selectedPatient.lastName}</strong>. Pasa el cursor sobre cualquier carpeta para desplegar sus fichas o haz clic para abrir el módulo correspondiente.
+                        </p>
+                      </div>
+
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/15 text-cyan-800 dark:text-cyan-200 text-xs font-mono font-bold border border-cyan-500/30 self-start sm:self-auto">
+                        <Layers size={13} />
+                        HC-{selectedPatient.documentNumber}
+                      </span>
+                    </div>
+
+                    {/* Banner Instructivo */}
+                    <div className="mt-4 p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/25 flex items-center gap-3 text-xs text-cyan-900 dark:text-cyan-200">
+                      <span className="text-base">💡</span>
+                      <p className="font-medium">
+                        <strong>Guía rápida:</strong> Cada carpeta 3D almacena una sección médica independiente de tu historia clínica odontológica. Puedes hacer clic en las fichas interiores o en el botón inferior para abrir cada sección.
+                      </p>
+                    </div>
+
+                    {/* Cuadrícula de Folders 3D interactivos Rare UI */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6">
+                      {/* Carpeta 1: Evoluciones y Atenciones */}
+                      <div className="flex flex-col items-center justify-between p-6 rounded-2xl bg-slate-100/70 dark:bg-white/5 border border-teal-500/30 hover:border-teal-500/60 shadow-sm transition-all space-y-4">
+                        <div className="w-full flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 pb-2.5">
+                          <span className="px-2.5 py-0.5 rounded-full bg-teal-500/20 text-teal-800 dark:text-teal-200 text-[11px] font-bold border border-teal-500/30">
+                            Carpeta 01
+                          </span>
+                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                            {attentions.length} Consultas Registradas
+                          </span>
+                        </div>
+
+                        <FolderComponent
+                          color="teal"
+                          size="md"
+                          title="Evoluciones Clínicas"
+                          subtitle="Historial de consultas, motivos y CIE-10"
+                          items={[
+                            { title: "Consultas Previas", tag: `${attentions.length} Reg.` },
+                            { title: "Diagnósticos CIE-10", tag: "K02.1" },
+                            { title: "Planes de Manejo", tag: "FDI" },
+                          ]}
+                          onCardClick={() => setActiveTab("evoluciones")}
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("evoluciones")}
+                          className="w-full py-2.5 px-4 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+                        >
+                          <Clock size={14} />
+                          <span>Ver Evoluciones Clínicas ({attentions.length})</span>
+                          <ChevronRight size={14} />
+                        </button>
+                      </div>
+
+                      {/* Carpeta 2: Radiografías e Imagenología */}
+                      <div className="flex flex-col items-center justify-between p-6 rounded-2xl bg-slate-100/70 dark:bg-white/5 border border-blue-500/30 hover:border-blue-500/60 shadow-sm transition-all space-y-4">
+                        <div className="w-full flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 pb-2.5">
+                          <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-800 dark:text-blue-200 text-[11px] font-bold border border-blue-500/30">
+                            Carpeta 02
+                          </span>
+                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                            Odontograma FDI & Rx
+                          </span>
+                        </div>
+
+                        <FolderComponent
+                          color="blue"
+                          size="md"
+                          title="Imagenología & Odontograma"
+                          subtitle="Radiografías panorámicas y mapa dental FDI"
+                          items={[
+                            { title: "Panorámica HD", tag: "2026" },
+                            { title: "Radiografía Periapical", tag: "Rx" },
+                            { title: "Odontograma FDI", tag: "Vector" },
+                          ]}
+                          onCardClick={() => navigate("/odontograma")}
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() => navigate("/odontograma")}
+                          className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+                        >
+                          <Smile size={14} />
+                          <span>Abrir Odontograma FDI Interactivo</span>
+                          <ChevronRight size={14} />
+                        </button>
+                      </div>
+
+                      {/* Carpeta 3: Consentimientos y Antecedentes */}
+                      <div className="flex flex-col items-center justify-between p-6 rounded-2xl bg-slate-100/70 dark:bg-white/5 border border-slate-700/30 dark:border-white/20 hover:border-slate-600 shadow-sm transition-all space-y-4">
+                        <div className="w-full flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 pb-2.5">
+                          <span className="px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-100 text-[11px] font-bold border border-slate-600">
+                            Carpeta 03
+                          </span>
+                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                            Consentimiento Firmado
+                          </span>
+                        </div>
+
+                        <FolderComponent
+                          color="black"
+                          size="md"
+                          title="Consentimientos & Legal"
+                          subtitle="Firmas informadas y Ley Habeas Data"
+                          items={[
+                            { title: "Consentimiento Informado", tag: "Firmado" },
+                            { title: "Historial Anamnesis", tag: "Válido" },
+                            { title: "Tratamiento de Datos", tag: "Ley 1581" },
+                          ]}
+                          onCardClick={handleOpenAntecedentes}
+                        />
+
+                        <button
+                          type="button"
+                          onClick={handleOpenAntecedentes}
+                          className="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+                        >
+                          <ShieldCheck size={14} />
+                          <span>Ver Antecedentes y Consentimientos</span>
+                          <ChevronRight size={14} />
+                        </button>
+                      </div>
+
+                      {/* Carpeta 4: Fórmulas y Recetas */}
+                      <div className="flex flex-col items-center justify-between p-6 rounded-2xl bg-slate-100/70 dark:bg-white/5 border border-cyan-500/30 hover:border-cyan-500/60 shadow-sm transition-all space-y-4">
+                        <div className="w-full flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 pb-2.5">
+                          <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-800 dark:text-cyan-200 text-[11px] font-bold border border-cyan-500/30">
+                            Carpeta 04
+                          </span>
+                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                            Recetario Médico
+                          </span>
+                        </div>
+
+                        <FolderComponent
+                          color="white"
+                          size="md"
+                          title="Fórmulas & Prescripciones"
+                          subtitle="Recetario odontológico con posología oficial"
+                          items={[
+                            { title: "Amoxicilina 500mg", tag: "Cada 8h" },
+                            { title: "Ibuprofeno 600mg", tag: "3 Días" },
+                            { title: "Recomendaciones", tag: "Cuidado Oral" },
+                          ]}
+                          onCardClick={() => setShowPrescriptionModal(true)}
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() => setShowPrescriptionModal(true)}
+                          className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+                        >
+                          <FileText size={14} />
+                          <span>Imprimir Fórmula Médica Oficial</span>
+                          <ChevronRight size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </>
           ) : (
-            <div className="py-16 text-center rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl p-6 shadow-md">
-              <User size={36} className="mx-auto text-slate-400 mb-2" />
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                Selecciona un paciente para ver su expediente.
-              </h3>
+            <div className="py-12 px-6 text-center rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl p-8 shadow-md space-y-6 animate-fadeIn">
+              <FolderComponent
+                color="teal"
+                size="md"
+                title="Expediente Clínico Digital"
+                subtitle="Selecciona un paciente del directorio para explorar sus evoluciones, diagnósticos y consentimientos."
+                items={[
+                  { title: "Evoluciones Clínicas", tag: "CIE-10" },
+                  { title: "Diagnósticos y Odontograma", tag: "FDI" },
+                  { title: "Consentimientos y Antecedentes", tag: "Legal" },
+                ]}
+                onCardClick={() => {
+                  if (patients.length > 0) {
+                    setSelectedPatientId(patients[0].id);
+                  }
+                }}
+              />
+              <div className="max-w-md mx-auto text-xs text-slate-500 dark:text-slate-400 bg-slate-100/80 dark:bg-white/5 p-3.5 rounded-xl border border-slate-200/80 dark:border-white/10">
+                <p className="font-semibold text-slate-700 dark:text-slate-300">
+                  💡 Pasa el cursor sobre la carpeta para desplegar las fichas o haz clic para abrir el archivador interactivo.
+                </p>
+              </div>
             </div>
           )}
         </div>

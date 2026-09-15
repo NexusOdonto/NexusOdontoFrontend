@@ -198,7 +198,7 @@ export function RolesPermisosView() {
     if (!selectedRole) return;
 
     setRoles((prevRoles) => {
-      const updatedRoles = prevRoles.map((r) => {
+      const updated = prevRoles.map((r) => {
         if (r.id === selectedRole.id) {
           const modPerm = r.permisos[moduloId] || { ver: false, crear: false, editar: false, eliminar: false };
           return {
@@ -214,48 +214,47 @@ export function RolesPermisosView() {
         }
         return r;
       });
-
-      const updatedSelected = updatedRoles.find((r) => r.id === selectedRole.id);
-      if (updatedSelected) {
-        setSelectedRole(updatedSelected);
+      const updatedSel = updated.find((r) => r.id === selectedRole.id);
+      if (updatedSel) {
+        setSelectedRole(updatedSel);
       }
-      return updatedRoles;
+      return updated;
     });
-
-    setSuccessToast("Permiso actualizado correctamente");
-    setTimeout(() => setSuccessToast(null), 2500);
   };
 
   const handleCreateRole = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nuevoNombre.trim() || !nuevoCodigo.trim()) return;
+    if (!nuevoNombre.trim()) return;
 
-    const newRole = {
-      id: `role-${Date.now()}`,
-      code: nuevoCodigo.toUpperCase().replace(/\s+/g, "_"),
-      name: nuevoNombre.trim(),
-      description: nuevaDescripcion.trim() || "Rol personalizado creado por el Administrador.",
+    const newId = `role-${Date.now()}`;
+    const codeGen = nuevoCodigo.trim() ? nuevoCodigo.toUpperCase() : nuevoNombre.toUpperCase().replace(/\s+/g, "_");
+
+    const newRole: (Role & { permisos: Record<string, { ver: boolean; crear: boolean; editar: boolean; eliminar: boolean }> }) = {
+      id: newId,
+      code: codeGen,
+      name: nuevoNombre,
+      description: nuevaDescripcion || "Rol personalizado creado por el administrador.",
       isActive: true,
       permisos: {
         pacientes: { ver: true, crear: false, editar: false, eliminar: false },
         citas: { ver: true, crear: false, editar: false, eliminar: false },
         odontograma: { ver: false, crear: false, editar: false, eliminar: false },
         historia_clinica: { ver: false, crear: false, editar: false, eliminar: false },
-        servicios: { ver: true, crear: false, editar: false, eliminar: false },
-        profesionales: { ver: true, crear: false, editar: false, eliminar: false },
+        servicios: { ver: false, crear: false, editar: false, eliminar: false },
+        profesionales: { ver: false, crear: false, editar: false, eliminar: false },
         usuarios: { ver: false, crear: false, editar: false, eliminar: false },
         roles: { ver: false, crear: false, editar: false, eliminar: false },
       },
     };
 
-    setRoles((prev) => [newRole, ...prev]);
+    setRoles((prev) => [...prev, newRole]);
     setSelectedRole(newRole);
     setShowCreateModal(false);
     setNuevoNombre("");
     setNuevoCodigo("");
     setNuevaDescripcion("");
-    setSuccessToast("¡Nuevo rol registrado con éxito!");
-    setTimeout(() => setSuccessToast(null), 3500);
+    setSuccessToast(`Rol "${newRole.name}" creado con éxito.`);
+    setTimeout(() => setSuccessToast(null), 3000);
   };
 
   const rolesFiltrados = roles.filter(
@@ -266,22 +265,22 @@ export function RolesPermisosView() {
   );
 
   return (
-    <div className="space-y-6 text-slate-900 dark:text-slate-100 pb-8">
-      {/* Toast */}
+    <div className="space-y-6 text-slate-900 dark:text-slate-100 pb-10 animate-fadeIn">
+      {/* Toast Notificación */}
       {successToast && (
-        <div className="fixed bottom-6 right-6 z-[99999] flex items-center gap-2.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 px-5 py-3 rounded-2xl shadow-2xl border border-teal-500/30 animate-slideUp backdrop-blur-md">
-          <CheckCircle2 size={18} className="text-teal-400 dark:text-teal-600 flex-shrink-0" />
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 px-5 py-3 rounded-2xl shadow-2xl border border-cyan-500/30 animate-slideUp">
+          <CheckCircle2 size={18} className="text-cyan-400 dark:text-cyan-600 shrink-0" />
           <span className="text-xs font-semibold">{successToast}</span>
         </div>
       )}
 
-      {/* Encabezado Principal estilo Pacientes */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between animate-slideDown">
+      {/* HEADER PRINCIPAL */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 dark:border-white/10 pb-5 animate-slideDown">
         <div>
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-slate-900 dark:text-white drop-shadow-sm dark:drop-shadow-md">
-            Roles y Matriz de Permisos
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-slate-900 dark:text-white">
+            Roles y Permisos
           </h1>
-          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mt-1 font-medium">
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1 font-medium">
             Configuración dinámica de accesos y acciones CRUD por módulo en la base de datos.
           </p>
         </div>
@@ -290,7 +289,8 @@ export function RolesPermisosView() {
           <button
             type="button"
             onClick={fetchRoles}
-            className="group p-2 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/30 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-md active:scale-95 shadow-sm flex items-center justify-center"
+            disabled={loading}
+            className="group p-2 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/30 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-md active:scale-95 shadow-sm flex items-center justify-center disabled:opacity-60"
             title="Recargar roles"
           >
             <DentistryReloadIcon size={20} loading={loading} />
