@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   Search,
   Plus,
@@ -10,7 +11,6 @@ import {
   Mail,
   User,
   Clock,
-  Stethoscope,
   Activity,
   ShieldCheck,
   AlertTriangle,
@@ -1324,16 +1324,6 @@ export function HistoriaClinicaView() {
                             ]}
                             onCardClick={() => setFolderCategory("evoluciones")}
                           />
-
-                          <button
-                            type="button"
-                            onClick={() => setFolderCategory("evoluciones")}
-                            className="w-full py-2.5 px-4 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-2"
-                          >
-                            <Clock size={14} />
-                            <span>Abrir Evoluciones Clínicas ({attentions.length})</span>
-                            <ChevronRight size={14} />
-                          </button>
                         </div>
 
                         {/* CARPETA 2: Diagnósticos CIE-10 */}
@@ -1359,16 +1349,6 @@ export function HistoriaClinicaView() {
                             ]}
                             onCardClick={() => setFolderCategory("diagnosticos")}
                           />
-
-                          <button
-                            type="button"
-                            onClick={() => setFolderCategory("diagnosticos")}
-                            className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-2"
-                          >
-                            <Stethoscope size={14} />
-                            <span>Abrir Diagnósticos CIE-10</span>
-                            <ChevronRight size={14} />
-                          </button>
                         </div>
 
                         {/* CARPETA 3: Procedimientos */}
@@ -1394,16 +1374,6 @@ export function HistoriaClinicaView() {
                             ]}
                             onCardClick={() => setFolderCategory("procedimientos")}
                           />
-
-                          <button
-                            type="button"
-                            onClick={() => setFolderCategory("procedimientos")}
-                            className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-2"
-                          >
-                            <Activity size={14} />
-                            <span>Abrir Procedimientos Clínicos</span>
-                            <ChevronRight size={14} />
-                          </button>
                         </div>
 
                         {/* CARPETA 4: Antecedentes Médicos */}
@@ -1429,16 +1399,6 @@ export function HistoriaClinicaView() {
                             ]}
                             onCardClick={() => setFolderCategory("antecedentes")}
                           />
-
-                          <button
-                            type="button"
-                            onClick={() => setFolderCategory("antecedentes")}
-                            className="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-2"
-                          >
-                            <ShieldCheck size={14} />
-                            <span>Abrir Antecedentes Médicos</span>
-                            <ChevronRight size={14} />
-                          </button>
                         </div>
                       </div>
                     )}
@@ -1446,12 +1406,17 @@ export function HistoriaClinicaView() {
                 </div>
 
               {/* DRAWER LATERAL PARA INSPECCIÓN DE DETALLES DE REGISTRO */}
-              {selectedRecordDetail && (
-                <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/60 backdrop-blur-xs animate-fadeIn">
-                  <div className="w-full max-w-lg h-full bg-white dark:bg-slate-900 border-l border-slate-200/80 dark:border-white/10 p-6 space-y-5 overflow-y-auto shadow-2xl flex flex-col animate-slideInRight">
-                    <div className="flex items-center justify-between pb-3 border-b border-slate-200/80 dark:border-white/10 shrink-0">
+              {typeof document !== "undefined" && selectedRecordDetail && createPortal(
+                <div
+                  className="fixed inset-0 z-[99999] flex justify-end bg-slate-950/70 backdrop-blur-sm animate-fadeIn"
+                  onClick={(e) => {
+                    if (e.target === e.currentTarget) setSelectedRecordDetail(null);
+                  }}
+                >
+                  <div className="w-full max-w-lg h-full bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-white/10 shadow-2xl flex flex-col animate-slideInRight">
+                    <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-white/10 bg-slate-50/80 dark:bg-slate-900/90 backdrop-blur shrink-0">
                       <div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">
+                        <span className="inline-block px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 font-bold uppercase tracking-wider text-[10px] mb-1">
                           {selectedRecordDetail.categoria}
                         </span>
                         <h3 className="text-base font-bold text-slate-900 dark:text-white">
@@ -1461,64 +1426,77 @@ export function HistoriaClinicaView() {
                       <button
                         type="button"
                         onClick={() => setSelectedRecordDetail(null)}
-                        className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors cursor-pointer"
+                        className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-300 transition-colors cursor-pointer"
                         aria-label="Cerrar detalle"
                       >
-                        <X size={18} />
+                        <X size={20} />
                       </button>
                     </div>
 
-                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-white/10 space-y-2 text-xs">
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-500">Paciente:</span>
-                        <span className="font-bold text-slate-900 dark:text-white">
-                          {selectedPatient.firstName} {selectedPatient.lastName} (CC: {selectedPatient.documentNumber})
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-500">Profesional Responsable:</span>
-                        <span className="font-semibold text-cyan-700 dark:text-cyan-300">
-                          {selectedRecordDetail.profesional}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-500">Fecha:</span>
-                        <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">
-                          {selectedRecordDetail.fecha}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-500">Estado:</span>
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-bold text-[10px]">
-                          {selectedRecordDetail.estado}
-                        </span>
-                      </div>
-                    </div>
-
-                    {selectedRecordDetail.detalles && (
-                      <div className="space-y-3">
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                          Detalles Clínicos del Registro
-                        </h4>
-                        <div className="space-y-2.5">
-                          {Object.entries(selectedRecordDetail.detalles).map(([key, val]) => (
-                            <div
-                              key={key}
-                              className="p-3 rounded-xl bg-slate-100/70 dark:bg-white/5 border border-slate-200/70 dark:border-white/10 text-xs space-y-1"
-                            >
-                              <span className="font-bold text-cyan-800 dark:text-cyan-300 uppercase text-[10px]">
-                                {key}:
-                              </span>
-                              <p className="text-slate-800 dark:text-slate-200 font-medium leading-relaxed">
-                                {String(val || "Sin registro")}
-                              </p>
-                            </div>
-                          ))}
+                    <div className="p-6 space-y-5 overflow-y-auto flex-1">
+                      <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-white/10 space-y-2 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-500">Paciente:</span>
+                          <span className="font-bold text-slate-900 dark:text-white">
+                            {selectedPatient.firstName} {selectedPatient.lastName} (CC: {selectedPatient.documentNumber})
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-500">Profesional Responsable:</span>
+                          <span className="font-semibold text-cyan-700 dark:text-cyan-300">
+                            {selectedRecordDetail.profesional}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-500">Fecha:</span>
+                          <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">
+                            {selectedRecordDetail.fecha}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-500">Estado:</span>
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-bold text-[10px]">
+                            {selectedRecordDetail.estado}
+                          </span>
                         </div>
                       </div>
-                    )}
 
-                    <div className="pt-4 border-t border-slate-200/80 dark:border-white/10 flex items-center justify-end gap-2 shrink-0">
+                      {selectedRecordDetail.resumen && (
+                        <div className="p-3.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-xs space-y-1">
+                          <span className="font-bold text-cyan-800 dark:text-cyan-300 uppercase text-[10px] block">
+                            Resumen Clínico / Motivo:
+                          </span>
+                          <p className="text-slate-800 dark:text-slate-200 font-medium leading-relaxed">
+                            {selectedRecordDetail.resumen}
+                          </p>
+                        </div>
+                      )}
+
+                      {selectedRecordDetail.detalles && (
+                        <div className="space-y-3">
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                            Detalles Clínicos del Registro
+                          </h4>
+                          <div className="space-y-2.5">
+                            {Object.entries(selectedRecordDetail.detalles).map(([key, val]) => (
+                              <div
+                                key={key}
+                                className="p-3 rounded-xl bg-slate-100/70 dark:bg-white/5 border border-slate-200/70 dark:border-white/10 text-xs space-y-1"
+                              >
+                                <span className="font-bold text-cyan-800 dark:text-cyan-300 uppercase text-[10px]">
+                                  {key}:
+                                </span>
+                                <p className="text-slate-800 dark:text-slate-200 font-medium leading-relaxed">
+                                  {String(val || "Sin registro")}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="p-4 border-t border-slate-200/80 dark:border-white/10 flex items-center justify-end gap-2 shrink-0 bg-slate-50/50 dark:bg-slate-900/50">
                       <button
                         type="button"
                         onClick={() => setSelectedRecordDetail(null)}
@@ -1528,7 +1506,8 @@ export function HistoriaClinicaView() {
                       </button>
                     </div>
                   </div>
-                </div>
+                </div>,
+                document.body
               )}
             </>
           ) : (
