@@ -205,7 +205,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const updateUser = (updatedData: Partial<User>) => {
     setUser((prev) => {
       if (!prev) return null;
-      const updated = { ...prev, ...updatedData };
+      const nombre = updatedData.nombre ?? prev.nombre;
+      const apellido = updatedData.apellido ?? prev.apellido;
+      const shouldRebuildName =
+        updatedData.nombre !== undefined || updatedData.apellido !== undefined;
+      const rebuiltName = `${nombre || ''} ${apellido || ''}`.trim();
+      const updated: User = {
+        ...prev,
+        ...updatedData,
+        ...(shouldRebuildName && rebuiltName
+          ? { name: updatedData.name || rebuiltName, nombre, apellido }
+          : {}),
+      };
       localStorage.setItem('auth_user', JSON.stringify(updated));
       const uId = prev.id || prev.email;
       if (updatedData.avatar && uId) {

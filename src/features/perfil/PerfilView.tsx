@@ -1,4 +1,4 @@
-import { useState, useEffect, type ChangeEvent } from "react";
+import { useState, useEffect, useRef, type ChangeEvent } from "react";
 import {
   Pencil,
   Save,
@@ -14,7 +14,6 @@ import {
 
 import { useAuth } from "../auth/AuthContext";
 import { authService } from "../../api/authService";
-import { personService } from "../../api/personService";
 import { UserAvatar } from "../../components/common/UserAvatar";
 import { formatRoleName } from "../../utils/roleUtils";
 
@@ -23,6 +22,9 @@ export default function PerfilView() {
 
   const [isEditing, setIsEditing] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const isEditingRef = useRef(false);
 
   const userId = user?.id || user?.email || "default_user";
 
@@ -45,6 +47,9 @@ export default function PerfilView() {
     let isMounted = true;
 
     const syncProfile = async () => {
+      // Evitar que /auth/me sobrescriba ediciones en curso o un guardado recién aplicado
+      if (isEditingRef.current) return;
+
       const savedAvatar = localStorage.getItem(`user_avatar_${userId}`);
       const activeAvatar = user?.avatar || user?.avatarUrl || savedAvatar || "";
 
@@ -67,7 +72,7 @@ export default function PerfilView() {
 
       try {
         const profile = await authService.getProfile();
-        if (profile && isMounted) {
+        if (profile && isMounted && !isEditingRef.current) {
           const userObj = profile.user || profile;
           const uId = userObj.id || userObj.email || userId;
           const freshSavedAvatar = uId ? localStorage.getItem(`user_avatar_${uId}`) : null;
@@ -115,8 +120,10 @@ export default function PerfilView() {
   };
 
   const handleEdit = () => {
+    isEditingRef.current = true;
     setIsEditing(true);
     setSaveSuccess(false);
+    setSaveError(null);
   };
 
   const handleCancel = () => {
@@ -136,37 +143,72 @@ export default function PerfilView() {
       avatar: savedAvatar,
     });
 
+    isEditingRef.current = false;
     setIsEditing(false);
+    setSaveError(null);
   };
 
   const handleSave = async () => {
-    // 1. Actualizar contexto de sesión global
-    if (updateUser) {
-      updateUser(profileData);
-    }
+    setIsSaving(true);
+    setSaveError(null);
 
-    // 2. Persistir en backend API si personId es válido
-    if (user?.personId && user.personId.length > 10) {
-      try {
-        await personService.update(user.personId, {
-          documentTypeId: profileData.tipoDocumento || "10000000-0000-0000-0000-000000000001",
-          documentNumber: profileData.cedula || user.cedula || "1076543210",
-          firstName: profileData.nombre,
-          lastName: profileData.apellido,
-          email: profileData.email,
-          phone: profileData.telefono,
-          dateOfBirth: profileData.fechaNacimiento,
-          sexId: profileData.sexo || "11000000-0000-0000-0000-000000000001",
-          address: profileData.direccion,
-        });
-      } catch (err) {
-        console.warn("Backend person update sync:", err);
-      }
-    }
+    try {
+      const profile = await authService.updateProfile({
+        firstName: profileData.nombre.trim(),
+        lastName: profileData.apellido.trim(),
+        email: profileData.email.trim() || undefined,
+        phone: profileData.telefono.trim() || undefined,
+        address: profileData.direccion.trim() || undefined,
+        documentNumber: profileData.cedula.trim() || undefined,
+      });
 
-    setIsEditing(false);
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
+      const userObj = profile?.user || profile || {};
+      const firstName = userObj.firstName || profileData.nombre.trim();
+      const lastName = userObj.lastName || profileData.apellido.trim();
+      const fullName = userObj.name || `${firstName} ${lastName}`.trim();
+
+      updateUser({
+        nombre: firstName,
+        apellido: lastName,
+        name: fullName,
+        email: userObj.email || profileData.email,
+        telefono: userObj.phone || profileData.telefono,
+        cedula: userObj.documentNumber || profileData.cedula,
+        direccion: profileData.direccion,
+        avatar: profileData.avatar,
+      });
+
+      setProfileData((prev) => ({
+        ...prev,
+        nombre: firstName,
+        apellido: lastName,
+        email: userObj.email || prev.email,
+        telefono: userObj.phone || prev.telefono,
+        cedula: userObj.documentNumber || prev.cedula,
+      }));
+
+      setIsEditing(false);
+      isEditingRef.current = false;
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err: any) {
+      const apiErrors = err?.response?.data?.errors;
+      const flattenedErrors =
+        apiErrors && typeof apiErrors === "object" && !Array.isArray(apiErrors)
+          ? Object.values(apiErrors).flat().join(", ")
+          : Array.isArray(apiErrors)
+            ? apiErrors.join(", ")
+            : null;
+      const apiMessage =
+        err?.response?.data?.message ||
+        err?.response?.data?.title ||
+        flattenedErrors ||
+        err?.message ||
+        "No se pudo guardar el perfil. Inténtalo de nuevo.";
+      setSaveError(apiMessage);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const fullName = `${profileData.nombre} ${profileData.apellido}`.trim() || user?.name || "Usuario";
@@ -178,6 +220,12 @@ export default function PerfilView() {
         <div className="fixed bottom-6 right-6 z-[99999] flex items-center gap-2.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 px-5 py-3 rounded-2xl shadow-2xl border border-teal-500/30 animate-slideUp backdrop-blur-md">
           <CheckCircle size={18} className="text-teal-400 dark:text-teal-600 flex-shrink-0" />
           <span className="text-xs font-semibold">Perfil de usuario actualizado correctamente</span>
+        </div>
+      )}
+      {saveError && (
+        <div className="fixed bottom-6 right-6 z-[99999] flex items-center gap-2.5 bg-rose-950 text-rose-50 px-5 py-3 rounded-2xl shadow-2xl border border-rose-500/40 animate-slideUp backdrop-blur-md max-w-sm">
+          <X size={18} className="text-rose-300 flex-shrink-0" />
+          <span className="text-xs font-semibold">{saveError}</span>
         </div>
       )}
 
@@ -222,10 +270,11 @@ export default function PerfilView() {
               <button
                 type="button"
                 onClick={handleSave}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 px-5 py-2.5 text-xs font-bold text-white dark:text-slate-950 shadow-md transition-all active:scale-95 cursor-pointer"
+                disabled={isSaving}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 px-5 py-2.5 text-xs font-bold text-white dark:text-slate-950 shadow-md transition-all active:scale-95 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <Save size={15} />
-                <span>Guardar Cambios</span>
+                <span>{isSaving ? "Guardando..." : "Guardar Cambios"}</span>
               </button>
             </div>
           )}

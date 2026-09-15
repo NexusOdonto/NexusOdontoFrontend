@@ -24,6 +24,7 @@ import { useNotifications } from "../../context/NotificationContext";
 import { SelectOrWriteInput, type SelectOption } from "../../components/common/SelectOrWriteInput";
 import { areGuidsEqual } from "../../utils/roleUtils";
 import { resolveOrCreatePatient } from "../../utils/patientResolution";
+import { validateClinicAppointmentSchedule } from "../../utils/clinicSchedule";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
 import { AlertCircle } from "lucide-react";
 
@@ -748,44 +749,10 @@ export function CitasView() {
       const fechaValida = formFecha || todayDateString;
       const horaValida = normalizeTimeTo24h(formHora || getNextValidHour(fechaValida));
 
-      // Validar fecha y hora según rol
-      if (fechaValida && horaValida) {
-        const selectedDateTime = new Date(`${fechaValida}T${horaValida}:00`);
-        if (isPaciente) {
-          const minAllowedDateTime = new Date(Date.now() + 30 * 60 * 1000);
-          if (selectedDateTime < minAllowedDateTime) {
-            const msg = "Las citas deben solicitarse con al menos 30 minutos de anticipación.";
-            setFormError(msg);
-            setIsSubmitting(false);
-            return;
-          }
-        } else {
-          const selectedDay = new Date(`${fechaValida}T00:00:00`);
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          if (selectedDay < today) {
-            const msg = "No se pueden crear citas en fechas pasadas.";
-            setFormError(msg);
-            setIsSubmitting(false);
-            return;
-          }
-        }
-      }
-
-      // Validar jornada de atención clínica (08:00 a 12:00 y 14:00 a 17:00, última cita inicia 16:30)
-      const [hStr, mStr] = horaValida.split(":");
-      const hNum = parseInt(hStr, 10);
-      const mNum = parseInt(mStr, 10);
-      const timeInMinutes = (isNaN(hNum) ? 9 : hNum) * 60 + (isNaN(mNum) ? 0 : mNum);
-
-      if (timeInMinutes < 8 * 60 || timeInMinutes > 16 * 60 + 30) {
-        setFormError("La jornada de atención clínica es de 08:00 a 12:00 y de 14:00 a 17:00. La última cita debe iniciar a más tardar a las 16:30.");
-        setIsSubmitting(false);
-        return;
-      }
-
-      if (timeInMinutes >= 12 * 60 && timeInMinutes < 14 * 60) {
-        setFormError("El horario de 12:00 a 14:00 corresponde al receso de almuerzo clínico. Por favor selecciona un horario en la mañana (08:00 a 11:30) o en la tarde (14:00 a 16:30).");
+      // Past + jornada checks use Colombia wall-clock (clinic TZ), not UTC.
+      const scheduleError = validateClinicAppointmentSchedule(fechaValida, horaValida);
+      if (scheduleError) {
+        setFormError(scheduleError);
         setIsSubmitting(false);
         return;
       }
@@ -904,7 +871,15 @@ export function CitasView() {
           }
         }
         
-        if (serverMsg.includes("no hay odontólogos disponibles") || serverMsg.includes("no hay odontólogos activos")) {
+        if (
+          serverMsg.includes("fechas u horas pasadas") ||
+          serverMsg.includes("fuera de la jornada") ||
+          serverMsg.includes("receso de almuerzo")
+        ) {
+          setFormError(rawServerMsg);
+          setIsSubmitting(false);
+          return;
+        } else if (serverMsg.includes("no hay odontólogos disponibles") || serverMsg.includes("no hay odontólogos activos")) {
           setFormError(rawServerMsg || "No hay odontólogos disponibles en ese horario. Por favor selecciona otra hora.");
           setIsSubmitting(false);
           return;
@@ -1169,19 +1144,16 @@ export function CitasView() {
 
     const horaEditValida = normalizeTimeTo24h(editHora || getNextValidHour(editFecha));
 
-    // Validar restricción solo si se cambia la fecha u hora a un día pasado
+    // Solo revalidar horario si cambia fecha/hora (Colombia wall-clock + jornada).
     const isDateTimeChanged =
       selectedCitaToEdit.fecha !== editFecha ||
       normalizeTimeTo24h(selectedCitaToEdit.hora) !== horaEditValida;
 
     if (isDateTimeChanged && editFecha) {
-      const selectedDay = new Date(`${editFecha}T00:00:00`);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (selectedDay < today) {
-        const msg = "No se pueden reprogramar citas a fechas pasadas.";
-        setEditFormError(msg);
-        setErrorMessage(msg);
+      const scheduleError = validateClinicAppointmentSchedule(editFecha, horaEditValida);
+      if (scheduleError) {
+        setEditFormError(scheduleError);
+        setErrorMessage(scheduleError);
         setTimeout(() => setErrorMessage(null), 5000);
         return;
       }
