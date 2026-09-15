@@ -891,7 +891,7 @@ export function AtencionAsesorView() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4.5rem)] sm:h-[calc(100vh-5rem)] max-h-[960px] bg-white dark:bg-slate-900/95 text-slate-900 dark:text-slate-100 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800/80 shadow-2xl overflow-hidden font-sans backdrop-blur-2xl relative transition-colors duration-200">
+    <div className="flex flex-col h-[calc(100vh-7.5rem)] sm:h-[calc(100vh-8.5rem)] md:h-[calc(100vh-9.5rem)] max-h-[960px] bg-white dark:bg-slate-900/95 text-slate-900 dark:text-slate-100 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800/80 shadow-2xl overflow-hidden font-sans backdrop-blur-2xl relative transition-colors duration-200">
       
       {/* TOAST DE NOTIFICACIÓN FLOTANTE */}
       {toastMessage && (
@@ -1014,79 +1014,95 @@ export function AtencionAsesorView() {
           </p>
         </div>
       ) : !isConnected ? (
-        <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-10 bg-slate-50/40 dark:bg-slate-950/20 overflow-y-auto">
-          <div className="w-full max-w-xl bg-white/95 dark:bg-slate-900/90 backdrop-blur-xl rounded-3xl border border-slate-200/80 dark:border-white/10 p-6 sm:p-8 shadow-2xl shadow-emerald-950/10 text-center space-y-6 animate-in fade-in zoom-in-95 duration-300">
-            <div className="space-y-2">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-teal-500/20 via-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/10">
-                <QrCode size={30} />
+        <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 bg-slate-50/40 dark:bg-slate-950/20 overflow-hidden">
+          <div className="w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl bg-white/95 dark:bg-slate-900/90 backdrop-blur-xl rounded-3xl border border-slate-200/80 dark:border-white/10 p-6 sm:p-9 lg:p-10 shadow-2xl shadow-emerald-950/10 space-y-7 animate-in fade-in zoom-in-95 duration-300">
+            {/* ENCABEZADO */}
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 pb-5 border-b border-slate-200/60 dark:border-white/10 text-center sm:text-left">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-teal-500/20 via-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0 shadow-lg shadow-emerald-500/10">
+                <QrCode size={32} />
               </div>
-              <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
-                WhatsApp no está vinculado
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
-                Los chats y mensajes de pacientes permanecerán ocultos hasta que vincules WhatsApp con NexusBot. Escanea el código QR a continuación para habilitar la atención.
-              </p>
-            </div>
-
-            {/* CÓDIGO QR DIRECTO EN PANTALLA */}
-            <div className="relative group inline-block">
-              {qrData?.base64 ? (
-                <div className="p-4 rounded-3xl bg-white border-2 border-teal-500/40 shadow-xl inline-block transition-transform duration-300 hover:scale-105">
-                  <img
-                    src={
-                      qrData.base64.startsWith("data:")
-                        ? qrData.base64
-                        : `data:image/png;base64,${qrData.base64}`
-                    }
-                    alt="Código QR de WhatsApp"
-                    className="w-56 h-56 object-contain rounded-xl"
-                  />
+              <div className="space-y-1.5 flex-1">
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
+                  <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                    WhatsApp no está vinculado
+                  </h2>
+                  <span className="px-3 py-1 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 text-xs font-bold">
+                    Requiere Vinculación
+                  </span>
                 </div>
-              ) : (
-                <div className="w-56 h-56 rounded-3xl border-2 border-dashed border-teal-500/40 bg-teal-500/5 flex flex-col items-center justify-center mx-auto space-y-3 text-teal-600 dark:text-teal-400 p-4">
-                  <RefreshCw size={32} className="animate-spin text-teal-500" />
-                  <span className="text-xs font-bold">Generando Código QR Seguro...</span>
-                  <span className="text-[10px] text-slate-400">Conectando con Evolution API</span>
+                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed max-w-3xl">
+                  Los chats y mensajes de pacientes permanecerán en espera hasta que vincules WhatsApp con NexusBot. Escanea el código QR a continuación para iniciar la atención en vivo.
+                </p>
+              </div>
+            </div>
+
+            {/* CONTENIDO 2 COLUMNAS AMPLIAS: QR + INSTRUCCIONES */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-10 items-center">
+              {/* COLUMNA IZQUIERDA: CÓDIGO QR + ACCIONES */}
+              <div className="md:col-span-5 flex flex-col items-center justify-center space-y-4">
+                <div className="relative group">
+                  {qrData?.base64 ? (
+                    <div className="p-4 rounded-3xl bg-white border-2 border-teal-500/40 shadow-xl inline-block transition-transform duration-300 hover:scale-105">
+                      <img
+                        src={
+                          qrData.base64.startsWith("data:")
+                            ? qrData.base64
+                            : `data:image/png;base64,${qrData.base64}`
+                        }
+                        alt="Código QR de WhatsApp"
+                        className="w-56 h-56 sm:w-60 sm:h-60 object-contain rounded-xl"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-56 h-56 sm:w-60 sm:h-60 rounded-3xl border-2 border-dashed border-teal-500/40 bg-teal-500/5 flex flex-col items-center justify-center space-y-3 text-teal-600 dark:text-teal-400 p-5">
+                      <RefreshCw size={32} className="animate-spin text-teal-500" />
+                      <span className="text-sm font-bold text-center">Generando Código QR Seguro...</span>
+                      <span className="text-xs text-slate-400">Conectando con Evolution API</span>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
 
-            <div className="p-4 rounded-2xl bg-teal-50/80 dark:bg-teal-950/40 border border-teal-200/80 dark:border-teal-800/60 text-left max-w-md mx-auto">
-              <h4 className="text-xs font-bold text-teal-950 dark:text-teal-200 flex items-center gap-1.5 mb-2">
-                <Smartphone size={15} className="text-teal-600 dark:text-teal-400" />
-                Instrucciones de escaneo:
-              </h4>
-              <ol className="text-[11px] text-slate-700 dark:text-slate-300 space-y-1.5 list-decimal list-inside pl-1 font-medium">
-                <li>Abre <b>WhatsApp</b> en tu celular corporativo.</li>
-                <li>Toca <b>Menú (⋮)</b> o <b>Configuración</b>.</li>
-                <li>Selecciona <b>Dispositivos vinculados</b> &gt; <b>Vincular un dispositivo</b>.</li>
-                <li>Apunta la cámara de tu celular hacia este código QR.</li>
-              </ol>
-            </div>
+                <div className="flex items-center gap-3 w-full max-w-xs justify-center">
+                  <button
+                    type="button"
+                    onClick={handleRestartQr}
+                    disabled={restartingQr}
+                    className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 text-xs font-bold transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    <RefreshCw size={14} className={restartingQr ? "animate-spin" : ""} />
+                    <span>{restartingQr ? "Generando..." : "Nuevo QR"}</span>
+                  </button>
 
-            <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1">
-              <button
-                type="button"
-                onClick={handleRestartQr}
-                disabled={restartingQr}
-                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 text-xs font-black transition-all shadow-md active:scale-95 flex items-center gap-2 cursor-pointer disabled:opacity-50"
-              >
-                <RefreshCw size={14} className={restartingQr ? "animate-spin" : ""} />
-                <span>{restartingQr ? "Generando..." : "Generar Nuevo QR"}</span>
-              </button>
+                  <button
+                    type="button"
+                    onClick={fetchQr}
+                    className="flex-1 py-2.5 px-4 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold transition-all border border-slate-200 dark:border-white/10 cursor-pointer text-center"
+                  >
+                    Refrescar
+                  </button>
+                </div>
+              </div>
 
-              <button
-                type="button"
-                onClick={fetchQr}
-                className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition-all border border-slate-200 dark:border-white/10 cursor-pointer"
-              >
-                Refrescar Estado
-              </button>
-            </div>
+              {/* COLUMNA DERECHA: INSTRUCCIONES + ESTADO */}
+              <div className="md:col-span-7 flex flex-col justify-between space-y-5">
+                <div className="p-5 sm:p-6 rounded-2xl bg-teal-50/80 dark:bg-teal-950/40 border border-teal-200/80 dark:border-teal-800/60">
+                  <h4 className="text-sm font-bold text-teal-950 dark:text-teal-200 flex items-center gap-2 mb-3">
+                    <Smartphone size={18} className="text-teal-600 dark:text-teal-400" />
+                    Instrucciones de escaneo:
+                  </h4>
+                  <ol className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 space-y-2.5 list-decimal list-inside font-medium leading-relaxed">
+                    <li>Abre <strong className="font-semibold text-slate-900 dark:text-white">WhatsApp</strong> en tu celular corporativo.</li>
+                    <li>Toca <strong className="font-semibold text-slate-900 dark:text-white">Menú (⋮)</strong> o <strong className="font-semibold text-slate-900 dark:text-white">Configuración</strong>.</li>
+                    <li>Selecciona <strong className="font-semibold text-slate-900 dark:text-white">Dispositivos vinculados</strong> &gt; <strong className="font-semibold text-slate-900 dark:text-white">Vincular un dispositivo</strong>.</li>
+                    <li>Apunta la cámara de tu celular hacia este código QR.</li>
+                  </ol>
+                </div>
 
-            <div className="text-[11px] text-slate-400 dark:text-slate-500 flex items-center justify-center gap-2 pt-2 border-t border-slate-200/60 dark:border-white/5">
-              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-              <span>Sincronizando automáticamente al detectar el escaneo...</span>
+                <div className="p-3.5 rounded-xl bg-slate-100/70 dark:bg-slate-800/40 border border-slate-200/60 dark:border-white/5 flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse flex-shrink-0" />
+                  <span>Sincronizando automáticamente al detectar el escaneo en tiempo real...</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

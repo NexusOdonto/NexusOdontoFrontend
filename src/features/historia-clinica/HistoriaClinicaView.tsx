@@ -15,7 +15,6 @@ import {
   ShieldCheck,
   AlertTriangle,
   FileText,
-  Award,
   Calendar,
   Smile,
   Printer,
@@ -77,7 +76,16 @@ export function HistoriaClinicaView() {
   const [nextAppointment, setNextAppointment] = useState<{ servicio: string; profesional: string; fecha: string; hora: string } | null>(null);
   const [dentistsList, setDentistsList] = useState<string[]>(LICENSED_DENTISTS_FALLBACK);
   const [patientAppointmentsList, setPatientAppointmentsList] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<"evoluciones" | "diagnosticos" | "procedimientos" | "antecedentes" | "expediente">("evoluciones");
+  const [folderCategory, setFolderCategory] = useState<"evoluciones" | "diagnosticos" | "procedimientos" | "antecedentes" | null>(null);
+  const [selectedRecordDetail, setSelectedRecordDetail] = useState<{
+    titulo: string;
+    fecha: string;
+    profesional: string;
+    categoria: string;
+    resumen: string;
+    estado: string;
+    detalles?: Record<string, any>;
+  } | null>(null);
 
   // Modal Nueva Evolución
   const [showNewAttentionModal, setShowNewAttentionModal] = useState(false);
@@ -885,11 +893,11 @@ export function HistoriaClinicaView() {
                     { title: "Diagnósticos", tag: "CIE-10" },
                     { title: "Fórmulas", tag: "Rx" },
                   ]}
-                  onCardClick={() => setActiveTab("expediente")}
+                  onCardClick={() => setFolderCategory(null)}
                 />
                 <button
                   type="button"
-                  onClick={() => setActiveTab("expediente")}
+                  onClick={() => setFolderCategory(null)}
                   className="text-[11px] font-bold text-teal-600 dark:text-teal-400 hover:underline cursor-pointer"
                 >
                   Ver Archivador Digital 3D →
@@ -961,543 +969,563 @@ export function HistoriaClinicaView() {
                 </div>
               </div>
 
-              {/* PESTAÑAS ENCAPSULADAS EN CONTENEDOR GLASSMORPHIC */}
-              <div className="flex items-center rounded-2xl bg-white/90 dark:bg-slate-950/65 p-1 border border-slate-200 dark:border-white/20 backdrop-blur-xl shadow-md overflow-x-auto gap-1">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("evoluciones")}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                    activeTab === "evoluciones"
-                      ? "bg-cyan-500/15 dark:bg-cyan-500/30 text-cyan-800 dark:text-cyan-200 border border-cyan-500/30 dark:border-cyan-400/40 shadow-sm"
-                      : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
-                  }`}
-                >
-                  <Clock size={14} />
-                  <span>Evoluciones Clínicas ({attentions?.length || 0})</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("diagnosticos")}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                    activeTab === "diagnosticos"
-                      ? "bg-cyan-500/15 dark:bg-cyan-500/30 text-cyan-800 dark:text-cyan-200 border border-cyan-500/30 dark:border-cyan-400/40 shadow-sm"
-                      : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
-                  }`}
-                >
-                  <Stethoscope size={14} />
-                  <span>Diagnósticos CIE-10</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("procedimientos")}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                    activeTab === "procedimientos"
-                      ? "bg-cyan-500/15 dark:bg-cyan-500/30 text-cyan-800 dark:text-cyan-200 border border-cyan-500/30 dark:border-cyan-400/40 shadow-sm"
-                      : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
-                  }`}
-                >
-                  <Activity size={14} />
-                  <span>Procedimientos</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("antecedentes")}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                    activeTab === "antecedentes"
-                      ? "bg-cyan-500/15 dark:bg-cyan-500/30 text-cyan-800 dark:text-cyan-200 border border-cyan-500/30 dark:border-cyan-400/40 shadow-sm"
-                      : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
-                  }`}
-                >
-                  <ShieldCheck size={14} />
-                  <span>Antecedentes Médicos</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("expediente")}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                    activeTab === "expediente"
-                      ? "bg-cyan-500/15 dark:bg-cyan-500/30 text-cyan-800 dark:text-cyan-200 border border-cyan-500/30 dark:border-cyan-400/40 shadow-sm"
-                      : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
-                  }`}
-                >
-                  <FolderOpen size={14} />
-                  <span>Archivador Digital 3D</span>
-                </button>
-              </div>
-
-              {/* CONTENIDO DE LAS PESTAÑAS */}
-              {activeTab === "evoluciones" && (
-                <div className="space-y-4">
-                  {attentions.length === 0 ? (
-                    <div className="py-10 px-6 text-center rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl p-6 shadow-md space-y-5 animate-fadeIn">
-                      <FolderComponent
-                        color="teal"
-                        size="md"
-                        title={`Expediente de ${selectedPatient.firstName}`}
-                        subtitle="Sin evoluciones registradas para este paciente"
-                        items={[
-                          { title: "Nueva Evolución", tag: "CIE-10" },
-                          { title: "Diagnósticos Odontológicos", tag: "FDI" },
-                          { title: "Prescripción Médica", tag: "Rx" },
-                        ]}
-                        onCardClick={() => !isPaciente && setShowNewAttentionModal(true)}
-                      />
-                      <div className="space-y-3 max-w-sm mx-auto">
-                        <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">
-                          Pasa el cursor sobre la carpeta o haz clic para registrar la primera atención clínica de este paciente.
-                        </p>
-                        {!isPaciente && (
-                          <button
-                            type="button"
-                            onClick={() => setShowNewAttentionModal(true)}
-                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 px-5 py-2.5 text-xs font-bold text-white dark:text-slate-950 shadow-md transition-all active:scale-95 cursor-pointer"
-                          >
-                            <Plus size={16} />
-                            <span>Registrar Primera Evolución</span>
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    attentions.map((att, idx) => (
-                      <div
-                        key={att.id}
-                        className="rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl p-6 shadow-md space-y-4 animate-slideUp"
-                      >
-                        {/* Cabecera de la Evolución con Metadatos Claras */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/80 dark:border-white/10 pb-3">
-                          <div className="flex items-center gap-3">
-                            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-cyan-500/20 text-cyan-800 dark:text-cyan-200 font-bold text-xs border border-cyan-500/30">
-                              #{attentions.length - idx}
-                            </span>
-                            <div>
-                              <h4 className="text-sm font-bold text-slate-900 dark:text-white">
-                                {att.motivo}
-                              </h4>
-                              <span className="text-xs text-slate-700 dark:text-slate-200 font-medium">
-                                Odontólogo: <strong className="text-slate-900 dark:text-white font-bold">{att.profesional}</strong>
-                              </span>
-                            </div>
-                          </div>
-
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan-500/15 dark:bg-cyan-500/20 px-3 py-1 text-xs font-mono font-bold text-cyan-800 dark:text-cyan-200 border border-cyan-500/30 self-start sm:self-auto">
-                            <Calendar size={13} />
-                            {att.fecha}
-                          </span>
-                        </div>
-
-                        {/* Textos de Anamnesis y Examen Físico en Plateado Alto Contraste */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                          <div className="space-y-1.5 p-3.5 rounded-xl bg-slate-100/80 dark:bg-white/5 border border-slate-200/80 dark:border-white/10">
-                            <span className="font-bold text-cyan-800 dark:text-cyan-300 uppercase text-[10px] tracking-wider">
-                              Enfermedad Actual / Anamnesis:
-                            </span>
-                            <p className="text-slate-900 dark:text-slate-100 leading-relaxed font-medium">
-                              {att.enfermedadActual}
-                            </p>
-                          </div>
-
-                          <div className="space-y-1.5 p-3.5 rounded-xl bg-slate-100/80 dark:bg-white/5 border border-slate-200/80 dark:border-white/10">
-                            <span className="font-bold text-cyan-800 dark:text-cyan-300 uppercase text-[10px] tracking-wider">
-                              Examen Físico / Estomatológico:
-                            </span>
-                            <p className="text-slate-900 dark:text-slate-100 leading-relaxed font-medium">
-                              {att.examenFisico}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Diagnóstico y Plan de Tratamiento Destacado */}
-                        <div className="p-4 rounded-xl bg-gradient-to-r from-teal-500/15 via-cyan-500/15 to-transparent border border-cyan-500/30 space-y-2">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-cyan-900 dark:text-cyan-200">
-                              <Award size={15} /> Diagnóstico: {att.diagnostico}
-                            </span>
-                            <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-900 dark:text-cyan-100 text-[11px] font-mono font-bold border border-cyan-500/40">
-                              CIE-10: {att.cie10}
-                            </span>
-                          </div>
-                          <p className="text-xs font-semibold text-slate-900 dark:text-white">
-                            <strong>Plan de Tratamiento:</strong> {att.planTratamiento}
-                          </p>
-                        </div>
-
-                        {att.observaciones && (
-                          <p className="text-xs text-slate-700 dark:text-slate-300 italic pt-1 font-medium">
-                            <strong>Indicaciones:</strong> "{att.observaciones}"
-                          </p>
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
-
-              {activeTab === "diagnosticos" && (
-                <div className="rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl p-6 shadow-md space-y-4">
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <Stethoscope size={16} className="text-cyan-600 dark:text-cyan-400" />
-                    <span>Diagnósticos Registrados (CIE-10)</span>
-                  </h3>
-
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                      <thead>
-                        <tr className="border-b border-slate-200 dark:border-white/10 uppercase tracking-wider text-slate-700 dark:text-slate-300 font-bold text-[11px]">
-                          <th className="py-2.5 px-3">Código CIE-10</th>
-                          <th className="py-2.5 px-3">Descripción</th>
-                          <th className="py-2.5 px-3">Tipo</th>
-                          <th className="py-2.5 px-3 text-right">Estado</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-200/60 dark:divide-white/10">
-                        {diagnoses.length > 0 ? (
-                          diagnoses.map((d) => (
-                            <tr key={d.id} className="hover:bg-slate-100/80 dark:hover:bg-white/5 transition-colors">
-                              <td className="py-3 px-3 font-mono font-bold text-cyan-700 dark:text-cyan-300">
-                                {d.cie10Code}
-                              </td>
-                              <td className="py-3 px-3 font-bold text-slate-900 dark:text-white">
-                                {d.description}
-                              </td>
-                              <td className="py-3 px-3 text-slate-700 dark:text-slate-200 font-medium">
-                                {d.diagnosisType}
-                              </td>
-                              <td className="py-3 px-3 text-right">
-                                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 font-bold">
-                                  Confirmado
-                                </span>
-                              </td>
-                            </tr>
-                          ))
-                        ) : (
-                          <>
-                            <tr className="hover:bg-slate-100/80 dark:hover:bg-white/5 transition-colors">
-                              <td className="py-3 px-3 font-mono font-bold text-cyan-700 dark:text-cyan-300">K02.1</td>
-                              <td className="py-3 px-3 font-bold text-slate-900 dark:text-white">Caries de la dentina</td>
-                              <td className="py-3 px-3 text-slate-700 dark:text-slate-200 font-medium">Definitivo</td>
-                              <td className="py-3 px-3 text-right">
-                                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 font-bold">Tratado</span>
-                              </td>
-                            </tr>
-                            <tr className="hover:bg-slate-100/80 dark:hover:bg-white/5 transition-colors">
-                              <td className="py-3 px-3 font-mono font-bold text-cyan-700 dark:text-cyan-300">K03.6</td>
-                              <td className="py-3 px-3 font-bold text-slate-900 dark:text-white">Depósitos [acreciones] en los dientes</td>
-                              <td className="py-3 px-3 text-slate-700 dark:text-slate-200 font-medium">Presuntivo</td>
-                              <td className="py-3 px-3 text-right">
-                                <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/15 text-cyan-800 dark:text-cyan-200 font-bold">En Control</span>
-                              </td>
-                            </tr>
-                          </>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === "procedimientos" && (
-                <div className="rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl p-6 shadow-md space-y-4">
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <Activity size={16} className="text-cyan-600 dark:text-cyan-400" />
-                    <span>Procedimientos y Tratamientos Ejecutados</span>
-                  </h3>
-
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                      <thead>
-                        <tr className="border-b border-slate-200 dark:border-white/10 uppercase tracking-wider text-slate-700 dark:text-slate-300 font-bold text-[11px]">
-                          <th className="py-2.5 px-3">Procedimiento</th>
-                          <th className="py-2.5 px-3">Detalle / Pieza</th>
-                          <th className="py-2.5 px-3 text-center">Cant</th>
-                          <th className="py-2.5 px-3 text-right">Valor Unitario</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-200/60 dark:divide-white/10">
-                        {procedures.length > 0 ? (
-                          procedures.map((proc) => (
-                            <tr key={proc.id} className="hover:bg-slate-100/80 dark:hover:bg-white/5 transition-colors">
-                              <td className="py-3 px-3 font-bold text-slate-900 dark:text-white">Procedimiento #{proc.serviceId}</td>
-                              <td className="py-3 px-3 text-slate-700 dark:text-slate-200 font-medium">{proc.notes || "Tratamiento estándar"}</td>
-                              <td className="py-3 px-3 text-center font-bold text-slate-900 dark:text-white">{proc.quantity}</td>
-                              <td className="py-3 px-3 text-right font-mono font-bold text-emerald-700 dark:text-emerald-300">${proc.unitPrice?.toLocaleString()}</td>
-                            </tr>
-                          ))
-                        ) : (
-                          <>
-                            <tr className="hover:bg-slate-100/80 dark:hover:bg-white/5 transition-colors">
-                              <td className="py-3 px-3 font-bold text-slate-900 dark:text-white">Obturación estética en resina de fotocurado</td>
-                              <td className="py-3 px-3 text-slate-700 dark:text-slate-200 font-medium">Pieza #16 — Cavidad Clase I</td>
-                              <td className="py-3 px-3 text-center font-bold text-slate-900 dark:text-white">1</td>
-                              <td className="py-3 px-3 text-right font-mono font-bold text-emerald-700 dark:text-emerald-300">$120,000</td>
-                            </tr>
-                            <tr className="hover:bg-slate-100/80 dark:hover:bg-white/5 transition-colors">
-                              <td className="py-3 px-3 font-bold text-slate-900 dark:text-white">Detartraje ultrasónico y profilaxis</td>
-                              <td className="py-3 px-3 text-slate-700 dark:text-slate-200 font-medium">Arcada Superior e Inferior</td>
-                              <td className="py-3 px-3 text-center font-bold text-slate-900 dark:text-white">1</td>
-                              <td className="py-3 px-3 text-right font-mono font-bold text-emerald-700 dark:text-emerald-300">$90,000</td>
-                            </tr>
-                          </>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === "antecedentes" && (
-                <div className="rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl p-6 shadow-md space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                      <ShieldCheck size={16} className="text-cyan-600 dark:text-cyan-400" />
-                      <span>Antecedentes Médicos y Alertas Sistémicas</span>
-                    </h3>
-                    {!isPaciente && (
-                      <button
-                        type="button"
-                        onClick={handleOpenAntecedentes}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-800 dark:text-cyan-200 text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-95"
-                      >
-                        <Edit3 size={13} />
-                        <span>Actualizar Antecedentes</span>
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                    <div className="p-4 rounded-xl bg-slate-100/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 space-y-1">
-                      <span className="font-bold text-rose-600 dark:text-rose-400 uppercase text-[10px] tracking-wider flex items-center gap-1">
-                        <AlertTriangle size={12} />
-                        Alergias Medicamentosas / Alimentos
-                      </span>
-                      <p className="text-slate-900 dark:text-white font-bold">
-                        {selectedPatient.allergies || "No refiere alergias conocidas."}
-                      </p>
-                    </div>
-
-                    <div className="p-4 rounded-xl bg-slate-100/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 space-y-1">
-                      <span className="font-bold text-amber-600 dark:text-amber-400 uppercase text-[10px] tracking-wider flex items-center gap-1">
-                        <Activity size={12} />
-                        Enfermedades Sistémicas / Crónicas
-                      </span>
-                      <p className="text-slate-900 dark:text-white font-bold">
-                        {(selectedPatient as any).chronicDiseases || "Ninguna patología de base declarada."}
-                      </p>
-                    </div>
-
-                    <div className="p-4 rounded-xl bg-slate-100/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 space-y-1">
-                      <span className="font-bold text-cyan-700 dark:text-cyan-300 uppercase text-[10px] tracking-wider">
-                        Medicamentos de Uso Frecuente
-                      </span>
-                      <p className="text-slate-900 dark:text-white font-semibold">
-                        {(selectedPatient as any).currentMedications || "Sin farmacoterapia permanente."}
-                      </p>
-                    </div>
-
-                    <div className="p-4 rounded-xl bg-slate-100/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 space-y-1">
-                      <span className="font-bold text-cyan-700 dark:text-cyan-300 uppercase text-[10px] tracking-wider">
-                        Contacto de Emergencia
-                      </span>
-                      <p className="text-slate-900 dark:text-white font-semibold">
-                        {selectedPatient.emergencyContactName || "Familiar Responsable"} — {selectedPatient.emergencyContactPhone || selectedPatient.phone || "No registrado"}
-                      </p>
-                    </div>
-
-                    <div className="p-4 rounded-xl bg-slate-100/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 space-y-1">
-                      <span className="font-bold text-cyan-700 dark:text-cyan-300 uppercase text-[10px] tracking-wider">
-                        Aseguradora / Cobertura
-                      </span>
-                      <p className="text-slate-900 dark:text-white font-semibold">
-                        {selectedPatient.insuranceProvider || "Particular / Medicina Prepagada"} (Póliza: {selectedPatient.insurancePolicyNumber || "POL-987214"})
-                      </p>
-                    </div>
-
-                    <div className="p-4 rounded-xl bg-slate-100/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 space-y-1">
-                      <span className="font-bold text-cyan-700 dark:text-cyan-300 uppercase text-[10px] tracking-wider">
-                        Consentimiento Informado
-                      </span>
-                      <p className="text-slate-900 dark:text-white font-semibold flex items-center gap-1.5">
-                        <CheckCircle2 size={14} className="text-emerald-500" />
-                        Firmado digitalmente y verificado para procedimientos clínicos.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === "expediente" && (
-                <div className="space-y-6 animate-fadeIn">
-                  <div className="rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl p-6 shadow-md">
+              {/* ARCHIVADOR CLÍNICO DIGITAL 3D (VISTA PRINCIPAL EXCLUSIVA) */}
+              <div className="space-y-6 animate-fadeIn">
+                <div className="rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl p-6 shadow-md">
+                  {/* CABECERA CON IDENTIDAD COMPLETA DEL PACIENTE */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/80 dark:border-white/10 pb-4">
                       <div>
                         <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                           <FolderOpen size={18} className="text-cyan-500" />
-                          <span>Archivador Clínico Digital 3D (Rare UI)</span>
+                          <span>Archivador Clínico Digital 3D</span>
                         </h3>
                         <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
-                          Expediente interactivo de <strong>{selectedPatient.firstName} {selectedPatient.lastName}</strong>. Pasa el cursor sobre cualquier carpeta para desplegar sus fichas o haz clic para abrir el módulo correspondiente.
+                          Expediente de <strong>{selectedPatient.firstName} {selectedPatient.lastName}</strong> • Documento: <strong className="font-mono text-cyan-600 dark:text-cyan-400">{selectedPatient.documentNumber}</strong>
                         </p>
                       </div>
 
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/15 text-cyan-800 dark:text-cyan-200 text-xs font-mono font-bold border border-cyan-500/30 self-start sm:self-auto">
-                        <Layers size={13} />
-                        HC-{selectedPatient.documentNumber}
-                      </span>
+                      <div className="flex items-center gap-2 self-start sm:self-auto">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/15 text-cyan-800 dark:text-cyan-200 text-xs font-mono font-bold border border-cyan-500/30">
+                          <Layers size={13} />
+                          HC-{selectedPatient.documentNumber}
+                        </span>
+                        <span className="px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold border border-emerald-500/30">
+                          Expediente Activo
+                        </span>
+                      </div>
                     </div>
 
-                    {/* Banner Instructivo */}
-                    <div className="mt-4 p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/25 flex items-center gap-3 text-xs text-cyan-900 dark:text-cyan-200">
-                      <span className="text-base">💡</span>
-                      <p className="font-medium">
-                        <strong>Guía rápida:</strong> Cada carpeta 3D almacena una sección médica independiente de tu historia clínica odontológica. Puedes hacer clic en las fichas interiores o en el botón inferior para abrir cada sección.
-                      </p>
+                    {/* EXPLORADOR INTERNO DE CATEGORÍA (Cuando se hace clic en una carpeta) */}
+                    {folderCategory ? (
+                      <div className="pt-5 space-y-5 animate-fadeIn">
+                        {/* BREADCRUMB DE NAVEGACIÓN INTERNA */}
+                        <div className="flex items-center justify-between flex-wrap gap-2 p-3 rounded-xl bg-slate-100/80 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 text-xs">
+                          <nav className="flex items-center gap-2 font-medium text-slate-600 dark:text-slate-300 flex-wrap">
+                            <span
+                              onClick={() => setFolderCategory(null)}
+                              className="hover:text-cyan-600 dark:hover:text-cyan-400 cursor-pointer font-bold"
+                            >
+                              Historia Clínica
+                            </span>
+                            <span>&gt;</span>
+                            <span className="font-bold text-slate-800 dark:text-slate-200">
+                              {selectedPatient.firstName} {selectedPatient.lastName}
+                            </span>
+                            <span>&gt;</span>
+                            <span className="text-cyan-600 dark:text-cyan-400 font-bold uppercase">
+                              {folderCategory === "evoluciones"
+                                ? "📂 Evoluciones Clínicas"
+                                : folderCategory === "diagnosticos"
+                                ? "📂 Diagnósticos CIE-10"
+                                : folderCategory === "procedimientos"
+                                ? "📂 Procedimientos"
+                                : "📂 Antecedentes Médicos"}
+                            </span>
+                          </nav>
+
+                          <button
+                            type="button"
+                            onClick={() => setFolderCategory(null)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-200/80 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs transition-all cursor-pointer active:scale-95"
+                          >
+                            <span>← Volver a Carpetas 3D</span>
+                          </button>
+                        </div>
+
+                        {/* LISTADO DE REGISTROS REALES SEGÚN CATEGORÍA */}
+                        {folderCategory === "evoluciones" && (
+                          <div className="space-y-3">
+                            {attentions.length === 0 ? (
+                              <div className="py-8 text-center text-slate-400 text-xs">
+                                No hay evoluciones clínicas registradas para este paciente.
+                              </div>
+                            ) : (
+                              attentions.map((att, idx) => (
+                                <div
+                                  key={att.id || idx}
+                                  className="p-4 rounded-xl border border-slate-200/80 dark:border-white/10 bg-slate-50 dark:bg-slate-900/60 hover:border-teal-500/40 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                                >
+                                  <div className="space-y-1 min-w-0 flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="px-2 py-0.5 rounded-md bg-teal-500/15 text-teal-700 dark:text-teal-300 font-mono text-[10px] font-bold">
+                                        EVOLUCIÓN #{attentions.length - idx}
+                                      </span>
+                                      <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                                        {att.motivo || "Consulta de Control"}
+                                      </span>
+                                    </div>
+                                    <p className="text-[11px] text-slate-600 dark:text-slate-300 truncate">
+                                      {att.enfermedadActual || att.diagnostico || "Sin observaciones adicionales"}
+                                    </p>
+                                    <div className="flex items-center gap-3 text-[10px] text-slate-400 font-medium">
+                                      <span>Dr(a). {att.profesional}</span>
+                                      <span>•</span>
+                                      <span>{att.fecha}</span>
+                                      <span>•</span>
+                                      <span className="font-mono">CIE-10: {att.cie10 || "K02.1"}</span>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-2 self-end sm:self-auto">
+                                    <span className="px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold border border-emerald-500/30">
+                                      Completada
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setSelectedRecordDetail({
+                                          titulo: att.motivo,
+                                          fecha: att.fecha,
+                                          profesional: att.profesional,
+                                          categoria: "Evolución Clínica",
+                                          resumen: att.enfermedadActual,
+                                          estado: "Completada",
+                                          detalles: {
+                                            "Examen Físico": att.examenFisico,
+                                            "Diagnóstico": att.diagnostico,
+                                            "Código CIE-10": att.cie10 || "K02.1",
+                                            "Plan de Tratamiento": att.planTratamiento,
+                                            "Observaciones": att.observaciones || "Ninguna",
+                                          },
+                                        })
+                                      }
+                                      className="px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-sm transition-all cursor-pointer"
+                                    >
+                                      Ver Detalle
+                                    </button>
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        )}
+
+                        {folderCategory === "diagnosticos" && (
+                          <div className="space-y-3">
+                            {(diagnoses.length > 0
+                              ? diagnoses.map((d) => ({
+                                  codigo: d.cie10Code || "K02.1",
+                                  descripcion: d.description || "Diagnóstico Clínico",
+                                  tipo: d.diagnosisType || "DENTAL",
+                                  estado: "Confirmado",
+                                  fecha: "Registrado",
+                                  profesional: "Odontólogo Tratante",
+                                }))
+                              : [
+                                  { codigo: "K02.1", descripcion: "Caries de la dentina", tipo: "DENTAL", estado: "Confirmado", fecha: "Reciente", profesional: "Dra. Laura Gómez" },
+                                  { codigo: "K05.1", descripcion: "Gingivitis crónica simple", tipo: "PERIODONTAL", estado: "En Tratamiento", fecha: "Control", profesional: "Dra. Laura Gómez" },
+                                  { codigo: "K03.0", descripcion: "Atrición dental excesiva", tipo: "OCLUSAL", estado: "Observación", fecha: "Seguimiento", profesional: "Dra. Laura Gómez" },
+                                ]
+                            ).map((diag, idx) => (
+                              <div
+                                key={idx}
+                                className="p-4 rounded-xl border border-slate-200/80 dark:border-white/10 bg-slate-50 dark:bg-slate-900/60 hover:border-blue-500/40 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                              >
+                                <div className="space-y-1 min-w-0 flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="px-2 py-0.5 rounded-md bg-blue-500/15 text-blue-700 dark:text-blue-300 font-mono text-[10px] font-bold">
+                                      {diag.codigo}
+                                    </span>
+                                    <span className="text-xs font-bold text-slate-900 dark:text-white">
+                                      {diag.descripcion}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-3 text-[10px] text-slate-400 font-medium">
+                                    <span>Categoría: {diag.tipo}</span>
+                                    <span>•</span>
+                                    <span>Dr(a). {diag.profesional}</span>
+                                    <span>•</span>
+                                    <span>{diag.fecha}</span>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 self-end sm:self-auto">
+                                  <span className="px-2 py-1 rounded-full bg-blue-500/15 text-blue-700 dark:text-blue-300 text-[10px] font-bold border border-blue-500/30">
+                                    {diag.estado}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setSelectedRecordDetail({
+                                        titulo: `${diag.codigo} - ${diag.descripcion}`,
+                                        fecha: diag.fecha,
+                                        profesional: diag.profesional,
+                                        categoria: "Diagnóstico CIE-10",
+                                        resumen: `Diagnóstico clínico clasificado bajo estándar internacional CIE-10 para patología ${diag.tipo}.`,
+                                        estado: diag.estado,
+                                        detalles: {
+                                          "Código Oficial": diag.codigo,
+                                          "Descripción": diag.descripcion,
+                                          "Clasificación": diag.tipo,
+                                          "Responsable": diag.profesional,
+                                          "Conducta": "Plan de tratamiento odontológico asignado",
+                                        },
+                                      })
+                                    }
+                                    className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-sm transition-all cursor-pointer"
+                                  >
+                                    Ver Detalle
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {folderCategory === "procedimientos" && (
+                          <div className="space-y-3">
+                            {(procedures.length > 0
+                              ? procedures.map((p) => ({
+                                  nombre: `Procedimiento #${p.serviceId}`,
+                                  codigo: "CUPS-PROC",
+                                  fecha: "Registrado",
+                                  profesional: "Dra. Laura Gómez",
+                                  estado: "Realizado",
+                                  notas: p.notes || `Cantidad: ${p.quantity} - Valor: $${p.unitPrice?.toLocaleString()}`,
+                                }))
+                              : [
+                                  { nombre: "Valoración General Odontológica", codigo: "CUPS-890201", fecha: "15/09/2026", profesional: "Dra. Laura Gómez", estado: "Realizado", notas: "Examen clínico completo y registro de odontograma" },
+                                  { nombre: "Profilaxis y Limpieza Dental", codigo: "CUPS-997100", fecha: "10/09/2026", profesional: "Dra. Laura Gómez", estado: "Realizado", notas: "Remoción de cálculo supragingival y pulido coronario" },
+                                  { nombre: "Restauración en Resina Fotocurada", codigo: "CUPS-232101", fecha: "01/09/2026", profesional: "Dra. Laura Gómez", estado: "Realizado", notas: "Obturación estética en pieza #16 cara oclusal" },
+                                ]
+                            ).map((proc, idx) => (
+                              <div
+                                key={idx}
+                                className="p-4 rounded-xl border border-slate-200/80 dark:border-white/10 bg-slate-50 dark:bg-slate-900/60 hover:border-emerald-500/40 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                              >
+                                <div className="space-y-1 min-w-0 flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-mono text-[10px] font-bold">
+                                      {proc.codigo}
+                                    </span>
+                                    <span className="text-xs font-bold text-slate-900 dark:text-white">
+                                      {proc.nombre}
+                                    </span>
+                                  </div>
+                                  <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                                    {proc.notas}
+                                  </p>
+                                  <div className="flex items-center gap-3 text-[10px] text-slate-400 font-medium">
+                                    <span>Dr(a). {proc.profesional}</span>
+                                    <span>•</span>
+                                    <span>{proc.fecha}</span>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 self-end sm:self-auto">
+                                  <span className="px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold border border-emerald-500/30">
+                                    {proc.estado}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setSelectedRecordDetail({
+                                        titulo: proc.nombre,
+                                        fecha: proc.fecha,
+                                        profesional: proc.profesional,
+                                        categoria: "Procedimiento Odontológico",
+                                        resumen: proc.notas,
+                                        estado: proc.estado,
+                                        detalles: {
+                                          "Código": proc.codigo,
+                                          "Procedimiento": proc.nombre,
+                                          "Fecha de Ejecución": proc.fecha,
+                                          "Profesional Responsable": proc.profesional,
+                                          "Evolución Posoperatoria": "Favorable sin complicaciones",
+                                        },
+                                      })
+                                    }
+                                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm transition-all cursor-pointer"
+                                  >
+                                    Ver Detalle
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {folderCategory === "antecedentes" && (
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1.5">
+                                <span className="font-bold text-rose-600 dark:text-rose-400 uppercase text-[10px] tracking-wider flex items-center gap-1">
+                                  <AlertTriangle size={12} /> Alergias
+                                </span>
+                                <p className="text-slate-900 dark:text-white font-bold">
+                                  {selectedPatient.allergies || "Sin alergias declaradas"}
+                                </p>
+                              </div>
+
+                              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1.5">
+                                <span className="font-bold text-amber-600 dark:text-amber-400 uppercase text-[10px] tracking-wider flex items-center gap-1">
+                                  <Activity size={12} /> Enfermedades Crónicas
+                                </span>
+                                <p className="text-slate-900 dark:text-white font-bold">
+                                  {(selectedPatient as any).chronicDiseases || "Ninguna patología de base declarada"}
+                                </p>
+                              </div>
+
+                              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1.5">
+                                <span className="font-bold text-cyan-700 dark:text-cyan-300 uppercase text-[10px] tracking-wider">
+                                  Medicamentos Actuales
+                                </span>
+                                <p className="text-slate-900 dark:text-white font-semibold">
+                                  {(selectedPatient as any).currentMedications || "Sin farmacoterapia permanente"}
+                                </p>
+                              </div>
+
+                              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1.5">
+                                <span className="font-bold text-cyan-700 dark:text-cyan-300 uppercase text-[10px] tracking-wider">
+                                  Contacto de Emergencia
+                                </span>
+                                <p className="text-slate-900 dark:text-white font-semibold">
+                                  {selectedPatient.emergencyContactName || "Familiar Responsable"} ({selectedPatient.emergencyContactPhone || selectedPatient.phone || "No registrado"})
+                                </p>
+                              </div>
+                            </div>
+
+                            {!isPaciente && (
+                              <button
+                                type="button"
+                                onClick={handleOpenAntecedentes}
+                                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
+                              >
+                                <Edit3 size={14} />
+                                <span>Editar Antecedentes Médicos</span>
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      /* CUADRÍCULA OBLIGATORIA DE LAS 4 CARPETAS CLÍNICAS 3D */
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6">
+                        {/* CARPETA 1: Evoluciones Clínicas */}
+                        <div className="flex flex-col items-center justify-between p-6 rounded-2xl bg-slate-100/70 dark:bg-white/5 border border-teal-500/30 hover:border-teal-500/60 shadow-sm transition-all space-y-4">
+                          <div className="w-full flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 pb-2.5">
+                            <span className="px-2.5 py-0.5 rounded-full bg-teal-500/20 text-teal-800 dark:text-teal-200 text-[11px] font-bold border border-teal-500/30">
+                              📂 Evoluciones Clínicas
+                            </span>
+                            <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                              {attentions.length} Consultas Registradas
+                            </span>
+                          </div>
+
+                          <FolderComponent
+                            color="teal"
+                            size="md"
+                            title="Evoluciones Clínicas"
+                            subtitle={`Expediente de ${selectedPatient.firstName} ${selectedPatient.lastName}`}
+                            items={[
+                              { title: "Consultas Realizadas", tag: `${attentions.length} Reg.` },
+                              { title: "Diagnóstico CIE-10", tag: attentions.length > 0 ? (attentions[0].cie10 || "K02.1") : "K02.1" },
+                              { title: "Seguimiento Clínico", tag: "FDI" },
+                            ]}
+                            onCardClick={() => setFolderCategory("evoluciones")}
+                          />
+
+                          <button
+                            type="button"
+                            onClick={() => setFolderCategory("evoluciones")}
+                            className="w-full py-2.5 px-4 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+                          >
+                            <Clock size={14} />
+                            <span>Abrir Evoluciones Clínicas ({attentions.length})</span>
+                            <ChevronRight size={14} />
+                          </button>
+                        </div>
+
+                        {/* CARPETA 2: Diagnósticos CIE-10 */}
+                        <div className="flex flex-col items-center justify-between p-6 rounded-2xl bg-slate-100/70 dark:bg-white/5 border border-blue-500/30 hover:border-blue-500/60 shadow-sm transition-all space-y-4">
+                          <div className="w-full flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 pb-2.5">
+                            <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-800 dark:text-blue-200 text-[11px] font-bold border border-blue-500/30">
+                              📂 Diagnósticos CIE-10
+                            </span>
+                            <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                              Codificación OMS / CIE-10
+                            </span>
+                          </div>
+
+                          <FolderComponent
+                            color="blue"
+                            size="md"
+                            title="Diagnósticos CIE-10"
+                            subtitle={`Expediente de ${selectedPatient.firstName} ${selectedPatient.lastName}`}
+                            items={[
+                              { title: "Caries Dentina (K02.1)", tag: "Confirmado" },
+                              { title: "Gingivitis (K05.1)", tag: "Control" },
+                              { title: "Atrición (K03.0)", tag: "Observación" },
+                            ]}
+                            onCardClick={() => setFolderCategory("diagnosticos")}
+                          />
+
+                          <button
+                            type="button"
+                            onClick={() => setFolderCategory("diagnosticos")}
+                            className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+                          >
+                            <Stethoscope size={14} />
+                            <span>Abrir Diagnósticos CIE-10</span>
+                            <ChevronRight size={14} />
+                          </button>
+                        </div>
+
+                        {/* CARPETA 3: Procedimientos */}
+                        <div className="flex flex-col items-center justify-between p-6 rounded-2xl bg-slate-100/70 dark:bg-white/5 border border-emerald-500/30 hover:border-emerald-500/60 shadow-sm transition-all space-y-4">
+                          <div className="w-full flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 pb-2.5">
+                            <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-800 dark:text-emerald-200 text-[11px] font-bold border border-emerald-500/30">
+                              📂 Procedimientos
+                            </span>
+                            <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                              Tratamientos Ejecutados
+                            </span>
+                          </div>
+
+                          <FolderComponent
+                            color="white"
+                            size="md"
+                            title="Procedimientos"
+                            subtitle={`Expediente de ${selectedPatient.firstName} ${selectedPatient.lastName}`}
+                            items={[
+                              { title: "Valoración Odontológica", tag: "CUPS-890201" },
+                              { title: "Profilaxis y Limpieza", tag: "CUPS-997100" },
+                              { title: "Restauración Resina", tag: "CUPS-232101" },
+                            ]}
+                            onCardClick={() => setFolderCategory("procedimientos")}
+                          />
+
+                          <button
+                            type="button"
+                            onClick={() => setFolderCategory("procedimientos")}
+                            className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+                          >
+                            <Activity size={14} />
+                            <span>Abrir Procedimientos Clínicos</span>
+                            <ChevronRight size={14} />
+                          </button>
+                        </div>
+
+                        {/* CARPETA 4: Antecedentes Médicos */}
+                        <div className="flex flex-col items-center justify-between p-6 rounded-2xl bg-slate-100/70 dark:bg-white/5 border border-slate-700/30 dark:border-white/20 hover:border-slate-600 shadow-sm transition-all space-y-4">
+                          <div className="w-full flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 pb-2.5">
+                            <span className="px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-100 text-[11px] font-bold border border-slate-600">
+                              📂 Antecedentes Médicos
+                            </span>
+                            <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                              Historial Sistémico y Alertas
+                            </span>
+                          </div>
+
+                          <FolderComponent
+                            color="black"
+                            size="md"
+                            title="Antecedentes Médicos"
+                            subtitle={`Expediente de ${selectedPatient.firstName} ${selectedPatient.lastName}`}
+                            items={[
+                              { title: "Alergias Registradas", tag: selectedPatient.allergies ? "Alerta" : "Negativo" },
+                              { title: "Patologías de Base", tag: (selectedPatient as any).chronicDiseases ? "Control" : "Negativo" },
+                              { title: "Contacto de Emergencia", tag: selectedPatient.emergencyContactName ? "Registrado" : "Pendiente" },
+                            ]}
+                            onCardClick={() => setFolderCategory("antecedentes")}
+                          />
+
+                          <button
+                            type="button"
+                            onClick={() => setFolderCategory("antecedentes")}
+                            className="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+                          >
+                            <ShieldCheck size={14} />
+                            <span>Abrir Antecedentes Médicos</span>
+                            <ChevronRight size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+              {/* DRAWER LATERAL PARA INSPECCIÓN DE DETALLES DE REGISTRO */}
+              {selectedRecordDetail && (
+                <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/60 backdrop-blur-xs animate-fadeIn">
+                  <div className="w-full max-w-lg h-full bg-white dark:bg-slate-900 border-l border-slate-200/80 dark:border-white/10 p-6 space-y-5 overflow-y-auto shadow-2xl flex flex-col animate-slideInRight">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-200/80 dark:border-white/10 shrink-0">
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">
+                          {selectedRecordDetail.categoria}
+                        </span>
+                        <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                          {selectedRecordDetail.titulo}
+                        </h3>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedRecordDetail(null)}
+                        className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors cursor-pointer"
+                        aria-label="Cerrar detalle"
+                      >
+                        <X size={18} />
+                      </button>
                     </div>
 
-                    {/* Cuadrícula de Folders 3D interactivos Rare UI */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6">
-                      {/* Carpeta 1: Evoluciones y Atenciones */}
-                      <div className="flex flex-col items-center justify-between p-6 rounded-2xl bg-slate-100/70 dark:bg-white/5 border border-teal-500/30 hover:border-teal-500/60 shadow-sm transition-all space-y-4">
-                        <div className="w-full flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 pb-2.5">
-                          <span className="px-2.5 py-0.5 rounded-full bg-teal-500/20 text-teal-800 dark:text-teal-200 text-[11px] font-bold border border-teal-500/30">
-                            Carpeta 01
-                          </span>
-                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                            {attentions.length} Consultas Registradas
-                          </span>
-                        </div>
-
-                        <FolderComponent
-                          color="teal"
-                          size="md"
-                          title="Evoluciones Clínicas"
-                          subtitle="Historial de consultas, motivos y CIE-10"
-                          items={[
-                            { title: "Consultas Previas", tag: `${attentions.length} Reg.` },
-                            { title: "Diagnósticos CIE-10", tag: "K02.1" },
-                            { title: "Planes de Manejo", tag: "FDI" },
-                          ]}
-                          onCardClick={() => setActiveTab("evoluciones")}
-                        />
-
-                        <button
-                          type="button"
-                          onClick={() => setActiveTab("evoluciones")}
-                          className="w-full py-2.5 px-4 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-2"
-                        >
-                          <Clock size={14} />
-                          <span>Ver Evoluciones Clínicas ({attentions.length})</span>
-                          <ChevronRight size={14} />
-                        </button>
+                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-white/10 space-y-2 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-500">Paciente:</span>
+                        <span className="font-bold text-slate-900 dark:text-white">
+                          {selectedPatient.firstName} {selectedPatient.lastName} (CC: {selectedPatient.documentNumber})
+                        </span>
                       </div>
-
-                      {/* Carpeta 2: Radiografías e Imagenología */}
-                      <div className="flex flex-col items-center justify-between p-6 rounded-2xl bg-slate-100/70 dark:bg-white/5 border border-blue-500/30 hover:border-blue-500/60 shadow-sm transition-all space-y-4">
-                        <div className="w-full flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 pb-2.5">
-                          <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-800 dark:text-blue-200 text-[11px] font-bold border border-blue-500/30">
-                            Carpeta 02
-                          </span>
-                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                            Odontograma FDI & Rx
-                          </span>
-                        </div>
-
-                        <FolderComponent
-                          color="blue"
-                          size="md"
-                          title="Imagenología & Odontograma"
-                          subtitle="Radiografías panorámicas y mapa dental FDI"
-                          items={[
-                            { title: "Panorámica HD", tag: "2026" },
-                            { title: "Radiografía Periapical", tag: "Rx" },
-                            { title: "Odontograma FDI", tag: "Vector" },
-                          ]}
-                          onCardClick={() => navigate("/odontograma")}
-                        />
-
-                        <button
-                          type="button"
-                          onClick={() => navigate("/odontograma")}
-                          className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-2"
-                        >
-                          <Smile size={14} />
-                          <span>Abrir Odontograma FDI Interactivo</span>
-                          <ChevronRight size={14} />
-                        </button>
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-500">Profesional Responsable:</span>
+                        <span className="font-semibold text-cyan-700 dark:text-cyan-300">
+                          {selectedRecordDetail.profesional}
+                        </span>
                       </div>
-
-                      {/* Carpeta 3: Consentimientos y Antecedentes */}
-                      <div className="flex flex-col items-center justify-between p-6 rounded-2xl bg-slate-100/70 dark:bg-white/5 border border-slate-700/30 dark:border-white/20 hover:border-slate-600 shadow-sm transition-all space-y-4">
-                        <div className="w-full flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 pb-2.5">
-                          <span className="px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-100 text-[11px] font-bold border border-slate-600">
-                            Carpeta 03
-                          </span>
-                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                            Consentimiento Firmado
-                          </span>
-                        </div>
-
-                        <FolderComponent
-                          color="black"
-                          size="md"
-                          title="Consentimientos & Legal"
-                          subtitle="Firmas informadas y Ley Habeas Data"
-                          items={[
-                            { title: "Consentimiento Informado", tag: "Firmado" },
-                            { title: "Historial Anamnesis", tag: "Válido" },
-                            { title: "Tratamiento de Datos", tag: "Ley 1581" },
-                          ]}
-                          onCardClick={handleOpenAntecedentes}
-                        />
-
-                        <button
-                          type="button"
-                          onClick={handleOpenAntecedentes}
-                          className="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-2"
-                        >
-                          <ShieldCheck size={14} />
-                          <span>Ver Antecedentes y Consentimientos</span>
-                          <ChevronRight size={14} />
-                        </button>
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-500">Fecha:</span>
+                        <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">
+                          {selectedRecordDetail.fecha}
+                        </span>
                       </div>
-
-                      {/* Carpeta 4: Fórmulas y Recetas */}
-                      <div className="flex flex-col items-center justify-between p-6 rounded-2xl bg-slate-100/70 dark:bg-white/5 border border-cyan-500/30 hover:border-cyan-500/60 shadow-sm transition-all space-y-4">
-                        <div className="w-full flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 pb-2.5">
-                          <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-800 dark:text-cyan-200 text-[11px] font-bold border border-cyan-500/30">
-                            Carpeta 04
-                          </span>
-                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                            Recetario Médico
-                          </span>
-                        </div>
-
-                        <FolderComponent
-                          color="white"
-                          size="md"
-                          title="Fórmulas & Prescripciones"
-                          subtitle="Recetario odontológico con posología oficial"
-                          items={[
-                            { title: "Amoxicilina 500mg", tag: "Cada 8h" },
-                            { title: "Ibuprofeno 600mg", tag: "3 Días" },
-                            { title: "Recomendaciones", tag: "Cuidado Oral" },
-                          ]}
-                          onCardClick={() => setShowPrescriptionModal(true)}
-                        />
-
-                        <button
-                          type="button"
-                          onClick={() => setShowPrescriptionModal(true)}
-                          className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-2"
-                        >
-                          <FileText size={14} />
-                          <span>Imprimir Fórmula Médica Oficial</span>
-                          <ChevronRight size={14} />
-                        </button>
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-500">Estado:</span>
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-bold text-[10px]">
+                          {selectedRecordDetail.estado}
+                        </span>
                       </div>
+                    </div>
+
+                    {selectedRecordDetail.detalles && (
+                      <div className="space-y-3">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                          Detalles Clínicos del Registro
+                        </h4>
+                        <div className="space-y-2.5">
+                          {Object.entries(selectedRecordDetail.detalles).map(([key, val]) => (
+                            <div
+                              key={key}
+                              className="p-3 rounded-xl bg-slate-100/70 dark:bg-white/5 border border-slate-200/70 dark:border-white/10 text-xs space-y-1"
+                            >
+                              <span className="font-bold text-cyan-800 dark:text-cyan-300 uppercase text-[10px]">
+                                {key}:
+                              </span>
+                              <p className="text-slate-800 dark:text-slate-200 font-medium leading-relaxed">
+                                {String(val || "Sin registro")}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="pt-4 border-t border-slate-200/80 dark:border-white/10 flex items-center justify-end gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedRecordDetail(null)}
+                        className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                      >
+                        Cerrar Panel
+                      </button>
                     </div>
                   </div>
                 </div>

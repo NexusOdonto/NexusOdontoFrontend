@@ -221,8 +221,8 @@ export function PatientDashboardView({ user }: PatientDashboardViewProps) {
           </div>
           <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-white/10 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-instrument">
             <span>Seguimiento continuo</span>
-            <span className="font-bold text-blue-600 dark:text-blue-400 cursor-pointer hover:underline" onClick={() => navigate("/servicios")}>
-              Tratamientos →
+            <span className="font-bold text-blue-600 dark:text-blue-400 cursor-pointer hover:underline" onClick={() => navigate("/odontograma")}>
+              Ver Odontograma →
             </span>
           </div>
         </div>
@@ -481,6 +481,18 @@ export function PatientDashboardView({ user }: PatientDashboardViewProps) {
                   <span>Mis Citas Odontológicas</span>
                 </div>
                 <ArrowRight size={13} className="text-slate-400 group-hover:text-cyan-500 group-hover:translate-x-0.5 transition-all" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => navigate("/odontograma")}
+                className="w-full p-3 rounded-xl border border-slate-200/70 dark:border-white/10 hover:border-blue-500/50 bg-slate-50/80 dark:bg-slate-900/50 hover:bg-blue-500/10 text-slate-800 dark:text-slate-200 flex items-center justify-between transition-all cursor-pointer group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Smile size={16} className="text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform" />
+                  <span>Mi Odontograma y Tratamientos</span>
+                </div>
+                <ArrowRight size={13} className="text-slate-400 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all" />
               </button>
 
               <button

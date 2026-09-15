@@ -53,6 +53,7 @@ export const ROLE_ALLOWED_ROUTES: Record<SystemRole, string[]> = {
     "/servicios",
     "/profesionales",
     "/historia-clinica",
+    "/odontograma",
     "/perfil",
   ],
 };
