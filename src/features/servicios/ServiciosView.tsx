@@ -61,19 +61,16 @@ const SEED_TRANSLATIONS: Record<string, { name: string; description: string; cat
   },
 };
 
-function mapApiService(item: ServiceResponseDto, idx: number): Servicio {
+function mapApiService(item: ServiceResponseDto): Servicio {
   const seed = SEED_TRANSLATIONS[(item.name || "").trim().toLowerCase()];
   return {
-    id: item.id || idx + 1,
+    id: item.id,
     codigo: item.code || undefined,
     nombre: seed?.name ?? item.name ?? "Servicio Odontológico",
     categoria: item.category?.trim() || seed?.category || "Odontología General",
-    descripcion:
-      seed?.description ??
-      item.description ??
-      "Procedimiento odontológico especializado realizado con altos estándares de calidad y bioseguridad.",
+    descripcion: seed?.description ?? item.description ?? "",
     duracion: item.durationMinutes || 45,
-    precio: item.price ?? 50000,
+    precio: item.price ?? 0,
     activo: item.isActive ?? true,
   };
 }
@@ -117,13 +114,7 @@ export function ServiciosView() {
       setLoading(true);
       setErrorCarga(null);
       const data = await serviceCatalogService.getAll();
-      const mapped = (data ?? []).map(mapApiService);
-      setServicios(mapped);
-      try {
-        localStorage.setItem("nexus_servicios", JSON.stringify(mapped));
-      } catch {
-        // cache opcional
-      }
+      setServicios((data ?? []).map(mapApiService));
     } catch (err: unknown) {
       setServicios([]);
       setErrorCarga(apiErrorMessage(err, "No fue posible cargar el catálogo de servicios clínicos."));
