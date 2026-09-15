@@ -147,11 +147,16 @@ export function ServicioModal({
         precio,
         descripcion: descripcion.trim(),
         activo,
-        codigo: servicioInicial?.codigo || `SRV-${Date.now().toString().slice(-4)}`,
+        ...(servicioInicial?.codigo ? { codigo: servicioInicial.codigo } : {}),
       });
       onClose();
     } catch (err: any) {
-      setError(err?.message || "Ocurrió un error al guardar el servicio.");
+      setError(
+        err?.response?.data?.message ||
+          err?.response?.data?.title ||
+          err?.message ||
+          "Ocurrió un error al guardar el servicio."
+      );
     } finally {
       setSubmitting(false);
     }
