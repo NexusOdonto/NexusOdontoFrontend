@@ -7,27 +7,30 @@ export interface ServiceResponseDto {
   description?: string;
   durationMinutes: number;
   price?: number;
+  category?: string;
   isActive: boolean;
   sortOrder?: number;
   createdAt: string;
 }
 
 export interface CreateServiceRequestDto {
-  code: string;
+  code?: string;
   name: string;
   description?: string;
   durationMinutes: number;
   price?: number;
+  category?: string;
   isActive: boolean;
   sortOrder?: number;
 }
 
 export interface UpdateServiceRequestDto {
-  code: string;
+  code?: string;
   name: string;
   description?: string;
   durationMinutes: number;
   price?: number;
+  category?: string;
   isActive: boolean;
   sortOrder?: number;
 }

@@ -19,7 +19,9 @@ import {
   LayoutGrid,
   Table as TableIcon,
   ArrowUpDown,
+  AlertCircle,
 } from "lucide-react";
+import type { ServiceResponseDto } from "../../api/serviceCatalogService";
 
 const CATEGORIAS_FILTRO = [
   { id: "todas", label: "Todos los servicios" },
@@ -31,122 +33,52 @@ const CATEGORIAS_FILTRO = [
   { id: "Ortodoncia", label: "Ortodoncia" },
 ];
 
-const SERVICE_TRANSLATIONS: Record<string, { name: string; description: string; category: string }> = {
+/** Traducciones solo para los 4 seeds en inglés del backend; el resto se muestra tal cual. */
+const SEED_TRANSLATIONS: Record<string, { name: string; description: string; category: string }> = {
   "general assessment": {
     name: "Valoración General Odontológica",
-    description: "Evaluación clínica integral, diagnóstico odontológico y formulación de plan de tratamiento personalizado.",
+    description:
+      "Evaluación clínica integral, diagnóstico odontológico y formulación de plan de tratamiento personalizado.",
     category: "Higiene y Prevención",
   },
   "dental prophylaxis": {
     name: "Profilaxis y Limpieza Dental",
-    description: "Eliminación de placa bacteriana, remoción de cálculo supragingival con ultrasonido y pulido coronario.",
+    description:
+      "Eliminación de placa bacteriana, remoción de cálculo supragingival con ultrasonido y pulido coronario.",
     category: "Higiene y Prevención",
   },
   "composite resin filling": {
     name: "Restauración en Resina Compuesta",
-    description: "Reconstrucción estética y funcional de piezas dentales afectadas por caries con resina fotocurable.",
+    description:
+      "Reconstrucción estética y funcional de piezas dentales afectadas por caries con resina fotocurable.",
     category: "Operatoria / Resinas",
   },
   "teeth whitening": {
     name: "Blanqueamiento Dental Clínico",
-    description: "Aclaramiento dental profesional en consultorio con fotoactivación y gel de peróxido de alta pureza.",
+    description:
+      "Aclaramiento dental profesional en consultorio con fotoactivación y gel de peróxido de alta pureza.",
     category: "Estética Dental",
   },
-  "dental cleaning": {
-    name: "Profilaxis y Limpieza Dental",
-    description: "Higiene dental profunda, eliminación de manchas y pulido preventivo.",
-    category: "Higiene y Prevención",
-  },
-  "resin restoration": {
-    name: "Restauración en Resina Compuesta",
-    description: "Restauración dental estética con resinas compuestas de alta resistencia.",
-    category: "Operatoria / Resinas",
-  },
-  "orthodontic control": {
-    name: "Control de Ortodoncia",
-    description: "Ajuste de aparatología fija, recambio de arcos y evaluación de avance en alineación dental.",
-    category: "Ortodoncia",
-  },
-  "tooth extraction": {
-    name: "Extracción Dental Simple",
-    description: "Procedimiento quirúrgico ambulatorio de exodoncia simple bajo anestesia local.",
-    category: "Cirugía Oral",
-  },
-  "root canal": {
-    name: "Endodoncia / Tratamiento de Conductos",
-    description: "Biopulpectomía, instrumentación rotatoria, desinfección y sellado hermético radicular.",
-    category: "Endodoncia",
-  },
 };
 
-const translateDescription = (desc?: string): string => {
-  if (!desc) return "Procedimiento odontológico especializado realizado con altos estándares de calidad y bioseguridad.";
-  const lower = desc.toLowerCase();
-  if (lower.includes("professional treatment to improve the color") || lower.includes("color of the teeth") || lower.includes("whitening")) {
-    return "Tratamiento profesional en consultorio para mejorar el tono, brillo y estética natural de los dientes.";
-  }
-  if (lower.includes("assessment of the oral cavity") || lower.includes("teeth and gums") || lower.includes("complete assessment")) {
-    return "Evaluación clínica integral de la cavidad oral, diagnóstico de piezas dentales, encías y formulación de plan de tratamiento.";
-  }
-  if (lower.includes("deep cleaning") || lower.includes("supragingival") || lower.includes("plaque and tartar")) {
-    return "Eliminación de placa bacteriana, remoción de cálculo supragingival con ultrasonido y pulido coronario preventivo.";
-  }
-  if (lower.includes("composite resin") || lower.includes("resin restoration") || lower.includes("filling")) {
-    return "Reconstrucción estética y funcional de piezas dentales afectadas por caries o fracturas mediante resina fotocurable.";
-  }
-  if (lower.includes("orthodontic") || lower.includes("alignment") || lower.includes("brackets")) {
-    return "Control y ajuste periódico de aparatología fija o alineadores para corrección oclusal y estética de la mordida.";
-  }
-  if (lower.includes("extraction") || lower.includes("tooth removal") || lower.includes("surgery")) {
-    return "Procedimiento quirúrgico de exodoncia bajo anestesia local con técnicas mínimamente invasivas.";
-  }
-  if (lower.includes("root canal") || lower.includes("pulp") || lower.includes("endodontic")) {
-    return "Tratamiento de conductos radiculares para salvar la pieza dental eliminando infección, dolor y protegiendo el tejido periapical.";
-  }
-  return desc;
-};
-
-const translateCategory = (cat?: string): string => {
-  if (!cat) return "Odontología General";
-  const lower = cat.toLowerCase();
-  if (lower.includes("prevent") || lower.includes("hygiene") || lower.includes("clean")) return "Higiene y Prevención";
-  if (lower.includes("esthet") || lower.includes("white") || lower.includes("cosmetic")) return "Estética Dental";
-  if (lower.includes("ortho")) return "Ortodoncia";
-  if (lower.includes("surg") || lower.includes("extract")) return "Cirugía Oral";
-  if (lower.includes("endo")) return "Endodoncia";
-  if (lower.includes("restor") || lower.includes("operat") || lower.includes("resin")) return "Operatoria / Resinas";
-  if (lower.includes("pediat") || lower.includes("child")) return "Odontopediatría";
-  if (lower.includes("periodon") || lower.includes("gum")) return "Periodoncia";
-  return cat;
-};
-
-const translateService = (item: { name?: string; description?: string; category?: string }) => {
-  const nameLower = (item.name || "").trim().toLowerCase();
-  const found = SERVICE_TRANSLATIONS[nameLower];
-  if (found) {
-    return {
-      name: found.name,
-      description: translateDescription(item.description || found.description),
-      category: translateCategory(item.category || found.category),
-    };
-  }
-
-  // Traducción por patrones si el nombre no coincide exactamente
-  let resolvedName = item.name || "Servicio Odontológico";
-  if (nameLower.includes("whitening")) resolvedName = "Blanqueamiento Dental Clínico";
-  else if (nameLower.includes("assessment") || nameLower.includes("evaluation")) resolvedName = "Valoración General Odontológica";
-  else if (nameLower.includes("prophylaxis") || nameLower.includes("cleaning")) resolvedName = "Profilaxis y Limpieza Dental";
-  else if (nameLower.includes("filling") || nameLower.includes("resin")) resolvedName = "Restauración en Resina Compuesta";
-  else if (nameLower.includes("orthodontic")) resolvedName = "Control de Ortodoncia";
-  else if (nameLower.includes("extraction")) resolvedName = "Extracción Dental Simple";
-  else if (nameLower.includes("root canal")) resolvedName = "Endodoncia / Tratamiento de Conductos";
-
+function mapApiService(item: ServiceResponseDto): Servicio {
+  const seed = SEED_TRANSLATIONS[(item.name || "").trim().toLowerCase()];
   return {
-    name: resolvedName,
-    description: translateDescription(item.description),
-    category: translateCategory(item.category),
+    id: item.id,
+    codigo: item.code || undefined,
+    nombre: seed?.name ?? item.name ?? "Servicio Odontológico",
+    categoria: item.category?.trim() || seed?.category || "Odontología General",
+    descripcion: seed?.description ?? item.description ?? "",
+    duracion: item.durationMinutes || 45,
+    precio: item.price ?? 0,
+    activo: item.isActive ?? true,
   };
-};
+}
+
+function apiErrorMessage(err: unknown, fallback: string): string {
+  const e = err as { response?: { data?: { message?: string; title?: string } }; message?: string };
+  return e?.response?.data?.message || e?.response?.data?.title || e?.message || fallback;
+}
 
 export function ServiciosView() {
   const { user } = useAuth();
@@ -156,6 +88,7 @@ export function ServiciosView() {
   const [servicios, setServicios] = useState<Servicio[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorCarga, setErrorCarga] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ text: string; type: "success" | "error" } | null>(null);
 
   // Filtros y Búsqueda
   const [busqueda, setBusqueda] = useState("");
@@ -171,53 +104,20 @@ export function ServiciosView() {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [servicioAEditar, setServicioAEditar] = useState<Servicio | null>(null);
 
-  // Carga de catálogo con sincronización a localStorage y backend (Sección 3.14)
+  const showToast = useCallback((text: string, type: "success" | "error") => {
+    setToast({ text, type });
+    window.setTimeout(() => setToast(null), 4000);
+  }, []);
+
   const fetchServicios = useCallback(async () => {
     try {
       setLoading(true);
       setErrorCarga(null);
       const data = await serviceCatalogService.getAll();
-      if (data && data.length > 0) {
-        const mapped: Servicio[] = data.map((item, idx) => {
-          const t = translateService(item);
-          return {
-            id: item.id || (idx + 1),
-            codigo: item.code || `SRV-${String(idx + 1).padStart(3, "0")}`,
-            nombre: t.name,
-            categoria: t.category,
-            descripcion: t.description,
-            duracion: item.durationMinutes || 45,
-            precio: item.price ?? 50000,
-            activo: item.isActive ?? true,
-          };
-        });
-        setServicios(mapped);
-        localStorage.setItem("nexus_servicios", JSON.stringify(mapped));
-      } else {
-        const guardados = localStorage.getItem("nexus_servicios");
-        if (guardados) {
-          try {
-            setServicios(JSON.parse(guardados));
-          } catch {
-            setServicios([]);
-          }
-        } else {
-          setServicios([]);
-        }
-      }
-    } catch (err: any) {
-      console.warn("API Service Catalog no disponible:", err);
-      const guardados = localStorage.getItem("nexus_servicios");
-      if (guardados) {
-        try {
-          setServicios(JSON.parse(guardados));
-        } catch {
-          setServicios([]);
-        }
-      } else {
-        setServicios([]);
-        setErrorCarga("No fue posible cargar el catálogo de servicios clínicos.");
-      }
+      setServicios((data ?? []).map(mapApiService));
+    } catch (err: unknown) {
+      setServicios([]);
+      setErrorCarga(apiErrorMessage(err, "No fue posible cargar el catálogo de servicios clínicos."));
     } finally {
       setTimeout(() => setLoading(false), 450);
     }
@@ -227,103 +127,72 @@ export function ServiciosView() {
     fetchServicios();
   }, [fetchServicios]);
 
-  // Guardar servicio (Crear o Editar con persistencia en Backend)
   const handleGuardarServicio = async (
     servicioData: Omit<Servicio, "id"> & { id?: number | string }
   ) => {
-    let actualizados: Servicio[];
-
-    if (servicioData.id) {
-      // Editar en backend
-      try {
+    try {
+      if (servicioData.id) {
         await serviceCatalogService.update(String(servicioData.id), {
-          code: servicioData.codigo || `SRV-${servicioData.id}`,
+          code: servicioData.codigo,
           name: servicioData.nombre,
           description: servicioData.descripcion,
           durationMinutes: servicioData.duracion,
           price: servicioData.precio,
+          category: servicioData.categoria,
           isActive: servicioData.activo,
         });
-      } catch (err) {
-        console.warn("No se pudo actualizar en API directamente, guardado local:", err);
-      }
-
-      actualizados = servicios.map((s) =>
-        s.id === servicioData.id ? ({ ...s, ...servicioData } as Servicio) : s
-      );
-    } else {
-      // Crear en backend
-      const nuevoId = Date.now();
-      const nuevo: Servicio = {
-        id: nuevoId,
-        codigo: servicioData.codigo || `SRV-${String(servicios.length + 1).padStart(3, "0")}`,
-        nombre: servicioData.nombre,
-        categoria: servicioData.categoria || "Odontología General",
-        descripcion: servicioData.descripcion,
-        duracion: servicioData.duracion,
-        precio: servicioData.precio,
-        activo: servicioData.activo,
-      };
-
-      try {
-        const respuesta = await serviceCatalogService.create({
-          code: nuevo.codigo || `SRV-${nuevo.id}`,
-          name: nuevo.nombre,
-          description: nuevo.descripcion,
-          durationMinutes: nuevo.duracion,
-          price: nuevo.precio,
-          isActive: nuevo.activo,
+        showToast("Servicio actualizado correctamente.", "success");
+      } else {
+        await serviceCatalogService.create({
+          code: servicioData.codigo,
+          name: servicioData.nombre,
+          description: servicioData.descripcion,
+          durationMinutes: servicioData.duracion,
+          price: servicioData.precio,
+          category: servicioData.categoria || "Odontología General",
+          isActive: servicioData.activo,
           sortOrder: servicios.length + 1,
         });
-        if (respuesta && respuesta.id) {
-          nuevo.id = respuesta.id;
-        }
-      } catch (err) {
-        console.warn("No se pudo persistir en API directamente, guardado en estado:", err);
+        showToast("Servicio creado correctamente.", "success");
       }
-
-      actualizados = [nuevo, ...servicios];
+      await fetchServicios();
+    } catch (err: unknown) {
+      const msg = apiErrorMessage(err, "No se pudo guardar el servicio en el servidor.");
+      showToast(msg, "error");
+      throw err;
     }
-
-    setServicios(actualizados);
-    localStorage.setItem("nexus_servicios", JSON.stringify(actualizados));
   };
 
-  // Alternar estado activo / inactivo con persistencia en Backend
   const handleToggleActivo = async (servicio: Servicio) => {
     const nuevoEstado = !servicio.activo;
-
     try {
       await serviceCatalogService.update(String(servicio.id), {
-        code: servicio.codigo || `SRV-${servicio.id}`,
+        code: servicio.codigo,
         name: servicio.nombre,
         description: servicio.descripcion,
         durationMinutes: servicio.duracion,
         price: servicio.precio,
+        category: servicio.categoria,
         isActive: nuevoEstado,
       });
-    } catch (err) {
-      console.warn("No se pudo actualizar estado en API directamente:", err);
+      await fetchServicios();
+      showToast(
+        nuevoEstado ? "Servicio activado." : "Servicio desactivado.",
+        "success"
+      );
+    } catch (err: unknown) {
+      showToast(apiErrorMessage(err, "No se pudo actualizar el estado del servicio."), "error");
     }
-
-    const actualizados = servicios.map((s) =>
-      s.id === servicio.id ? { ...s, activo: nuevoEstado } : s
-    );
-    setServicios(actualizados);
-    localStorage.setItem("nexus_servicios", JSON.stringify(actualizados));
   };
 
-  // Eliminar servicio con persistencia en Backend
   const handleEliminar = async (id: number | string) => {
     try {
       await serviceCatalogService.delete(String(id));
-    } catch (err) {
-      console.warn("No se pudo eliminar en API directamente:", err);
+      await fetchServicios();
+      showToast("Servicio eliminado.", "success");
+    } catch (err: unknown) {
+      showToast(apiErrorMessage(err, "No se pudo eliminar el servicio."), "error");
     }
-
-    const actualizados = servicios.filter((s) => s.id !== id);
-    setServicios(actualizados);
-    localStorage.setItem("nexus_servicios", JSON.stringify(actualizados));
   };
 
   // Abrir modal para crear
@@ -418,6 +287,23 @@ export function ServiciosView() {
 
   return (
     <div className="space-y-6 text-slate-800 dark:text-slate-100 pb-12">
+      {toast && (
+        <div
+          className={`fixed bottom-6 right-6 z-[99999] flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl animate-slideUp backdrop-blur-xl ${
+            toast.type === "error"
+              ? "bg-rose-950/90 text-rose-100 border border-rose-500/50 shadow-rose-950/50"
+              : "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 border border-cyan-500/30 shadow-cyan-950/50"
+          }`}
+        >
+          {toast.type === "error" ? (
+            <AlertCircle size={18} className="text-rose-400 shrink-0" />
+          ) : (
+            <CheckCircle2 size={18} className="text-cyan-400 dark:text-cyan-600 shrink-0" />
+          )}
+          <span className="text-xs font-semibold">{toast.text}</span>
+        </div>
+      )}
+
       {/* Encabezado Principal */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between animate-slideDown">
         <div>
