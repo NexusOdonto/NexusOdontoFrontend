@@ -11,6 +11,7 @@ import { professionalService } from "../../api/professionalService";
 import { appointmentService } from "../../api/appointmentService";
 import { useAuth } from "../auth/AuthContext";
 import { areGuidsEqual } from "../../utils/roleUtils";
+import { getUserRole } from "../../utils/routePermissions";
 import {
   User,
   X,
@@ -83,6 +84,54 @@ function getNotasStorageKey(patientId?: string): string {
   return patientId ? `nexus_odontograma_notas_${patientId}` : "nexus_odontograma_notas_default";
 }
 
+/** UI diagnosis ids that round-trip via finding description (`Cara x: crown`). */
+const KNOWN_DIAGNOSES: Diagnosis[] = [
+  "caries",
+  "restoration",
+  "sealant",
+  "endodontic",
+  "crown",
+  "bridge",
+  "implant",
+  "extraction",
+  "fracture",
+  "mobility",
+];
+
+/**
+ * Reverse-map catalog findingTypeCode + description back to UI diagnosis.
+ * Description is authoritative when present (several UI types collapse to PROTESIS/RESTAURACION/FRACTURA).
+ */
+function mapFindingToDiagnosis(findingTypeCode?: string | null, description?: string | null): Diagnosis {
+  const desc = (description || "").trim().toLowerCase();
+  if (desc) {
+    const colonIdx = desc.lastIndexOf(":");
+    const token = (colonIdx >= 0 ? desc.slice(colonIdx + 1) : desc).trim();
+    const fromToken = KNOWN_DIAGNOSES.find((d) => d === token);
+    if (fromToken) return fromToken;
+    for (const d of KNOWN_DIAGNOSES) {
+      if (token.includes(d) || desc.includes(`: ${d}`) || desc.endsWith(d)) return d;
+    }
+  }
+
+  const ft = (findingTypeCode || "").toUpperCase();
+  if (!ft) return "none";
+
+  if (ft.includes("SELL") || ft.includes("SEAL") || ft === "SEL" || ft === "SEA") return "sealant";
+  if (ft.includes("REST") || ft.includes("OBT") || ft.includes("FILL")) return "restoration";
+  if (ft.includes("CAR")) return "caries";
+  if (ft.includes("FRA")) return "fracture";
+  if (ft.includes("EXT")) return "extraction";
+  if (ft.includes("MOB") || ft.includes("MOV")) return "mobility";
+  if (ft.includes("END")) return "endodontic";
+  if (ft.includes("BRIDGE") || ft.includes("PUENTE")) return "bridge";
+  if (ft.includes("IMPLANT") || ft.includes("IMPLANTE") || ft === "IMP") return "implant";
+  if (ft.includes("CROWN") || ft.includes("CORONA") || ft.includes("PROT")) return "crown";
+  if (ft.includes("COR") || ft.includes("CRO")) return "crown";
+
+  return "none";
+}
+
 function createDefaultOdontogramState(): {
   dentitionType: 'permanent' | 'temporary';
   teeth: Record<number, ToothState>;
@@ -149,6 +198,25 @@ interface ProfesionalItem {
   id: string;
   nombre: string;
   specialty?: string;
+  personId?: string;
+  documentNumber?: string;
+  email?: string;
+}
+
+function matchLoggedInProfessional(
+  profs: ProfesionalItem[],
+  user: { id?: string; personId?: string; cedula?: string; email?: string } | null | undefined
+): ProfesionalItem | undefined {
+  if (!user || profs.length === 0) return undefined;
+  const doc = (user.cedula || "").replace(/\D/g, "");
+  const email = (user.email || "").trim().toLowerCase();
+  return profs.find((pr) => {
+    if (user.personId && areGuidsEqual(pr.personId, user.personId)) return true;
+    if (user.personId && areGuidsEqual(pr.id, user.personId)) return true;
+    if (doc && (pr.documentNumber || "").replace(/\D/g, "") === doc) return true;
+    if (email && (pr.email || "").trim().toLowerCase() === email) return true;
+    return false;
+  });
 }
 
 function OdontogramaUI() {
@@ -163,6 +231,8 @@ function OdontogramaUI() {
     patientDocument?: string;
   } | null;
   const isDarkMode = theme === "dark";
+  const userRole = getUserRole(user);
+  const isOdontologo = userRole === "ODONTOLOGO";
   const [state, setState] = useState(cargarOdontograma);
   const [selectedSurface, setSelectedSurface] = useState<{
     toothNumber: number;
@@ -173,6 +243,7 @@ function OdontogramaUI() {
   const [selectedPaciente, setSelectedPaciente] = useState<PacienteItem | null>(null);
   const [profesionalesList, setProfesionalesList] = useState<ProfesionalItem[]>([]);
   const [selectedProfessionalId, setSelectedProfessionalId] = useState<string>("");
+  const lockedProfessionalIdRef = useRef<string>("");
   const [notasClinicas, setNotasClinicas] = useState("");
   const [isSyncingServer, setIsSyncingServer] = useState(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
@@ -193,19 +264,33 @@ function OdontogramaUI() {
 
       if (profsData && profsData.length > 0) {
         const mappedProfs: ProfesionalItem[] = profsData.map((pr: any) => {
-          const docName = `Dr(a). ${pr.firstName || ""} ${pr.lastName || ""}`.trim();
-          return { id: pr.id, nombre: docName, specialty: pr.specialty || pr.speciality || "Odontología General" };
+          const docName =
+            pr.fullName ||
+            `Dr(a). ${pr.firstName || ""} ${pr.lastName || ""}`.trim();
+          return {
+            id: pr.id,
+            nombre: docName,
+            specialty: pr.specialtyName || pr.specialty || pr.speciality || "Odontología General",
+            personId: pr.personId,
+            documentNumber: pr.documentNumber,
+            email: pr.email,
+          };
         });
         setProfesionalesList(mappedProfs);
 
-        // F-08: Pre-seleccionar únicamente si existe coincidencia comprobada de identidad con el usuario autenticado
-        const matched = mappedProfs.find((pr) =>
-          (user?.personId && areGuidsEqual(pr.id, user.personId)) ||
-          (user?.id && areGuidsEqual(pr.id, user.id))
-        );
-        if (matched) {
+        // Odontólogo logueado: siempre es el responsable (no puede elegir otro).
+        const matched = matchLoggedInProfessional(mappedProfs, user);
+        if (isOdontologo && matched) {
+          lockedProfessionalIdRef.current = matched.id;
           setSelectedProfessionalId(matched.id);
+        } else if (matched) {
+          lockedProfessionalIdRef.current = "";
+          setSelectedProfessionalId(matched.id);
+        } else if (!isOdontologo) {
+          lockedProfessionalIdRef.current = "";
+          setSelectedProfessionalId((prev) => prev || "");
         } else {
+          lockedProfessionalIdRef.current = "";
           setSelectedProfessionalId("");
         }
       }
@@ -226,7 +311,7 @@ function OdontogramaUI() {
     } catch (err) {
       console.warn("API Patients unavailable in Odontograma:", err);
     }
-  }, [user]);
+  }, [user, isOdontologo]);
 
   useEffect(() => {
     fetchPacientes();
@@ -246,7 +331,8 @@ function OdontogramaUI() {
               cedula: ctx.patientDocument || navState.patientDocument || "",
               clinicalHistoryId: ctx.clinicalHistoryId,
             });
-            if (ctx.professionalId) {
+            // Solo admin/recepción pueden heredar el profesional de la cita.
+            if (ctx.professionalId && !isOdontologo && !lockedProfessionalIdRef.current) {
               setSelectedProfessionalId(ctx.professionalId);
             }
             return;
@@ -264,12 +350,18 @@ function OdontogramaUI() {
           clinicalHistoryId: prev?.clinicalHistoryId,
         }));
       }
-      if (navState?.professionalId) {
+      if (navState?.professionalId && !isOdontologo && !lockedProfessionalIdRef.current) {
         setSelectedProfessionalId(navState.professionalId);
       }
     }
     initFromNavState();
-  }, [navState]);
+  }, [navState, isOdontologo]);
+
+  // Si el odontólogo ya quedó bloqueado, reafirmar su id (evita overrides tardíos).
+  useEffect(() => {
+    if (!isOdontologo || !lockedProfessionalIdRef.current) return;
+    setSelectedProfessionalId(lockedProfessionalIdRef.current);
+  }, [isOdontologo, profesionalesList]);
 
   // Cerrar dropdown de paciente al hacer clic fuera
   useEffect(() => {
@@ -328,18 +420,8 @@ function OdontogramaUI() {
                     else if (s === "D") surf = "distal";
                     else if (s === "O") surf = "oclusal";
 
-                    let diag: Diagnosis = "caries";
-                    const ft = (f.findingTypeCode || "").toUpperCase();
-                    if (ft.includes("CAR")) diag = "caries";
-                    else if (ft.includes("RES") || ft.includes("OBT")) diag = "restoration";
-                    else if (ft.includes("COR") || ft.includes("CRO")) diag = "crown";
-                    else if (ft.includes("SEL") || ft.includes("SEA")) diag = "sealant";
-                    else if (ft.includes("END")) diag = "endodontic";
-                    else if (ft.includes("IMP")) diag = "implant";
-                    else if (ft.includes("FRA")) diag = "fracture";
-                    else if (ft.includes("EXT")) diag = "extraction";
-
-                    if (tooth.faces && tooth.faces[surf]) {
+                    const diag = mapFindingToDiagnosis(f.findingTypeCode, f.description || f.note);
+                    if (diag !== "none" && tooth.faces && tooth.faces[surf]) {
                       tooth.faces[surf].diagnosis = diag;
                     }
                   });
@@ -647,14 +729,25 @@ function OdontogramaUI() {
 
     // Si no tiene historyId localmente, el backend lo resolverá o creará automáticamente con el patientId
 
-    // 3. F-08: Resolver y validar profesional seleccionado responsable
-    // F-08: Si no hay profesional seleccionado explícitamente, usar el primero activo o el usuario logueado
-    let professionalIdToUse = selectedProfessionalId;
-    if (!professionalIdToUse && profesionalesList.length > 0) {
-      professionalIdToUse = profesionalesList[0].id;
+    // Odontólogo logueado: siempre firma con su propio professionalId.
+    let professionalIdToUse =
+      (isOdontologo && lockedProfessionalIdRef.current) || selectedProfessionalId;
+    if (isOdontologo && !professionalIdToUse) {
+      const matched = matchLoggedInProfessional(profesionalesList, user);
+      professionalIdToUse = matched?.id || "";
+    }
+    if (!professionalIdToUse) {
+      setErrorToast(
+        isOdontologo
+          ? "No se encontró tu ficha de profesional vinculada. Contacta al administrador."
+          : "Selecciona el odontólogo responsable antes de guardar."
+      );
+      setTimeout(() => setErrorToast(null), 4000);
+      return;
     }
 
-    // 4. A-03: Serializar hallazgos del odontograma y estado estructurado completo
+    // 4. A-03: Resumen de hallazgos (piezas/superficies van en teeth[] relacional).
+    // No embeber ODONTOGRAM_STATE JSON: Oracle odontograms.notes es NVARCHAR2(2000).
     const findingsList: string[] = [];
     Object.entries(state.teeth).forEach(([toothNum, t]) => {
       if (!t || !t.isVisible) return;
@@ -670,19 +763,15 @@ function OdontogramaUI() {
       }
     });
 
-    const serializedStatePayload = JSON.stringify({
-      dentitionType: state.dentitionType,
-      teeth: state.teeth,
-      selectedDiagnosis: state.selectedDiagnosis,
-    });
-
-    // F-06: Delimitación de notas clínicas para evitar mezclar y duplicar resúmenes generados
-    const fullClinicalNotes = [
+    // F-06: Delimitación de notas clínicas (sin blob de estado; tope 2000 chars para Oracle)
+    let fullClinicalNotes = [
       notasClinicas.trim() ? `=== NOTAS_CLINICAS ===\n${notasClinicas.trim()}\n=== FIN_NOTAS_CLINICAS ===` : null,
       findingsList.length > 0 ? `Hallazgos Odontograma: ${findingsList.join('; ')}` : "Sin hallazgos patológicos activos en el odontograma",
       `Dentición: ${state.dentitionType === "permanent" ? "Permanente" : "Temporal"}`,
-      `ODONTOGRAM_STATE:${serializedStatePayload}`,
     ].filter(Boolean).join('\n\n');
+    if (fullClinicalNotes.length > 2000) {
+      fullClinicalNotes = fullClinicalNotes.slice(0, 2000);
+    }
 
     try {
       // Construir payload relacional completo de piezas y superficies para guardar en base de datos
@@ -710,6 +799,13 @@ function OdontogramaUI() {
               });
             }
           });
+        }
+
+        if (
+          stateCode === "SANO" &&
+          findings.some((f) => String(f.findingTypeCode).toUpperCase() === "CROWN")
+        ) {
+          stateCode = "CORONA";
         }
 
         return {
@@ -911,27 +1007,38 @@ function OdontogramaUI() {
 
           {/* Columna Derecha: Odontólogo Responsable + Botón Guardar debajo */}
           <div className="flex flex-col gap-2 min-w-[220px]">
-            {/* Selector de Profesional Responsable (A-04, F-08) */}
+            {/* Selector de Profesional Responsable — bloqueado si el usuario es odontólogo */}
             <div className="flex items-center gap-2 px-3 py-1.5 bg-white/80 dark:bg-slate-900/70 border border-slate-200/80 dark:border-white/10 rounded-2xl backdrop-blur-2xl shadow-lg shadow-slate-900/5 dark:shadow-[0_12px_36px_rgba(0,0,0,0.5)] h-[46px]">
               <ShieldCheck size={16} className="text-teal-600 dark:text-teal-400 flex-shrink-0" />
               <div className="flex flex-col flex-1 min-w-0">
                 <span className="text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-400 font-bold leading-none mb-0.5">
                   Odontólogo Responsable
                 </span>
-                <select
-                  value={selectedProfessionalId}
-                  onChange={(e) => setSelectedProfessionalId(e.target.value)}
-                  className="bg-transparent text-xs font-bold text-slate-900 dark:text-white outline-none cursor-pointer border-none p-0 pr-1 truncate w-full"
-                >
-                  <option value="" className="bg-white dark:bg-slate-900 text-slate-500">
-                    -- Seleccionar Odontólogo --
-                  </option>
-                  {profesionalesList.map((pr) => (
-                    <option key={pr.id} value={pr.id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
-                      {pr.nombre} ({pr.specialty})
+                {isOdontologo ? (
+                  <span
+                    className="text-xs font-bold text-slate-900 dark:text-white truncate"
+                    title="Como odontólogo logueado, tú eres el responsable de este odontograma"
+                  >
+                    {profesionalesList.find((pr) => pr.id === selectedProfessionalId)?.nombre ||
+                      user?.name ||
+                      "Tu sesión"}
+                  </span>
+                ) : (
+                  <select
+                    value={selectedProfessionalId}
+                    onChange={(e) => setSelectedProfessionalId(e.target.value)}
+                    className="bg-transparent text-xs font-bold text-slate-900 dark:text-white outline-none cursor-pointer border-none p-0 pr-1 truncate w-full"
+                  >
+                    <option value="" className="bg-white dark:bg-slate-900 text-slate-500">
+                      -- Seleccionar Odontólogo --
                     </option>
-                  ))}
-                </select>
+                    {profesionalesList.map((pr) => (
+                      <option key={pr.id} value={pr.id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
+                        {pr.nombre} ({pr.specialty})
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
             </div>
 

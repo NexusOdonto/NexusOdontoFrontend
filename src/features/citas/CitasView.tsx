@@ -503,6 +503,7 @@ export function CitasView() {
             appointmentId: a.id,
             patientId: a.patientId,
             personId: personId,
+            professionalId: a.professionalId,
             paciente: pacienteName,
             pacienteEmail: pacienteEmail,
             pacienteCedula: pacienteCedula,
@@ -557,6 +558,14 @@ export function CitasView() {
     }
   }, [searchParams]);
 
+  // Helper para normalizar cadenas eliminando tildes y espacios
+  const normalizeText = (str?: string) =>
+    (str || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+
   // Citas aisladas por rol (PACIENTE solo ve las suyas, ODONTOLOGO solo ve las suyas)
   const userRoleCitas = useMemo(() => {
     if (!isPaciente && !isOdontologo) return citas;
@@ -564,37 +573,63 @@ export function CitasView() {
     return citas.filter((cita) => {
       // 1. Aislamiento por rol PACIENTE
       if (isPaciente) {
-        const patientName = (user?.name || user?.nombre || "").toLowerCase().trim();
+        const patientName = normalizeText(user?.name || user?.nombre || "");
         const patientEmail = (user?.email || "").toLowerCase().trim();
         const patientCedula = (user?.cedula || "").trim();
         const userPersonId = (user?.personId || "").toLowerCase().trim();
+        const citaPersonId = (cita.personId || "").toLowerCase().trim();
+        const citaPatientId = (cita.patientId || "").toLowerCase().trim();
 
         const isOwn =
-          (userPersonId && cita.personId && cita.personId.toLowerCase() === userPersonId) ||
+          (userPersonId && citaPersonId && citaPersonId === userPersonId) ||
+          (user?.id && citaPatientId && areGuidsEqual(user.id, citaPatientId)) ||
           (patientCedula && cita.pacienteCedula && cita.pacienteCedula === patientCedula) ||
           (patientEmail && cita.pacienteEmail && cita.pacienteEmail.toLowerCase() === patientEmail) ||
           (patientName &&
             cita.paciente &&
-            (cita.paciente.toLowerCase().includes(patientName) ||
-              patientName.includes(cita.paciente.toLowerCase())));
+            (normalizeText(cita.paciente).includes(patientName) ||
+              patientName.includes(normalizeText(cita.paciente))));
 
         return isOwn;
       }
 
       // 2. Aislamiento por rol ODONTÓLOGO
       if (isOdontologo) {
-        const doctorName = (user?.name || user?.nombre || "").toLowerCase();
-        if (doctorName && cita.profesional && !cita.profesional.toLowerCase().includes(doctorName)) {
-          const isDoc =
-            cita.profesional.toLowerCase().includes("laura") ||
-            cita.profesional.toLowerCase().includes("gómez");
-          if (!isDoc && cita.profesional !== "") return false;
+        const userPersonId = (user?.personId || "").toLowerCase().trim();
+        const docName = normalizeText(user?.name || user?.nombre || "");
+        const docNameParts = docName.split(/\s+/).filter((p) => p.length > 2);
+
+        // Buscar la entidad profesional correspondiente al doctor logueado
+        const myProf = profsEntities.find((p: any) => {
+          const pPersonId = String(p.personId || "").toLowerCase().trim();
+          if (userPersonId && pPersonId && pPersonId === userPersonId) return true;
+          const pName = normalizeText(p.name || (p.firstName ? `${p.firstName} ${p.lastName || ""}` : ""));
+          return docName && pName && (pName.includes(docName) || docName.includes(pName));
+        });
+        const myProfId = myProf?.id ? String(myProf.id).toLowerCase() : "";
+
+        // Si la cita tiene el ID del profesional asignado y coincide con el doctor logueado
+        if (myProfId && cita.professionalId && areGuidsEqual(cita.professionalId, myProfId)) {
+          return true;
         }
+
+        // Comparación por coincidencia de nombre (normalizado sin acentos)
+        const citaProf = normalizeText(cita.profesional || "");
+        if (docName && citaProf) {
+          if (docNameParts.length > 0 && docNameParts.every((part) => citaProf.includes(part))) {
+            return true;
+          }
+          if (citaProf.includes(docName) || docName.includes(citaProf)) {
+            return true;
+          }
+        }
+
+        return false;
       }
 
       return true;
     });
-  }, [citas, isPaciente, isOdontologo, user]);
+  }, [citas, isPaciente, isOdontologo, user, profsEntities]);
 
   // Filtrado reactivo de citas según filtros de búsqueda y fecha
   const citasFiltradas = useMemo(() => {
