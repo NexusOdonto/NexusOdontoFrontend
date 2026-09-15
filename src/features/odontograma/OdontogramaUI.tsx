@@ -84,6 +84,54 @@ function getNotasStorageKey(patientId?: string): string {
   return patientId ? `nexus_odontograma_notas_${patientId}` : "nexus_odontograma_notas_default";
 }
 
+/** UI diagnosis ids that round-trip via finding description (`Cara x: crown`). */
+const KNOWN_DIAGNOSES: Diagnosis[] = [
+  "caries",
+  "restoration",
+  "sealant",
+  "endodontic",
+  "crown",
+  "bridge",
+  "implant",
+  "extraction",
+  "fracture",
+  "mobility",
+];
+
+/**
+ * Reverse-map catalog findingTypeCode + description back to UI diagnosis.
+ * Description is authoritative when present (several UI types collapse to PROTESIS/RESTAURACION/FRACTURA).
+ */
+function mapFindingToDiagnosis(findingTypeCode?: string | null, description?: string | null): Diagnosis {
+  const desc = (description || "").trim().toLowerCase();
+  if (desc) {
+    const colonIdx = desc.lastIndexOf(":");
+    const token = (colonIdx >= 0 ? desc.slice(colonIdx + 1) : desc).trim();
+    const fromToken = KNOWN_DIAGNOSES.find((d) => d === token);
+    if (fromToken) return fromToken;
+    for (const d of KNOWN_DIAGNOSES) {
+      if (token.includes(d) || desc.includes(`: ${d}`) || desc.endsWith(d)) return d;
+    }
+  }
+
+  const ft = (findingTypeCode || "").toUpperCase();
+  if (!ft) return "none";
+
+  if (ft.includes("SELL") || ft.includes("SEAL") || ft === "SEL" || ft === "SEA") return "sealant";
+  if (ft.includes("REST") || ft.includes("OBT") || ft.includes("FILL")) return "restoration";
+  if (ft.includes("CAR")) return "caries";
+  if (ft.includes("FRA")) return "fracture";
+  if (ft.includes("EXT")) return "extraction";
+  if (ft.includes("MOB") || ft.includes("MOV")) return "mobility";
+  if (ft.includes("END")) return "endodontic";
+  if (ft.includes("BRIDGE") || ft.includes("PUENTE")) return "bridge";
+  if (ft.includes("IMPLANT") || ft.includes("IMPLANTE") || ft === "IMP") return "implant";
+  if (ft.includes("CROWN") || ft.includes("CORONA") || ft.includes("PROT")) return "crown";
+  if (ft.includes("COR") || ft.includes("CRO")) return "crown";
+
+  return "none";
+}
+
 function createDefaultOdontogramState(): {
   dentitionType: 'permanent' | 'temporary';
   teeth: Record<number, ToothState>;
@@ -372,18 +420,8 @@ function OdontogramaUI() {
                     else if (s === "D") surf = "distal";
                     else if (s === "O") surf = "oclusal";
 
-                    let diag: Diagnosis = "caries";
-                    const ft = (f.findingTypeCode || "").toUpperCase();
-                    if (ft.includes("CAR")) diag = "caries";
-                    else if (ft.includes("RES") || ft.includes("OBT")) diag = "restoration";
-                    else if (ft.includes("COR") || ft.includes("CRO")) diag = "crown";
-                    else if (ft.includes("SEL") || ft.includes("SEA")) diag = "sealant";
-                    else if (ft.includes("END")) diag = "endodontic";
-                    else if (ft.includes("IMP")) diag = "implant";
-                    else if (ft.includes("FRA")) diag = "fracture";
-                    else if (ft.includes("EXT")) diag = "extraction";
-
-                    if (tooth.faces && tooth.faces[surf]) {
+                    const diag = mapFindingToDiagnosis(f.findingTypeCode, f.description || f.note);
+                    if (diag !== "none" && tooth.faces && tooth.faces[surf]) {
                       tooth.faces[surf].diagnosis = diag;
                     }
                   });
@@ -708,7 +746,8 @@ function OdontogramaUI() {
       return;
     }
 
-    // 4. A-03: Serializar hallazgos del odontograma y estado estructurado completo
+    // 4. A-03: Resumen de hallazgos (piezas/superficies van en teeth[] relacional).
+    // No embeber ODONTOGRAM_STATE JSON: Oracle odontograms.notes es NVARCHAR2(2000).
     const findingsList: string[] = [];
     Object.entries(state.teeth).forEach(([toothNum, t]) => {
       if (!t || !t.isVisible) return;
@@ -724,19 +763,15 @@ function OdontogramaUI() {
       }
     });
 
-    const serializedStatePayload = JSON.stringify({
-      dentitionType: state.dentitionType,
-      teeth: state.teeth,
-      selectedDiagnosis: state.selectedDiagnosis,
-    });
-
-    // F-06: Delimitación de notas clínicas para evitar mezclar y duplicar resúmenes generados
-    const fullClinicalNotes = [
+    // F-06: Delimitación de notas clínicas (sin blob de estado; tope 2000 chars para Oracle)
+    let fullClinicalNotes = [
       notasClinicas.trim() ? `=== NOTAS_CLINICAS ===\n${notasClinicas.trim()}\n=== FIN_NOTAS_CLINICAS ===` : null,
       findingsList.length > 0 ? `Hallazgos Odontograma: ${findingsList.join('; ')}` : "Sin hallazgos patológicos activos en el odontograma",
       `Dentición: ${state.dentitionType === "permanent" ? "Permanente" : "Temporal"}`,
-      `ODONTOGRAM_STATE:${serializedStatePayload}`,
     ].filter(Boolean).join('\n\n');
+    if (fullClinicalNotes.length > 2000) {
+      fullClinicalNotes = fullClinicalNotes.slice(0, 2000);
+    }
 
     try {
       // Construir payload relacional completo de piezas y superficies para guardar en base de datos
@@ -764,6 +799,13 @@ function OdontogramaUI() {
               });
             }
           });
+        }
+
+        if (
+          stateCode === "SANO" &&
+          findings.some((f) => String(f.findingTypeCode).toUpperCase() === "CROWN")
+        ) {
+          stateCode = "CORONA";
         }
 
         return {
