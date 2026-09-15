@@ -13,10 +13,10 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../features/auth/AuthContext";
 import { formatRoleName } from "../../utils/roleUtils";
 import { getUserRole } from "../../utils/routePermissions";
+import { UserAvatar } from "../common/UserAvatar";
 
 export default function UserProfileDropdown() {
   const [isOpen, setIsOpen] = useState(false);
-  const [imageError, setImageError] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -62,14 +62,6 @@ export default function UserProfileDropdown() {
     user.rol || (user.roleIds && user.roleIds.length > 0 ? user.roleIds[0] : getUserRole(user))
   );
 
-  const getInitials = (name: string) => {
-    const parts = name.trim().split(" ");
-    if (parts.length >= 2) {
-      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-    }
-    return name.substring(0, 2).toUpperCase();
-  };
-
   const handleNavigation = (path: string) => {
     setIsOpen(false);
     navigate(path);
@@ -91,18 +83,16 @@ export default function UserProfileDropdown() {
         aria-expanded={isOpen}
       >
         <div className="relative shrink-0">
-          {user.avatar && !imageError ? (
-            <img
-              src={user.avatar}
-              alt={fullName}
-              onError={() => setImageError(true)}
-              className="h-8 w-8 rounded-full object-cover border border-slate-200 dark:border-slate-700 shadow-sm"
+          <div className="h-8 w-8 rounded-full overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-center">
+            <UserAvatar
+              avatar={user.avatar}
+              name={fullName}
+              size="sm"
+              animate="hover"
+              className="h-full w-full object-cover"
+              fallbackClassName="h-full w-full flex items-center justify-center font-bold text-xs"
             />
-          ) : (
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-linear-to-br from-cyan-500 to-teal-500 text-white font-bold text-xs shadow-sm">
-              {getInitials(fullName)}
-            </div>
-          )}
+          </div>
           {/* Indicador de estado activo en verde */}
           <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-950 shadow-sm" />
         </div>
@@ -126,18 +116,16 @@ export default function UserProfileDropdown() {
           {/* HEADER DEL PERFIL */}
           <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800/60 mb-2">
             <div className="flex items-center gap-3 min-w-0">
-              {user.avatar && !imageError ? (
-                <img
-                  src={user.avatar}
-                  alt={fullName}
-                  onError={() => setImageError(true)}
-                  className="h-10 w-10 rounded-full object-cover border-2 border-cyan-500/80 shadow-md shrink-0"
+              <div className="h-10 w-10 rounded-full overflow-hidden border-2 border-cyan-500/80 shadow-md shrink-0 flex items-center justify-center">
+                <UserAvatar
+                  avatar={user.avatar}
+                  name={fullName}
+                  size="md"
+                  animate="hover"
+                  className="h-full w-full object-cover"
+                  fallbackClassName="h-full w-full flex items-center justify-center font-bold text-sm"
                 />
-              ) : (
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-linear-to-br from-cyan-500 to-teal-500 text-white font-bold text-sm shadow-md shrink-0">
-                  {getInitials(fullName)}
-                </div>
-              )}
+              </div>
 
               <div className="min-w-0 flex-1">
                 <h3 className="truncate font-bold text-sm text-slate-900 dark:text-white leading-tight">

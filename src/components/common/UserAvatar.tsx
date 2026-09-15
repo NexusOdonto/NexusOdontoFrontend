@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { Blobatar } from "@blobatar/react";
+import "blobatar/motion.css";
 
 interface UserAvatarProps {
   avatar?: string | null;
@@ -6,6 +8,8 @@ interface UserAvatarProps {
   className?: string;
   fallbackClassName?: string;
   size?: "sm" | "md" | "lg" | "xl";
+  animate?: "hover" | "idle" | false;
+  traits?: any;
 }
 
 export function getInitials(name?: string | null, fallback = "U"): string {
@@ -20,8 +24,9 @@ export function UserAvatar({
   avatar,
   name,
   className = "w-full h-full rounded-xl object-cover",
-  fallbackClassName = "w-full h-full flex items-center justify-center font-bold text-teal-400 bg-teal-500/15 border border-teal-500/30 select-none",
-  size = "md",
+  fallbackClassName = "w-full h-full flex items-center justify-center rounded-xl overflow-hidden select-none",
+  animate = "hover",
+  traits,
 }: UserAvatarProps) {
   const [hasError, setHasError] = useState(false);
 
@@ -32,17 +37,6 @@ export function UserAvatar({
       avatar.startsWith("http://") ||
       avatar.startsWith("https://") ||
       avatar.startsWith("blob:"));
-
-  const initials = getInitials(name);
-
-  const sizeTextClass =
-    size === "sm"
-      ? "text-xs"
-      : size === "md"
-      ? "text-sm"
-      : size === "lg"
-      ? "text-base font-extrabold"
-      : "text-lg font-black";
 
   if (isValidUrl && !hasError) {
     return (
@@ -55,12 +49,19 @@ export function UserAvatar({
     );
   }
 
+  const effectiveName = (name && name.trim().length > 0) ? name.trim() : "Nexus Odonto";
+
   return (
     <div
-      className={`${fallbackClassName} ${sizeTextClass} rounded-xl`}
-      title={name || "Usuario"}
+      className={`${fallbackClassName} relative flex items-center justify-center p-0.5 transition-transform duration-200`}
+      title={effectiveName}
     >
-      <span>{initials}</span>
+      <Blobatar
+        name={effectiveName}
+        animate={animate ? (animate as any) : undefined}
+        traits={traits}
+        className="w-full h-full object-contain pointer-events-auto transition-transform hover:scale-105"
+      />
     </div>
   );
 }

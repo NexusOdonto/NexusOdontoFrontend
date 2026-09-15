@@ -232,21 +232,22 @@ export default function PerfilView() {
         </div>
       </div>
 
-      {/* Tarjeta de Identidad con Efecto Glassmorphism */}
+      {/* Tarjeta de Identidad con Efecto Glassmorphism y Blobatar interactivo */}
       <div className="p-6 md:p-8 rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl shadow-md flex flex-col md:flex-row items-center gap-6 animate-slideUp animate-stagger-1">
-        <div className="relative">
-          <div className="relative overflow-hidden rounded-2xl ring-4 ring-cyan-500/20 shadow-md">
+        <div className="relative group">
+          <div className="relative overflow-hidden rounded-2xl ring-4 ring-cyan-500/30 dark:ring-cyan-500/40 shadow-xl bg-gradient-to-br from-teal-500/15 via-cyan-500/15 to-blue-500/15 p-2 backdrop-blur-md transition-all duration-300 group-hover:scale-105">
             <UserAvatar
               avatar={profileData.avatar}
               name={fullName}
               size="xl"
-              className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-cyan-500/10 object-cover"
-              fallbackClassName="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl flex items-center justify-center font-extrabold text-2xl text-cyan-800 dark:text-cyan-200 bg-gradient-to-br from-teal-500/20 via-cyan-500/20 to-blue-500/20 border border-cyan-500/40"
+              animate="hover"
+              className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl object-cover"
+              fallbackClassName="w-24 h-24 sm:w-28 sm:h-28 rounded-xl flex items-center justify-center"
             />
           </div>
         </div>
 
-        <div className="text-center md:text-left space-y-1.5">
+        <div className="text-center md:text-left space-y-2">
           <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
             <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
               {fullName}
@@ -255,9 +256,15 @@ export default function PerfilView() {
               <Sparkles size={11} />
               {formatRoleName(profileData.rol || user?.rol)}
             </span>
+            <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+              Blobatar Activo ✨
+            </span>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
             {profileData.email}
+          </p>
+          <p className="text-[11px] text-slate-400 dark:text-slate-400">
+            Identificador visual geométrico generado determinísticamente a partir de tu nombre. Pasa el cursor para ver su animación.
           </p>
         </div>
       </div>
