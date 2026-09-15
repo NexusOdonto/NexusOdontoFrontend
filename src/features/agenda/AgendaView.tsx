@@ -691,6 +691,7 @@ export function AgendaView() {
         appointmentOriginId: "20000000-0000-0000-0000-000000000003",
         reasonForVisit: `Agendado desde agenda interactiva para ${patientNameToUse}`,
         notes: `Servicio: ${nuevaCita.servicio}. Odontólogo: ${nuevaCita.odontologo}`,
+        autoAssignProfessional: isPaciente,
       };
 
       console.log("Payload enviado a la API:", payload);
@@ -716,10 +717,14 @@ export function AgendaView() {
       }
 
       let errorMsg = "No se pudo registrar la cita en el servidor.";
-      if (serverMsg.includes("outside the professional's active availability") || serverMsg.includes("availability")) {
+      if (serverMsg.includes("no hay odontólogos disponibles") || serverMsg.includes("no hay odontólogos activos")) {
+        errorMsg = error?.response?.data?.message || "No hay odontólogos disponibles en ese horario. Por favor selecciona otra hora.";
+      } else if (serverMsg.includes("outside the professional's active availability") || serverMsg.includes("availability")) {
         errorMsg = "El horario seleccionado está fuera de la jornada de atención (08:00 a 12:00 y 14:00 a 17:00). Por favor selecciona una hora de inicio válida (ej. 08:00 a 11:30 o 14:00 a 16:30).";
-      } else if (error?.response?.status === 409 || serverMsg.includes("conflict") || serverMsg.includes("overlap")) {
-        errorMsg = "El odontólogo ya tiene una cita asignada en ese rango horario. Por favor selecciona otra hora u otro profesional.";
+      } else if (error?.response?.status === 409 || serverMsg.includes("conflict") || serverMsg.includes("overlap") || serverMsg.includes("already has an appointment")) {
+        errorMsg = isPaciente
+          ? "No hay odontólogos disponibles en ese horario. Por favor selecciona otra hora."
+          : "El odontólogo ya tiene una cita asignada en ese rango horario. Por favor selecciona otra hora u otro profesional.";
       } else if (detailsMsg) {
         errorMsg = detailsMsg;
       } else if (error?.response?.data?.message) {

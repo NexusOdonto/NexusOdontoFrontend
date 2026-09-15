@@ -742,6 +742,8 @@ export function CitasView() {
       const finalPatientName = resolvedPatient.patientName || pacienteNombre;
 
       // 2. Resolver Professional ID
+      // Paciente: no elige odontólogo (el equipo clínico asigna). Se envía un preferido opcional
+      // y AutoAssignProfessional=true para que el backend pruebe otros si hay conflicto.
       let targetProfId = "";
       if (!isPaciente) {
         const selectedDocOption = professionalsOptions.find((d) => 
@@ -761,12 +763,8 @@ export function CitasView() {
         } else {
           targetProfId = "1d000000-0000-0000-0000-000000000001";
         }
-      } else {
-        if (profsEntities.length > 0 && profsEntities[0].id) {
-          targetProfId = profsEntities[0].id;
-        } else {
-          targetProfId = "1d000000-0000-0000-0000-000000000001";
-        }
+      } else if (profsEntities.length > 0 && profsEntities[0].id) {
+        targetProfId = profsEntities[0].id;
       }
 
       // 3. Resolver Service ID
@@ -814,7 +812,7 @@ export function CitasView() {
       try {
         const createdFromApi = await appointmentService.create({
           patientId: targetPatientId,
-          professionalId: targetProfId,
+          professionalId: targetProfId || "00000000-0000-0000-0000-000000000000",
           serviceId: targetServiceId,
           startsAt,
           endsAt,
@@ -824,14 +822,19 @@ export function CitasView() {
           appointmentOriginId: "20000000-0000-0000-0000-000000000003", // WEB
           reasonForVisit: nuevaCita.motivo || "Solicitud agendada vía portal web",
           notes: `Servicio: ${nuevaCita.servicio}. Paciente: ${nuevaCita.paciente}`,
+          autoAssignProfessional: isPaciente,
         });
 
         if (createdFromApi && createdFromApi.id) {
           nuevaCita.appointmentId = createdFromApi.id;
+          if (createdFromApi.professionalId) {
+            nuevaCita.professionalId = createdFromApi.professionalId;
+          }
         }
       } catch (err: any) {
         console.warn("API appointment creation returned error/warning:", err);
         const serverMsg = String(err?.response?.data?.message || err?.message || "").toLowerCase();
+        const rawServerMsg = String(err?.response?.data?.message || err?.message || "");
         const details = err?.response?.data?.details;
         let detailsMsg = "";
         if (details && typeof details === "object") {
@@ -841,13 +844,19 @@ export function CitasView() {
           }
         }
         
-        if (serverMsg.includes("outside the professional's active availability") || serverMsg.includes("availability")) {
+        if (serverMsg.includes("no hay odontólogos disponibles") || serverMsg.includes("no hay odontólogos activos")) {
+          setFormError(rawServerMsg || "No hay odontólogos disponibles en ese horario. Por favor selecciona otra hora.");
+          setIsSubmitting(false);
+          return;
+        } else if (serverMsg.includes("outside the professional's active availability") || serverMsg.includes("availability")) {
           const availabilityMsg = "El horario seleccionado está fuera de la jornada de atención del odontólogo (08:00 a 12:00 y 14:00 a 17:00). Por favor selecciona una hora entre 08:00 a 11:30 o 14:00 a 16:30.";
           setFormError(availabilityMsg);
           setIsSubmitting(false);
           return;
-        } else if (err?.response?.status === 409 || serverMsg.includes("conflict") || serverMsg.includes("overlap")) {
-          const conflictMsg = "El odontólogo ya tiene una cita asignada en ese rango horario. Por favor selecciona otra hora u otro profesional.";
+        } else if (err?.response?.status === 409 || serverMsg.includes("conflict") || serverMsg.includes("overlap") || serverMsg.includes("already has an appointment")) {
+          const conflictMsg = isPaciente
+            ? "No hay odontólogos disponibles en ese horario. Por favor selecciona otra hora."
+            : "El odontólogo ya tiene una cita asignada en ese rango horario. Por favor selecciona otra hora u otro profesional.";
           setFormError(conflictMsg);
           setIsSubmitting(false);
           return;

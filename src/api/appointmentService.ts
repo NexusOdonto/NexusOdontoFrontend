@@ -47,6 +47,7 @@ export interface AppointmentResponseDto {
 
 export interface CreateAppointmentDto {
   patientId: string;
+  /** Preferred professional; with autoAssignProfessional the API may pick another free dentist. */
   professionalId: string;
   serviceId: string;
   startsAt: string;
@@ -55,6 +56,8 @@ export interface CreateAppointmentDto {
   appointmentOriginId: string;
   reasonForVisit?: string;
   notes?: string;
+  /** Patient self-booking: try preferred, then other active professionals free in the slot. */
+  autoAssignProfessional?: boolean;
 }
 
 export interface UpdateAppointmentDto {
