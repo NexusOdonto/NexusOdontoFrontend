@@ -166,180 +166,98 @@ export function CitasTable({
   return (
     <div className="w-full overflow-x-auto">
       {/* TABLA ESCRITORIO */}
-      <div className="hidden min-w-237.5 md:block">
-        {/* CABECERA */}
-        <div className="grid grid-cols-[1.3fr_1.1fr_1.1fr_1.1fr_120px_210px] border-b border-slate-200/80 dark:border-white/15 bg-slate-100/75 dark:bg-slate-900/60 px-5 py-3 text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-          <div>Paciente</div>
-          <div>Fecha y Hora</div>
-          <div>Profesional</div>
-          <div>Servicio / Motivo</div>
-          <div>Estado</div>
-          <div className="text-right">Acciones</div>
-        </div>
+      <div className="hidden min-w-[1050px] md:block overflow-x-auto">
+        <table className="w-full border-collapse">
+          {/* CABECERA */}
+          <thead>
+            <tr className="border-b border-slate-200/80 dark:border-white/15 bg-slate-100/75 dark:bg-slate-900/60 text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+              <th className="px-5 py-3.5 text-left">Paciente</th>
+              <th className="px-5 py-3.5 text-left">Fecha y Hora</th>
+              <th className="px-5 py-3.5 text-left">Profesional</th>
+              <th className="px-5 py-3.5 text-left">Servicio / Motivo</th>
+              <th className="px-5 py-3.5 text-left">Estado</th>
+              <th className="px-5 py-3.5 text-right">Acciones</th>
+            </tr>
+          </thead>
 
-        {/* FILAS */}
-        <div className="divide-y divide-slate-200/60 dark:divide-white/10">
-          {citas.map((cita) => (
-            <div
-              key={cita.id}
-              onClick={() => onOpenEditModal && onOpenEditModal(cita)}
-              title="Haz clic para ver o editar los detalles de esta cita"
-              className="grid grid-cols-[1.3fr_1.1fr_1.1fr_1.1fr_120px_210px] items-center px-5 py-4 transition-all duration-200 hover:bg-teal-500/10 dark:hover:bg-cyan-400/10 cursor-pointer group"
-            >
-              {/* PACIENTE */}
-              <div className="flex items-center gap-3 min-w-0 pr-2">
-                <div className="h-9 w-9 shrink-0 rounded-xl overflow-hidden border border-cyan-500/40 dark:border-cyan-400/50 shadow-sm flex items-center justify-center group-hover:scale-105 transition-transform bg-slate-100 dark:bg-slate-900">
-                  <UserAvatar
-                    name={cita.paciente}
-                    className="h-full w-full object-cover"
-                    fallbackClassName="h-full w-full flex items-center justify-center font-bold text-xs"
-                  />
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-bold text-slate-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
-                    {cita.paciente}
-                  </p>
-                  {cita.pacienteCedula && (
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">CC: {cita.pacienteCedula}</p>
-                  )}
-                </div>
-              </div>
+          {/* FILAS */}
+          <tbody className="divide-y divide-slate-200/60 dark:divide-white/10">
+            {citas.map((cita) => (
+              <tr
+                key={cita.id}
+                onClick={() => onOpenEditModal && onOpenEditModal(cita)}
+                title="Haz clic para ver o editar los detalles de esta cita"
+                className="transition-all duration-200 hover:bg-teal-500/10 dark:hover:bg-cyan-400/10 cursor-pointer group"
+              >
+                {/* PACIENTE */}
+                <td className="px-5 py-4">
+                  <div className="flex items-center gap-3 min-w-0 pr-2">
+                    <div className="h-9 w-9 shrink-0 rounded-xl overflow-hidden border border-cyan-500/40 dark:border-cyan-400/50 shadow-sm flex items-center justify-center group-hover:scale-105 transition-transform bg-slate-100 dark:bg-slate-900">
+                      <UserAvatar
+                        name={cita.paciente}
+                        className="h-full w-full object-cover"
+                        fallbackClassName="h-full w-full flex items-center justify-center font-bold text-xs"
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-slate-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
+                        {cita.paciente}
+                      </p>
+                      {cita.pacienteCedula && (
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">CC: {cita.pacienteCedula}</p>
+                      )}
+                    </div>
+                  </div>
+                </td>
 
-              {/* FECHA Y HORA */}
-              <div className="space-y-0.5 text-xs text-slate-600 dark:text-slate-300">
-                <div className="flex items-center gap-1.5 font-semibold text-slate-900 dark:text-white">
-                  <CalendarDays size={14} className="text-teal-600 dark:text-teal-400" />
-                  <span>{formatearFecha(cita.fecha)}</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
-                  <Clock3 size={13} />
-                  <span>{formatearHora(cita.hora)}</span>
-                </div>
-              </div>
+                {/* FECHA Y HORA */}
+                <td className="px-5 py-4 whitespace-nowrap">
+                  <div className="space-y-0.5 text-xs text-slate-600 dark:text-slate-300">
+                    <div className="flex items-center gap-1.5 font-semibold text-slate-900 dark:text-white">
+                      <CalendarDays size={14} className="text-teal-600 dark:text-teal-400" />
+                      <span>{formatearFecha(cita.fecha)}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                      <Clock3 size={13} />
+                      <span>{formatearHora(cita.hora)}</span>
+                    </div>
+                  </div>
+                </td>
 
-              {/* PROFESIONAL */}
-              <div className="text-xs text-slate-700 dark:text-slate-300 pr-2">
-                {cita.profesional ? (
-                  <span className="flex items-center gap-1.5 font-semibold text-slate-900 dark:text-slate-100">
-                    <Stethoscope size={14} className="text-cyan-600 dark:text-cyan-400" />
-                    {cita.profesional}
-                  </span>
-                ) : (
-                  <span className="italic text-amber-600 dark:text-amber-400 text-xs">Por asignar</span>
-                )}
-              </div>
-
-              {/* SERVICIO / MOTIVO */}
-              <div className="text-xs text-slate-700 dark:text-slate-300 pr-2 min-w-0">
-                <p className="font-semibold truncate text-slate-900 dark:text-white">{cita.servicio}</p>
-                {cita.motivo && <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">{cita.motivo}</p>}
-              </div>
-
-              {/* ESTADO */}
-              <div>{estadoBadge(cita.estado)}</div>
-
-              {/* ACCIONES SEGÚN ROL */}
-              <div className="flex items-center justify-end gap-1.5 text-xs">
-                {/* 1. PACIENTE */}
-                {isPaciente && (
-                  <>
-                    {(cita.estado === "Pendiente" || cita.estado === "Confirmada") && onUpdateStatus && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onUpdateStatus(cita.id, "Cancelada");
-                        }}
-                        className="px-2.5 py-1 rounded-xl border border-rose-500/30 hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 transition-all cursor-pointer text-xs font-semibold active:scale-95"
-                        title="Cancelar mi cita"
-                      >
-                        Cancelar
-                      </button>
+                {/* PROFESIONAL */}
+                <td className="px-5 py-4 whitespace-nowrap">
+                  <div className="text-xs text-slate-700 dark:text-slate-300 pr-2">
+                    {cita.profesional ? (
+                      <span className="flex items-center gap-1.5 font-semibold text-slate-900 dark:text-slate-100">
+                        <Stethoscope size={14} className="text-cyan-600 dark:text-cyan-400" />
+                        {cita.profesional}
+                      </span>
+                    ) : (
+                      <span className="italic text-amber-600 dark:text-amber-400 text-xs">Por asignar</span>
                     )}
-                    {cita.estado === "Completada" && (
-                      <span className="text-[11px] text-teal-600 dark:text-teal-400 font-semibold">Finalizada</span>
-                    )}
-                  </>
-                )}
+                  </div>
+                </td>
 
-                {/* 2. RECEPCIONISTA / ADMIN */}
-                {(isRecepcionista || isAdmin) && (
-                  <>
-                    {cita.estado === "Pendiente" && (
-                      <div className="flex items-center justify-end gap-1.5">
-                        {onUpdateStatus && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onUpdateStatus(cita.id, "Confirmada");
-                            }}
-                            className="px-2.5 py-1 rounded-xl bg-teal-500 hover:bg-teal-600 text-white font-semibold transition-all cursor-pointer shadow-xs active:scale-95 text-xs flex items-center gap-1"
-                            title="Aprobar y Confirmar Cita"
-                          >
-                            <Check size={13} />
-                            <span>Aprobar</span>
-                          </button>
-                        )}
-                        {onUpdateStatus && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onUpdateStatus(cita.id, "Cancelada");
-                            }}
-                            className="px-2.5 py-1 rounded-xl border border-rose-500/40 hover:bg-rose-500/15 text-rose-600 dark:text-rose-400 font-semibold transition-all cursor-pointer text-xs flex items-center gap-1"
-                            title="Rechazar Cita"
-                          >
-                            <X size={13} />
-                            <span>Rechazar</span>
-                          </button>
-                        )}
-                        {onOpenAssignModal && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onOpenAssignModal(cita);
-                            }}
-                            className="px-2 py-1 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition-all cursor-pointer text-xs"
-                            title="Reasignar Doctor u Horario"
-                          >
-                            Editar
-                          </button>
-                        )}
-                      </div>
-                    )}
-                    {cita.estado === "Confirmada" && (
-                      <div className="flex items-center justify-end gap-1.5">
-                        {onUpdateStatus && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onUpdateStatus(cita.id, "En Atención");
-                            }}
-                            className="px-2.5 py-1 rounded-xl bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold transition-all cursor-pointer shadow-xs active:scale-95 text-xs flex items-center gap-1"
-                            title="Pasar cita a En Atención"
-                          >
-                            <PlayCircle size={13} />
-                            <span>Atender</span>
-                          </button>
-                        )}
-                        {onOpenEditModal && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onOpenEditModal(cita);
-                            }}
-                            className="px-2 py-1 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition-all cursor-pointer text-xs"
-                            title="Editar Cita"
-                          >
-                            Editar
-                          </button>
-                        )}
-                        {onUpdateStatus && (
+                {/* SERVICIO / MOTIVO */}
+                <td className="px-5 py-4">
+                  <div className="text-xs text-slate-700 dark:text-slate-300 pr-2 min-w-0">
+                    <p className="font-semibold truncate text-slate-900 dark:text-white">{cita.servicio}</p>
+                    {cita.motivo && <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">{cita.motivo}</p>}
+                  </div>
+                </td>
+
+                {/* ESTADO */}
+                <td className="px-5 py-4 whitespace-nowrap">
+                  {estadoBadge(cita.estado)}
+                </td>
+
+                {/* ACCIONES SEGÚN ROL */}
+                <td className="px-5 py-4 whitespace-nowrap text-right">
+                  <div className="flex items-center justify-end gap-1.5 text-xs">
+                    {/* 1. PACIENTE */}
+                    {isPaciente && (
+                      <>
+                        {(cita.estado === "Pendiente" || cita.estado === "Confirmada") && onUpdateStatus && (
                           <button
                             type="button"
                             onClick={(e) => {
@@ -347,117 +265,217 @@ export function CitasTable({
                               onUpdateStatus(cita.id, "Cancelada");
                             }}
                             className="px-2.5 py-1 rounded-xl border border-rose-500/30 hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 transition-all cursor-pointer text-xs font-semibold active:scale-95"
-                            title="Cancelar Cita"
+                            title="Cancelar mi cita"
                           >
                             Cancelar
                           </button>
                         )}
-                      </div>
-                    )}
-                    {cita.estado === "En Atención" && (
-                      <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          type="button"
-                          onClick={() => navigate("/odontograma", { state: { appointmentId: cita.appointmentId, patientId: cita.patientId, professionalId: cita.professionalId, patientName: cita.paciente, patientDocument: cita.pacienteCedula } })}
-                          className="p-1.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 transition-all cursor-pointer active:scale-95"
-                          title="Abrir Odontograma"
-                        >
-                          <Smile size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => navigate("/historia-clinica")}
-                          className="p-1.5 rounded-xl bg-blue-500/15 hover:bg-blue-500/25 text-blue-700 dark:text-blue-300 border border-blue-500/30 transition-all cursor-pointer active:scale-95"
-                          title="Abrir Historia Clínica"
-                        >
-                          <FileText size={14} />
-                        </button>
-                        {onUpdateStatus && (
-                          <button
-                            type="button"
-                            onClick={() => onUpdateStatus(cita.id, "Completada")}
-                            className="px-2.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold transition-all cursor-pointer shadow-sm active:scale-95 text-xs"
-                          >
-                            Completar
-                          </button>
+                        {cita.estado === "Completada" && (
+                          <span className="text-[11px] text-teal-600 dark:text-teal-400 font-semibold">Finalizada</span>
                         )}
-                      </div>
+                      </>
                     )}
-                  </>
-                )}
 
-                {/* 3. ODONTÓLOGO */}
-                {isOdontologo && onUpdateStatus && (
-                  <>
-                    {cita.estado === "Confirmada" && (
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onUpdateStatus(cita.id, "En Atención");
-                            navigate("/odontograma", {
-                              state: {
-                                appointmentId: cita.appointmentId,
-                                patientId: cita.patientId,
-                                professionalId: cita.professionalId,
-                                patientName: cita.paciente,
-                                patientDocument: cita.pacienteCedula,
-                              },
-                            });
-                          }}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold transition-all cursor-pointer shadow-sm active:scale-95 text-xs"
-                          title="Iniciar Atención y abrir Odontograma"
-                        >
-                          <PlayCircle size={14} />
-                          <span>Atender</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onUpdateStatus(cita.id, "Cancelada");
-                          }}
-                          className="px-2.5 py-1.5 rounded-xl border border-rose-500/30 hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 transition-all cursor-pointer text-xs font-semibold active:scale-95"
-                          title="Cancelar Cita"
-                        >
-                          Cancelar
-                        </button>
-                      </div>
+                    {/* 2. RECEPCIONISTA / ADMIN */}
+                    {(isRecepcionista || isAdmin) && (
+                      <>
+                        {cita.estado === "Pendiente" && (
+                          <div className="flex items-center justify-end gap-1.5">
+                            {onUpdateStatus && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onUpdateStatus(cita.id, "Confirmada");
+                                }}
+                                className="px-2.5 py-1 rounded-xl bg-teal-500 hover:bg-teal-600 text-white font-semibold transition-all cursor-pointer shadow-xs active:scale-95 text-xs flex items-center gap-1"
+                                title="Aprobar y Confirmar Cita"
+                              >
+                                <Check size={13} />
+                                <span>Aprobar</span>
+                              </button>
+                            )}
+                            {onUpdateStatus && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onUpdateStatus(cita.id, "Cancelada");
+                                }}
+                                className="px-2.5 py-1 rounded-xl border border-rose-500/40 hover:bg-rose-500/15 text-rose-600 dark:text-rose-400 font-semibold transition-all cursor-pointer text-xs flex items-center gap-1"
+                                title="Rechazar Cita"
+                              >
+                                <X size={13} />
+                                <span>Rechazar</span>
+                              </button>
+                            )}
+                            {onOpenAssignModal && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onOpenAssignModal(cita);
+                                }}
+                                className="px-2 py-1 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition-all cursor-pointer text-xs"
+                                title="Reasignar Doctor u Horario"
+                              >
+                                Editar
+                              </button>
+                            )}
+                          </div>
+                        )}
+                        {cita.estado === "Confirmada" && (
+                          <div className="flex items-center justify-end gap-1.5">
+                            {onUpdateStatus && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onUpdateStatus(cita.id, "En Atención");
+                                }}
+                                className="px-2.5 py-1 rounded-xl bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold transition-all cursor-pointer shadow-xs active:scale-95 text-xs flex items-center gap-1"
+                                title="Pasar cita a En Atención"
+                              >
+                                <PlayCircle size={13} />
+                                <span>Atender</span>
+                              </button>
+                            )}
+                            {onOpenEditModal && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onOpenEditModal(cita);
+                                }}
+                                className="px-2 py-1 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition-all cursor-pointer text-xs"
+                                title="Editar Cita"
+                              >
+                                Editar
+                              </button>
+                            )}
+                            {onUpdateStatus && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onUpdateStatus(cita.id, "Cancelada");
+                                }}
+                                className="px-2.5 py-1 rounded-xl border border-rose-500/30 hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 transition-all cursor-pointer text-xs font-semibold active:scale-95"
+                                title="Cancelar Cita"
+                              >
+                                Cancelar
+                              </button>
+                            )}
+                          </div>
+                        )}
+                        {cita.estado === "En Atención" && (
+                          <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              onClick={() => navigate("/odontograma", { state: { appointmentId: cita.appointmentId, patientId: cita.patientId, professionalId: cita.professionalId, patientName: cita.paciente, patientDocument: cita.pacienteCedula } })}
+                              className="p-1.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 transition-all cursor-pointer active:scale-95"
+                              title="Abrir Odontograma"
+                            >
+                              <Smile size={14} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => navigate("/historia-clinica")}
+                              className="p-1.5 rounded-xl bg-blue-500/15 hover:bg-blue-500/25 text-blue-700 dark:text-blue-300 border border-blue-500/30 transition-all cursor-pointer active:scale-95"
+                              title="Abrir Historia Clínica"
+                            >
+                              <FileText size={14} />
+                            </button>
+                            {onUpdateStatus && (
+                              <button
+                                type="button"
+                                onClick={() => onUpdateStatus(cita.id, "Completada")}
+                                className="px-2.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold transition-all cursor-pointer shadow-sm active:scale-95 text-xs"
+                              >
+                                Completar
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </>
                     )}
-                    {cita.estado === "En Atención" && (
-                      <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          type="button"
-                          onClick={() => navigate("/odontograma", { state: { appointmentId: cita.appointmentId, patientId: cita.patientId, professionalId: cita.professionalId, patientName: cita.paciente, patientDocument: cita.pacienteCedula } })}
-                          className="p-1.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 transition-all cursor-pointer active:scale-95"
-                          title="Abrir Odontograma"
-                        >
-                          <Smile size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => navigate("/historia-clinica")}
-                          className="p-1.5 rounded-xl bg-blue-500/15 hover:bg-blue-500/25 text-blue-700 dark:text-blue-300 border border-blue-500/30 transition-all cursor-pointer active:scale-95"
-                          title="Abrir Historia Clínica"
-                        >
-                          <FileText size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onUpdateStatus(cita.id, "Completada")}
-                          className="px-2.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold transition-all cursor-pointer shadow-sm active:scale-95 text-xs"
-                        >
-                          Completar
-                        </button>
-                      </div>
+
+                    {/* 3. ODONTÓLOGO */}
+                    {isOdontologo && onUpdateStatus && (
+                      <>
+                        {cita.estado === "Confirmada" && (
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onUpdateStatus(cita.id, "En Atención");
+                                navigate("/odontograma", {
+                                  state: {
+                                    appointmentId: cita.appointmentId,
+                                    patientId: cita.patientId,
+                                    professionalId: cita.professionalId,
+                                    patientName: cita.paciente,
+                                    patientDocument: cita.pacienteCedula,
+                                  },
+                                });
+                              }}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold transition-all cursor-pointer shadow-sm active:scale-95 text-xs"
+                              title="Iniciar Atención y abrir Odontograma"
+                            >
+                              <PlayCircle size={14} />
+                              <span>Atender</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onUpdateStatus(cita.id, "Cancelada");
+                              }}
+                              className="px-2.5 py-1.5 rounded-xl border border-rose-500/30 hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 transition-all cursor-pointer text-xs font-semibold active:scale-95"
+                              title="Cancelar Cita"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        )}
+                        {cita.estado === "En Atención" && (
+                          <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              onClick={() => navigate("/odontograma", { state: { appointmentId: cita.appointmentId, patientId: cita.patientId, professionalId: cita.professionalId, patientName: cita.paciente, patientDocument: cita.pacienteCedula } })}
+                              className="p-1.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 transition-all cursor-pointer active:scale-95"
+                              title="Abrir Odontograma"
+                            >
+                              <Smile size={14} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => navigate("/historia-clinica")}
+                              className="p-1.5 rounded-xl bg-blue-500/15 hover:bg-blue-500/25 text-blue-700 dark:text-blue-300 border border-blue-500/30 transition-all cursor-pointer active:scale-95"
+                              title="Abrir Historia Clínica"
+                            >
+                              <FileText size={14} />
+                            </button>
+                            {onUpdateStatus && (
+                              <button
+                                type="button"
+                                onClick={() => onUpdateStatus(cita.id, "Completada")}
+                                className="px-2.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold transition-all cursor-pointer shadow-sm active:scale-95 text-xs"
+                              >
+                                Completar
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </>
                     )}
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       {/* VISTA MÓVIL (TARJETAS) */}
