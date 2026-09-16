@@ -135,6 +135,18 @@ export const authService = {
     return response.data;
   },
 
+  updateProfile: async (data: {
+    firstName: string;
+    lastName: string;
+    phone?: string;
+    email?: string;
+    address?: string;
+    documentNumber?: string;
+  }): Promise<any> => {
+    const response = await axiosClient.put('/auth/me', data);
+    return response.data;
+  },
+
   initiateGoogleLogin: () => {
     const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5170/api';
     const origin = window.location.origin;

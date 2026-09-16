@@ -45,6 +45,7 @@ import { personService } from "../../api/personService";
 import { SelectOrWriteInput, type SelectOption } from "../../components/common/SelectOrWriteInput";
 import { areGuidsEqual } from "../../utils/roleUtils";
 import { resolveOrCreatePatient } from "../../utils/patientResolution";
+import { validateClinicAppointmentSchedule } from "../../utils/clinicSchedule";
 
 const getDoctorShortName = (fullName: string) => {
   if (!fullName) return "Dr(a).";
@@ -666,6 +667,17 @@ export function AgendaView() {
       return;
     }
 
+    const scheduleError = validateClinicAppointmentSchedule(
+      fechaSeleccionada,
+      nuevaCita.horaInicio || "09:00"
+    );
+    if (scheduleError) {
+      setFormError(scheduleError);
+      setErrorMessage(scheduleError);
+      setTimeout(() => setErrorMessage(null), 6000);
+      return;
+    }
+
     try {
       setIsSubmitting(true);
       setFormError(null);
@@ -793,7 +805,13 @@ export function AgendaView() {
       }
 
       let errorMsg = "No se pudo registrar la cita en el servidor.";
-      if (serverMsg.includes("no hay odontólogos disponibles") || serverMsg.includes("no hay odontólogos activos")) {
+      if (
+        serverMsg.includes("fechas u horas pasadas") ||
+        serverMsg.includes("fuera de la jornada") ||
+        serverMsg.includes("receso de almuerzo")
+      ) {
+        errorMsg = error?.response?.data?.message || errorMsg;
+      } else if (serverMsg.includes("no hay odontólogos disponibles") || serverMsg.includes("no hay odontólogos activos")) {
         errorMsg = error?.response?.data?.message || "No hay odontólogos disponibles en ese horario. Por favor selecciona otra hora.";
       } else if (serverMsg.includes("outside the professional's active availability") || serverMsg.includes("availability")) {
         errorMsg = "El horario seleccionado está fuera de la jornada de atención (08:00 a 12:00 y 14:00 a 17:00). Por favor selecciona una hora de inicio válida (ej. 08:00 a 11:30 o 14:00 a 16:30).";
