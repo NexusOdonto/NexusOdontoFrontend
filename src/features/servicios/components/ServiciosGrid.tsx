@@ -1,5 +1,6 @@
 import { formatCurrency } from "../../../utils/currency";
 import type { Servicio } from "../../../types/servicios";
+import { DeleteButton } from "../../../components/ui/delete-button";
 import {
   Clock,
   Sparkles,
@@ -11,7 +12,6 @@ import {
   Activity,
   Stethoscope,
   Edit2,
-  Trash2,
   Flame,
 } from "lucide-react";
 
@@ -324,23 +324,11 @@ export function ServiciosGrid({
                       </button>
                     )}
                     {onEliminar && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              `¿Seguro que deseas eliminar el procedimiento "${servicio.nombre}"?`
-                            )
-                          ) {
-                            onEliminar(servicio.id);
-                          }
-                        }}
-                        className="p-2 rounded-xl bg-slate-100 hover:bg-rose-50 dark:bg-white/5 dark:hover:bg-rose-500/20 text-slate-600 hover:text-rose-700 dark:text-slate-300 dark:hover:text-rose-200 border border-slate-200 dark:border-white/10 transition-all cursor-pointer shadow-sm"
-                        title="Eliminar servicio"
-                        aria-label="Eliminar"
-                      >
-                        <Trash2 size={13} strokeWidth={2.2} />
-                      </button>
+                      <DeleteButton
+                        size="sm"
+                        title={`Eliminar procedimiento ${servicio.nombre}`}
+                        onConfirm={() => onEliminar(servicio.id)}
+                      />
                     )}
                   </div>
                 )}
