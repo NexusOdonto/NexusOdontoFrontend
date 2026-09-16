@@ -343,7 +343,10 @@ export const chatbotService = {
   // WhatsApp QR Code Endpoints
   getQrData: async (): Promise<{ connected: boolean; state: string; base64?: string; instanceName?: string }> => {
     try {
-      const res = await chatbotClient.get('/qr/data');
+      const res = await chatbotClient.get('/qr/data', {
+        params: { t: Date.now() },
+        headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+      });
       return res.data;
     } catch (err) {
       console.warn('Could not fetch QR data:', err);
@@ -362,13 +365,10 @@ export const chatbotService = {
   },
 
   logoutQrInstance: async (): Promise<any> => {
-    try {
-      const res = await chatbotClient.post('/qr/logout');
-      return res.data;
-    } catch (err) {
-      console.warn('Could not logout QR instance:', err);
-      return { status: 'error' };
-    }
+    const res = await chatbotClient.post('/qr/logout', null, {
+      headers: { 'Cache-Control': 'no-cache' },
+    });
+    return res.data;
   },
 
   getTicketStatuses: async (): Promise<CatalogItem[]> => {

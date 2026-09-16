@@ -1,4 +1,4 @@
-﻿import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../../api/authService';
 import { formatRoleName } from '../../utils/roleUtils';
@@ -26,6 +26,8 @@ export interface User {
   tipoDocumento?: string;
   fechaNacimiento?: string;
   mustChangePassword?: boolean;
+  googleLinked?: boolean;
+  googleEmail?: string | null;
 }
 
 interface AuthContextType {
@@ -35,6 +37,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   updateUser: (updatedData: Partial<User>) => void;
   changePassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
+  unlinkGoogle: () => Promise<{ success: boolean; error?: string }>;
   isAuthenticated: boolean;
   isLoading: boolean;
 }
@@ -95,6 +98,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       roleIds: userObj.roleIds || fallbackPrev?.roleIds || [],
       permissions: perms,
       mustChangePassword: mustChange,
+      googleLinked: Boolean(profile.googleLinked ?? profile.GoogleLinked),
+      googleEmail: profile.googleEmail ?? profile.GoogleEmail ?? null,
       avatar: userObj.avatar || userObj.avatarUrl || savedAvatar || fallbackPrev?.avatar || '',
       avatarUrl: userObj.avatar || userObj.avatarUrl || savedAvatar || fallbackPrev?.avatar || '',
       rol: formatRoleName(userObj.rol || userObj.role || fallbackPrev?.rol || (userObj.roleIds && userObj.roleIds.length > 0 ? userObj.roleIds[0] : 'PACIENTE')),
@@ -325,6 +330,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const unlinkGoogle = async (): Promise<{ success: boolean; error?: string }> => {
+    try {
+      await authService.unlinkGoogle();
+      const profile = await authService.getProfile();
+      if (profile) {
+        const updated = parseProfileToUser(profile, user ? { ...user, googleLinked: false, googleEmail: null } : null);
+        setUser(updated);
+        localStorage.setItem('auth_user', JSON.stringify(updated));
+      } else {
+        updateUser({ googleLinked: false, googleEmail: null });
+      }
+      return { success: true };
+    } catch (e: any) {
+      const serverMessage =
+        e?.response?.data?.message ||
+        e?.message ||
+        'No se pudo desvincular Google.';
+      return { success: false, error: serverMessage };
+    }
+  };
+
   const logout = async () => {
     const refreshToken = localStorage.getItem('refresh_token');
     
@@ -350,6 +376,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         logout,
         updateUser,
         changePassword,
+        unlinkGoogle,
         isAuthenticated: !!user,
         isLoading
       }}

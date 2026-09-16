@@ -24,7 +24,7 @@ import { UserAvatar } from "../../components/common/UserAvatar";
 import { formatRoleName } from "../../utils/roleUtils";
 
 export default function PerfilView() {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, unlinkGoogle } = useAuth();
 
   const [isEditing, setIsEditing] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -503,27 +503,27 @@ export default function PerfilView() {
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Google Workspace</h4>
                 <span
                   className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                    isGoogleLinked
+                    isGoogleLinked || user?.googleLinked
                       ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
                       : "bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-700"
                   }`}
                 >
                   <span
-                    className={`w-1.5 h-1.5 rounded-full ${isGoogleLinked ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`}
+                    className={`w-1.5 h-1.5 rounded-full ${isGoogleLinked || user?.googleLinked ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`}
                   />
-                  {isGoogleLinked ? "Vinculada" : "No vinculada"}
+                  {isGoogleLinked || user?.googleLinked ? "Vinculada" : "No vinculada"}
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                {isGoogleLinked
-                  ? "Tu cuenta de Google está conectada para inicio de sesión biométrico/SSO."
+                {isGoogleLinked || user?.googleLinked
+                  ? `Tu cuenta de Google ${user?.googleEmail ? `(${user.googleEmail})` : ""} está conectada para inicio de sesión biométrico/SSO.`
                   : "Vincula tu correo de Google para acceder en 1 clic sin escribir contraseña."}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-            {isGoogleLinked ? (
+            {isGoogleLinked || user?.googleLinked ? (
               <button
                 type="button"
                 onClick={() => setShowUnlinkModal(true)}
@@ -582,7 +582,16 @@ export default function PerfilView() {
                 </button>
                 <button
                   type="button"
-                  onClick={handleUnlinkGoogle}
+                  onClick={async () => {
+                    if (typeof unlinkGoogle === "function") {
+                      try {
+                        await unlinkGoogle();
+                      } catch (e) {
+                        console.warn("Silent unlinkGoogle:", e);
+                      }
+                    }
+                    await handleUnlinkGoogle();
+                  }}
                   disabled={isLinkingGoogle}
                   className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-2 cursor-pointer disabled:opacity-50"
                 >
