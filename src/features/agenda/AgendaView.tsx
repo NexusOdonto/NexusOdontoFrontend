@@ -767,6 +767,54 @@ export function AgendaView() {
         }
       }
 
+      // Validar disponibilidad del odontólogo y de la clínica en la franja horaria
+      const startMinTotal = Number(safeH) * 60 + Number(safeM);
+      const endMinTotal = Number(safeEH) * 60 + Number(safeEM);
+
+      const activeCitasDia = citas.filter((c) => {
+        if (c.fecha !== fechaSeleccionada) return false;
+        const st = (c.estado || "").toLowerCase();
+        return st !== "cancelada" && st !== "no disponible" && st !== "cancelled";
+      });
+
+      const overlappingCitas = activeCitasDia.filter((c) => {
+        const [cHIni, cMIni] = (c.horaInicio || "07:00").split(":").map(Number);
+        const [cHFin, cMFin] = (c.horaFin || "08:00").split(":").map(Number);
+        const cStart = (isNaN(cHIni) ? 7 : cHIni) * 60 + (isNaN(cMIni) ? 0 : cMIni);
+        const cEnd = (isNaN(cHFin) ? 8 : cHFin) * 60 + (isNaN(cMFin) ? 0 : cMFin);
+        return startMinTotal < cEnd && endMinTotal > cStart;
+      });
+
+      // 1. Si el usuario seleccionó un profesional específico, comprobar si ese profesional ya tiene cita
+      if (nuevaCita.odontologo && nuevaCita.odontologo.trim() && !isPaciente) {
+        const targetDoc = nuevaCita.odontologo.toLowerCase().trim();
+        const docBusy = overlappingCitas.find((c) => {
+          const cDoc = (c.odontologo || "").toLowerCase().trim();
+          return cDoc === targetDoc || cDoc.includes(targetDoc) || targetDoc.includes(cDoc);
+        });
+
+        if (docBusy) {
+          const msg = `El/La profesional ${nuevaCita.odontologo} ya tiene una cita asignada en este horario (${docBusy.horaInicio} - ${docBusy.horaFin}). Elige otro profesional disponible u otro horario.`;
+          setFormError(msg);
+          setErrorMessage(msg);
+          setTimeout(() => setErrorMessage(null), 6000);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      // 2. Comprobar si TODOS los profesionales de la clínica están ocupados en este bloque
+      const allActiveDocs = listaOdontologos.filter((d) => d.nombre !== "Todos los odontólogos");
+      const busyDocNames = new Set(overlappingCitas.map((c) => c.odontologo.toLowerCase().trim()));
+      if (allActiveDocs.length > 0 && busyDocNames.size >= allActiveDocs.length) {
+        const msg = "No hay ningún odontólogo disponible en este horario. Todos los profesionales se encuentran en consulta.";
+        setFormError(msg);
+        setErrorMessage(msg);
+        setTimeout(() => setErrorMessage(null), 6000);
+        setIsSubmitting(false);
+        return;
+      }
+
       const payload = {
         patientId: patientIdToUse,
         professionalId: finalProfId,
@@ -951,7 +999,6 @@ export function AgendaView() {
   const renderCitaCard = (cita: CitaPosicionada) => {
     const clusterList = cita.clusterCitas && cita.clusterCitas.length > 0 ? cita.clusterCitas : [cita];
     const totalCitas = clusterList.length;
-    const primeraCita = clusterList[0];
 
     return (
       <div
@@ -970,44 +1017,40 @@ export function AgendaView() {
           left: cita.leftStyle,
           width: cita.widthStyle,
         }}
-        className="group absolute z-20 rounded-xl sm:rounded-2xl border-2 border-teal-500/60 dark:border-teal-400/70 bg-gradient-to-br from-teal-500/20 via-cyan-500/15 to-blue-500/20 dark:from-teal-950/85 dark:via-cyan-950/75 dark:to-blue-950/85 backdrop-blur-xl shadow-md hover:shadow-2xl hover:border-teal-400 hover:-translate-y-1.5 hover:scale-[1.02] active:scale-95 transition-all duration-300 cursor-pointer p-2 flex flex-col justify-between overflow-hidden"
-        title="Haz clic para ver y desplegar las citas de esta hora y día"
+        className="group absolute z-20 rounded-xl sm:rounded-2xl border-2 border-teal-500/70 dark:border-teal-400/80 bg-gradient-to-br from-teal-500/20 via-cyan-500/15 to-blue-500/20 dark:from-teal-950/90 dark:via-cyan-950/80 dark:to-blue-950/90 backdrop-blur-xl shadow-md hover:shadow-2xl hover:border-teal-400 hover:-translate-y-1.5 hover:scale-[1.02] active:scale-95 transition-all duration-300 cursor-pointer p-2 sm:p-2.5 flex flex-col justify-between overflow-hidden text-center"
+        title={`Ver ${totalCitas} ${totalCitas === 1 ? "cita agendada" : "citas agendadas"} a las ${cita.horaInicio}`}
       >
-        {/* Solapa Superior: Icono Carpeta + Horario + Badge Contador Notificación */}
+        {/* Cabecera: Icono Carpeta + Horario */}
         <div className="flex items-center justify-between gap-1 min-w-0">
           <div className="flex items-center gap-1.5 min-w-0">
-            <div className="flex h-5 w-5 sm:h-6 sm:w-6 shrink-0 items-center justify-center rounded-lg bg-teal-500/25 text-teal-700 dark:text-teal-300 border border-teal-500/40 group-hover:rotate-6 transition-transform shadow-xs">
+            <div className="flex h-5 w-5 sm:h-6 sm:w-6 shrink-0 items-center justify-center rounded-lg bg-teal-500/30 text-teal-700 dark:text-teal-300 border border-teal-500/50 group-hover:rotate-6 transition-transform shadow-xs">
               <Folder size={13} className="text-teal-600 dark:text-teal-300" />
             </div>
-            <span className="font-mono text-[10px] sm:text-[11px] font-extrabold text-teal-950 dark:text-teal-200 truncate">
+            <span className="font-mono text-[10.5px] sm:text-[11px] font-extrabold text-teal-950 dark:text-teal-200 truncate">
               {cita.horaInicio}
             </span>
           </div>
 
-          {/* Badge Notificación con número de personas/citas */}
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] sm:text-[10px] font-black bg-gradient-to-r from-teal-500 to-cyan-400 text-slate-950 shadow-xs shrink-0 animate-pulse">
-            <span className="h-1.5 w-1.5 rounded-full bg-slate-950" />
-            <span>{totalCitas} {totalCitas === 1 ? "cita" : "citas"}</span>
+          <span className="text-[9px] font-mono font-medium text-slate-500 dark:text-slate-400">
+            {cita.horaFin}
           </span>
         </div>
 
-        {/* Resumen del bloque */}
-        <div className="my-0.5 min-w-0">
-          <p className="text-[11px] sm:text-xs font-black text-slate-900 dark:text-white truncate" title={clusterList.map((c) => c.paciente).join(", ")}>
-            {totalCitas === 1 ? primeraCita.paciente : `${totalCitas} personas agendadas`}
-          </p>
-          <p className="text-[9.5px] sm:text-[10px] text-slate-600 dark:text-slate-400 truncate mt-0.5 font-medium">
-            {totalCitas === 1 ? primeraCita.servicio : `${clusterList.map((c) => c.paciente).slice(0, 2).join(", ")}${totalCitas > 2 ? "..." : ""}`}
-          </p>
+        {/* Centro: Badge Notificación grande y limpio con número de citas (Sin nombres) */}
+        <div className="my-auto py-1 flex items-center justify-center">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-gradient-to-r from-teal-500 to-cyan-400 text-slate-950 shadow-md animate-pulse">
+            <span className="h-2 w-2 rounded-full bg-slate-950" />
+            <span>{totalCitas} {totalCitas === 1 ? "Cita" : "Citas"}</span>
+          </span>
         </div>
 
-        {/* Footer: Acción para desplegar */}
+        {/* Pie: Clic para desplegar dossier */}
         <div className="flex items-center justify-between text-[9px] sm:text-[10px] text-teal-700 dark:text-teal-300 font-bold pt-1 border-t border-teal-500/20">
-          <span className="group-hover:underline flex items-center gap-0.5">
-            <span>Desplegar</span>
+          <span className="group-hover:underline flex items-center gap-1">
+            <span>Ver citas</span>
             <span>→</span>
           </span>
-          <span className="text-[9px] font-mono opacity-80">📁 Ver ({totalCitas})</span>
+          <span className="text-[9px] font-mono opacity-80">📁 Desplegar</span>
         </div>
       </div>
     );
