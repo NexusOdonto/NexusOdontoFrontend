@@ -20,6 +20,7 @@ import {
   Table as TableIcon,
   ArrowUpDown,
   AlertCircle,
+  Stethoscope,
 } from "lucide-react";
 import type { ServiceResponseDto } from "../../api/serviceCatalogService";
 
@@ -155,8 +156,13 @@ function apiErrorMessage(err: unknown, fallback: string): string {
 
 export function ServiciosView() {
   const { user } = useAuth();
-  const role = getUserRole(user);
-  const isAdmin = role === "ADMINISTRADOR";
+  const rawRole = getUserRole(user);
+  const userRoleStr = String((user as any)?.rol || (user as any)?.role || "").toUpperCase();
+
+  const isOdontologo = rawRole === "ODONTOLOGO" || userRoleStr.includes("ODONTO") || userRoleStr.includes("DOCTOR") || userRoleStr.includes("DENTIST");
+  const isRecepcionista = rawRole === "RECEPCIONISTA" || userRoleStr.includes("RECEPCION");
+  const isPaciente = rawRole === "PACIENTE" || userRoleStr.includes("PACIENTE");
+  const isAdmin = (rawRole === "ADMINISTRADOR" || (user?.email && user.email.toLowerCase().includes("admin"))) && !isOdontologo && !isRecepcionista && !isPaciente;
 
   // Solo los administradores pueden crear, editar o eliminar servicios del catálogo
   const canCreateServices = isAdmin;
@@ -392,14 +398,16 @@ export function ServiciosView() {
           <div className="flex items-center gap-2 mb-2">
             <span className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-cyan-800 bg-cyan-500/15 border border-cyan-500/30 dark:text-cyan-300 dark:bg-cyan-500/20 dark:border-cyan-400/40 px-3 py-0.5 rounded-full shadow-sm">
               <span className="h-1.5 w-1.5 rounded-full bg-cyan-500 dark:bg-cyan-400 animate-pulse" />
-              NexusOdonto · Aranceles Clínicos
+              {isAdmin ? "NexusOdonto · Aranceles Clínicos" : "NexusOdonto · Directorio Clínico de Procedimientos"}
             </span>
           </div>
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-slate-900 dark:text-white drop-shadow-sm">
-            Catálogo de Servicios y Tarifas
+            {isAdmin ? "Catálogo de Servicios y Tarifas" : "Catálogo de Tratamientos Odontológicos"}
           </h1>
           <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-1 font-medium max-w-2xl leading-relaxed">
-            Gestión centralizada de tratamientos odontológicos, tiempos de sillón y aranceles oficiales de la clínica.
+            {isAdmin
+              ? "Gestión centralizada de tratamientos odontológicos, tiempos de sillón y aranceles oficiales de la clínica."
+              : "Consulta de referencia clínica de tratamientos odontológicos, especialidades y tiempos estimados de sillón."}
           </p>
         </div>
 
@@ -491,16 +499,22 @@ export function ServiciosView() {
 
         <div className="group relative p-4.5 rounded-3xl border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-slate-900/70 backdrop-blur-2xl shadow-lg shadow-slate-900/5 dark:shadow-[0_10px_25px_rgba(0,0,0,0.45)] hover:border-purple-500/50 transition-all duration-300 flex items-center gap-4 overflow-hidden">
           <div className="h-12 w-12 rounded-2xl bg-purple-500/15 text-purple-700 dark:text-purple-300 flex items-center justify-center font-bold flex-shrink-0 border border-purple-500/30 icon-animated-interactive group-hover:scale-110 group-hover:bg-purple-500/25 transition-all">
-            <DollarSign size={22} className="group-hover:animate-icon-bounce" />
+            {isAdmin ? (
+              <DollarSign size={22} className="group-hover:animate-icon-bounce" />
+            ) : (
+              <Stethoscope size={22} className="group-hover:animate-icon-bounce" />
+            )}
           </div>
           <div className="min-w-0">
             <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">
-              Tarifa Promedio
+              {isAdmin ? "Tarifa Promedio" : "Especialidades"}
             </p>
             <p className="text-xl sm:text-2xl font-black text-teal-700 dark:text-emerald-300 font-mono tracking-tight truncate">
-              {formatCurrency(precioPromedio)}
+              {isAdmin ? formatCurrency(precioPromedio) : `${CATEGORIAS_FILTRO.length - 1} áreas`}
             </p>
-            <p className="text-[10px] text-purple-700 dark:text-purple-300 font-semibold mt-0.5">Arancel base</p>
+            <p className="text-[10px] text-purple-700 dark:text-purple-300 font-semibold mt-0.5">
+              {isAdmin ? "Arancel base" : "Catálogo asistencial"}
+            </p>
           </div>
         </div>
       </div>

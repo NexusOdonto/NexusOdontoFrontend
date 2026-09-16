@@ -60,10 +60,14 @@ const distribucionServicios = [
 export default function DashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const role = getUserRole(user);
+  const rawRole = getUserRole(user);
+  const userRoleStr = String((user as any)?.rol || (user as any)?.role || "").toUpperCase();
 
-  const isPaciente = role === "PACIENTE";
-  const isAdmin = role === "ADMINISTRADOR";
+  const isPaciente = rawRole === "PACIENTE" || userRoleStr.includes("PACIENTE");
+  const isOdontologo = rawRole === "ODONTOLOGO" || userRoleStr.includes("ODONTO") || userRoleStr.includes("DOCTOR") || userRoleStr.includes("DENTIST");
+  const isRecepcionista = rawRole === "RECEPCIONISTA" || userRoleStr.includes("RECEPCION");
+  const isAdmin = (rawRole === "ADMINISTRADOR" || (user?.email && user.email.toLowerCase().includes("admin"))) && !isOdontologo && !isRecepcionista && !isPaciente;
+  const role = isOdontologo ? "ODONTOLOGO" : isRecepcionista ? "RECEPCIONISTA" : isPaciente ? "PACIENTE" : "ADMINISTRADOR";
 
   const [loading, setLoading] = useState(false);
   const [citasHoy, setCitasHoy] = useState<CitaItem[]>([]);
