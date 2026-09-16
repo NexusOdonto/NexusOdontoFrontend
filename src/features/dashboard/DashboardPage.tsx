@@ -73,7 +73,7 @@ export default function DashboardPage() {
   const [citasHoy, setCitasHoy] = useState<CitaItem[]>([]);
   const [totalPacientes, setTotalPacientes] = useState(0);
   const [agendaPage, setAgendaPage] = useState(1);
-  const AGENDA_PAGE_SIZE = 5;
+  const AGENDA_PAGE_SIZE = 8;
 
   const totalAgendaPages = Math.max(1, Math.ceil(citasHoy.length / AGENDA_PAGE_SIZE));
   const displayedCitas = useMemo(() => {
