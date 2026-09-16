@@ -1,3 +1,4 @@
+import { useState, useMemo, useEffect } from "react";
 import {
   CalendarDays,
   Clock3,
@@ -9,6 +10,8 @@ import {
   PlayCircle,
   FileText,
   Smile,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { type Cita, type EstadoCita } from "../types";
@@ -123,6 +126,19 @@ export function CitasTable({
   const isRecepcionista = role === "RECEPCIONISTA";
   const isAdmin = role === "ADMINISTRADOR";
 
+  // Paginación de citas (máximo 8 por página)
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 8;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [citas.length]);
+
+  const totalPages = Math.max(1, Math.ceil(citas.length / PAGE_SIZE));
+  const displayedCitas = useMemo(() => {
+    return citas.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  }, [citas, currentPage]);
+
   if (loading) {
     return (
       <div className="w-full space-y-3 p-4">
@@ -164,25 +180,25 @@ export function CitasTable({
   }
 
   return (
-    <div className="w-full overflow-x-auto">
+    <div className="w-full max-w-full overflow-hidden rounded-3xl border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-slate-900/70 backdrop-blur-2xl shadow-lg shadow-slate-900/5 dark:shadow-[0_12px_36px_rgba(0,0,0,0.5)]">
       {/* TABLA ESCRITORIO */}
-      <div className="hidden md:block w-full overflow-hidden">
+      <div className="hidden md:block w-full overflow-x-auto">
         <table className="w-full table-fixed border-collapse">
           {/* CABECERA */}
           <thead>
             <tr className="border-b border-slate-200/80 dark:border-white/15 bg-slate-100/75 dark:bg-slate-900/60 text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-              <th className="w-[24%] px-4 py-3.5 text-left truncate">Paciente</th>
-              <th className="w-[17%] px-4 py-3.5 text-left whitespace-nowrap">Fecha y Hora</th>
-              <th className="w-[19%] px-4 py-3.5 text-left truncate">Profesional</th>
+              <th className="w-[20%] px-4 py-3.5 text-left truncate">Paciente</th>
+              <th className="w-[15%] px-4 py-3.5 text-left whitespace-nowrap">Fecha y Hora</th>
+              <th className="w-[18%] px-4 py-3.5 text-left truncate">Profesional</th>
               <th className="w-[20%] px-4 py-3.5 text-left truncate">Servicio / Motivo</th>
-              <th className="w-[10%] px-4 py-3.5 text-left whitespace-nowrap">Estado</th>
-              <th className="w-[10%] px-4 py-3.5 text-right whitespace-nowrap">Acciones</th>
+              <th className="w-[11%] px-4 py-3.5 text-left whitespace-nowrap">Estado</th>
+              <th className="w-[16%] px-4 py-3.5 text-right whitespace-nowrap">Acciones</th>
             </tr>
           </thead>
 
           {/* FILAS */}
           <tbody className="divide-y divide-slate-200/60 dark:divide-white/10">
-            {citas.map((cita) => (
+            {displayedCitas.map((cita) => (
               <tr
                 key={cita.id}
                 onClick={() => onOpenEditModal && onOpenEditModal(cita)}
@@ -482,7 +498,7 @@ export function CitasTable({
 
       {/* VISTA MÓVIL (TARJETAS) */}
       <div className="space-y-3 p-3 md:hidden">
-        {citas.map((cita) => (
+        {displayedCitas.map((cita) => (
           <div
             key={cita.id}
             onClick={() => onOpenEditModal && onOpenEditModal(cita)}
@@ -640,6 +656,38 @@ export function CitasTable({
           </div>
         ))}
       </div>
+
+      {/* PAGINACIÓN */}
+      {totalPages > 1 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5 border-t border-slate-200/80 dark:border-white/10 bg-slate-50/70 dark:bg-slate-900/50 text-xs text-slate-600 dark:text-slate-400">
+          <p className="text-xs">
+            Mostrando <span className="font-semibold text-slate-900 dark:text-white">{(currentPage - 1) * PAGE_SIZE + 1}</span> - <span className="font-semibold text-slate-900 dark:text-white">{Math.min(currentPage * PAGE_SIZE, citas.length)}</span> de <span className="font-semibold text-slate-900 dark:text-white">{citas.length}</span> citas
+          </p>
+          <div className="flex items-center gap-1.5 ml-auto">
+            <button
+              type="button"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/80 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer shadow-xs active:scale-95"
+            >
+              <ChevronLeft size={14} />
+              <span>Anterior</span>
+            </button>
+            <span className="px-2 font-semibold text-slate-700 dark:text-slate-300">
+              {currentPage} / {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/80 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer shadow-xs active:scale-95"
+            >
+              <span>Siguiente</span>
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
