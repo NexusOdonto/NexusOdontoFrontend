@@ -37,7 +37,6 @@ import {
   formatoFechaInput,
   obtenerNombreMes,
   obtenerRangoSemana,
-  obtenerColorEvento,
 } from "./AgendaData";
 
 import { useAuth } from "../auth/AuthContext";
@@ -51,17 +50,6 @@ import { SelectOrWriteInput, type SelectOption } from "../../components/common/S
 import { areGuidsEqual } from "../../utils/roleUtils";
 import { resolveOrCreatePatient } from "../../utils/patientResolution";
 import { validateClinicAppointmentSchedule } from "../../utils/clinicSchedule";
-
-const getDoctorShortName = (fullName: string) => {
-  if (!fullName) return "Dr(a).";
-  const cleaned = fullName.replace(/^Dr\(a\)\.\s*|^Dr\.\s*|^Dra\.\s*/i, "").trim();
-  const parts = cleaned.split(/\s+/);
-  const prefix = fullName.toLowerCase().includes("dra") ? "Dra." : "Dr.";
-  if (parts.length >= 2) {
-    return `${prefix} ${parts[parts.length - 1]}`;
-  }
-  return fullName;
-};
 
 const getDoctorColorClass = (docName: string, lista: { nombre: string; color: string }[]) => {
   const found = lista.find(
@@ -888,103 +876,45 @@ export function AgendaView() {
   const calcularPosicionesDia = (citasList: Cita[]): CitaPosicionada[] => {
     if (citasList.length === 0) return [];
 
-    const parseadas = citasList.map((cita) => {
-      const [hIni, mIni] = (cita.horaInicio || "07:00").split(":").map(Number);
-      const [hFin, mFin] = (cita.horaFin || "08:00").split(":").map(Number);
-      const safeHIni = isNaN(hIni) ? 7 : hIni;
-      const safeMIni = isNaN(mIni) ? 0 : mIni;
-      const safeHFin = isNaN(hFin) ? safeHIni + 1 : hFin;
-      const safeMFin = isNaN(mFin) ? 0 : mFin;
-
-      const inicioMinutos = (safeHIni - 7) * 60 + safeMIni;
-      const finMinutos = (safeHFin - 7) * 60 + safeMFin;
-      const duracion = Math.max(finMinutos - inicioMinutos, 20);
-
-      return {
-        ...cita,
-        inicioMinutos,
-        finMinutos: inicioMinutos + duracion,
-        duracionMinutos: duracion,
-      };
-    });
-
-    parseadas.sort((a, b) => {
-      if (a.inicioMinutos !== b.inicioMinutos) {
-        return a.inicioMinutos - b.inicioMinutos;
+    // Agrupar citas por hora exacta de inicio (7 a 18)
+    const porHora: Record<number, Cita[]> = {};
+    citasList.forEach((cita) => {
+      const [h] = (cita.horaInicio || "07:00").split(":").map(Number);
+      const safeH = isNaN(h) ? 7 : Math.min(Math.max(h, 7), 18);
+      if (!porHora[safeH]) {
+        porHora[safeH] = [];
       }
-      return b.duracionMinutos - a.duracionMinutos;
+      porHora[safeH].push(cita);
     });
-
-    // Agrupar en clusters que se solapan en tiempo
-    const clusters: typeof parseadas[] = [];
-    let clusterActual: typeof parseadas = [];
-    let clusterFinMax = -1;
-
-    parseadas.forEach((cita) => {
-      if (clusterActual.length === 0) {
-        clusterActual.push(cita);
-        clusterFinMax = cita.finMinutos;
-      } else {
-        if (cita.inicioMinutos < clusterFinMax) {
-          clusterActual.push(cita);
-          clusterFinMax = Math.max(clusterFinMax, cita.finMinutos);
-        } else {
-          clusters.push(clusterActual);
-          clusterActual = [cita];
-          clusterFinMax = cita.finMinutos;
-        }
-      }
-    });
-    if (clusterActual.length > 0) {
-      clusters.push(clusterActual);
-    }
 
     const resultado: CitaPosicionada[] = [];
 
-    clusters.forEach((cluster) => {
-      if (cluster.length === 1) {
-        const cita = cluster[0];
-        const top = (cita.inicioMinutos / 60) * HORA_ALTURA_PX + 1;
-        const height = Math.max((cita.duracionMinutos / 60) * HORA_ALTURA_PX - 2, 54);
-        resultado.push({
-          ...cita,
-          top,
-          height,
-          leftStyle: "4px",
-          widthStyle: "calc(100% - 8px)",
-          totalColumnas: 1,
-          colIndex: 0,
-          isCluster: false,
-        });
-      } else {
-        // Multi-appointment cluster -> Folder Dossier representation
-        const earliestMin = Math.min(...cluster.map((c) => c.inicioMinutos));
-        const latestMin = Math.max(...cluster.map((c) => c.finMinutos));
-        const top = (earliestMin / 60) * HORA_ALTURA_PX + 1;
-        const height = Math.max(((latestMin - earliestMin) / 60) * HORA_ALTURA_PX - 2, 78);
-        const earliestH = cluster[0].horaInicio;
-        const latestH = cluster[cluster.length - 1].horaFin;
+    Object.entries(porHora).forEach(([horaStr, citasBloque]) => {
+      const hora = Number(horaStr);
+      const top = (hora - 7) * HORA_ALTURA_PX + 2;
+      const height = HORA_ALTURA_PX - 4;
+      const horaInicioStr = `${String(hora).padStart(2, "0")}:00`;
+      const horaFinStr = `${String(hora + 1).padStart(2, "0")}:00`;
 
-        resultado.push({
-          id: cluster[0].id,
-          rawGuid: cluster[0].rawGuid,
-          paciente: `${cluster.length} Citas Agendadas`,
-          servicio: "Múltiples Pacientes",
-          odontologo: cluster[0].odontologo,
-          fecha: cluster[0].fecha,
-          horaInicio: earliestH,
-          horaFin: latestH,
-          estado: "Confirmada",
-          top,
-          height,
-          leftStyle: "4px",
-          widthStyle: "calc(100% - 8px)",
-          totalColumnas: 1,
-          colIndex: 0,
-          isCluster: true,
-          clusterCitas: cluster,
-        });
-      }
+      resultado.push({
+        id: citasBloque[0].id,
+        rawGuid: citasBloque[0].rawGuid,
+        paciente: citasBloque.length === 1 ? citasBloque[0].paciente : `${citasBloque.length} Pacientes`,
+        servicio: citasBloque.length === 1 ? citasBloque[0].servicio : "Múltiples Servicios",
+        odontologo: citasBloque[0].odontologo,
+        fecha: citasBloque[0].fecha,
+        horaInicio: horaInicioStr,
+        horaFin: horaFinStr,
+        estado: citasBloque[0].estado,
+        top,
+        height,
+        leftStyle: "3px",
+        widthStyle: "calc(100% - 6px)",
+        totalColumnas: 1,
+        colIndex: 0,
+        isCluster: true,
+        clusterCitas: citasBloque,
+      });
     });
 
     return resultado;
@@ -1019,176 +949,65 @@ export function AgendaView() {
   const gridTemplateColumns = modoVista === "semana" ? gridTemplateColumnsSemana : gridTemplateColumnsDoctores;
 
   const renderCitaCard = (cita: CitaPosicionada) => {
-    // 1. Tarjeta Archivador de Carpeta (Folder Dossier) para Múltiples Citas en el Mismo Horario
-    if (cita.isCluster && cita.clusterCitas && cita.clusterCitas.length > 1) {
-      const clusterList = cita.clusterCitas;
-      return (
-        <div
-          key={`cluster-${cita.fecha}-${cita.top}`}
-          onClick={() => {
-            setSelectedClusterModal({
-              fecha: cita.fecha,
-              horaInicio: cita.horaInicio,
-              horaFin: cita.horaFin,
-              citas: clusterList,
-            });
-          }}
-          style={{
-            top: `${cita.top}px`,
-            height: `${cita.height}px`,
-            left: cita.leftStyle,
-            width: cita.widthStyle,
-          }}
-          className="group absolute z-20 rounded-xl sm:rounded-2xl border-2 border-dashed border-teal-500/70 dark:border-teal-400/80 bg-gradient-to-br from-teal-500/20 via-cyan-500/15 to-blue-500/20 dark:from-teal-950/80 dark:via-cyan-950/70 dark:to-blue-950/80 backdrop-blur-xl shadow-md hover:shadow-2xl hover:border-teal-400 hover:-translate-y-1.5 hover:scale-[1.02] active:scale-95 transition-all duration-300 cursor-pointer p-2 flex flex-col justify-between overflow-hidden"
-          title="Haz clic para ver y desplegar todas las citas de este horario"
-        >
-          {/* Solapa Superior / Horario + Badge Contador tipo Notificación */}
-          <div className="flex items-center justify-between gap-1 min-w-0">
-            <div className="flex items-center gap-1 min-w-0">
-              <div className="flex h-5 w-5 sm:h-6 sm:w-6 shrink-0 items-center justify-center rounded-lg bg-teal-500/25 text-teal-700 dark:text-teal-300 border border-teal-500/40 group-hover:rotate-6 transition-transform">
-                <Folder size={13} className="text-teal-600 dark:text-teal-300" />
-              </div>
-              <span className="font-mono text-[10px] sm:text-[10.5px] font-bold text-teal-900 dark:text-teal-200 truncate">
-                {cita.horaInicio} - {cita.horaFin}
-              </span>
-            </div>
-
-            {/* Contador tipo notificación con pulso */}
-            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-gradient-to-r from-teal-500 to-cyan-500 text-slate-950 shadow-sm shrink-0 animate-pulse">
-              <span>{clusterList.length}</span>
-              <span className="hidden sm:inline">citas</span>
-            </span>
-          </div>
-
-          {/* Resumen de pacientes con ellipsis */}
-          <div className="my-0.5 min-w-0">
-            <p className="text-[11px] sm:text-xs font-black text-slate-900 dark:text-white truncate" title={clusterList.map((c) => c.paciente).join(", ")}>
-              {clusterList.map((c) => c.paciente).join(", ")}
-            </p>
-            <p className="text-[9.5px] sm:text-[10px] text-slate-600 dark:text-slate-400 truncate mt-0.5 font-medium">
-              {clusterList.length} consultas en este bloque
-            </p>
-          </div>
-
-          {/* Footer con llamado a la acción */}
-          <div className="flex items-center justify-between text-[9px] sm:text-[10px] text-teal-700 dark:text-teal-300 font-bold pt-1 border-t border-teal-500/20">
-            <span className="group-hover:underline flex items-center gap-0.5">
-              <span>Abrir Dossier</span>
-              <span>→</span>
-            </span>
-            <span className="text-[9px] font-mono opacity-80">📁 Ver citas</span>
-          </div>
-        </div>
-      );
-    }
-
-    const colorEvento = obtenerColorEvento(cita.estado);
-    const docTheme = getDoctorTheme(cita.odontologo, listaOdontologos);
-    const shortDoc = getDoctorShortName(cita.odontologo);
-    const duracionStr = `${cita.duracionMinutos || 30} min`;
+    const clusterList = cita.clusterCitas && cita.clusterCitas.length > 0 ? cita.clusterCitas : [cita];
+    const totalCitas = clusterList.length;
+    const primeraCita = clusterList[0];
 
     return (
       <div
-        key={cita.id}
-        onClick={() => setCitaDetalle(cita)}
+        key={`slot-card-${cita.fecha}-${cita.horaInicio}-${cita.id}`}
+        onClick={() => {
+          setSelectedClusterModal({
+            fecha: cita.fecha,
+            horaInicio: cita.horaInicio,
+            horaFin: cita.horaFin,
+            citas: clusterList,
+          });
+        }}
         style={{
           top: `${cita.top}px`,
           height: `${cita.height}px`,
           left: cita.leftStyle,
           width: cita.widthStyle,
         }}
-        className={`group absolute z-20 rounded-xl border border-slate-200/90 dark:border-slate-700/60 border-l-[3.5px] ${docTheme.borderLeft} shadow-xs hover:shadow-xl transition-all duration-200 hover:-translate-y-1 hover:scale-[1.015] hover:z-50 cursor-pointer bg-white/95 dark:bg-slate-900/90 backdrop-blur-md ${colorEvento.contenedor}`}
-        title={`Cita de ${cita.paciente} (${cita.horaInicio} - ${cita.horaFin}) - Clic para ver expediente`}
+        className="group absolute z-20 rounded-xl sm:rounded-2xl border-2 border-teal-500/60 dark:border-teal-400/70 bg-gradient-to-br from-teal-500/20 via-cyan-500/15 to-blue-500/20 dark:from-teal-950/85 dark:via-cyan-950/75 dark:to-blue-950/85 backdrop-blur-xl shadow-md hover:shadow-2xl hover:border-teal-400 hover:-translate-y-1.5 hover:scale-[1.02] active:scale-95 transition-all duration-300 cursor-pointer p-2 flex flex-col justify-between overflow-hidden"
+        title="Haz clic para ver y desplegar las citas de esta hora y día"
       >
-        {cita.height < 68 ? (
-          // Modo Compacto / 30 Minutos (Espacioso, 2 filas nítidas)
-          <div className="flex h-full flex-col justify-between p-1.5 sm:p-2 min-w-0 overflow-hidden">
-            {/* Fila 1: Paciente y Horario */}
-            <div className="flex items-center justify-between gap-1 min-w-0">
-              <div className="flex items-center gap-1 min-w-0 flex-1">
-                <span className={`h-2 w-2 rounded-full shrink-0 shadow-xs ${docTheme.dot}`} />
-                <span className="truncate text-[11px] sm:text-xs font-extrabold leading-none text-slate-900 dark:text-white" title={cita.paciente}>
-                  {cita.paciente}
-                </span>
-              </div>
-              <span className="font-mono text-[9px] sm:text-[9.5px] font-bold text-cyan-700 dark:text-cyan-300 shrink-0 whitespace-nowrap bg-cyan-500/10 dark:bg-cyan-500/20 px-1 py-0.5 rounded">
-                {cita.horaInicio}
-              </span>
+        {/* Solapa Superior: Icono Carpeta + Horario + Badge Contador Notificación */}
+        <div className="flex items-center justify-between gap-1 min-w-0">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <div className="flex h-5 w-5 sm:h-6 sm:w-6 shrink-0 items-center justify-center rounded-lg bg-teal-500/25 text-teal-700 dark:text-teal-300 border border-teal-500/40 group-hover:rotate-6 transition-transform shadow-xs">
+              <Folder size={13} className="text-teal-600 dark:text-teal-300" />
             </div>
-
-            {/* Fila 2: Servicio y Estado */}
-            <div className="flex items-center justify-between gap-1 min-w-0 mt-0.5">
-              <span className="truncate text-[10px] text-slate-600 dark:text-slate-300 font-medium leading-none" title={cita.servicio}>
-                {cita.servicio}
-              </span>
-              <span className={`px-1 py-0.2 rounded text-[8px] font-bold uppercase tracking-wider shrink-0 border ${docTheme.badge}`}>
-                {cita.estado}
-              </span>
-            </div>
-          </div>
-        ) : (
-          // Modo Completo (Cita estándar 45-60 min o más)
-          <div className="flex h-full flex-col justify-between p-2 min-w-0 overflow-hidden">
-            <div>
-              <div className="flex items-center justify-between gap-1 min-w-0">
-                <div className="flex items-center gap-1 min-w-0 flex-1">
-                  <span
-                    className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9.5px] font-bold border ${docTheme.badge} shrink-0 max-w-[110px] sm:max-w-[130px]`}
-                    title={cita.odontologo}
-                  >
-                    <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${docTheme.dot}`} />
-                    <span className="truncate">{shortDoc}</span>
-                  </span>
-                  <p className="truncate text-xs sm:text-[12.5px] font-extrabold leading-tight text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors" title={cita.paciente}>
-                    {cita.paciente}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    eliminarCita(cita.id, cita.rawGuid);
-                  }}
-                  className="opacity-0 group-hover:opacity-100 transition p-1 text-slate-400 hover:text-rose-500 rounded-md hover:bg-rose-50 dark:hover:bg-rose-950/30 shrink-0 cursor-pointer"
-                  title="Eliminar cita"
-                >
-                  <Trash2 size={12} />
-                </button>
-              </div>
-              <p className="truncate text-[10.5px] text-slate-600 dark:text-slate-300 font-medium leading-tight mt-1 flex items-center gap-1" title={cita.servicio}>
-                <Sparkles size={11} className="text-cyan-500 shrink-0" />
-                <span>{cita.servicio}</span>
-              </p>
-            </div>
-            <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 font-mono pt-1">
-              <span className="whitespace-nowrap font-semibold text-cyan-700 dark:text-cyan-300 bg-cyan-500/10 dark:bg-cyan-500/20 px-1.5 py-0.5 rounded">
-                {cita.horaInicio} - {cita.horaFin}
-              </span>
-              <span className={`px-1.5 py-0.5 rounded-full text-[8.5px] font-bold uppercase tracking-wider border ${docTheme.badge}`}>
-                {cita.estado}
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* Tarjeta flotante con detalles completos en hover */}
-        <div
-          className={`pointer-events-none absolute left-1/2 -translate-x-1/2 z-[100] hidden group-hover:flex flex-col w-64 p-3.5 rounded-2xl bg-white/95 dark:bg-slate-900/95 border border-slate-200 dark:border-cyan-500/50 shadow-2xl backdrop-blur-xl text-left text-xs transition-all animate-fadeIn ${
-            cita.top < 110 ? "top-[calc(100%+8px)]" : "bottom-[calc(100%+8px)]"
-          }`}
-        >
-          <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2 mb-2">
-            <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${docTheme.dot}`} />
-            <span className="font-bold text-slate-900 dark:text-white truncate text-[11.5px]">{cita.odontologo}</span>
-          </div>
-          <p className="font-extrabold text-cyan-700 dark:text-cyan-300 text-xs truncate">{cita.paciente}</p>
-          <p className="text-slate-600 dark:text-slate-300 text-[11px] truncate mt-0.5 font-medium">{cita.servicio}</p>
-          <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-slate-200 dark:border-slate-800 text-[10.5px] text-slate-500 dark:text-slate-400 font-mono">
-            <span>⏰ {cita.horaInicio} - {cita.horaFin} ({duracionStr})</span>
-            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${docTheme.badge}`}>
-              {cita.estado}
+            <span className="font-mono text-[10px] sm:text-[11px] font-extrabold text-teal-950 dark:text-teal-200 truncate">
+              {cita.horaInicio}
             </span>
           </div>
+
+          {/* Badge Notificación con número de personas/citas */}
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9.5px] sm:text-[10px] font-black bg-gradient-to-r from-teal-500 to-cyan-400 text-slate-950 shadow-xs shrink-0 animate-pulse">
+            <span className="h-1.5 w-1.5 rounded-full bg-slate-950" />
+            <span>{totalCitas} {totalCitas === 1 ? "cita" : "citas"}</span>
+          </span>
+        </div>
+
+        {/* Resumen del bloque */}
+        <div className="my-0.5 min-w-0">
+          <p className="text-[11px] sm:text-xs font-black text-slate-900 dark:text-white truncate" title={clusterList.map((c) => c.paciente).join(", ")}>
+            {totalCitas === 1 ? primeraCita.paciente : `${totalCitas} personas agendadas`}
+          </p>
+          <p className="text-[9.5px] sm:text-[10px] text-slate-600 dark:text-slate-400 truncate mt-0.5 font-medium">
+            {totalCitas === 1 ? primeraCita.servicio : `${clusterList.map((c) => c.paciente).slice(0, 2).join(", ")}${totalCitas > 2 ? "..." : ""}`}
+          </p>
+        </div>
+
+        {/* Footer: Acción para desplegar */}
+        <div className="flex items-center justify-between text-[9px] sm:text-[10px] text-teal-700 dark:text-teal-300 font-bold pt-1 border-t border-teal-500/20">
+          <span className="group-hover:underline flex items-center gap-0.5">
+            <span>Desplegar</span>
+            <span>→</span>
+          </span>
+          <span className="text-[9px] font-mono opacity-80">📁 Ver ({totalCitas})</span>
         </div>
       </div>
     );
