@@ -18,6 +18,7 @@ import {
   MessageSquare,
   ChevronLeft,
   ChevronRight,
+  Sparkles,
 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { getUserRole } from "../../utils/routePermissions";
@@ -62,6 +63,7 @@ export default function DashboardPage() {
   const role = getUserRole(user);
 
   const isPaciente = role === "PACIENTE";
+  const isAdmin = role === "ADMINISTRADOR";
 
   const [loading, setLoading] = useState(false);
   const [citasHoy, setCitasHoy] = useState<CitaItem[]>([]);
@@ -298,29 +300,58 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* KPI 3: Valor Estimado / Presupuesto Agendado */}
+        {/* KPI 3: Valor Estimado / Presupuesto Agendado (Solo Admin) vs Procedimientos Clínicos (Odontólogos / Recepción) */}
         <div className="group p-5 rounded-2xl border border-slate-200/90 dark:border-white/15 bg-white/95 dark:bg-slate-950/65 backdrop-blur-xl shadow-sm card-hover-elevate transition-all flex flex-col justify-between animate-fadeIn animate-stagger-3">
           <div className="flex items-center justify-between">
             <span className="font-oswald text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Valor Estimado / Servicios
+              {isAdmin ? "Valor Estimado / Servicios" : "Tratamientos en Agenda"}
             </span>
             <div className="p-2.5 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 icon-animated-interactive group-hover:scale-110 group-hover:bg-teal-500/20 transition-all">
-              <DollarSign size={20} className="group-hover:animate-icon-pulse" />
+              {isAdmin ? (
+                <DollarSign size={20} className="group-hover:animate-icon-pulse" />
+              ) : (
+                <Sparkles size={20} className="group-hover:animate-icon-pulse" />
+              )}
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-black text-slate-900 dark:text-white font-spacemono tracking-tight">
-              <AnimatedCounter value={totalEstimado} duration={0.8} prefix="$" separator="," />
-            </span>
+            {isAdmin ? (
+              <span className="text-3xl font-black text-slate-900 dark:text-white font-spacemono tracking-tight">
+                <AnimatedCounter value={totalEstimado} duration={0.8} prefix="$" separator="," />
+              </span>
+            ) : (
+              <span className="text-3xl font-black text-slate-900 dark:text-white font-spacemono tracking-tight">
+                <AnimatedCounter value={cantidadTratamientos} duration={0.8} />
+              </span>
+            )}
+            {!isAdmin && (
+              <span className="text-xs font-semibold text-teal-600 dark:text-teal-400 font-instrument">
+                Procedimientos hoy
+              </span>
+            )}
           </div>
           <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-white/10 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-instrument">
-            <span>{cantidadTratamientos} tratamientos</span>
-            <span
-              className="font-bold text-teal-600 dark:text-teal-400 cursor-pointer hover:underline group-hover:translate-x-0.5 transition-transform"
-              onClick={() => navigate("/servicios")}
-            >
-              Tarifas catálogo →
-            </span>
+            {isAdmin ? (
+              <>
+                <span>{cantidadTratamientos} tratamientos</span>
+                <span
+                  className="font-bold text-teal-600 dark:text-teal-400 cursor-pointer hover:underline group-hover:translate-x-0.5 transition-transform"
+                  onClick={() => navigate("/servicios")}
+                >
+                  Tarifas catálogo →
+                </span>
+              </>
+            ) : (
+              <>
+                <span>Flujo de atención clínica</span>
+                <span
+                  className="font-bold text-teal-600 dark:text-teal-400 cursor-pointer hover:underline group-hover:translate-x-0.5 transition-transform"
+                  onClick={() => navigate("/agenda")}
+                >
+                  Ver Agenda →
+                </span>
+              </>
+            )}
           </div>
         </div>
 

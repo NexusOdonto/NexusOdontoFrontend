@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from "react";
 import type { Diagnosis } from "../types";
 import { DIAGNOSIS_LEGEND } from "../types";
 import {
@@ -17,6 +18,10 @@ import {
   AlertTriangle,
   Move,
   Eraser,
+  FileJson,
+  FileText,
+  ChevronDown,
+  Loader2,
 } from "lucide-react";
 
 interface ConvencionesToolbarProps {
@@ -25,10 +30,13 @@ interface ConvencionesToolbarProps {
   dentitionType: 'permanent' | 'temporary';
   onDentitionTypeChange: (type: 'permanent' | 'temporary') => void;
   onClear: () => void;
-  onExport: () => void;
+  onExport?: () => void;
+  onExportJson?: () => void;
+  onExportPdf?: () => void;
   onImport: () => void;
   isDarkMode: boolean;
   readOnly?: boolean;
+  isExportingPdf?: boolean;
 }
 
 /**
@@ -68,12 +76,50 @@ export function ConvencionesToolbar({
   dentitionType = 'permanent',
   onDentitionTypeChange = () => {},
   onClear = () => {},
-  onExport = () => {},
+  onExport,
+  onExportJson,
+  onExportPdf,
   onImport = () => {},
   isDarkMode: _isDarkMode,
   readOnly = false,
+  isExportingPdf = false,
 }: ConvencionesToolbarProps) {
   const safeLegend = DIAGNOSIS_LEGEND || [];
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const exportDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        exportDropdownRef.current &&
+        !exportDropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowExportMenu(false);
+      }
+    };
+    if (showExportMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showExportMenu]);
+
+  const handleExportJsonClick = () => {
+    setShowExportMenu(false);
+    if (onExportJson) {
+      onExportJson();
+    } else if (onExport) {
+      onExport();
+    }
+  };
+
+  const handleExportPdfClick = () => {
+    setShowExportMenu(false);
+    if (onExportPdf) {
+      onExportPdf();
+    }
+  };
 
   const handleConfirmClear = () => {
     if (readOnly) return;
@@ -213,15 +259,57 @@ export function ConvencionesToolbar({
 
             {/* Bloque de Gestión de Datos: Exportar e Importar */}
             <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={onExport}
-                className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-2xl bg-slate-100 dark:bg-white/[0.04] hover:bg-cyan-50 dark:hover:bg-cyan-500/15 text-slate-700 hover:text-cyan-700 dark:text-slate-300 dark:hover:text-cyan-300 border border-slate-200 dark:border-white/10 text-xs font-bold transition-all cursor-pointer active:scale-95 shadow-sm"
-                title="Exportar archivo JSON del odontograma"
-              >
-                <Download size={14} />
-                <span>Exportar</span>
-              </button>
+              {/* Exportar con Dropdown (JSON y PDF) */}
+              <div className="relative" ref={exportDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowExportMenu((prev) => !prev)}
+                  disabled={isExportingPdf}
+                  className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-2xl bg-slate-100 dark:bg-white/[0.04] hover:bg-cyan-50 dark:hover:bg-cyan-500/15 text-slate-700 hover:text-cyan-700 dark:text-slate-300 dark:hover:text-cyan-300 border border-slate-200 dark:border-white/10 text-xs font-bold transition-all cursor-pointer active:scale-95 shadow-sm disabled:opacity-50"
+                  title="Exportar reporte del odontograma (JSON o PDF)"
+                >
+                  {isExportingPdf ? (
+                    <Loader2 size={14} className="animate-spin text-cyan-600 dark:text-cyan-400" />
+                  ) : (
+                    <Download size={14} />
+                  )}
+                  <span>Exportar</span>
+                  <ChevronDown size={12} className={`transition-transform duration-200 ${showExportMenu ? "rotate-180" : ""}`} />
+                </button>
+
+                {/* Dropdown flotante con opciones */}
+                {showExportMenu && (
+                  <div className="absolute left-0 bottom-full mb-2 w-52 p-1.5 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-white/10 z-50 animate-scaleIn backdrop-blur-2xl">
+                    <button
+                      type="button"
+                      onClick={handleExportJsonClick}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-cyan-50 dark:hover:bg-cyan-500/15 hover:text-cyan-700 dark:hover:text-cyan-300 transition-all cursor-pointer"
+                    >
+                      <div className="w-6 h-6 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                        <FileJson size={13} />
+                      </div>
+                      <div>
+                        <div className="leading-tight">Exportar JSON (.json)</div>
+                        <div className="text-[10px] text-slate-400 font-normal">Para importar nuevamente</div>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleExportPdfClick}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-teal-50 dark:hover:bg-teal-500/15 hover:text-teal-700 dark:hover:text-teal-300 transition-all cursor-pointer mt-1"
+                    >
+                      <div className="w-6 h-6 rounded-lg bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                        <FileText size={13} />
+                      </div>
+                      <div>
+                        <div className="leading-tight">Exportar PDF (.pdf)</div>
+                        <div className="text-[10px] text-slate-400 font-normal">Informe clínico oficial</div>
+                      </div>
+                    </button>
+                  </div>
+                )}
+              </div>
 
               <button
                 type="button"
@@ -235,15 +323,56 @@ export function ConvencionesToolbar({
             </div>
           </>
         ) : (
-          <button
-            type="button"
-            onClick={onExport}
-            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-100 dark:bg-white/[0.04] hover:bg-cyan-50 dark:hover:bg-cyan-500/15 text-slate-700 hover:text-cyan-700 dark:text-slate-300 dark:hover:text-cyan-300 border border-slate-200 dark:border-white/10 text-xs font-bold transition-all cursor-pointer active:scale-95 shadow-sm"
-            title="Descargar copia de mi odontograma en JSON"
-          >
-            <Download size={14} />
-            <span>Descargar Copia de Mi Odontograma</span>
-          </button>
+          <div className="relative" ref={exportDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setShowExportMenu((prev) => !prev)}
+              disabled={isExportingPdf}
+              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-100 dark:bg-white/[0.04] hover:bg-cyan-50 dark:hover:bg-cyan-500/15 text-slate-700 hover:text-cyan-700 dark:text-slate-300 dark:hover:text-cyan-300 border border-slate-200 dark:border-white/10 text-xs font-bold transition-all cursor-pointer active:scale-95 shadow-sm disabled:opacity-50"
+              title="Descargar copia de mi odontograma"
+            >
+              {isExportingPdf ? (
+                <Loader2 size={14} className="animate-spin text-cyan-600 dark:text-cyan-400" />
+              ) : (
+                <Download size={14} />
+              )}
+              <span>Descargar Copia de Mi Odontograma</span>
+              <ChevronDown size={12} className={`transition-transform duration-200 ${showExportMenu ? "rotate-180" : ""}`} />
+            </button>
+
+            {/* Dropdown flotante con opciones en modo Paciente */}
+            {showExportMenu && (
+              <div className="absolute left-0 bottom-full mb-2 w-full p-1.5 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-white/10 z-50 animate-scaleIn backdrop-blur-2xl">
+                <button
+                  type="button"
+                  onClick={handleExportJsonClick}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-cyan-50 dark:hover:bg-cyan-500/15 hover:text-cyan-700 dark:hover:text-cyan-300 transition-all cursor-pointer"
+                >
+                  <div className="w-6 h-6 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                    <FileJson size={13} />
+                  </div>
+                  <div>
+                    <div className="leading-tight">Exportar JSON (.json)</div>
+                    <div className="text-[10px] text-slate-400 font-normal">Copia de respaldo</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleExportPdfClick}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-teal-50 dark:hover:bg-teal-500/15 hover:text-teal-700 dark:hover:text-teal-300 transition-all cursor-pointer mt-1"
+                >
+                  <div className="w-6 h-6 rounded-lg bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                    <FileText size={13} />
+                  </div>
+                  <div>
+                    <div className="leading-tight">Exportar PDF (.pdf)</div>
+                    <div className="text-[10px] text-slate-400 font-normal">Informe clínico con esquema gráfico</div>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>

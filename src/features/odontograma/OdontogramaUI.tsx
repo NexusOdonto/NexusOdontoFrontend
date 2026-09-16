@@ -1,8 +1,10 @@
 import { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import { useLocation } from "react-router-dom";
+import { pdf } from "@react-pdf/renderer";
 import { useTheme } from "../../context/ThemeContext";
 import { OdontogramaGrid } from "./components/OdontogramaGrid";
 import { ConvencionesToolbar } from "./components/ConvencionesToolbar";
+import { OdontogramaPdfDocument } from "./components/OdontogramaPdfDocument";
 import { patientService } from "../../api/patientService";
 import { personService } from "../../api/personService";
 import { odontogramService } from "../../api/odontogramService";
@@ -257,6 +259,7 @@ function OdontogramaUI() {
   const lockedProfessionalIdRef = useRef<string>("");
   const [notasClinicas, setNotasClinicas] = useState("");
   const [isSyncingServer, setIsSyncingServer] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
   const [errorToast, setErrorToast] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -652,8 +655,12 @@ function OdontogramaUI() {
     setTimeout(() => setSuccessToast(null), 2500);
   };
 
-  const handleExport = () => {
-    if (!selectedPaciente) return;
+  const handleExportJson = () => {
+    if (!selectedPaciente) {
+      setErrorToast("Por favor selecciona un paciente para exportar su odontograma.");
+      setTimeout(() => setErrorToast(null), 3000);
+      return;
+    }
     const data = {
       paciente: selectedPaciente,
       dentitionType: state.dentitionType,
@@ -667,13 +674,61 @@ function OdontogramaUI() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `odontograma_${selectedPaciente.cedula}_${new Date().toISOString().split('T')[0]}.json`;
+    link.download = `odontograma_${selectedPaciente.cedula || selectedPaciente.id}_${new Date().toISOString().split('T')[0]}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    setSuccessToast("Odontograma exportado en formato JSON.");
+    setSuccessToast("Odontograma exportado en formato JSON (.json).");
     setTimeout(() => setSuccessToast(null), 2500);
+  };
+
+  const handleExportPdf = async () => {
+    if (!selectedPaciente) {
+      setErrorToast("Por favor selecciona un paciente para exportar el odontograma en PDF.");
+      setTimeout(() => setErrorToast(null), 3000);
+      return;
+    }
+    setIsExportingPdf(true);
+    try {
+      const activeDoctor =
+        profesionalesList.find((p) => p.id === selectedProfessionalId) ||
+        profesionalesList[0];
+      const doctorDisplayName = activeDoctor
+        ? activeDoctor.nombre
+        : user?.nombre
+        ? `${user.nombre} ${user.apellido || ""}`.trim()
+        : "Dr. Odontólogo Especialista";
+
+      const doc = (
+        <OdontogramaPdfDocument
+          patient={selectedPaciente}
+          doctorName={doctorDisplayName}
+          dentitionType={state.dentitionType}
+          teeth={state.teeth}
+          notasClinicas={notasClinicas}
+        />
+      );
+
+      const blob = await pdf(doc).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Odontograma_${selectedPaciente.cedula || selectedPaciente.nombre}_${new Date().toISOString().split("T")[0]}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setSuccessToast("Odontograma exportado en formato PDF (.pdf) correctamente.");
+      setTimeout(() => setSuccessToast(null), 3000);
+    } catch (err) {
+      console.error("Error generando PDF de odontograma:", err);
+      setErrorToast("No se pudo generar el PDF del odontograma.");
+      setTimeout(() => setErrorToast(null), 4000);
+    } finally {
+      setIsExportingPdf(false);
+    }
   };
 
   const handleImport = () => {
@@ -1124,10 +1179,13 @@ function OdontogramaUI() {
             dentitionType={state.dentitionType}
             onDentitionTypeChange={handleDentitionTypeChange}
             onClear={handleLimpiar}
-            onExport={handleExport}
+            onExport={handleExportJson}
+            onExportJson={handleExportJson}
+            onExportPdf={handleExportPdf}
             onImport={handleImport}
             isDarkMode={isDarkMode}
             readOnly={isPaciente}
+            isExportingPdf={isExportingPdf}
           />
           <input
             ref={fileInputRef}
