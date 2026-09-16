@@ -1014,8 +1014,8 @@ export function AgendaView() {
 
   const posicionHoraActual = obtenerPosicionHoraActual();
 
-  const gridTemplateColumnsSemana = "60px repeat(7, minmax(185px, 1fr))";
-  const gridTemplateColumnsDoctores = `60px repeat(${Math.max(doctoresParaColumnas.length, 1)}, minmax(220px, 1fr))`;
+  const gridTemplateColumnsSemana = "50px repeat(7, minmax(0, 1fr))";
+  const gridTemplateColumnsDoctores = `50px repeat(${Math.max(doctoresParaColumnas.length, 1)}, minmax(180px, 1fr))`;
   const gridTemplateColumns = modoVista === "semana" ? gridTemplateColumnsSemana : gridTemplateColumnsDoctores;
 
   const renderCitaCard = (cita: CitaPosicionada) => {
@@ -1039,44 +1039,44 @@ export function AgendaView() {
             left: cita.leftStyle,
             width: cita.widthStyle,
           }}
-          className="group absolute z-20 rounded-2xl border-2 border-dashed border-teal-500/60 dark:border-teal-400/70 bg-gradient-to-br from-teal-500/15 via-cyan-500/10 to-blue-500/15 dark:from-teal-950/70 dark:via-cyan-950/60 dark:to-blue-950/70 backdrop-blur-xl shadow-md hover:shadow-2xl hover:border-teal-400 hover:-translate-y-1.5 hover:scale-[1.02] active:scale-95 transition-all duration-300 cursor-pointer p-2.5 flex flex-col justify-between overflow-hidden"
+          className="group absolute z-20 rounded-xl sm:rounded-2xl border-2 border-dashed border-teal-500/70 dark:border-teal-400/80 bg-gradient-to-br from-teal-500/20 via-cyan-500/15 to-blue-500/20 dark:from-teal-950/80 dark:via-cyan-950/70 dark:to-blue-950/80 backdrop-blur-xl shadow-md hover:shadow-2xl hover:border-teal-400 hover:-translate-y-1.5 hover:scale-[1.02] active:scale-95 transition-all duration-300 cursor-pointer p-2 flex flex-col justify-between overflow-hidden"
           title="Haz clic para ver y desplegar todas las citas de este horario"
         >
-          {/* Solapa Superior / Horario + Badge Contador */}
-          <div className="flex items-center justify-between gap-1.5 min-w-0">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-teal-500/20 text-teal-700 dark:text-teal-300 border border-teal-500/30 group-hover:rotate-6 transition-transform">
-                <Folder size={14} className="text-teal-600 dark:text-teal-300" />
+          {/* Solapa Superior / Horario + Badge Contador tipo Notificación */}
+          <div className="flex items-center justify-between gap-1 min-w-0">
+            <div className="flex items-center gap-1 min-w-0">
+              <div className="flex h-5 w-5 sm:h-6 sm:w-6 shrink-0 items-center justify-center rounded-lg bg-teal-500/25 text-teal-700 dark:text-teal-300 border border-teal-500/40 group-hover:rotate-6 transition-transform">
+                <Folder size={13} className="text-teal-600 dark:text-teal-300" />
               </div>
-              <span className="font-mono text-[10.5px] font-bold text-teal-800 dark:text-teal-200 truncate">
+              <span className="font-mono text-[10px] sm:text-[10.5px] font-bold text-teal-900 dark:text-teal-200 truncate">
                 {cita.horaInicio} - {cita.horaFin}
               </span>
             </div>
 
             {/* Contador tipo notificación con pulso */}
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-gradient-to-r from-teal-500 to-cyan-500 text-slate-950 shadow-sm shrink-0 animate-pulse">
-              <span className="h-1.5 w-1.5 rounded-full bg-slate-950" />
-              {clusterList.length} citas
+            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-gradient-to-r from-teal-500 to-cyan-500 text-slate-950 shadow-sm shrink-0 animate-pulse">
+              <span>{clusterList.length}</span>
+              <span className="hidden sm:inline">citas</span>
             </span>
           </div>
 
           {/* Resumen de pacientes con ellipsis */}
-          <div className="my-1 min-w-0">
-            <p className="text-xs font-black text-slate-900 dark:text-white truncate" title={clusterList.map((c) => c.paciente).join(", ")}>
+          <div className="my-0.5 min-w-0">
+            <p className="text-[11px] sm:text-xs font-black text-slate-900 dark:text-white truncate" title={clusterList.map((c) => c.paciente).join(", ")}>
               {clusterList.map((c) => c.paciente).join(", ")}
             </p>
-            <p className="text-[10px] text-slate-600 dark:text-slate-400 truncate mt-0.5 font-medium">
-              {clusterList.length} consultas en este bloque horario
+            <p className="text-[9.5px] sm:text-[10px] text-slate-600 dark:text-slate-400 truncate mt-0.5 font-medium">
+              {clusterList.length} consultas en este bloque
             </p>
           </div>
 
           {/* Footer con llamado a la acción */}
-          <div className="flex items-center justify-between text-[10px] text-teal-700 dark:text-teal-300 font-bold pt-1 border-t border-teal-500/20">
-            <span className="group-hover:underline flex items-center gap-1">
+          <div className="flex items-center justify-between text-[9px] sm:text-[10px] text-teal-700 dark:text-teal-300 font-bold pt-1 border-t border-teal-500/20">
+            <span className="group-hover:underline flex items-center gap-0.5">
               <span>Abrir Dossier</span>
               <span>→</span>
             </span>
-            <span className="text-[9.5px] font-mono opacity-80">📁 Archivador</span>
+            <span className="text-[9px] font-mono opacity-80">📁 Ver citas</span>
           </div>
         </div>
       );
@@ -1097,48 +1097,49 @@ export function AgendaView() {
           left: cita.leftStyle,
           width: cita.widthStyle,
         }}
-        className={`group absolute z-20 rounded-xl border border-slate-200/90 dark:border-slate-700/60 border-l-[4px] ${docTheme.borderLeft} shadow-xs hover:shadow-md transition-all duration-200 hover:scale-[1.012] hover:z-50 cursor-pointer bg-white/95 dark:bg-slate-900/90 backdrop-blur-md ${colorEvento.contenedor}`}
+        className={`group absolute z-20 rounded-xl border border-slate-200/90 dark:border-slate-700/60 border-l-[3.5px] ${docTheme.borderLeft} shadow-xs hover:shadow-xl transition-all duration-200 hover:-translate-y-1 hover:scale-[1.015] hover:z-50 cursor-pointer bg-white/95 dark:bg-slate-900/90 backdrop-blur-md ${colorEvento.contenedor}`}
+        title={`Cita de ${cita.paciente} (${cita.horaInicio} - ${cita.horaFin}) - Clic para ver expediente`}
       >
         {cita.height < 68 ? (
           // Modo Compacto / 30 Minutos (Espacioso, 2 filas nítidas)
-          <div className="flex h-full flex-col justify-between p-2 min-w-0 overflow-hidden">
+          <div className="flex h-full flex-col justify-between p-1.5 sm:p-2 min-w-0 overflow-hidden">
             {/* Fila 1: Paciente y Horario */}
-            <div className="flex items-center justify-between gap-1.5 min-w-0">
-              <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                <span className={`h-2.5 w-2.5 rounded-full shrink-0 shadow-xs ${docTheme.dot}`} />
-                <span className="truncate text-xs font-extrabold leading-none text-slate-900 dark:text-white" title={cita.paciente}>
+            <div className="flex items-center justify-between gap-1 min-w-0">
+              <div className="flex items-center gap-1 min-w-0 flex-1">
+                <span className={`h-2 w-2 rounded-full shrink-0 shadow-xs ${docTheme.dot}`} />
+                <span className="truncate text-[11px] sm:text-xs font-extrabold leading-none text-slate-900 dark:text-white" title={cita.paciente}>
                   {cita.paciente}
                 </span>
               </div>
-              <span className="font-mono text-[10px] font-bold text-cyan-700 dark:text-cyan-300 shrink-0 whitespace-nowrap bg-cyan-500/10 dark:bg-cyan-500/20 px-1.5 py-0.5 rounded">
-                {cita.horaInicio} - {cita.horaFin}
+              <span className="font-mono text-[9px] sm:text-[9.5px] font-bold text-cyan-700 dark:text-cyan-300 shrink-0 whitespace-nowrap bg-cyan-500/10 dark:bg-cyan-500/20 px-1 py-0.5 rounded">
+                {cita.horaInicio}
               </span>
             </div>
 
             {/* Fila 2: Servicio y Estado */}
-            <div className="flex items-center justify-between gap-1.5 min-w-0 mt-0.5">
-              <span className="truncate text-[10.5px] text-slate-600 dark:text-slate-300 font-medium leading-none" title={cita.servicio}>
+            <div className="flex items-center justify-between gap-1 min-w-0 mt-0.5">
+              <span className="truncate text-[10px] text-slate-600 dark:text-slate-300 font-medium leading-none" title={cita.servicio}>
                 {cita.servicio}
               </span>
-              <span className={`px-1.5 py-0.5 rounded text-[8.5px] font-bold uppercase tracking-wider shrink-0 border ${docTheme.badge}`}>
+              <span className={`px-1 py-0.2 rounded text-[8px] font-bold uppercase tracking-wider shrink-0 border ${docTheme.badge}`}>
                 {cita.estado}
               </span>
             </div>
           </div>
         ) : (
           // Modo Completo (Cita estándar 45-60 min o más)
-          <div className="flex h-full flex-col justify-between p-2.5 min-w-0 overflow-hidden">
+          <div className="flex h-full flex-col justify-between p-2 min-w-0 overflow-hidden">
             <div>
-              <div className="flex items-center justify-between gap-1.5 min-w-0">
-                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-1 min-w-0">
+                <div className="flex items-center gap-1 min-w-0 flex-1">
                   <span
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border ${docTheme.badge} shrink-0 max-w-[140px]`}
+                    className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9.5px] font-bold border ${docTheme.badge} shrink-0 max-w-[110px] sm:max-w-[130px]`}
                     title={cita.odontologo}
                   >
                     <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${docTheme.dot}`} />
                     <span className="truncate">{shortDoc}</span>
                   </span>
-                  <p className="truncate text-[13px] font-extrabold leading-tight text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors" title={cita.paciente}>
+                  <p className="truncate text-xs sm:text-[12.5px] font-extrabold leading-tight text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors" title={cita.paciente}>
                     {cita.paciente}
                   </p>
                 </div>
@@ -1151,19 +1152,19 @@ export function AgendaView() {
                   className="opacity-0 group-hover:opacity-100 transition p-1 text-slate-400 hover:text-rose-500 rounded-md hover:bg-rose-50 dark:hover:bg-rose-950/30 shrink-0 cursor-pointer"
                   title="Eliminar cita"
                 >
-                  <Trash2 size={13} />
+                  <Trash2 size={12} />
                 </button>
               </div>
-              <p className="truncate text-[11px] text-slate-600 dark:text-slate-300 font-medium leading-tight mt-1.5 flex items-center gap-1" title={cita.servicio}>
+              <p className="truncate text-[10.5px] text-slate-600 dark:text-slate-300 font-medium leading-tight mt-1 flex items-center gap-1" title={cita.servicio}>
                 <Sparkles size={11} className="text-cyan-500 shrink-0" />
                 <span>{cita.servicio}</span>
               </p>
             </div>
-            <div className="flex items-center justify-between text-[10.5px] text-slate-500 dark:text-slate-400 font-mono pt-1">
-              <span className="whitespace-nowrap font-semibold text-cyan-700 dark:text-cyan-300 bg-cyan-500/10 dark:bg-cyan-500/20 px-2 py-0.5 rounded-md">
-                {cita.horaInicio} - {cita.horaFin} ({duracionStr})
+            <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 font-mono pt-1">
+              <span className="whitespace-nowrap font-semibold text-cyan-700 dark:text-cyan-300 bg-cyan-500/10 dark:bg-cyan-500/20 px-1.5 py-0.5 rounded">
+                {cita.horaInicio} - {cita.horaFin}
               </span>
-              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${docTheme.badge}`}>
+              <span className={`px-1.5 py-0.5 rounded-full text-[8.5px] font-bold uppercase tracking-wider border ${docTheme.badge}`}>
                 {cita.estado}
               </span>
             </div>
@@ -1183,7 +1184,7 @@ export function AgendaView() {
           <p className="font-extrabold text-cyan-700 dark:text-cyan-300 text-xs truncate">{cita.paciente}</p>
           <p className="text-slate-600 dark:text-slate-300 text-[11px] truncate mt-0.5 font-medium">{cita.servicio}</p>
           <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-slate-200 dark:border-slate-800 text-[10.5px] text-slate-500 dark:text-slate-400 font-mono">
-            <span>⏰ {cita.horaInicio} - {cita.horaFin}</span>
+            <span>⏰ {cita.horaInicio} - {cita.horaFin} ({duracionStr})</span>
             <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${docTheme.badge}`}>
               {cita.estado}
             </span>
@@ -1378,7 +1379,7 @@ export function AgendaView() {
 
                 {/* Matriz Calendario */}
                 <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/60">
-                  <div className={modoVista === "semana" ? "min-w-[1360px]" : "min-w-[800px]"}>
+                  <div className={modoVista === "semana" ? "w-full min-w-0" : "w-full min-w-[700px]"}>
                     {/* Encabezado Columnas Días u Odontólogos */}
                     {modoVista === "semana" ? (
                       <div
