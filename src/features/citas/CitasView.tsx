@@ -819,6 +819,32 @@ export function CitasView() {
 
       const { startsAt, endsAt } = calculateEndDateTime(fechaValida, horaValida, 30);
 
+      // Validar que el paciente no tenga ya una cita activa en esa misma fecha y hora
+      const targetPName = finalPatientName.toLowerCase().trim();
+      const patientBusy = citas.find((c) => {
+        if (c.fecha !== fechaValida) return false;
+        const st = (c.estado || "").toLowerCase();
+        if (st === "cancelada" || st === "cancelled" || st === "no disponible") return false;
+
+        const [cH, cM] = (c.hora || "07:00").split(":").map(Number);
+        const [vH, vM] = (horaValida || "07:00").split(":").map(Number);
+        const cStart = (isNaN(cH) ? 7 : cH) * 60 + (isNaN(cM) ? 0 : cM);
+        const vStart = (isNaN(vH) ? 7 : vH) * 60 + (isNaN(vM) ? 0 : vM);
+        const overlap = Math.abs(cStart - vStart) < 30;
+        if (!overlap) return false;
+
+        const cPatient = (c.paciente || "").toLowerCase().trim();
+        const sameId = Boolean(targetPatientId && c.patientId && areGuidsEqual(targetPatientId, c.patientId));
+        const sameName = Boolean(cPatient === targetPName || (cPatient.length > 3 && targetPName.length > 3 && (cPatient.includes(targetPName) || targetPName.includes(cPatient))));
+        return sameId || sameName;
+      });
+
+      if (patientBusy) {
+        setFormError(`El paciente "${finalPatientName}" ya tiene una cita agendada para el ${fechaValida} a las ${patientBusy.hora} con ${patientBusy.profesional}. Un paciente no puede tener más de una cita a la misma hora.`);
+        setIsSubmitting(false);
+        return;
+      }
+
       const nuevaCita: Cita = {
         id: newId,
         paciente: finalPatientName,

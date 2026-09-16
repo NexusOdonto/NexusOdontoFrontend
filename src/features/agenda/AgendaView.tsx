@@ -434,6 +434,7 @@ export function AgendaView() {
             return {
               id: idx + 1000,
               rawGuid: a.id,
+              patientId: a.patientId,
               paciente: resolvedPatientName || "Paciente Registrado",
               servicio: resolvedServiceName || "Valoración General",
               odontologo: resolvedProfName || fallbackDoc,
@@ -767,7 +768,7 @@ export function AgendaView() {
         }
       }
 
-      // Validar disponibilidad del odontólogo y de la clínica en la franja horaria
+      // Validar disponibilidad del paciente, odontólogo y de la clínica en la franja horaria
       const startMinTotal = Number(safeH) * 60 + Number(safeM);
       const endMinTotal = Number(safeEH) * 60 + Number(safeEM);
 
@@ -785,7 +786,26 @@ export function AgendaView() {
         return startMinTotal < cEnd && endMinTotal > cStart;
       });
 
-      // 1. Si el usuario seleccionó un profesional específico, comprobar si ese profesional ya tiene cita
+      // 1. Validar que el MISMO PACIENTE no tenga más de una cita a la misma hora
+      const targetPatientName = (patientNameToUse || nuevaCita.paciente || "").toLowerCase().trim();
+      const patientBusy = overlappingCitas.find((c) => {
+        const cPatient = (c.paciente || "").toLowerCase().trim();
+        const cPatientId = c.patientId || "";
+        const sameId = Boolean(patientIdToUse && cPatientId && areGuidsEqual(patientIdToUse, cPatientId));
+        const sameName = Boolean(cPatient === targetPatientName || (cPatient.length > 3 && targetPatientName.length > 3 && (cPatient.includes(targetPatientName) || targetPatientName.includes(cPatient))));
+        return sameId || sameName;
+      });
+
+      if (patientBusy) {
+        const msg = `El paciente "${patientNameToUse || nuevaCita.paciente}" ya tiene una cita agendada en este horario (${patientBusy.horaInicio} - ${patientBusy.horaFin}) con ${patientBusy.odontologo}. Un paciente no puede tener más de una cita a la misma hora.`;
+        setFormError(msg);
+        setErrorMessage(msg);
+        setTimeout(() => setErrorMessage(null), 6000);
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 2. Si el usuario seleccionó un profesional específico, comprobar si ese profesional ya tiene cita
       if (nuevaCita.odontologo && nuevaCita.odontologo.trim() && !isPaciente) {
         const targetDoc = nuevaCita.odontologo.toLowerCase().trim();
         const docBusy = overlappingCitas.find((c) => {
@@ -803,7 +823,7 @@ export function AgendaView() {
         }
       }
 
-      // 2. Comprobar si TODOS los profesionales de la clínica están ocupados en este bloque
+      // 3. Comprobar si TODOS los profesionales de la clínica están ocupados en este bloque
       const allActiveDocs = listaOdontologos.filter((d) => d.nombre !== "Todos los odontólogos");
       const busyDocNames = new Set(overlappingCitas.map((c) => c.odontologo.toLowerCase().trim()));
       if (allActiveDocs.length > 0 && busyDocNames.size >= allActiveDocs.length) {
