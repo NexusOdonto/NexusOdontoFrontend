@@ -21,6 +21,7 @@ interface UsuariosTableProps {
     personId?: string;
     email?: string;
   } | null;
+  statusFilter?: string;
   onPageChange: (page: number) => void;
   onManagePermissions?: (usuario: Usuario) => void;
   onToggleStatus?: (usuario: Usuario) => void;
@@ -73,11 +74,6 @@ function getRoleBadge(roleCode?: string, roleName?: string) {
   };
 }
 
-function getStatusClasses(isActive: boolean) {
-  return isActive
-    ? "inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300"
-    : "inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-500/15 px-2.5 py-1 text-xs font-semibold text-rose-700 dark:text-rose-300";
-}
 
 function UsuariosTableSkeleton() {
   return (
@@ -107,6 +103,7 @@ export function UsuariosTable({
   currentPage,
   totalPages,
   currentUser,
+  statusFilter,
   onPageChange,
   onManagePermissions,
   onToggleStatus,
@@ -116,16 +113,25 @@ export function UsuariosTable({
   }
 
   if (usuarios.length === 0) {
+    const isInactiveFilter = statusFilter?.toLowerCase() === "inactivo" || statusFilter?.toLowerCase() === "inactive";
+    const isActiveFilter = statusFilter?.toLowerCase() === "activo" || statusFilter?.toLowerCase() === "active";
+
     return (
       <div className="flex min-h-60 w-full flex-col items-center justify-center py-16 text-center">
         <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500/20 to-cyan-500/20 border border-teal-500/30 text-teal-600 dark:text-teal-400">
           <UserRound size={24} />
         </div>
         <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
-          No hay usuarios registrados
+          {isInactiveFilter
+            ? "No se encontraron usuarios inactivos en el sistema"
+            : isActiveFilter
+            ? "No se encontraron usuarios activos en el sistema"
+            : "No hay usuarios registrados"}
         </h3>
         <p className="mt-1 max-w-sm text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-          No se encontraron usuarios que coincidan con los filtros seleccionados.
+          {isInactiveFilter
+            ? "No existen cuentas desactivadas que coincidan con los criterios actuales."
+            : "No se encontraron usuarios que coincidan con los filtros seleccionados."}
         </p>
       </div>
     );
@@ -169,6 +175,7 @@ export function UsuariosTable({
                 (currentUser?.email && usuario.email && currentUser.email.toLowerCase() === usuario.email.toLowerCase())
               );
               const cannotToggle = isProtectedAdmin || isSelf;
+              const isUserActive = (usuario.isActive ?? (usuario as any).is_active ?? true);
 
               return (
                 <tr
@@ -233,15 +240,16 @@ export function UsuariosTable({
                   </td>
 
                   {/* Estado */}
-                  <td className="px-5 py-4">
-                    <span className={getStatusClasses(usuario.isActive)}>
-                      <span
-                        className={`h-1.5 w-1.5 rounded-full ${
-                          usuario.isActive ? "bg-emerald-500" : "bg-rose-500"
-                        }`}
-                      />
-                      {usuario.isActive ? "Activo" : "Inactivo"}
-                    </span>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {isUserActive ? (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        ● Activo
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+                        ● Inactivo
+                      </span>
+                    )}
                   </td>
 
                   {/* Acciones */}
@@ -329,14 +337,15 @@ export function UsuariosTable({
                   </div>
                 </div>
 
-                <span className={getStatusClasses(usuario.isActive)}>
-                  <span
-                    className={`h-1.5 w-1.5 rounded-full ${
-                      usuario.isActive ? "bg-emerald-500" : "bg-rose-500"
-                    }`}
-                  />
-                  {usuario.isActive ? "Activo" : "Inactivo"}
-                </span>
+                {((usuario.isActive ?? (usuario as any).is_active ?? true)) ? (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                    ● Activo
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+                    ● Inactivo
+                  </span>
+                )}
               </div>
 
               <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-200/80 dark:border-white/10">

@@ -348,6 +348,8 @@ export function AtencionAsesorView() {
     // Continúa verificando automáticamente si el modal está abierto o si WhatsApp todavía no está conectado
     if (!showQrModal && isConnected) return;
     const interval = setInterval(() => {
+      if (typeof navigator !== "undefined" && !navigator.onLine) return;
+      if (typeof document !== "undefined" && document.hidden) return;
       fetchQr();
     }, 4000);
     return () => clearInterval(interval);
@@ -672,19 +674,47 @@ export function AtencionAsesorView() {
   }, [selectedChatId, loadMessages]);
 
   useEffect(() => {
+    const handleReconnect = () => {
+      if (typeof navigator !== "undefined" && !navigator.onLine) return;
+      loadData(true);
+      if (selectedChatId) {
+        loadMessages(selectedChatId, true);
+      }
+    };
+
+    window.addEventListener("online", handleReconnect);
+    document.addEventListener("visibilitychange", handleReconnect);
+
     const interval = setInterval(() => {
+      if (typeof navigator !== "undefined" && !navigator.onLine) return;
+      if (typeof document !== "undefined" && document.hidden) return;
       loadData(true);
       if (selectedChatId) {
         loadMessages(selectedChatId, true);
       }
     }, 4000);
-    return () => clearInterval(interval);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("online", handleReconnect);
+      document.removeEventListener("visibilitychange", handleReconnect);
+    };
   }, [loadData, loadMessages, selectedChatId]);
 
   const selectedChat = useMemo(
     () => chats.find((c) => c.id === selectedChatId),
     [chats, selectedChatId]
   );
+
+  useEffect(() => {
+    if (selectedChat) {
+      if (selectedChat.status === "ATENDIDA_HUMANO") {
+        setSendIdentity("AGENTE_HUMANO");
+      } else {
+        setSendIdentity("CHATBOT");
+      }
+    }
+  }, [selectedChat?.id, selectedChat?.status]);
 
   const counts = useMemo(() => {
     return {
@@ -818,8 +848,10 @@ export function AtencionAsesorView() {
     );
 
     if (newStatus === "ATENDIDA_HUMANO") {
+      setSendIdentity("AGENTE_HUMANO");
       setFilterTab("ATENDIDAS");
     } else if (newStatus === "ACTIVA") {
+      setSendIdentity("CHATBOT");
       setFilterTab("BOT");
     } else if (newStatus === "CERRADA") {
       setFilterTab("TODAS");
@@ -863,9 +895,9 @@ export function AtencionAsesorView() {
 
       showToast(
         newStatus === "ATENDIDA_HUMANO"
-          ? "Has tomado el control del caso como Asesor Humano."
+          ? "Has tomado el control del caso como Asesor Humano (Uso Manual)."
           : newStatus === "ACTIVA"
-          ? "Caso devuelto al bot NexusBot para respuestas automáticas."
+          ? "Caso devuelto a NexusBot para respuestas automáticas."
           : "Caso resuelto y marcado como cerrado."
       );
 
@@ -886,6 +918,13 @@ export function AtencionAsesorView() {
         "No se pudo actualizar el estado del caso. Intenta de nuevo.";
       showErrorToast(errMsg);
     }
+  };
+
+  const handleToggleBotManual = async () => {
+    if (!selectedChat) return;
+    const isManual = selectedChat.status === "ATENDIDA_HUMANO" || sendIdentity === "AGENTE_HUMANO";
+    const nextStatus = isManual ? "ACTIVA" : "ATENDIDA_HUMANO";
+    await handleUpdateStatus(nextStatus);
   };
 
   return (
@@ -1382,27 +1421,26 @@ export function AtencionAsesorView() {
                 </div>
 
                 <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                  {selectedChat.status !== "ATENDIDA_HUMANO" && (
+                  {/* 1 SOLO BOTÓN PARA ALTERNAR ENTRE BOT Y USO MANUAL */}
+                  {selectedChat.status === "ATENDIDA_HUMANO" ? (
                     <button
                       type="button"
-                      onClick={() => handleUpdateStatus("ATENDIDA_HUMANO")}
-                      className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] sm:text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-1 sm:gap-1.5 cursor-pointer"
-                      title="Tomar el caso para atención por asesor"
-                    >
-                      <UserCheck size={14} />
-                      <span className="hidden sm:inline">Tomar Caso</span>
-                    </button>
-                  )}
-
-                  {selectedChat.status !== "ACTIVA" && (
-                    <button
-                      type="button"
-                      onClick={() => handleUpdateStatus("ACTIVA")}
+                      onClick={handleToggleBotManual}
                       className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] sm:text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-1 sm:gap-1.5 cursor-pointer"
-                      title="Devolver al asistente virtual NexusBot"
+                      title="Activar atención automática por NexusBot"
                     >
                       <Bot size={14} />
-                      <span className="hidden sm:inline">Devolver a Bot</span>
+                      <span className="hidden sm:inline">Activar NexusBot</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleToggleBotManual}
+                      className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] sm:text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-1 sm:gap-1.5 cursor-pointer"
+                      title="Tomar el caso para atención por asesor (Uso Manual)"
+                    >
+                      <UserCheck size={14} />
+                      <span className="hidden sm:inline">Uso Manual</span>
                     </button>
                   )}
 
@@ -1523,35 +1561,28 @@ export function AtencionAsesorView() {
               <div className="p-4 border-t border-slate-200/80 dark:border-white/10 bg-slate-50/90 dark:bg-slate-950/80 backdrop-blur-md space-y-2.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-slate-600 dark:text-slate-400 font-semibold text-[11px]">
-                      Enviar respuesta como:
+                    <span className="text-slate-500 dark:text-slate-400 font-medium text-[11px]">
+                      Modo activo:
                     </span>
-                    <div className="inline-flex rounded-xl p-0.5 bg-slate-200/80 dark:bg-slate-900 border border-slate-300 dark:border-white/10">
-                      <button
-                        type="button"
-                        onClick={() => setSendIdentity("CHATBOT")}
-                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                          sendIdentity === "CHATBOT"
-                            ? "bg-cyan-500 text-white shadow-sm"
-                            : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                        }`}
-                      >
-                        <Bot size={13} />
-                        <span>NexusBot (Camuflaje IA)</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setSendIdentity("AGENTE_HUMANO")}
-                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                          sendIdentity === "AGENTE_HUMANO"
-                            ? "bg-teal-600 text-white shadow-sm"
-                            : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                        }`}
-                      >
-                        <User size={13} />
-                        <span>Asesor Humano</span>
-                      </button>
-                    </div>
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border ${
+                        selectedChat.status === "ATENDIDA_HUMANO" || sendIdentity === "AGENTE_HUMANO"
+                          ? "bg-teal-500/15 text-teal-600 dark:text-teal-400 border-teal-500/30"
+                          : "bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border-cyan-500/30"
+                      }`}
+                    >
+                      {selectedChat.status === "ATENDIDA_HUMANO" || sendIdentity === "AGENTE_HUMANO" ? (
+                        <>
+                          <User size={12} />
+                          <span>Asesor Humano (Uso Manual)</span>
+                        </>
+                      ) : (
+                        <>
+                          <Bot size={12} />
+                          <span>NexusBot (Automático)</span>
+                        </>
+                      )}
+                    </span>
                   </div>
 
                   <span className="text-[10px] text-slate-500 hidden sm:inline">

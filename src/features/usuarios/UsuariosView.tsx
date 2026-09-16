@@ -119,7 +119,7 @@ export function UsuariosView() {
 
   const [search, setSearch] = useState("");
   const [rol, setRol] = useState<"Todos" | string>("Todos");
-  const [estado, setEstado] = useState<"Todos" | "Activo" | "Inactivo">("Todos");
+  const [estado, setEstado] = useState<"all" | "active" | "inactive" | string>("all");
   const [currentPage, setCurrentPage] = useState(1);
 
   // Modal Crear Usuario
@@ -294,7 +294,7 @@ export function UsuariosView() {
     setCurrentPage(1);
   };
 
-  const handleEstadoChange = (value: "Todos" | "Activo" | "Inactivo") => {
+  const handleEstadoChange = (value: "all" | "active" | "inactive" | string) => {
     setEstado(value);
     setCurrentPage(1);
   };
@@ -302,13 +302,13 @@ export function UsuariosView() {
   const limpiarFiltros = () => {
     setSearch("");
     setRol("Todos");
-    setEstado("Todos");
+    setEstado("all");
     setCurrentPage(1);
   };
 
   const usuariosFiltrados = useMemo(() => {
     return usuarios.filter((usuario) => {
-      // 1. Filtro de Búsqueda por Texto
+      // 1. Mantener la búsqueda por texto existente (nombre, documento, email, rol)
       const searchLower = (search || "").trim().toLowerCase();
       const matchesSearch =
         !searchLower ||
@@ -321,33 +321,24 @@ export function UsuariosView() {
       const matchesRole =
         rol === "Todos" ||
         rol === "ALL" ||
+        rol === "all" ||
         !rol ||
         (usuario.roleIds && usuario.roleIds.some((rId: string) => rId === rol)) ||
         (usuario.roleName && usuario.roleName.toLowerCase() === rol.toLowerCase()) ||
         (usuario.roleCode && usuario.roleCode.toLowerCase() === rol.toLowerCase());
 
-      // 3. Filtro de Estado (Activo / Inactivo) Robusto
-      let matchesStatus = true;
-      const rawActiveVal = usuario.isActive as any;
-      const isUserInactive =
-        rawActiveVal === false ||
-        rawActiveVal === 0 ||
-        rawActiveVal === "false" ||
-        rawActiveVal === "0" ||
-        usuario.status?.toLowerCase() === "inactivo" ||
-        usuario.status?.toLowerCase() === "inactive" ||
-        usuario.state?.toLowerCase() === "inactivo" ||
-        usuario.state?.toLowerCase() === "inactive";
-      const isUserActive = !isUserInactive;
+      // 3. Evaluación estricta de estado (booleano o numérico de Oracle)
+      const isUserActive = (usuario as any).isActive ?? (usuario as any).is_active ?? (usuario as any).activo ?? true;
 
-      const estadoLower = (estado || "").trim().toLowerCase();
-      if (estadoLower === "activo" || estadoLower === "active" || estadoLower === "true" || estadoLower === "1") {
-        matchesStatus = isUserActive;
-      } else if (estadoLower === "inactivo" || estadoLower === "inactive" || estadoLower === "false" || estadoLower === "0") {
-        matchesStatus = isUserInactive;
+      const stLower = (estado || "").trim().toLowerCase();
+      if (stLower === "active" || stLower === "activo") {
+        return matchesSearch && matchesRole && (isUserActive === true || isUserActive === 1 || isUserActive === "1" || isUserActive === "true");
+      }
+      if (stLower === "inactive" || stLower === "inactivo") {
+        return matchesSearch && matchesRole && (isUserActive === false || isUserActive === 0 || isUserActive === "0" || isUserActive === "false");
       }
 
-      return matchesSearch && matchesRole && matchesStatus;
+      return matchesSearch && matchesRole;
     });
   }, [usuarios, search, rol, estado]);
 
@@ -610,15 +601,15 @@ export function UsuariosView() {
 
           <select
             value={estado}
-            onChange={(e) => handleEstadoChange(e.target.value as any)}
+            onChange={(e) => handleEstadoChange(e.target.value as "all" | "active" | "inactive")}
             className="px-3.5 py-2.5 bg-white/90 dark:bg-slate-950/65 border border-slate-200 dark:border-white/20 rounded-2xl text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all backdrop-blur-xl shadow-md cursor-pointer"
           >
-            <option value="Todos">Todos los estados</option>
-            <option value="Activo">Activo</option>
-            <option value="Inactivo">Inactivo</option>
+            <option value="all">Todos los estados</option>
+            <option value="active">Activos</option>
+            <option value="inactive">Inactivos</option>
           </select>
 
-          {(search || rol !== "Todos" || estado !== "Todos") && (
+          {(search || rol !== "Todos" || (estado !== "all" && estado !== "Todos")) && (
             <button
               type="button"
               onClick={limpiarFiltros}
@@ -639,6 +630,7 @@ export function UsuariosView() {
           currentPage={currentPage}
           totalPages={totalPages}
           currentUser={user}
+          statusFilter={estado}
           onPageChange={setCurrentPage}
           onManagePermissions={handleOpenPermissionsModal}
           onToggleStatus={handleToggleStatus}
