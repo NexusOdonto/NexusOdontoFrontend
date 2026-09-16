@@ -136,14 +136,15 @@ export const odontogramService = {
   },
 
   create: async (data: CreateOdontogramRequestDto): Promise<OdontogramResponseDto> => {
-    if (!data.clinicalHistoryId) {
-      throw new Error("Se requiere la historia clínica del paciente para registrar el odontograma.");
+    if (!data.patientId && !data.clinicalHistoryId) {
+      throw new Error("Se requiere el identificador del paciente (patientId) o la historia clínica para registrar el odontograma.");
     }
     if (!data.professionalId) {
       throw new Error("Se requiere el identificador del profesional para registrar el odontograma.");
     }
     const payload = {
-      clinicalHistoryId: data.clinicalHistoryId,
+      clinicalHistoryId: data.clinicalHistoryId || null,
+      patientId: data.patientId || null,
       professionalId: data.professionalId,
       clinicalAttentionId: data.clinicalAttentionId || null,
       notes: data.notes || null,
@@ -152,13 +153,37 @@ export const odontogramService = {
     return mapOdontogram(response.data);
   },
 
-
-    saveFull: async (data: SaveFullOdontogramRequestDto): Promise<FullOdontogramResponseDto> => {
+  saveFull: async (data: SaveFullOdontogramRequestDto): Promise<FullOdontogramResponseDto> => {
+    if (!data.patientId && !data.clinicalHistoryId) {
+      throw new Error("Se requiere el identificador del paciente (patientId) o su historia clínica para guardar el odontograma completo.");
+    }
     const response = await axiosClient.post('/v1/Odontograms/full', data);
     return response.data;
   },
 
+  getByPatientId: async (patientId: string): Promise<FullOdontogramResponseDto | null> => {
+    if (!patientId || !patientId.trim()) {
+      throw new Error("patientId es requerido para consultar el odontograma del paciente.");
+    }
+    try {
+      const response = await axiosClient.get(`/v1/Odontograms/patient/${patientId}/latest`);
+      return response.data;
+    } catch {
+      // Fallback a consulta acotada por query parameter hacia la API del backend
+      const response = await axiosClient.get(`/v1/Odontograms`, {
+        params: { patientId }
+      });
+      if (Array.isArray(response.data) && response.data.length > 0) {
+        return response.data[0];
+      }
+      return null;
+    }
+  },
+
   getLatestByPatient: async (patientId: string): Promise<FullOdontogramResponseDto> => {
+    if (!patientId || !patientId.trim()) {
+      throw new Error("patientId es requerido para obtener el último odontograma.");
+    }
     const response = await axiosClient.get(`/v1/Odontograms/patient/${patientId}/latest`);
     return response.data;
   },

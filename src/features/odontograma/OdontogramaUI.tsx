@@ -77,11 +77,11 @@ const createFallbackToothState = (toothNumber: number): ToothState => ({
 });
 
 function getOdontogramaStorageKey(patientId?: string): string {
-  return patientId ? `nexus_odontograma_${patientId}` : "nexus_odontograma_default";
+  return patientId ? `nexus_odontograma_${patientId}` : "";
 }
 
 function getNotasStorageKey(patientId?: string): string {
-  return patientId ? `nexus_odontograma_notas_${patientId}` : "nexus_odontograma_notas_default";
+  return patientId ? `nexus_odontograma_notas_${patientId}` : "";
 }
 
 /** UI diagnosis ids that round-trip via finding description (`Cara x: crown`). */
@@ -161,12 +161,18 @@ function cargarOdontograma(patientId?: string): {
   teeth: Record<number, ToothState>;
   selectedDiagnosis: Diagnosis;
 } {
+  if (!patientId) {
+    return createDefaultOdontogramState();
+  }
   const key = getOdontogramaStorageKey(patientId);
+  if (!key) return createDefaultOdontogramState();
   const guardado = localStorage.getItem(key);
   if (guardado) {
     try {
       const data = JSON.parse(guardado);
-      return data;
+      if (data && data.teeth) {
+        return data;
+      }
     } catch {
       // Si falla, retornar estado inicial
     }
@@ -183,8 +189,11 @@ function guardarOdontograma(
   },
   patientId?: string
 ) {
+  if (!patientId) return;
   const key = getOdontogramaStorageKey(patientId);
-  localStorage.setItem(key, JSON.stringify(data));
+  if (key) {
+    localStorage.setItem(key, JSON.stringify(data));
+  }
 }
 
 interface PacienteItem {
@@ -425,130 +434,89 @@ function OdontogramaUI() {
     };
   }, []);
 
-  // Al cambiar de paciente seleccionado, hidratar odontograma desde LocalStorage y desde el servidor API (A-03, F-05, F-06, F-07)
+  // Al cambiar de paciente seleccionado, limpiar inmediatamente y luego hidratar odontograma particionado
   useEffect(() => {
+    // 1. Limpiar estado visual, selección y notas del odontograma anterior de inmediato
+    setSelectedSurface(null);
+    setSelectedTooth(null);
+    setErrorToast(null);
+
+    // 2. Si no hay paciente activo seleccionado, dejar estado limpio por defecto y no consultar
+    if (!selectedPaciente?.id) {
+      setState(createDefaultOdontogramState());
+      setNotasClinicas("");
+      return;
+    }
+
+    const patientId = selectedPaciente.id;
+
+    // 3. Cargar estado y notas locales particionados estrictamente por el ID del paciente activo
+    const localState = cargarOdontograma(patientId);
+    const keyNotas = getNotasStorageKey(patientId);
+    const savedNotas = localStorage.getItem(keyNotas) || "";
+    setState(localState);
+    setNotasClinicas(savedNotas);
+
     let isCancelled = false;
     async function loadPatientOdontogram() {
-      if (!selectedPaciente?.id) {
-        setState(createDefaultOdontogramState());
-        setNotasClinicas("");
-        return;
-      }
-
-      // 1. Carga inicial local
-      const localState = cargarOdontograma(selectedPaciente.id);
-      const keyNotas = getNotasStorageKey(selectedPaciente.id);
-      const savedNotas = localStorage.getItem(keyNotas) || "";
-      setState(localState);
-      setNotasClinicas(savedNotas);
-
-      // 2. Sincronización e hidratación desde el servidor usando API full o histórica
       setIsSyncingServer(true);
       try {
-        // Intento 1: Obtener último odontograma relacional guardado
-        try {
-          const latestFull = await odontogramService.getLatestByPatient(selectedPaciente.id);
-          if (!isCancelled && latestFull && latestFull.teeth && latestFull.teeth.length > 0) {
-            const baseState = createDefaultOdontogramState();
-            latestFull.teeth.forEach((t: any) => {
-              const tooth = baseState.teeth[t.fdiNumber];
-              if (tooth) {
-                tooth.isAbsent = (t.stateCode === "AUSENTE");
-                tooth.isExtracted = (t.stateCode === "EXTRAIDO");
-                tooth.isUnerupted = (t.stateCode === "INCLUIDO");
-                if (t.findings && t.findings.length > 0) {
-                  t.findings.forEach((f: any) => {
-                    let surf: Surface = "oclusal";
-                    const s = (f.surfaceCode || "").toUpperCase();
-                    if (s === "V") surf = "vestibular";
-                    else if (s === "P") surf = "palatino";
-                    else if (s === "M") surf = "mesial";
-                    else if (s === "D") surf = "distal";
-                    else if (s === "O") surf = "oclusal";
-
-                    const diag = mapFindingToDiagnosis(f.findingTypeCode, f.description || f.note);
-                    if (diag !== "none" && tooth.faces && tooth.faces[surf]) {
-                      tooth.faces[surf].diagnosis = diag;
-                    }
-                  });
-                }
-              }
-            });
-
-            let cleanNotes = latestFull.notes || "";
-            if (cleanNotes.includes("=== NOTAS_CLINICAS ===")) {
-              const match = cleanNotes.match(/=== NOTAS_CLINICAS ===\s*([\s\S]*?)\s*=== FIN_NOTAS_CLINICAS ===/);
-              cleanNotes = match ? match[1].trim() : cleanNotes;
-            } else if (cleanNotes.includes("ODONTOGRAM_STATE:")) {
-              cleanNotes = cleanNotes.split("ODONTOGRAM_STATE:")[0].split("Hallazgos Odontograma:")[0].replace(/^Notas Clínicas:\s*/i, "").trim();
-            }
-
-            setState(baseState);
-            setNotasClinicas(cleanNotes);
-            guardarOdontograma(baseState, selectedPaciente.id);
-            localStorage.setItem(keyNotas, cleanNotes);
-            setIsSyncingServer(false);
-            return;
-          }
-        } catch {
-          // Si no tiene registros en endpoint relacional full, proceder con fallback a getAll
-        }
-
-        const [allOdontograms, histories] = await Promise.all([
-          odontogramService.getAll().catch(() => []),
-          clinicalHistoryService.getAll().catch(() => []),
-        ]);
-
+        // Consultar particionado estrictamente por el paciente activo
+        const latestFull = await odontogramService.getByPatientId(patientId).catch(() => null);
         if (isCancelled) return;
 
-        const hist = histories.find((h: any) => areGuidsEqual(h.patientId, selectedPaciente.id));
-        const histId = hist?.id || selectedPaciente.clinicalHistoryId;
+        if (latestFull && latestFull.teeth && latestFull.teeth.length > 0) {
+          const baseState = createDefaultOdontogramState();
+          latestFull.teeth.forEach((t: any) => {
+            const tooth = baseState.teeth[t.fdiNumber];
+            if (tooth) {
+              tooth.isAbsent = (t.stateCode === "AUSENTE");
+              tooth.isExtracted = (t.stateCode === "EXTRAIDO");
+              tooth.isUnerupted = (t.stateCode === "INCLUIDO");
+              if (t.findings && t.findings.length > 0) {
+                t.findings.forEach((f: any) => {
+                  let surf: Surface = "oclusal";
+                  const s = (f.surfaceCode || "").toUpperCase();
+                  if (s === "V") surf = "vestibular";
+                  else if (s === "P") surf = "palatino";
+                  else if (s === "M") surf = "mesial";
+                  else if (s === "D") surf = "distal";
+                  else if (s === "O") surf = "oclusal";
 
-        // F-05: Ordenar cronológicamente de forma descendente para tomar la versión más reciente
-        const matchingOdontograms = (Array.isArray(allOdontograms) ? allOdontograms : [])
-          .filter((o: any) =>
-            (histId && areGuidsEqual(o.clinicalHistoryId, histId)) ||
-            (o.patientId && areGuidsEqual(o.patientId, selectedPaciente.id))
-          )
-          .sort((a: any, b: any) => {
-            const timeA = new Date(a.createdAt || a.creationDate || a.attentionDate || 0).getTime();
-            const timeB = new Date(b.createdAt || b.creationDate || b.attentionDate || 0).getTime();
-            return timeB - timeA;
-          });
-
-        const serverOdontogram = matchingOdontograms[0];
-
-        if (serverOdontogram && serverOdontogram.notes) {
-          const marker = "ODONTOGRAM_STATE:";
-          if (serverOdontogram.notes.includes(marker)) {
-            const rawJson = serverOdontogram.notes.split(marker)[1]?.trim();
-            if (rawJson) {
-              try {
-                const parsedState = JSON.parse(rawJson);
-                if (parsedState && parsedState.teeth) {
-                  setState(parsedState);
-                  guardarOdontograma(parsedState, selectedPaciente.id);
-                }
-              } catch {
-                // Ignore parse error
+                  const diag = mapFindingToDiagnosis(f.findingTypeCode, f.description || f.note);
+                  if (diag !== "none" && tooth.faces && tooth.faces[surf]) {
+                    tooth.faces[surf].diagnosis = diag;
+                  }
+                });
               }
             }
+          });
+
+          let cleanNotes = latestFull.notes || "";
+          if (cleanNotes.includes("=== NOTAS_CLINICAS ===")) {
+            const match = cleanNotes.match(/=== NOTAS_CLINICAS ===\s*([\s\S]*?)\s*=== FIN_NOTAS_CLINICAS ===/);
+            cleanNotes = match ? match[1].trim() : cleanNotes;
+          } else if (cleanNotes.includes("ODONTOGRAM_STATE:")) {
+            cleanNotes = cleanNotes.split("ODONTOGRAM_STATE:")[0].split("Hallazgos Odontograma:")[0].replace(/^Notas Clínicas:\s*/i, "").trim();
           }
 
-          // F-06: Delimitación inequívoca de notas clínicas para evitar duplicación recursiva de resúmenes
+          setState(baseState);
+          setNotasClinicas(cleanNotes);
+          guardarOdontograma(baseState, patientId);
+          localStorage.setItem(keyNotas, cleanNotes);
+        } else if (latestFull && latestFull.notes) {
           let cleanNotes = "";
-          if (serverOdontogram.notes.includes("=== NOTAS_CLINICAS ===")) {
-            const match = serverOdontogram.notes.match(/=== NOTAS_CLINICAS ===\s*([\s\S]*?)\s*=== FIN_NOTAS_CLINICAS ===/);
+          if (latestFull.notes.includes("=== NOTAS_CLINICAS ===")) {
+            const match = latestFull.notes.match(/=== NOTAS_CLINICAS ===\s*([\s\S]*?)\s*=== FIN_NOTAS_CLINICAS ===/);
             cleanNotes = match ? match[1].trim() : "";
           } else {
-            cleanNotes = serverOdontogram.notes
+            cleanNotes = latestFull.notes
               .split("ODONTOGRAM_STATE:")[0]
               .split("Hallazgos Odontograma:")[0]
               .split("Dentición:")[0]
               .replace(/^Notas Clínicas:\s*/i, "")
               .trim();
           }
-
           if (cleanNotes) {
             setNotasClinicas(cleanNotes);
             localStorage.setItem(keyNotas, cleanNotes);
@@ -563,13 +531,11 @@ function OdontogramaUI() {
       }
     }
 
-    setSelectedSurface(null);
-    setSelectedTooth(null);
     loadPatientOdontogram();
     return () => {
       isCancelled = true;
     };
-  }, [selectedPaciente?.id, selectedPaciente?.clinicalHistoryId]);
+  }, [selectedPaciente?.id]);
 
   const getCurrentQuadrants = (): Quadrants => {
     if (state.dentitionType === "permanent") {
