@@ -166,17 +166,17 @@ export function CitasTable({
   return (
     <div className="w-full overflow-x-auto">
       {/* TABLA ESCRITORIO */}
-      <div className="hidden min-w-[1050px] md:block overflow-x-auto">
-        <table className="w-full border-collapse">
+      <div className="hidden md:block w-full overflow-hidden">
+        <table className="w-full table-fixed border-collapse">
           {/* CABECERA */}
           <thead>
             <tr className="border-b border-slate-200/80 dark:border-white/15 bg-slate-100/75 dark:bg-slate-900/60 text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-              <th className="px-5 py-3.5 text-left">Paciente</th>
-              <th className="px-5 py-3.5 text-left">Fecha y Hora</th>
-              <th className="px-5 py-3.5 text-left">Profesional</th>
-              <th className="px-5 py-3.5 text-left">Servicio / Motivo</th>
-              <th className="px-5 py-3.5 text-left">Estado</th>
-              <th className="px-5 py-3.5 text-right">Acciones</th>
+              <th className="w-[24%] px-4 py-3.5 text-left truncate">Paciente</th>
+              <th className="w-[17%] px-4 py-3.5 text-left whitespace-nowrap">Fecha y Hora</th>
+              <th className="w-[19%] px-4 py-3.5 text-left truncate">Profesional</th>
+              <th className="w-[20%] px-4 py-3.5 text-left truncate">Servicio / Motivo</th>
+              <th className="w-[10%] px-4 py-3.5 text-left whitespace-nowrap">Estado</th>
+              <th className="w-[10%] px-4 py-3.5 text-right whitespace-nowrap">Acciones</th>
             </tr>
           </thead>
 
@@ -190,7 +190,7 @@ export function CitasTable({
                 className="transition-all duration-200 hover:bg-teal-500/10 dark:hover:bg-cyan-400/10 cursor-pointer group"
               >
                 {/* PACIENTE */}
-                <td className="px-5 py-4">
+                <td className="px-4 py-3.5 truncate">
                   <div className="flex items-center gap-3 min-w-0 pr-2">
                     <div className="h-9 w-9 shrink-0 rounded-xl overflow-hidden border border-cyan-500/40 dark:border-cyan-400/50 shadow-sm flex items-center justify-center group-hover:scale-105 transition-transform bg-slate-100 dark:bg-slate-900">
                       <UserAvatar
@@ -199,38 +199,38 @@ export function CitasTable({
                         fallbackClassName="h-full w-full flex items-center justify-center font-bold text-xs"
                       />
                     </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-bold text-slate-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
+                    <div className="min-w-0 flex-1 truncate">
+                      <p className="truncate text-sm font-bold text-slate-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors" title={cita.paciente}>
                         {cita.paciente}
                       </p>
                       {cita.pacienteCedula && (
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">CC: {cita.pacienteCedula}</p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono truncate" title={`CC: ${cita.pacienteCedula}`}>CC: {cita.pacienteCedula}</p>
                       )}
                     </div>
                   </div>
                 </td>
 
                 {/* FECHA Y HORA */}
-                <td className="px-5 py-4 whitespace-nowrap">
+                <td className="px-4 py-3.5 whitespace-nowrap">
                   <div className="space-y-0.5 text-xs text-slate-600 dark:text-slate-300">
                     <div className="flex items-center gap-1.5 font-semibold text-slate-900 dark:text-white">
-                      <CalendarDays size={14} className="text-teal-600 dark:text-teal-400" />
-                      <span>{formatearFecha(cita.fecha)}</span>
+                      <CalendarDays size={14} className="text-teal-600 dark:text-teal-400 shrink-0" />
+                      <span className="truncate">{formatearFecha(cita.fecha)}</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
-                      <Clock3 size={13} />
+                      <Clock3 size={13} className="shrink-0" />
                       <span>{formatearHora(cita.hora)}</span>
                     </div>
                   </div>
                 </td>
 
                 {/* PROFESIONAL */}
-                <td className="px-5 py-4 whitespace-nowrap">
-                  <div className="text-xs text-slate-700 dark:text-slate-300 pr-2">
+                <td className="px-4 py-3.5 truncate">
+                  <div className="text-xs text-slate-700 dark:text-slate-300 pr-2 min-w-0 truncate">
                     {cita.profesional ? (
-                      <span className="flex items-center gap-1.5 font-semibold text-slate-900 dark:text-slate-100">
-                        <Stethoscope size={14} className="text-cyan-600 dark:text-cyan-400" />
-                        {cita.profesional}
+                      <span className="flex items-center gap-1.5 font-semibold text-slate-900 dark:text-slate-100 truncate" title={cita.profesional}>
+                        <Stethoscope size={14} className="text-cyan-600 dark:text-cyan-400 shrink-0" />
+                        <span className="truncate">{cita.profesional}</span>
                       </span>
                     ) : (
                       <span className="italic text-amber-600 dark:text-amber-400 text-xs">Por asignar</span>
@@ -239,20 +239,20 @@ export function CitasTable({
                 </td>
 
                 {/* SERVICIO / MOTIVO */}
-                <td className="px-5 py-4">
-                  <div className="text-xs text-slate-700 dark:text-slate-300 pr-2 min-w-0">
-                    <p className="font-semibold truncate text-slate-900 dark:text-white">{cita.servicio}</p>
-                    {cita.motivo && <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">{cita.motivo}</p>}
+                <td className="px-4 py-3.5 truncate">
+                  <div className="text-xs text-slate-700 dark:text-slate-300 pr-2 min-w-0 truncate">
+                    <p className="font-semibold truncate text-slate-900 dark:text-white" title={cita.servicio}>{cita.servicio}</p>
+                    {cita.motivo && <p className="truncate text-[11px] text-slate-500 dark:text-slate-400" title={cita.motivo}>{cita.motivo}</p>}
                   </div>
                 </td>
 
                 {/* ESTADO */}
-                <td className="px-5 py-4 whitespace-nowrap">
+                <td className="px-4 py-3.5 whitespace-nowrap">
                   {estadoBadge(cita.estado)}
                 </td>
 
                 {/* ACCIONES SEGÚN ROL */}
-                <td className="px-5 py-4 whitespace-nowrap text-right">
+                <td className="px-4 py-3.5 whitespace-nowrap text-right">
                   <div className="flex items-center justify-end gap-1.5 text-xs">
                     {/* 1. PACIENTE */}
                     {isPaciente && (

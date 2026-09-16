@@ -16,6 +16,8 @@ import {
   Layers,
   DollarSign,
   MessageSquare,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { getUserRole } from "../../utils/routePermissions";
@@ -64,6 +66,13 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(false);
   const [citasHoy, setCitasHoy] = useState<CitaItem[]>([]);
   const [totalPacientes, setTotalPacientes] = useState(0);
+  const [agendaPage, setAgendaPage] = useState(1);
+  const AGENDA_PAGE_SIZE = 5;
+
+  const totalAgendaPages = Math.max(1, Math.ceil(citasHoy.length / AGENDA_PAGE_SIZE));
+  const displayedCitas = useMemo(() => {
+    return citasHoy.slice((agendaPage - 1) * AGENDA_PAGE_SIZE, agendaPage * AGENDA_PAGE_SIZE);
+  }, [citasHoy, agendaPage]);
 
   const currentDateFormatted = useMemo(() => {
     const now = new Date();
@@ -385,32 +394,32 @@ export default function DashboardPage() {
                   </p>
                 </div>
               ) : (
-                citasHoy.map((cita) => (
+                displayedCitas.map((cita) => (
                 <div
                   key={cita.id}
                   className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/80 dark:hover:bg-slate-900/40 rounded-xl px-2.5 transition-colors"
                 >
-                  <div className="flex items-start sm:items-center gap-3.5">
+                  <div className="flex items-start sm:items-center gap-3.5 min-w-0">
                     {/* Hora Badge */}
                     <span className="px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-spacemono font-bold text-xs border border-slate-200 dark:border-white/10 flex-shrink-0">
                       {cita.hora}
                     </span>
 
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate" title={cita.paciente}>
                         {cita.paciente}
                       </h3>
                       <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 flex-wrap mt-0.5">
-                        <span className="text-cyan-700 dark:text-cyan-400 font-semibold">{cita.servicio}</span>
+                        <span className="text-cyan-700 dark:text-cyan-400 font-semibold truncate max-w-[160px]" title={cita.servicio}>{cita.servicio}</span>
                         <span>•</span>
-                        <span>{cita.doctor}</span>
+                        <span className="truncate max-w-[140px]" title={cita.doctor}>{cita.doctor}</span>
                         <span>•</span>
                         <span className="font-spacemono text-[11px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">{cita.sillon}</span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 self-end sm:self-auto">
+                  <div className="flex items-center gap-3 self-end sm:self-auto shrink-0">
                     <span
                       className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${
                         cita.estado === "Completada"
@@ -439,6 +448,43 @@ export default function DashboardPage() {
               ))
               )}
             </div>
+
+            {/* CONTROLES DE PAGINACIÓN */}
+            {citasHoy.length > AGENDA_PAGE_SIZE && (
+              <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-white/10 text-xs text-slate-600 dark:text-slate-400">
+                <span className="font-instrument">
+                  Mostrando <strong className="text-slate-900 dark:text-white">{(agendaPage - 1) * AGENDA_PAGE_SIZE + 1}</strong> a <strong className="text-slate-900 dark:text-white">{Math.min(agendaPage * AGENDA_PAGE_SIZE, citasHoy.length)}</strong> de <strong className="text-slate-900 dark:text-white">{citasHoy.length}</strong> citas
+                </span>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={agendaPage <= 1}
+                    onClick={() => setAgendaPage((p) => Math.max(1, p - 1))}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 disabled:opacity-40 disabled:pointer-events-none transition cursor-pointer"
+                    title="Página anterior"
+                  >
+                    <ChevronLeft size={14} />
+                    <span>Anterior</span>
+                  </button>
+
+                  <span className="px-2 font-mono font-bold text-slate-800 dark:text-slate-200">
+                    {agendaPage} / {totalAgendaPages}
+                  </span>
+
+                  <button
+                    type="button"
+                    disabled={agendaPage >= totalAgendaPages}
+                    onClick={() => setAgendaPage((p) => Math.min(totalAgendaPages, p + 1))}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 disabled:opacity-40 disabled:pointer-events-none transition cursor-pointer"
+                    title="Página siguiente"
+                  >
+                    <span>Siguiente</span>
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* DISTRIBUCIÓN DE SERVICIOS MÁS DEMANDADOS */}

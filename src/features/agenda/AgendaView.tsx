@@ -19,7 +19,12 @@ import {
   Copy,
   Calendar,
   ShieldCheck,
+  Folder,
+  FolderOpen,
+  Smile,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { UserAvatar } from "../../components/common/UserAvatar";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
 
 import {
@@ -172,6 +177,14 @@ export function AgendaView() {
   const [odontologosSeleccionados, setOdontologosSeleccionados] = useState<string[]>([
     "Todos los odontólogos",
   ]);
+
+  const navigate = useNavigate();
+  const [selectedClusterModal, setSelectedClusterModal] = useState<{
+    fecha: string;
+    horaInicio: string;
+    horaFin: string;
+    citas: Cita[];
+  } | null>(null);
 
   const [mostrarModal, setMostrarModal] = useState(false);
   const [citaDetalle, setCitaDetalle] = useState<Cita | null>(null);
@@ -868,6 +881,8 @@ export function AgendaView() {
     totalColumnas: number;
     colIndex: number;
     duracionMinutos?: number;
+    isCluster?: boolean;
+    clusterCitas?: Cita[];
   }
 
   const calcularPosicionesDia = (citasList: Cita[]): CitaPosicionada[] => {
@@ -927,49 +942,49 @@ export function AgendaView() {
     const resultado: CitaPosicionada[] = [];
 
     clusters.forEach((cluster) => {
-      const columnasFin: number[] = [];
-      const asignaciones: { cita: (typeof parseadas)[0]; colIndex: number }[] = [];
-
-      cluster.forEach((cita) => {
-        let colIndex = columnasFin.findIndex((fin) => fin <= cita.inicioMinutos);
-        if (colIndex === -1) {
-          colIndex = columnasFin.length;
-          columnasFin.push(cita.finMinutos);
-        } else {
-          columnasFin[colIndex] = cita.finMinutos;
-        }
-        asignaciones.push({ cita, colIndex });
-      });
-
-      const totalColumnas = Math.max(columnasFin.length, 1);
-
-      asignaciones.forEach(({ cita, colIndex }) => {
-        // Separación vertical limpia usando escala HORA_ALTURA_PX
+      if (cluster.length === 1) {
+        const cita = cluster[0];
         const top = (cita.inicioMinutos / 60) * HORA_ALTURA_PX + 1;
         const height = Math.max((cita.duracionMinutos / 60) * HORA_ALTURA_PX - 2, 54);
-
-        let leftStyle: string;
-        let widthStyle: string;
-
-        if (totalColumnas === 1) {
-          leftStyle = "4px";
-          widthStyle = "calc(100% - 8px)";
-        } else {
-          const colWidthPct = 100 / totalColumnas;
-          leftStyle = `calc(${colIndex * colWidthPct}% + 2px)`;
-          widthStyle = `calc(${colWidthPct}% - 4px)`;
-        }
-
         resultado.push({
           ...cita,
           top,
           height,
-          leftStyle,
-          widthStyle,
-          totalColumnas,
-          colIndex,
+          leftStyle: "4px",
+          widthStyle: "calc(100% - 8px)",
+          totalColumnas: 1,
+          colIndex: 0,
+          isCluster: false,
         });
-      });
+      } else {
+        // Multi-appointment cluster -> Folder Dossier representation
+        const earliestMin = Math.min(...cluster.map((c) => c.inicioMinutos));
+        const latestMin = Math.max(...cluster.map((c) => c.finMinutos));
+        const top = (earliestMin / 60) * HORA_ALTURA_PX + 1;
+        const height = Math.max(((latestMin - earliestMin) / 60) * HORA_ALTURA_PX - 2, 78);
+        const earliestH = cluster[0].horaInicio;
+        const latestH = cluster[cluster.length - 1].horaFin;
+
+        resultado.push({
+          id: cluster[0].id,
+          rawGuid: cluster[0].rawGuid,
+          paciente: `${cluster.length} Citas Agendadas`,
+          servicio: "Múltiples Pacientes",
+          odontologo: cluster[0].odontologo,
+          fecha: cluster[0].fecha,
+          horaInicio: earliestH,
+          horaFin: latestH,
+          estado: "Confirmada",
+          top,
+          height,
+          leftStyle: "4px",
+          widthStyle: "calc(100% - 8px)",
+          totalColumnas: 1,
+          colIndex: 0,
+          isCluster: true,
+          clusterCitas: cluster,
+        });
+      }
     });
 
     return resultado;
@@ -1004,10 +1019,72 @@ export function AgendaView() {
   const gridTemplateColumns = modoVista === "semana" ? gridTemplateColumnsSemana : gridTemplateColumnsDoctores;
 
   const renderCitaCard = (cita: CitaPosicionada) => {
+    // 1. Tarjeta Archivador de Carpeta (Folder Dossier) para Múltiples Citas en el Mismo Horario
+    if (cita.isCluster && cita.clusterCitas && cita.clusterCitas.length > 1) {
+      const clusterList = cita.clusterCitas;
+      return (
+        <div
+          key={`cluster-${cita.fecha}-${cita.top}`}
+          onClick={() => {
+            setSelectedClusterModal({
+              fecha: cita.fecha,
+              horaInicio: cita.horaInicio,
+              horaFin: cita.horaFin,
+              citas: clusterList,
+            });
+          }}
+          style={{
+            top: `${cita.top}px`,
+            height: `${cita.height}px`,
+            left: cita.leftStyle,
+            width: cita.widthStyle,
+          }}
+          className="group absolute z-20 rounded-2xl border-2 border-dashed border-teal-500/60 dark:border-teal-400/70 bg-gradient-to-br from-teal-500/15 via-cyan-500/10 to-blue-500/15 dark:from-teal-950/70 dark:via-cyan-950/60 dark:to-blue-950/70 backdrop-blur-xl shadow-md hover:shadow-2xl hover:border-teal-400 hover:-translate-y-1.5 hover:scale-[1.02] active:scale-95 transition-all duration-300 cursor-pointer p-2.5 flex flex-col justify-between overflow-hidden"
+          title="Haz clic para ver y desplegar todas las citas de este horario"
+        >
+          {/* Solapa Superior / Horario + Badge Contador */}
+          <div className="flex items-center justify-between gap-1.5 min-w-0">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-teal-500/20 text-teal-700 dark:text-teal-300 border border-teal-500/30 group-hover:rotate-6 transition-transform">
+                <Folder size={14} className="text-teal-600 dark:text-teal-300" />
+              </div>
+              <span className="font-mono text-[10.5px] font-bold text-teal-800 dark:text-teal-200 truncate">
+                {cita.horaInicio} - {cita.horaFin}
+              </span>
+            </div>
+
+            {/* Contador tipo notificación con pulso */}
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-gradient-to-r from-teal-500 to-cyan-500 text-slate-950 shadow-sm shrink-0 animate-pulse">
+              <span className="h-1.5 w-1.5 rounded-full bg-slate-950" />
+              {clusterList.length} citas
+            </span>
+          </div>
+
+          {/* Resumen de pacientes con ellipsis */}
+          <div className="my-1 min-w-0">
+            <p className="text-xs font-black text-slate-900 dark:text-white truncate" title={clusterList.map((c) => c.paciente).join(", ")}>
+              {clusterList.map((c) => c.paciente).join(", ")}
+            </p>
+            <p className="text-[10px] text-slate-600 dark:text-slate-400 truncate mt-0.5 font-medium">
+              {clusterList.length} consultas en este bloque horario
+            </p>
+          </div>
+
+          {/* Footer con llamado a la acción */}
+          <div className="flex items-center justify-between text-[10px] text-teal-700 dark:text-teal-300 font-bold pt-1 border-t border-teal-500/20">
+            <span className="group-hover:underline flex items-center gap-1">
+              <span>Abrir Dossier</span>
+              <span>→</span>
+            </span>
+            <span className="text-[9.5px] font-mono opacity-80">📁 Archivador</span>
+          </div>
+        </div>
+      );
+    }
+
     const colorEvento = obtenerColorEvento(cita.estado);
     const docTheme = getDoctorTheme(cita.odontologo, listaOdontologos);
     const shortDoc = getDoctorShortName(cita.odontologo);
-    const isNarrow = cita.totalColumnas > 1;
     const duracionStr = `${cita.duracionMinutos || 30} min`;
 
     return (
@@ -1044,37 +1121,6 @@ export function AgendaView() {
                 {cita.servicio}
               </span>
               <span className={`px-1.5 py-0.5 rounded text-[8.5px] font-bold uppercase tracking-wider shrink-0 border ${docTheme.badge}`}>
-                {cita.estado}
-              </span>
-            </div>
-          </div>
-        ) : isNarrow ? (
-          // Modo Estrecho (Solapamiento lateral de varias citas)
-          <div className="flex h-full flex-col justify-between p-2 min-w-0 overflow-hidden">
-            <div className="flex items-center justify-between gap-1 min-w-0">
-              <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                <span className={`h-2 w-2 rounded-full shrink-0 ${docTheme.dot}`} />
-                <span className="truncate text-[10.5px] font-bold text-slate-700 dark:text-slate-200" title={cita.odontologo}>
-                  {shortDoc}
-                </span>
-              </div>
-              <span className="font-mono text-[9.5px] font-bold text-cyan-700 dark:text-cyan-300 shrink-0 whitespace-nowrap">
-                {cita.horaInicio}
-              </span>
-            </div>
-
-            <div className="min-w-0 my-1">
-              <p className="truncate text-xs font-extrabold leading-tight text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-200" title={cita.paciente}>
-                {cita.paciente}
-              </p>
-              <p className="truncate text-[10px] text-slate-600 dark:text-slate-300 font-medium leading-tight mt-0.5" title={cita.servicio}>
-                {cita.servicio}
-              </p>
-            </div>
-
-            <div className="flex items-center justify-between gap-1 text-[9.5px] text-slate-500 dark:text-slate-400 font-mono leading-none">
-              <span className="whitespace-nowrap font-medium">{cita.horaInicio} - {cita.horaFin}</span>
-              <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider ${docTheme.badge}`}>
                 {cita.estado}
               </span>
             </div>
@@ -1795,6 +1841,187 @@ export function AgendaView() {
                   type="button"
                   onClick={() => setCitaDetalle(null)}
                   className="rounded-xl bg-slate-200/80 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 px-6 py-2.5 text-xs font-bold text-slate-800 dark:text-slate-200 transition cursor-pointer shadow-xs active:scale-95"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Desplegable de Todas las Citas del Horario (Cluster Folder Modal) */}
+      <AnimatePresence>
+        {selectedClusterModal && (
+          <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedClusterModal(null)}
+              className="fixed inset-0 bg-slate-950/75 backdrop-blur-md"
+            />
+
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.92, opacity: 0, y: 15 }}
+              transition={{ type: "spring", damping: 26, stiffness: 360 }}
+              className="relative w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden rounded-3xl border border-slate-200/90 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 shadow-2xl backdrop-blur-2xl text-slate-900 dark:text-white z-10"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800/80 bg-gradient-to-r from-teal-500/10 via-cyan-500/10 to-blue-500/10">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-teal-500/20 border border-teal-500/30 text-teal-600 dark:text-teal-400 shadow-inner">
+                    <FolderOpen size={22} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white truncate">
+                        Dossier de Citas ({selectedClusterModal.citas.length})
+                      </h2>
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-teal-500/20 text-teal-700 dark:text-teal-300 border border-teal-500/30 font-mono">
+                        {selectedClusterModal.horaInicio} - {selectedClusterModal.horaFin}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 capitalize">
+                      {selectedClusterModal.fecha} • Consultas programadas simultáneamente
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedClusterModal(null)}
+                  className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Lista de Citas */}
+              <div className="p-6 overflow-y-auto space-y-3.5 flex-1 max-h-[55vh]">
+                {selectedClusterModal.citas.map((cita, idx) => {
+                  const docTheme = getDoctorTheme(cita.odontologo, listaOdontologos);
+                  return (
+                    <div
+                      key={cita.id || idx}
+                      className="p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 shadow-xs hover:border-teal-500/40 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    >
+                      <div className="flex items-start gap-3.5 min-w-0 flex-1">
+                        <div className="h-10 w-10 shrink-0 rounded-xl overflow-hidden border border-cyan-500/40 dark:border-cyan-400/50 shadow-sm flex items-center justify-center bg-slate-100 dark:bg-slate-900">
+                          <UserAvatar
+                            name={cita.paciente}
+                            className="h-full w-full object-cover"
+                            fallbackClassName="h-full w-full flex items-center justify-center font-bold text-xs"
+                          />
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="text-sm font-extrabold text-slate-900 dark:text-white truncate" title={cita.paciente}>
+                              {cita.paciente}
+                            </h3>
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${docTheme.badge}`}>
+                              {cita.estado}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 flex-wrap mt-1">
+                            <span className="text-cyan-700 dark:text-cyan-400 font-semibold flex items-center gap-1">
+                              <Sparkles size={12} />
+                              <span>{cita.servicio}</span>
+                            </span>
+                            <span>•</span>
+                            <span className="flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300">
+                              <Stethoscope size={12} className="text-cyan-500" />
+                              <span>{cita.odontologo}</span>
+                            </span>
+                            <span>•</span>
+                            <span className="font-mono font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[11px]">
+                              {cita.horaInicio} - {cita.horaFin}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Acciones de la cita */}
+                      <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedClusterModal(null);
+                            setCitaDetalle(cita);
+                          }}
+                          className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 transition cursor-pointer"
+                          title="Ver Ficha y Expediente"
+                        >
+                          Ver Detalle
+                        </button>
+
+                        {(role === "ODONTOLOGO" || role === "ADMINISTRADOR") && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedClusterModal(null);
+                              navigate("/odontograma", {
+                                state: {
+                                  appointmentId: cita.rawGuid,
+                                  patientName: cita.paciente,
+                                },
+                              });
+                            }}
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold text-xs transition cursor-pointer shadow-xs active:scale-95"
+                            title="Iniciar Consulta y Odontograma"
+                          >
+                            <Smile size={13} />
+                            <span>Atender</span>
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            eliminarCita(cita.id, cita.rawGuid);
+                            setSelectedClusterModal((prev) => {
+                              if (!prev) return null;
+                              const updated = prev.citas.filter((c) => c.id !== cita.id);
+                              if (updated.length === 0) return null;
+                              return { ...prev, citas: updated };
+                            });
+                          }}
+                          className="p-1.5 rounded-xl border border-rose-500/30 hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 transition cursor-pointer"
+                          title="Eliminar esta cita"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const [y, m, d] = selectedClusterModal.fecha.split("-").map(Number);
+                    const dateObj = new Date(y, m - 1, d);
+                    const hora = selectedClusterModal.horaInicio;
+                    setSelectedClusterModal(null);
+                    abrirNuevaCita(dateObj, hora);
+                  }}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs shadow-md transition cursor-pointer active:scale-95"
+                >
+                  <Plus size={15} />
+                  <span>Agendar Otra Cita en este Horario</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedClusterModal(null)}
+                  className="px-5 py-2 rounded-xl bg-slate-200/80 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200 transition cursor-pointer"
                 >
                   Cerrar
                 </button>
