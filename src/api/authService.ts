@@ -163,4 +163,8 @@ export const authService = {
     const response = await axiosClient.post('/auth/google/link', data);
     return response.data;
   },
+
+  unlinkGoogle: async (): Promise<void> => {
+    await axiosClient.delete('/auth/google/unlink');
+  },
 };

@@ -16,7 +16,7 @@ const isPublicAuthRequest = (url?: string): boolean => {
     path.includes('/auth/register-options') ||
     path.includes('/auth/register-google') ||
     path.includes('/auth/register') ||
-    path.includes('/auth/google/')
+    (path.includes('/auth/google/') && !path.includes('/auth/google/unlink'))
   );
 };
 
