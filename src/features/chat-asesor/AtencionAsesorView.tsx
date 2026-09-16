@@ -345,14 +345,23 @@ export function AtencionAsesorView() {
 
   useEffect(() => {
     fetchQr();
-    // Continúa verificando automáticamente si el modal está abierto o si WhatsApp todavía no está conectado
-    if (!showQrModal && isConnected) return;
+    // No detener el sondeo al verse "conectado": ese cliente se quedaba con
+    // el estado viejo mientras los demás ya veían la sesión desvinculada.
     const interval = setInterval(() => {
       if (typeof navigator !== "undefined" && !navigator.onLine) return;
       if (typeof document !== "undefined" && document.hidden) return;
       fetchQr();
-    }, 4000);
-    return () => clearInterval(interval);
+    }, showQrModal || !isConnected ? 4000 : 8000);
+    const onVisible = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        fetchQr();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [fetchQr, showQrModal, isConnected]);
 
   const handleRestartQr = async () => {
@@ -376,17 +385,29 @@ export function AtencionAsesorView() {
   const handleConfirmLogoutQr = async () => {
     setLoggingOutQr(true);
     try {
-      await chatbotService.logoutQrInstance();
-      showToast("Sesión de WhatsApp cerrada. Puedes escanear un nuevo código QR.");
-      setTimeout(async () => {
+      const result = await chatbotService.logoutQrInstance();
+      const failed = !result || result.status === "error" || result.unlinked === false;
+      if (failed) {
+        setToastErrorMessage("No se pudo desvincular WhatsApp. La sesión sigue activa.");
+        setTimeout(() => setToastErrorMessage(null), 5000);
         await fetchQr();
-        setLoggingOutQr(false);
-        setShowLogoutConfirm(false);
-      }, 1500);
-    } catch {
-      showToast("Error al desvincular WhatsApp");
-      setLoggingOutQr(false);
+        return;
+      }
+      setQrData({
+        connected: false,
+        state: result.state || "close",
+        base64: "",
+        instanceName: result.instanceName || qrData?.instanceName,
+      });
       setShowLogoutConfirm(false);
+      showToast("Sesión de WhatsApp cerrada. Puedes escanear un nuevo código QR.");
+      await fetchQr();
+    } catch {
+      setToastErrorMessage("Error al desvincular WhatsApp");
+      setTimeout(() => setToastErrorMessage(null), 5000);
+      await fetchQr();
+    } finally {
+      setLoggingOutQr(false);
     }
   };
 
