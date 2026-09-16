@@ -375,18 +375,17 @@ export function AtencionAsesorView() {
 
   const handleConfirmLogoutQr = async () => {
     setLoggingOutQr(true);
+    setShowLogoutConfirm(false);
     try {
       await chatbotService.logoutQrInstance();
       showToast("Sesión de WhatsApp cerrada. Puedes escanear un nuevo código QR.");
       setTimeout(async () => {
         await fetchQr();
         setLoggingOutQr(false);
-        setShowLogoutConfirm(false);
       }, 1500);
     } catch {
       showToast("Error al desvincular WhatsApp");
       setLoggingOutQr(false);
-      setShowLogoutConfirm(false);
     }
   };
 
@@ -752,10 +751,8 @@ export function AtencionAsesorView() {
     const text = inputText.trim();
     if (!text || !selectedChat || sendingMessage) return;
 
-    const roleId =
-      sendIdentity === "CHATBOT"
-        ? MESSAGE_ROLE_IDS.CHATBOT
-        : MESSAGE_ROLE_IDS.AGENTE_HUMANO;
+    // Al responder desde la consola de recepción, se envía con rol de Agente Humano
+    const roleId = MESSAGE_ROLE_IDS.AGENTE_HUMANO;
 
     const currentTimeIso = new Date().toISOString();
     const formattedNow = formatTime(currentTimeIso);
@@ -763,9 +760,19 @@ export function AtencionAsesorView() {
     setSendingMessage(true);
 
     try {
-      // Always via .NET → FastAPI/Evolution (works with or without open ticket).
-      // Never WhatsAppNotifications or browser → /bot agent/send-message.
+      // 1. Enviar mensaje a WhatsApp
       await chatbotService.sendConversationWhatsApp(selectedChat.id, text, roleId);
+
+      // 2. Si la conversación estaba en modo bot (ACTIVA) o ESCALADA, sincronizar a ATENDIDA_HUMANO en backend
+      if (selectedChat.status === "ACTIVA" || selectedChat.status === "ESCALADA") {
+        try {
+          await chatbotService.updateConversation(selectedChat.id, {
+            conversationStatusId: CONVERSATION_STATUS_IDS.ATENDIDA_HUMANO,
+          });
+        } catch (statusErr) {
+          console.warn("Silent status transition to human attention:", statusErr);
+        }
+      }
 
       // Inserción segura solo después de confirmar la entrega en servidor
       const newMsgObj: ChatbotMessage = {
@@ -778,6 +785,7 @@ export function AtencionAsesorView() {
 
       setMessages((prev) => deduplicateMessages([...prev, newMsgObj]));
       setInputText("");
+      setSendIdentity("AGENTE_HUMANO");
       readSetRef.current.add(selectedChat.id);
 
       setChats((prev) => {
@@ -797,11 +805,7 @@ export function AtencionAsesorView() {
         return updated.sort((a, b) => parseTimestamp(b.rawTimestamp) - parseTimestamp(a.rawTimestamp));
       });
 
-      showToast(
-        sendIdentity === "CHATBOT"
-          ? "Mensaje enviado a WhatsApp haciéndose pasar por NexusBot (Camuflaje IA)."
-          : "Mensaje enviado a WhatsApp como Asesor Humano de Recepción."
-      );
+      showToast("Mensaje enviado a WhatsApp como Asesor Humano de Recepción.");
       setTimeout(() => scrollToBottom(true), 50);
     } catch (err: any) {
       console.error("Error al enviar mensaje:", err);
@@ -931,24 +935,28 @@ export function AtencionAsesorView() {
     <div className="flex flex-col h-[calc(100vh-7.5rem)] sm:h-[calc(100vh-8.5rem)] md:h-[calc(100vh-9.5rem)] max-h-[960px] bg-white dark:bg-slate-900/95 text-slate-900 dark:text-slate-100 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800/80 shadow-2xl overflow-hidden font-sans backdrop-blur-2xl relative transition-colors duration-200">
       
       {/* TOAST DE NOTIFICACIÓN FLOTANTE */}
-      {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-[99999] flex items-center gap-3 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 px-5 py-3.5 rounded-2xl shadow-2xl border border-teal-500/50 backdrop-blur-md animate-slideUp">
-          <div className="w-8 h-8 rounded-xl bg-teal-500/20 text-teal-400 dark:text-teal-600 flex items-center justify-center border border-teal-500/30">
-            <Bell size={18} className="animate-bounce" />
-          </div>
-          <span className="text-xs font-semibold tracking-wide">{toastMessage}</span>
-        </div>
-      )}
+      {typeof document !== "undefined" && toastMessage &&
+        createPortal(
+          <div className="fixed bottom-6 right-6 z-[999999] flex items-center gap-3 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 px-5 py-3.5 rounded-2xl shadow-2xl border border-teal-500/50 backdrop-blur-md animate-slideUp pointer-events-auto">
+            <div className="w-8 h-8 rounded-xl bg-teal-500/20 text-teal-400 dark:text-teal-600 flex items-center justify-center border border-teal-500/30">
+              <Bell size={18} className="animate-bounce" />
+            </div>
+            <span className="text-xs font-semibold tracking-wide">{toastMessage}</span>
+          </div>,
+          document.body
+        )}
 
       {/* TOAST DE ERROR FLOTANTE */}
-      {toastErrorMessage && (
-        <div className="fixed bottom-6 right-6 z-[99999] flex items-center gap-3 bg-rose-950/95 text-rose-200 px-5 py-3.5 rounded-2xl shadow-2xl border border-rose-500/50 backdrop-blur-md animate-slideUp">
-          <div className="w-8 h-8 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center border border-rose-500/30">
-            <AlertCircle size={18} />
-          </div>
-          <span className="text-xs font-semibold tracking-wide">{toastErrorMessage}</span>
-        </div>
-      )}
+      {typeof document !== "undefined" && toastErrorMessage &&
+        createPortal(
+          <div className="fixed bottom-6 right-6 z-[999999] flex items-center gap-3 bg-rose-950 text-rose-100 px-5 py-3.5 rounded-2xl shadow-2xl border border-rose-500/50 backdrop-blur-md animate-slideUp pointer-events-auto">
+            <div className="w-8 h-8 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center border border-rose-500/30">
+              <AlertCircle size={18} />
+            </div>
+            <span className="text-xs font-semibold tracking-wide">{toastErrorMessage}</span>
+          </div>,
+          document.body
+        )}
 
       {/* BARRA SUPERIOR DEL MÓDULO */}
       <header className={`px-4 sm:px-6 py-3.5 sm:py-4 bg-slate-50/90 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200/80 dark:border-white/10 items-center justify-between flex-shrink-0 ${selectedChatId ? "hidden md:flex" : "flex"}`}>
@@ -1593,13 +1601,15 @@ export function AtencionAsesorView() {
                 <form onSubmit={handleSendMessage} className="flex items-center gap-2">
                   <input
                     type="text"
-                    placeholder={
-                      sendIdentity === "CHATBOT"
-                        ? "Escribe como NexusBot... el paciente verá la respuesta oficial del bot en WhatsApp"
-                        : "Escribe tu respuesta personalizada como asesor de recepción..."
-                    }
+                    placeholder="Escribe tu respuesta personalizada como asesor de recepción..."
                     value={inputText}
-                    onChange={(e) => setInputText(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setInputText(val);
+                      if (val.trim().length > 0 && sendIdentity !== "AGENTE_HUMANO") {
+                        setSendIdentity("AGENTE_HUMANO");
+                      }
+                    }}
                     disabled={sendingMessage}
                     className="flex-1 px-4 py-3 rounded-2xl text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all shadow-inner"
                   />

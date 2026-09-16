@@ -10,15 +10,20 @@ export default defineConfig({
     strictPort: false,
   },
   build: {
+    target: 'esnext',
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
-              return 'react';
+            if (id.includes('react-dom') || id.includes('react-router-dom') || id.includes('react/')) {
+              return 'vendor-react';
             }
             if (id.includes('lucide-react')) {
-              return 'icons';
+              return 'vendor-icons';
+            }
+            if (id.includes('axios')) {
+              return 'vendor-axios';
             }
           }
         },
