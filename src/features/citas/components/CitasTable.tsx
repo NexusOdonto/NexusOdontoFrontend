@@ -378,14 +378,16 @@ export function CitasTable({
                             >
                               <Smile size={14} />
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => navigate("/historia-clinica")}
-                              className="p-1.5 rounded-xl bg-blue-500/15 hover:bg-blue-500/25 text-blue-700 dark:text-blue-300 border border-blue-500/30 transition-all cursor-pointer active:scale-95"
-                              title="Abrir Historia Clínica"
-                            >
-                              <FileText size={14} />
-                            </button>
+                            {isAdmin && (
+                              <button
+                                type="button"
+                                onClick={() => navigate("/historia-clinica")}
+                                className="p-1.5 rounded-xl bg-blue-500/15 hover:bg-blue-500/25 text-blue-700 dark:text-blue-300 border border-blue-500/30 transition-all cursor-pointer active:scale-95"
+                                title="Abrir Historia Clínica"
+                              >
+                                <FileText size={14} />
+                              </button>
+                            )}
                             {onUpdateStatus && (
                               <button
                                 type="button"
@@ -581,7 +583,7 @@ export function CitasTable({
             )}
 
             {(isRecepcionista || isAdmin || isOdontologo) && cita.estado === "En Atención" && (
-              <div className="grid grid-cols-3 gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
+              <div className={`grid gap-2 pt-1 ${isRecepcionista ? "grid-cols-2" : "grid-cols-3"}`} onClick={(e) => e.stopPropagation()}>
                 <button
                   type="button"
                   onClick={() => navigate("/odontograma", { state: { appointmentId: cita.appointmentId, patientId: cita.patientId, professionalId: cita.professionalId, patientName: cita.paciente, patientDocument: cita.pacienteCedula } })}
@@ -590,14 +592,16 @@ export function CitasTable({
                   <Smile size={14} />
                   <span>Odont.</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => navigate("/historia-clinica")}
-                  className="py-2 rounded-xl bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30 font-bold text-xs text-center flex items-center justify-center gap-1"
-                >
-                  <FileText size={14} />
-                  <span>Hist.</span>
-                </button>
+                {!isRecepcionista && (
+                  <button
+                    type="button"
+                    onClick={() => navigate("/historia-clinica")}
+                    className="py-2 rounded-xl bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30 font-bold text-xs text-center flex items-center justify-center gap-1"
+                  >
+                    <FileText size={14} />
+                    <span>Hist.</span>
+                  </button>
+                )}
                 {onUpdateStatus && (
                   <button
                     type="button"

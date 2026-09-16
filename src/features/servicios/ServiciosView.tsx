@@ -153,10 +153,33 @@ function apiErrorMessage(err: unknown, fallback: string): string {
   return e?.response?.data?.message || e?.response?.data?.title || e?.message || fallback;
 }
 
+/** CATALOGS:CREATE/EDIT/DELETE when present; otherwise admin only (recepción no tiene esas acciones). */
+function hasCatalogAction(user: unknown, action: "CREATE" | "EDIT" | "DELETE"): boolean {
+  if (getUserRole(user) === "ADMINISTRADOR") return true;
+
+  const record = user && typeof user === "object" ? (user as Record<string, unknown>) : null;
+  const raw = record && Array.isArray(record.permissions) ? record.permissions : [];
+  const codes = raw
+    .map((entry) => {
+      if (typeof entry === "string") return entry;
+      if (entry && typeof entry === "object") {
+        const obj = entry as Record<string, unknown>;
+        return String(obj.code || obj.name || "");
+      }
+      return "";
+    })
+    .map((code) => code.trim().toUpperCase())
+    .filter(Boolean);
+
+  if (codes.length > 0) return codes.includes(`CATALOGS:${action}`);
+  return false;
+}
+
 export function ServiciosView() {
   const { user } = useAuth();
-  const role = getUserRole(user);
-  const canManageServices = role === "ADMINISTRADOR" || role === "RECEPCIONISTA";
+  const canCreateServices = hasCatalogAction(user, "CREATE");
+  const canEditServices = hasCatalogAction(user, "EDIT");
+  const canDeleteServices = hasCatalogAction(user, "DELETE");
 
   const [servicios, setServicios] = useState<Servicio[]>([]);
   const [loading, setLoading] = useState(true);
@@ -409,7 +432,7 @@ export function ServiciosView() {
             <DentistryReloadIcon size={22} loading={loading} />
           </button>
 
-          {canManageServices && (
+          {canCreateServices && (
             <button
               type="button"
               onClick={handleAbrirCrear}
@@ -662,16 +685,16 @@ export function ServiciosView() {
         {vista === "grid" ? (
           <ServiciosGrid
             servicios={serviciosProcesados}
-            onEditar={canManageServices ? handleAbrirEditar : undefined}
-            onEliminar={canManageServices ? handleEliminar : undefined}
-            onToggleActivo={canManageServices ? handleToggleActivo : undefined}
+            onEditar={canEditServices ? handleAbrirEditar : undefined}
+            onEliminar={canDeleteServices ? handleEliminar : undefined}
+            onToggleActivo={canEditServices ? handleToggleActivo : undefined}
           />
         ) : (
           <ServiciosTable
             servicios={serviciosProcesados}
-            onEditar={canManageServices ? handleAbrirEditar : undefined}
-            onEliminar={canManageServices ? handleEliminar : undefined}
-            onToggleActivo={canManageServices ? handleToggleActivo : undefined}
+            onEditar={canEditServices ? handleAbrirEditar : undefined}
+            onEliminar={canDeleteServices ? handleEliminar : undefined}
+            onToggleActivo={canEditServices ? handleToggleActivo : undefined}
           />
         )}
       </div>

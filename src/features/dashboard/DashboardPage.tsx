@@ -635,7 +635,8 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* EXPEDIENTE RÁPIDO 3D RARE UI */}
+          {/* EXPEDIENTE RÁPIDO 3D RARE UI — recepción no tiene permiso de historia clínica */}
+          {role !== "RECEPCIONISTA" && (
           <div className="p-5 rounded-2xl border border-slate-200/90 dark:border-white/15 bg-white/95 dark:bg-slate-950/65 backdrop-blur-xl shadow-sm space-y-3 flex flex-col items-center justify-center text-center">
             <div className="w-full text-left pb-2 border-b border-slate-100 dark:border-white/10 flex items-center justify-between">
               <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
@@ -669,6 +670,7 @@ export default function DashboardPage() {
               <ArrowRight size={13} />
             </button>
           </div>
+          )}
 
           {/* RECORDATORIO / ESTADO DEL SISTEMA SEGÚN ROL */}
           <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-start gap-3 text-xs">

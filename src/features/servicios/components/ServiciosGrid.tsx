@@ -232,9 +232,10 @@ export function ServiciosGrid({
                 </div>
 
                 {/* Badge/Botón de Estado Interactivo con Radar Pulse */}
+                {onToggleActivo ? (
                 <button
                   type="button"
-                  onClick={() => onToggleActivo?.(servicio)}
+                  onClick={() => onToggleActivo(servicio)}
                   className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-black border transition-all cursor-pointer shadow-sm ${
                     servicio.activo
                       ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 border-emerald-500/30 hover:bg-emerald-500/25"
@@ -257,6 +258,29 @@ export function ServiciosGrid({
                     </>
                   )}
                 </button>
+                ) : (
+                  <span
+                    className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-black border shadow-sm ${
+                      servicio.activo
+                        ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 border-emerald-500/30"
+                        : "bg-slate-100 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-700"
+                    }`}
+                  >
+                    {servicio.activo ? (
+                      <>
+                        <span className="relative flex h-2 w-2">
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                        </span>
+                        <span>Activo</span>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle size={13} className="text-slate-400" />
+                        <span>Inactivo</span>
+                      </>
+                    )}
+                  </span>
+                )}
               </div>
 
               {/* Contenido principal */}
