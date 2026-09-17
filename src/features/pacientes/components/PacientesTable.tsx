@@ -1,5 +1,6 @@
-import type { Paciente } from "../../../types/pacientes";
+import { type Paciente, isPatientOnline } from "../../../types/pacientes";
 import { UserAvatar } from "../../../components/common/UserAvatar";
+import { useAuth } from "../../auth/AuthContext";
 
 interface PacientesTableProps {
   pacientes: Paciente[];
@@ -20,6 +21,7 @@ export function PacientesTable({
   onPageChange,
   onSelectPaciente,
 }: PacientesTableProps) {
+  const { user } = useAuth();
 
   return (
     <section className="min-w-0 max-w-full rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl shadow-md dark:shadow-2xl p-5 sm:p-6 transition-all duration-300 flex flex-col justify-between min-h-[460px]">
@@ -69,64 +71,60 @@ export function PacientesTable({
                 </tr>
               ))
             ) : pacientes.length > 0 ? (
-              pacientes.map((paciente, idx) => (
-                <tr
-                  key={paciente.id}
-                  onClick={() => onSelectPaciente?.(paciente)}
-                  className={`group h-[60px] cursor-pointer transition-colors hover:bg-slate-100/90 dark:hover:bg-white/10 animate-fadeIn animate-stagger-${(idx % 6) + 1}`}
-                >
-                  <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 shrink-0 rounded-2xl overflow-hidden border border-cyan-500/40 dark:border-cyan-400/50 shadow-sm bg-slate-100 dark:bg-slate-900 group-hover:scale-105 transition-transform duration-200">
-                        <UserAvatar
-                          name={paciente.nombre}
-                          avatar={paciente.fotoUrl}
-                          className="h-full w-full object-cover"
-                          fallbackClassName="h-full w-full flex items-center justify-center"
-                        />
-                      </div>
-                      <span className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors">
-                        {paciente.nombre}
-                      </span>
-                    </div>
-                  </td>
+              pacientes.map((paciente, idx) => {
+                const isOnline = isPatientOnline(paciente, user);
 
-                  <td className="px-4 py-3.5 text-sm font-mono font-semibold text-slate-900 dark:text-slate-200">
-                    {paciente.documento}
-                  </td>
-
-                  <td className="px-4 py-3.5 text-sm font-medium text-slate-700 dark:text-slate-300">
-                    {paciente.telefono || "No registrado"}
-                  </td>
-
-                  <td className="px-4 py-3.5 text-right">
-                    {(() => {
-                      const isActivo =
-                        paciente.estado?.toLowerCase() === "activo" ||
-                        ((paciente as any).isActive !== false && paciente.estado?.toLowerCase() !== "inactivo");
-
-                      return (
-                        <span
-                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold backdrop-blur-sm border ${
-                            isActivo
-                              ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-500/30 dark:border-emerald-400/30"
-                              : "bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30 dark:border-rose-500/30"
-                          }`}
-                        >
-                          <span
-                            className={`h-1.5 w-1.5 rounded-full ${
-                              isActivo
-                                ? "bg-emerald-500 dark:bg-emerald-400 animate-pulse"
-                                : "bg-rose-500 dark:bg-rose-400"
-                            }`}
+                return (
+                  <tr
+                    key={paciente.id}
+                    onClick={() => onSelectPaciente?.(paciente)}
+                    className={`group h-[60px] cursor-pointer transition-colors hover:bg-slate-100/90 dark:hover:bg-white/10 animate-fadeIn animate-stagger-${(idx % 6) + 1}`}
+                  >
+                    <td className="px-4 py-3.5">
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 shrink-0 rounded-2xl overflow-hidden border border-cyan-500/40 dark:border-cyan-400/50 shadow-sm bg-slate-100 dark:bg-slate-900 group-hover:scale-105 transition-transform duration-200">
+                          <UserAvatar
+                            name={paciente.nombre}
+                            avatar={paciente.fotoUrl}
+                            className="h-full w-full object-cover"
+                            fallbackClassName="h-full w-full flex items-center justify-center"
                           />
-                          {isActivo ? "Activo" : "Inactivo"}
+                        </div>
+                        <span className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors">
+                          {paciente.nombre}
                         </span>
-                      );
-                    })()}
-                  </td>
-                </tr>
-              ))
+                      </div>
+                    </td>
+
+                    <td className="px-4 py-3.5 text-sm font-mono font-semibold text-slate-900 dark:text-slate-200">
+                      {paciente.documento}
+                    </td>
+
+                    <td className="px-4 py-3.5 text-sm font-medium text-slate-700 dark:text-slate-300">
+                      {paciente.telefono || "No registrado"}
+                    </td>
+
+                    <td className="px-4 py-3.5 text-right">
+                      <span
+                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold backdrop-blur-sm border ${
+                          isOnline
+                            ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-500/30 dark:border-emerald-400/30"
+                            : "bg-slate-500/15 text-slate-600 dark:text-slate-400 border-slate-500/30 dark:border-slate-500/20"
+                        }`}
+                      >
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${
+                            isOnline
+                              ? "bg-emerald-500 dark:bg-emerald-400 animate-pulse"
+                              : "bg-slate-400"
+                          }`}
+                        />
+                        {isOnline ? "En línea" : "Desconectado"}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })
             ) : (
               <tr>
                 <td colSpan={4} className="px-4 py-16 text-center">

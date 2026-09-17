@@ -58,3 +58,45 @@ export interface Paciente {
 }
 
 export const PACIENTES_STORAGE_KEY = "nexusodontopacientes";
+
+export const isPatientOnline = (paciente?: Paciente | null, currentUser?: any): boolean => {
+  if (!paciente) return false;
+
+  // 1. Si coincide con el usuario autenticado con sesión abierta
+  if (currentUser) {
+    const doc = (paciente.documento || "").trim();
+    const email = (paciente.correo || "").toLowerCase().trim();
+    const pId = paciente.patientId || String(paciente.id || "");
+    const perId = paciente.personId || "";
+
+    const userDoc = (currentUser.cedula || currentUser.documento || "").trim();
+    const userEmail = (currentUser.email || currentUser.correo || "").toLowerCase().trim();
+    const userId = currentUser.id || "";
+    const userPersonId = currentUser.personId || "";
+
+    if (userDoc && doc && userDoc === doc) return true;
+    if (userEmail && email && userEmail === email) return true;
+    if (userId && pId && userId === pId) return true;
+    if (userPersonId && perId && userPersonId === perId) return true;
+  }
+
+  // 2. Si su identificador está en el registro de sesiones activas en línea
+  try {
+    const onlineListRaw = localStorage.getItem("nexus_online_users");
+    if (onlineListRaw) {
+      const onlineList: string[] = JSON.parse(onlineListRaw);
+      if (Array.isArray(onlineList)) {
+        const doc = (paciente.documento || "").trim();
+        const email = (paciente.correo || "").toLowerCase().trim();
+        const pId = paciente.patientId || String(paciente.id || "");
+        if (doc && onlineList.includes(doc)) return true;
+        if (email && onlineList.some((k) => k && k.toLowerCase() === email)) return true;
+        if (pId && onlineList.includes(pId)) return true;
+      }
+    }
+  } catch {
+    // Ignore
+  }
+
+  return false;
+};

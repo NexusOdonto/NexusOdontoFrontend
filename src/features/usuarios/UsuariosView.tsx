@@ -461,6 +461,28 @@ export function UsuariosView() {
 
     try {
       await userService.update(usuario.id, { isActive: newStatus });
+
+      // Sincronizar registro de cuentas desactivadas
+      try {
+        const deactivatedList: string[] = JSON.parse(localStorage.getItem('nexus_deactivated_accounts') || '[]');
+        const identKeys = [(usuario as any).documento, usuario.email?.toLowerCase(), (usuario as any).codigo?.toUpperCase(), usuario.id].filter(Boolean) as string[];
+        
+        if (!newStatus) {
+          // Desactivado: agregar a la lista de bloqueados
+          identKeys.forEach((k) => {
+            if (!deactivatedList.includes(k)) deactivatedList.push(k);
+          });
+        } else {
+          // Reactivado: remover de la lista de bloqueados
+          const updated = deactivatedList.filter((k) => !identKeys.includes(k));
+          localStorage.setItem('nexus_deactivated_accounts', JSON.stringify(updated));
+          return showToast(`Usuario ${usuario.name} reactivado correctamente.`, "success");
+        }
+        localStorage.setItem('nexus_deactivated_accounts', JSON.stringify(deactivatedList));
+      } catch {
+        // Ignore
+      }
+
       showToast(`Usuario ${usuario.name} ${newStatus ? "reactivado" : "desactivado"} correctamente.`, "success");
     } catch (err: any) {
       // 2. Reversión inmediata ante error real de servidor (F-20)

@@ -1,4 +1,5 @@
 import type { Paciente } from "../../../types/pacientes";
+import { isPatientOnline } from "../../../types/pacientes";
 import { X, Calendar, Phone, Mail, FileText, Activity, AlertTriangle, ShieldCheck, Clock, MessageSquare } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
@@ -8,10 +9,9 @@ import { UserAvatar } from "../../../components/common/UserAvatar";
 interface PacienteDetailModalProps {
   paciente: Paciente | null;
   onClose: () => void;
-  onToggleEstado?: (paciente: Paciente) => void;
 }
 
-export function PacienteDetailModal({ paciente, onClose, onToggleEstado }: PacienteDetailModalProps) {
+export function PacienteDetailModal({ paciente, onClose }: PacienteDetailModalProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const role = getUserRole(user);
@@ -19,9 +19,7 @@ export function PacienteDetailModal({ paciente, onClose, onToggleEstado }: Pacie
 
   if (!paciente) return null;
 
-  const isActivo =
-    paciente.estado?.toLowerCase() === "activo" ||
-    ((paciente as any).isActive !== false && paciente.estado?.toLowerCase() !== "inactivo");
+  const isOnline = isPatientOnline(paciente, user);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-md animate-fadeIn">
@@ -48,7 +46,7 @@ export function PacienteDetailModal({ paciente, onClose, onToggleEstado }: Pacie
             />
             <span
               className={`absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full border-2 border-white dark:border-slate-900 shadow-sm ${
-                isActivo ? "bg-emerald-500 dark:bg-emerald-400" : "bg-rose-500 dark:bg-rose-400"
+                isOnline ? "bg-emerald-500 dark:bg-emerald-400" : "bg-slate-400 dark:bg-slate-600"
               }`}
             />
           </div>
@@ -62,28 +60,18 @@ export function PacienteDetailModal({ paciente, onClose, onToggleEstado }: Pacie
               <div className="flex items-center gap-2">
                 <span
                   className={`inline-flex items-center gap-1.5 text-xs font-sans font-semibold tracking-wide px-2.5 py-0.5 rounded-full border ${
-                    isActivo
+                    isOnline
                       ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-500/30 dark:border-emerald-400/30"
-                      : "bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30 dark:border-rose-500/30"
+                      : "bg-slate-500/15 text-slate-700 dark:text-slate-400 border-slate-500/30 dark:border-slate-600/30"
                   }`}
                 >
                   <span
                     className={`h-1.5 w-1.5 rounded-full ${
-                      isActivo ? "bg-emerald-500 dark:bg-emerald-400 animate-pulse" : "bg-rose-500 dark:bg-rose-400"
+                      isOnline ? "bg-emerald-500 dark:bg-emerald-400 animate-pulse" : "bg-slate-400 dark:bg-slate-500"
                     }`}
                   />
-                  {isActivo ? "Activo" : "Inactivo"}
+                  {isOnline ? "En línea" : "Desconectado"}
                 </span>
-
-                {onToggleEstado && isClinicianOrAdmin && (
-                  <button
-                    type="button"
-                    onClick={() => onToggleEstado(paciente)}
-                    className="text-[11px] font-semibold text-cyan-600 dark:text-cyan-400 hover:underline cursor-pointer"
-                  >
-                    {isActivo ? "Desactivar" : "Activar"}
-                  </button>
-                )}
               </div>
             </div>
 

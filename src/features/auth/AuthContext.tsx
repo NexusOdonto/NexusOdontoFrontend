@@ -388,6 +388,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUser(userData);
         localStorage.setItem('auth_user', JSON.stringify(userData));
 
+        // Registrar presencia en línea
+        try {
+          const onlineList: string[] = JSON.parse(localStorage.getItem('nexus_online_users') || '[]');
+          [userData.cedula, userData.email?.toLowerCase(), userData.id].forEach((k) => {
+            if (k && !onlineList.includes(k)) onlineList.push(k);
+          });
+          localStorage.setItem('nexus_online_users', JSON.stringify(onlineList));
+        } catch {
+          // Ignore
+        }
+
         if (userData.mustChangePassword) {
           navigate('/cambiar-password', { replace: true });
         } else {
@@ -401,6 +412,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.error('Error al autenticar contra Backend API .NET:', error);
 
       const status = error.response?.status;
+      const respMsg = (error.response?.data?.message || '').toLowerCase();
+      const isDeactivatedInBackend =
+        status === 403 ||
+        respMsg.includes('inactiv') ||
+        respMsg.includes('desactiv') ||
+        respMsg.includes('bloquead') ||
+        respMsg.includes('disabled');
+
+      let isDeactivatedLocally = false;
+      try {
+        const deactivatedList = JSON.parse(localStorage.getItem('nexus_deactivated_accounts') || '[]');
+        if (Array.isArray(deactivatedList)) {
+          isDeactivatedLocally = deactivatedList.some(
+            (d: string) => d && d.toLowerCase() === cleanIdentifier.toLowerCase()
+          );
+        }
+      } catch {
+        // Ignore
+      }
+
+      if (isDeactivatedInBackend || isDeactivatedLocally) {
+        return {
+          success: false,
+          error: 'Tu usuario ha sido bloqueado o desactivado. Para más información, contáctate con los asesores o la administración.',
+        };
+      }
+
       let errorMessage = 'Error de conexión con el servidor. Inténtalo más tarde.';
 
       if (status === 401) {
@@ -409,8 +447,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         } else {
           errorMessage = 'Credenciales incorrectas. Verifica tu número de documento y contraseña.';
         }
-      } else if (status === 403) {
-        errorMessage = 'Esta cuenta se encuentra desactivada. Contacta al soporte o administrador.';
       } else if (error.response?.data?.message) {
         if (error.response.data.message === 'Invalid email or password.' || error.response.data.message === 'Invalid login ID or password.') {
           if (cleanIdentifier.includes('@')) {
@@ -457,6 +493,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } catch (error) {
         console.error('Logout error:', error);
       }
+    }
+
+    try {
+      const onlineList: string[] = JSON.parse(localStorage.getItem('nexus_online_users') || '[]');
+      const myDoc = user?.cedula;
+      const myEmail = user?.email?.toLowerCase();
+      const myId = user?.id;
+      const updated = onlineList.filter((k) => k !== myDoc && k !== myEmail && k !== myId);
+      localStorage.setItem('nexus_online_users', JSON.stringify(updated));
+    } catch {
+      // Ignore
     }
     
     clearSessionStorage();

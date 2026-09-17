@@ -6,7 +6,9 @@ import { PacienteDetailModal } from "./components/PacienteDetailModal";
 import {
   PACIENTES_STORAGE_KEY,
   type Paciente,
+  isPatientOnline,
 } from "../../types/pacientes";
+import { useAuth } from "../auth/AuthContext";
 import { patientService } from "../../api/patientService";
 import { personService } from "../../api/personService";
 import { areGuidsEqual } from "../../utils/roleUtils";
@@ -34,6 +36,7 @@ const isSystemOrAdminAccount = (item: { nombre?: string; name?: string; correo?:
 
 export function PacientesView() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -180,20 +183,12 @@ export function PacientesView() {
   }, [pacientes]);
 
   const activosCount = useMemo(() => {
-    return clinicalPatients.filter(
-      (p) =>
-        p.estado?.toLowerCase() === "activo" ||
-        ((p as any).isActive !== false && p.estado?.toLowerCase() !== "inactivo")
-    ).length;
-  }, [clinicalPatients]);
+    return clinicalPatients.filter((p) => isPatientOnline(p, user)).length;
+  }, [clinicalPatients, user]);
 
   const inactivosCount = useMemo(() => {
-    return clinicalPatients.filter(
-      (p) =>
-        p.estado?.toLowerCase() === "inactivo" ||
-        (p as any).isActive === false
-    ).length;
-  }, [clinicalPatients]);
+    return clinicalPatients.filter((p) => !isPatientOnline(p, user)).length;
+  }, [clinicalPatients, user]);
 
   const conCitasCount = useMemo(() => {
     return clinicalPatients.filter((p) => Boolean(p.proximaCita)).length;
@@ -202,19 +197,11 @@ export function PacientesView() {
   const pacientesFiltrados = useMemo(() => {
     let result = clinicalPatients;
 
-    // Filtro por tab activo
+    // Filtro por tab activo (En línea vs Desconectados según sesión real)
     if (activeTab === "activos") {
-      result = result.filter(
-        (p) =>
-          p.estado?.toLowerCase() === "activo" ||
-          ((p as any).isActive !== false && p.estado?.toLowerCase() !== "inactivo")
-      );
+      result = result.filter((p) => isPatientOnline(p, user));
     } else if (activeTab === "inactivos") {
-      result = result.filter(
-        (p) =>
-          p.estado?.toLowerCase() === "inactivo" ||
-          (p as any).isActive === false
-      );
+      result = result.filter((p) => !isPatientOnline(p, user));
     } else if (activeTab === "citas") {
       result = result.filter((p) => Boolean(p.proximaCita));
     }
@@ -228,7 +215,7 @@ export function PacientesView() {
         paciente.documento.includes(query) ||
         paciente.telefono.includes(query)
     );
-  }, [clinicalPatients, debouncedSearch, activeTab]);
+  }, [clinicalPatients, debouncedSearch, activeTab, user]);
 
   const totalPages = Math.max(1, Math.ceil(pacientesFiltrados.length / ITEMS_PER_PAGE));
 
@@ -240,62 +227,6 @@ export function PacientesView() {
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
-    }
-  };
-
-  const handleToggleEstado = async (paciente: Paciente) => {
-    const isActivo =
-      paciente.estado?.toLowerCase() === "activo" ||
-      ((paciente as any).isActive !== false && paciente.estado?.toLowerCase() !== "inactivo");
-    const nuevoEstado = isActivo ? "Inactivo" : "Activo";
-    const nuevoIsActive = !isActivo;
-
-    // Actualización optimista del estado local
-    setPacientes((prev) =>
-      prev.map((p) =>
-        p.id === paciente.id || (p.patientId && p.patientId === paciente.patientId)
-          ? { ...p, estado: nuevoEstado, isActive: nuevoIsActive }
-          : p
-      )
-    );
-
-    if (
-      selectedPaciente &&
-      (selectedPaciente.id === paciente.id || selectedPaciente.patientId === paciente.patientId)
-    ) {
-      setSelectedPaciente((prev) => (prev ? { ...prev, estado: nuevoEstado, isActive: nuevoIsActive } : null));
-    }
-
-    // Sincronizar con API
-    if (paciente.patientId) {
-      try {
-        await patientService.update(paciente.patientId, { isActive: nuevoIsActive });
-      } catch (err) {
-        console.warn("No se pudo actualizar estado en API:", err);
-      }
-    }
-
-    // Sincronizar con almacenamiento local
-    try {
-      const raw = localStorage.getItem(PACIENTES_STORAGE_KEY);
-      if (raw) {
-        const list = JSON.parse(raw);
-        if (Array.isArray(list)) {
-          const updated = list.map((item: any) => {
-            if (
-              item.id === paciente.id ||
-              item.patientId === paciente.patientId ||
-              item.documento === paciente.documento
-            ) {
-              return { ...item, estado: nuevoEstado, isActive: nuevoIsActive };
-            }
-            return item;
-          });
-          localStorage.setItem(PACIENTES_STORAGE_KEY, JSON.stringify(updated));
-        }
-      }
-    } catch {
-      // Ignore
     }
   };
 
@@ -408,7 +339,7 @@ export function PacientesView() {
                   : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
               }`}
             >
-              Activos ({activosCount})
+              En Línea ({activosCount})
             </button>
 
             <button
@@ -416,11 +347,11 @@ export function PacientesView() {
               onClick={() => { setActiveTab("inactivos"); setCurrentPage(1); }}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
                 activeTab === "inactivos"
-                  ? "bg-rose-500/15 dark:bg-rose-500/30 text-rose-800 dark:text-rose-200 border border-rose-500/30 dark:border-rose-400/40 shadow-sm"
+                  ? "bg-slate-500/15 dark:bg-slate-500/30 text-slate-800 dark:text-slate-200 border border-slate-500/30 dark:border-slate-400/40 shadow-sm"
                   : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
               }`}
             >
-              Inactivos ({inactivosCount})
+              Desconectados ({inactivosCount})
             </button>
 
             <button
@@ -499,7 +430,6 @@ export function PacientesView() {
         <PacienteDetailModal
           paciente={selectedPaciente}
           onClose={() => setSelectedPaciente(null)}
-          onToggleEstado={handleToggleEstado}
         />
       )}
     </div>
