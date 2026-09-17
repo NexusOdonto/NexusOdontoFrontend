@@ -587,7 +587,7 @@ export function UsuariosView() {
       </div>
 
       {/* Barra de Búsqueda y Filtros */}
-      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 pt-2 animate-slideUp animate-stagger-1">
+      <div className="relative z-30 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 pt-2 animate-slideUp animate-stagger-1">
         <div className="relative flex-1">
           <Search size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           <input
@@ -599,7 +599,7 @@ export function UsuariosView() {
           />
         </div>
 
-        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+        <div className="relative z-30 flex flex-wrap sm:flex-nowrap items-center gap-2">
           <GlassSelect
             value={rol}
             onChange={handleRolChange}
@@ -628,7 +628,7 @@ export function UsuariosView() {
       </div>
 
       {/* Tabla Principal de Usuarios */}
-      <div className="rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl shadow-md overflow-hidden animate-slideUp animate-stagger-2 flex flex-col min-h-[460px]">
+      <div className="relative z-10 rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl shadow-md overflow-hidden animate-slideUp animate-stagger-2 flex flex-col min-h-[460px]">
         <UsuariosTable
           usuarios={usuariosPagina}
           loading={loading}

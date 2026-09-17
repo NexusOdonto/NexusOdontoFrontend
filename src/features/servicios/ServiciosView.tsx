@@ -558,7 +558,7 @@ export function ServiciosView() {
         </div>
 
         {/* Acciones de barra: Selector de orden, Filtros avanzados y Switch Vista */}
-        <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="relative z-30 flex items-center gap-2.5 flex-wrap">
           {/* Ordenar */}
           <GlassSelect
             value={orden}

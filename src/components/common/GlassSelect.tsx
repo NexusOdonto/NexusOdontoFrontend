@@ -46,7 +46,7 @@ export function GlassSelect({
   const displayText = selectedOption ? selectedOption.label : placeholder;
 
   return (
-    <div ref={containerRef} className="relative inline-block text-left">
+    <div ref={containerRef} className={`relative inline-block text-left ${isOpen ? "z-[60]" : "z-10"}`}>
       <button
         type="button"
         disabled={disabled}
@@ -68,7 +68,7 @@ export function GlassSelect({
       {isOpen && (
         <div
           role="listbox"
-          className={`absolute left-0 sm:right-auto mt-2 min-w-[190px] w-max max-w-xs p-1.5 rounded-2xl bg-white/95 dark:bg-slate-900/98 border border-slate-200/90 dark:border-white/15 shadow-[0_20px_50px_rgba(0,0,0,0.6)] backdrop-blur-2xl z-50 animate-scaleIn space-y-1 max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 ${dropdownClassName}`}
+          className={`absolute left-0 sm:right-auto mt-2 min-w-[190px] w-max max-w-xs p-1.5 rounded-2xl bg-white/95 dark:bg-slate-900/98 border border-slate-200/90 dark:border-white/15 shadow-[0_20px_50px_rgba(0,0,0,0.6)] backdrop-blur-2xl z-[9999] animate-scaleIn space-y-1 max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 ${dropdownClassName}`}
         >
           {options.map((option) => {
             const isSelected = String(option.value) === String(value);
