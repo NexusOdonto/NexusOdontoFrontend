@@ -75,7 +75,9 @@ export function PacientesView() {
           if (!seenIdentifiers.has(key)) {
             seenIdentifiers.add(key);
             combinedPacientes.push({
-              id: combinedPacientes.length + 1,
+              id: p.id || combinedPacientes.length + 1,
+              patientId: p.id,
+              personId: p.personId,
               nombre: fullName,
               documento: doc,
               telefono: tel,
@@ -101,7 +103,7 @@ export function PacientesView() {
           try {
             const parsed = JSON.parse(raw);
             const list = Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
-            list.forEach((item: any) => {
+            list.forEach((item: any, itemIdx: number) => {
               const fullName = item.nombre || (item.nombres ? `${item.nombres} ${item.apellidos || ""}`.trim() : (item.name || (item.firstName ? `${item.firstName} ${item.lastName || ""}`.trim() : "")));
               const doc = item.documento || item.documentNumber || item.cedula || "";
               const tel = item.telefono || item.phone || item.mobile || "";
@@ -116,7 +118,9 @@ export function PacientesView() {
               if (fullName && !seenIdentifiers.has(key)) {
                 seenIdentifiers.add(key);
                 combinedPacientes.unshift({
-                  id: combinedPacientes.length + 1,
+                  id: item.patientId || item.id || `local-pt-${itemIdx}-${Date.now()}`,
+                  patientId: item.patientId || (typeof item.id === "string" && item.id.length > 8 ? item.id : undefined),
+                  personId: item.personId,
                   nombre: fullName,
                   documento: doc,
                   telefono: tel,

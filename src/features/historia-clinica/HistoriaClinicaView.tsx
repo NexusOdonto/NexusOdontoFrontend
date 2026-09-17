@@ -27,7 +27,7 @@ import {
   CheckSquare,
   Square,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { clinicalHistoryService, type DiagnosisResponseDto, type ProcedurePerformedResponseDto, type CreateClinicalAttentionRequestDto } from "../../api/clinicalHistoryService";
 import { patientService, type PatientResponseDto } from "../../api/patientService";
 import { personService } from "../../api/personService";
@@ -68,6 +68,18 @@ const LICENSED_DENTISTS_FALLBACK = [
 
 export function HistoriaClinicaView() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const navState = location.state as {
+    patientId?: string;
+    patientName?: string;
+    patientDocument?: string;
+  } | null;
+
+  const targetPatientId = navState?.patientId || searchParams.get("patientId") || searchParams.get("pacienteId");
+  const targetPatientDoc = navState?.patientDocument || searchParams.get("documento") || searchParams.get("cedula");
+  const targetPatientName = navState?.patientName || searchParams.get("paciente") || searchParams.get("patientName");
+
   const { user } = useAuth();
   const role = getUserRole(user);
   const isPaciente = role === "PACIENTE";
@@ -220,8 +232,24 @@ export function HistoriaClinicaView() {
         }
 
         setPatients(enriched);
-        if (!isPaciente && !selectedPatientId && enriched.length > 0) {
-          setSelectedPatientId(String(enriched[0].id));
+        if (!isPaciente && enriched.length > 0) {
+          if (targetPatientId || targetPatientDoc || targetPatientName) {
+            const found = enriched.find((p) =>
+              (targetPatientId && (areGuidsEqual(p.id, targetPatientId) || String(p.id) === String(targetPatientId))) ||
+              (targetPatientDoc && String(p.documentNumber).trim().toLowerCase() === String(targetPatientDoc).trim().toLowerCase()) ||
+              (targetPatientName && `${p.firstName} ${p.lastName}`.toLowerCase().trim() === targetPatientName.toLowerCase().trim()) ||
+              (targetPatientName && `${p.firstName} ${p.lastName}`.toLowerCase().includes(targetPatientName.toLowerCase()))
+            );
+            if (found) {
+              setSelectedPatientId(String(found.id));
+            } else if (targetPatientId) {
+              setSelectedPatientId(String(targetPatientId));
+            } else if (!selectedPatientId) {
+              setSelectedPatientId(String(enriched[0].id));
+            }
+          } else if (!selectedPatientId) {
+            setSelectedPatientId(String(enriched[0].id));
+          }
         }
       } else {
         if (isPaciente) {
@@ -272,11 +300,27 @@ export function HistoriaClinicaView() {
     } finally {
       setLoading(false);
     }
-  }, [selectedPatientId, isPaciente, user]);
+  }, [selectedPatientId, isPaciente, user, targetPatientId, targetPatientDoc, targetPatientName]);
 
   useEffect(() => {
     fetchPatients();
   }, [fetchPatients]);
+
+  // Reactividad inmediata al cambiar de navegación o paciente
+  useEffect(() => {
+    if (isPaciente || patients.length === 0) return;
+    if (targetPatientId || targetPatientDoc || targetPatientName) {
+      const found = patients.find((p) =>
+        (targetPatientId && (areGuidsEqual(p.id, targetPatientId) || String(p.id) === String(targetPatientId))) ||
+        (targetPatientDoc && String(p.documentNumber).trim().toLowerCase() === String(targetPatientDoc).trim().toLowerCase()) ||
+        (targetPatientName && `${p.firstName} ${p.lastName}`.toLowerCase().trim() === targetPatientName.toLowerCase().trim()) ||
+        (targetPatientName && `${p.firstName} ${p.lastName}`.toLowerCase().includes(targetPatientName.toLowerCase()))
+      );
+      if (found && String(found.id) !== String(selectedPatientId)) {
+        setSelectedPatientId(String(found.id));
+      }
+    }
+  }, [location.key, targetPatientId, targetPatientDoc, targetPatientName, patients, isPaciente, selectedPatientId]);
 
   const selectedPatient = useMemo(() => {
     if (!selectedPatientId) return null;
@@ -1073,14 +1117,33 @@ export function HistoriaClinicaView() {
               <div className="pt-2 border-t border-slate-200/80 dark:border-white/10 flex items-center justify-between text-xs">
                 <button
                   type="button"
-                  onClick={() => navigate("/citas")}
+                  onClick={() => {
+                    const fullName = `${selectedPatient.firstName} ${selectedPatient.lastName}`.trim();
+                    navigate(`/citas?action=agendar&paciente=${encodeURIComponent(fullName)}&cedula=${encodeURIComponent(selectedPatient.documentNumber || "")}&pacienteId=${encodeURIComponent(selectedPatient.id)}`, {
+                      state: {
+                        openAgendar: true,
+                        paciente: fullName,
+                        pacienteCedula: selectedPatient.documentNumber,
+                        pacienteId: selectedPatient.id,
+                      },
+                    });
+                  }}
                   className="inline-flex items-center gap-1 font-semibold text-cyan-700 dark:text-cyan-300 hover:underline cursor-pointer"
                 >
                   <Calendar size={13} /> Agendar Cita
                 </button>
                 <button
                   type="button"
-                  onClick={() => navigate("/odontograma")}
+                  onClick={() => {
+                    const fullName = `${selectedPatient.firstName} ${selectedPatient.lastName}`.trim();
+                    navigate(`/odontograma?pacienteId=${encodeURIComponent(selectedPatient.id)}&documento=${encodeURIComponent(selectedPatient.documentNumber || "")}&paciente=${encodeURIComponent(fullName)}`, {
+                      state: {
+                        patientId: selectedPatient.id,
+                        patientName: fullName,
+                        patientDocument: selectedPatient.documentNumber,
+                      },
+                    });
+                  }}
                   className="inline-flex items-center gap-1 font-semibold text-cyan-700 dark:text-cyan-300 hover:underline cursor-pointer"
                 >
                   <Smile size={13} /> Odontograma
@@ -1099,11 +1162,29 @@ export function HistoriaClinicaView() {
                     { title: "Evoluciones", tag: `${attentions.length}` },
                     { title: "Diagnósticos", tag: "CIE-10" },
                   ]}
-                  onCardClick={() => navigate("/odontograma")}
+                  onCardClick={() => {
+                    const fullName = `${selectedPatient.firstName} ${selectedPatient.lastName}`.trim();
+                    navigate(`/odontograma?pacienteId=${encodeURIComponent(selectedPatient.id)}&documento=${encodeURIComponent(selectedPatient.documentNumber || "")}&paciente=${encodeURIComponent(fullName)}`, {
+                      state: {
+                        patientId: selectedPatient.id,
+                        patientName: fullName,
+                        patientDocument: selectedPatient.documentNumber,
+                      },
+                    });
+                  }}
                 />
                 <button
                   type="button"
-                  onClick={() => navigate("/odontograma")}
+                  onClick={() => {
+                    const fullName = `${selectedPatient.firstName} ${selectedPatient.lastName}`.trim();
+                    navigate(`/odontograma?pacienteId=${encodeURIComponent(selectedPatient.id)}&documento=${encodeURIComponent(selectedPatient.documentNumber || "")}&paciente=${encodeURIComponent(fullName)}`, {
+                      state: {
+                        patientId: selectedPatient.id,
+                        patientName: fullName,
+                        patientDocument: selectedPatient.documentNumber,
+                      },
+                    });
+                  }}
                   className="text-[11px] font-bold text-teal-600 dark:text-teal-400 hover:underline cursor-pointer"
                 >
                   Ver Odontograma Interactivo →

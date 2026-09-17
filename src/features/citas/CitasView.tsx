@@ -6,8 +6,8 @@ import {
   CheckCircle2,
   Trash2,
 } from "lucide-react";
-import { useEffect, useMemo, useState, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { useSearchParams, useLocation } from "react-router-dom";
 
 import { CitasTable } from "./components/CitasTable";
 import { type Cita, type EstadoCita } from "./types";
@@ -59,7 +59,18 @@ const citasFallback: Cita[] = [];
 export function CitasView() {
   const { user } = useAuth();
   const { refreshNotifications } = useNotifications();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
+  const navState = location.state as {
+    openAgendar?: boolean;
+    paciente?: string;
+    pacienteCedula?: string;
+    pacienteId?: string;
+    patientName?: string;
+    patientDocument?: string;
+    patientId?: string;
+  } | null;
+  const handledNavKeyRef = useRef<string>("");
   const role = getUserRole(user);
 
   const isPaciente = role === "PACIENTE";
@@ -606,6 +617,66 @@ export function CitasView() {
       if (filterParam === "Completada") setEstadoFiltro("Completada");
     }
   }, [searchParams]);
+
+  // Si se solicita agendar cita directamente para un paciente específico desde Pacientes o Historia Clínica
+  useEffect(() => {
+    const shouldOpen =
+      navState?.openAgendar === true ||
+      searchParams.get("action") === "agendar" ||
+      searchParams.get("agendar") === "true";
+
+    if (!shouldOpen) return;
+    if (handledNavKeyRef.current === location.key) return;
+    handledNavKeyRef.current = location.key;
+
+    const targetPatientName =
+      navState?.paciente ||
+      navState?.patientName ||
+      searchParams.get("paciente") ||
+      searchParams.get("patientName") ||
+      "";
+
+    if (targetPatientName) {
+      setFormPaciente(targetPatientName);
+    } else if (isPaciente && user?.name) {
+      setFormPaciente(user.name);
+    }
+
+    const defaultDate = todayDateString;
+    const defaultHour = getNextValidHour(defaultDate);
+    setFormFecha(defaultDate);
+    setFormHora(defaultHour);
+    setFormMotivo("");
+    setFormError(null);
+
+    if (servicesRaw.length > 0) {
+      if (!selectedServiceId || !servicesRaw.some((s) => areGuidsEqual(s.id, selectedServiceId))) {
+        setSelectedServiceId(servicesRaw[0].id);
+        setFormServicio(servicesRaw[0].name);
+      }
+    }
+
+    if (isOdontologo && user?.name) {
+      const myProf = professionalsOptions.find((p) => p.label.toLowerCase().includes(user.name.toLowerCase()));
+      if (myProf) {
+        setFormProfesional(myProf.label);
+      }
+    }
+
+    setShowRequestModal(true);
+  }, [
+    location.key,
+    navState,
+    searchParams,
+    todayDateString,
+    getNextValidHour,
+    isPaciente,
+    isOdontologo,
+    user,
+    servicesRaw,
+    selectedServiceId,
+    professionalsOptions,
+  ]);
 
   // Helper para normalizar cadenas eliminando tildes y espacios
   const normalizeText = (str?: string) =>

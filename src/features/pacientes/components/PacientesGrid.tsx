@@ -140,7 +140,14 @@ export function PacientesGrid({
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  navigate("/citas");
+                  navigate(`/citas?action=agendar&paciente=${encodeURIComponent(paciente.nombre)}&cedula=${encodeURIComponent(paciente.documento)}&pacienteId=${encodeURIComponent(paciente.patientId || String(paciente.id))}`, {
+                    state: {
+                      openAgendar: true,
+                      paciente: paciente.nombre,
+                      pacienteCedula: paciente.documento,
+                      pacienteId: paciente.patientId || String(paciente.id),
+                    },
+                  });
                 }}
                 className="flex flex-col items-center justify-center gap-1 p-2 rounded-xl bg-slate-100/90 dark:bg-slate-900/75 hover:bg-cyan-50 dark:hover:bg-cyan-500/30 border border-slate-200/80 dark:border-white/20 hover:border-cyan-400/50 text-slate-700 dark:text-slate-200 hover:text-cyan-700 dark:hover:text-white transition-all text-[11px] font-semibold cursor-pointer active:scale-95 shadow-sm"
                 title="Agendar Cita"
@@ -155,7 +162,13 @@ export function PacientesGrid({
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      navigate("/odontograma");
+                      navigate(`/odontograma?pacienteId=${encodeURIComponent(paciente.patientId || String(paciente.id))}&documento=${encodeURIComponent(paciente.documento)}&paciente=${encodeURIComponent(paciente.nombre)}`, {
+                        state: {
+                          patientId: paciente.patientId || String(paciente.id),
+                          patientName: paciente.nombre,
+                          patientDocument: paciente.documento,
+                        },
+                      });
                     }}
                     className="flex flex-col items-center justify-center gap-1 p-2 rounded-xl bg-slate-100/90 dark:bg-slate-900/75 hover:bg-teal-50 dark:hover:bg-teal-500/30 border border-slate-200/80 dark:border-white/20 hover:border-teal-400/50 text-slate-700 dark:text-slate-200 hover:text-teal-700 dark:hover:text-white transition-all text-[11px] font-semibold cursor-pointer active:scale-95 shadow-sm"
                     title="Ver Odontograma"
@@ -168,7 +181,13 @@ export function PacientesGrid({
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      navigate("/historia-clinica");
+                      navigate(`/historia-clinica?pacienteId=${encodeURIComponent(paciente.patientId || String(paciente.id))}&documento=${encodeURIComponent(paciente.documento)}&paciente=${encodeURIComponent(paciente.nombre)}`, {
+                        state: {
+                          patientId: paciente.patientId || String(paciente.id),
+                          patientName: paciente.nombre,
+                          patientDocument: paciente.documento,
+                        },
+                      });
                     }}
                     className="flex flex-col items-center justify-center gap-1 p-2 rounded-xl bg-slate-100/90 dark:bg-slate-900/75 hover:bg-blue-50 dark:hover:bg-blue-500/30 border border-slate-200/80 dark:border-white/20 hover:border-blue-400/50 text-slate-700 dark:text-slate-200 hover:text-blue-700 dark:hover:text-white transition-all text-[11px] font-semibold cursor-pointer active:scale-95 shadow-sm"
                     title="Ver Historia Clínica"

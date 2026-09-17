@@ -109,7 +109,14 @@ export function PacienteDetailModal({ paciente, onClose }: PacienteDetailModalPr
             type="button"
             onClick={() => {
               onClose();
-              navigate("/citas");
+              navigate(`/citas?action=agendar&paciente=${encodeURIComponent(paciente.nombre)}&cedula=${encodeURIComponent(paciente.documento)}&pacienteId=${encodeURIComponent(paciente.patientId || String(paciente.id))}`, {
+                state: {
+                  openAgendar: true,
+                  paciente: paciente.nombre,
+                  pacienteCedula: paciente.documento,
+                  pacienteId: paciente.patientId || String(paciente.id),
+                },
+              });
             }}
             className="group inline-flex items-center gap-2 text-sm font-sans font-bold text-teal-700 dark:text-[#d4a373] hover:text-teal-900 dark:hover:text-[#e6b88a] transition-all cursor-pointer"
           >
@@ -123,7 +130,13 @@ export function PacienteDetailModal({ paciente, onClose }: PacienteDetailModalPr
                 type="button"
                 onClick={() => {
                   onClose();
-                  navigate("/odontograma");
+                  navigate(`/odontograma?pacienteId=${encodeURIComponent(paciente.patientId || String(paciente.id))}&documento=${encodeURIComponent(paciente.documento)}&paciente=${encodeURIComponent(paciente.nombre)}`, {
+                    state: {
+                      patientId: paciente.patientId || String(paciente.id),
+                      patientName: paciente.nombre,
+                      patientDocument: paciente.documento,
+                    },
+                  });
                 }}
                 className="group inline-flex items-center gap-2 text-sm font-sans font-bold text-teal-700 dark:text-[#d4a373] hover:text-teal-900 dark:hover:text-[#e6b88a] transition-all cursor-pointer"
               >
@@ -135,7 +148,13 @@ export function PacienteDetailModal({ paciente, onClose }: PacienteDetailModalPr
                 type="button"
                 onClick={() => {
                   onClose();
-                  navigate("/historia-clinica");
+                  navigate(`/historia-clinica?pacienteId=${encodeURIComponent(paciente.patientId || String(paciente.id))}&documento=${encodeURIComponent(paciente.documento)}&paciente=${encodeURIComponent(paciente.nombre)}`, {
+                    state: {
+                      patientId: paciente.patientId || String(paciente.id),
+                      patientName: paciente.nombre,
+                      patientDocument: paciente.documento,
+                    },
+                  });
                 }}
                 className="group inline-flex items-center gap-2 text-sm font-sans font-bold text-teal-700 dark:text-[#d4a373] hover:text-teal-900 dark:hover:text-[#e6b88a] transition-all cursor-pointer"
               >

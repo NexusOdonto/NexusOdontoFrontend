@@ -397,7 +397,7 @@ export function CitasTable({
                             {isAdmin && (
                               <button
                                 type="button"
-                                onClick={() => navigate("/historia-clinica")}
+                                onClick={() => navigate("/historia-clinica", { state: { patientId: cita.patientId, patientName: cita.paciente, patientDocument: cita.pacienteCedula } })}
                                 className="p-1.5 rounded-xl bg-blue-500/15 hover:bg-blue-500/25 text-blue-700 dark:text-blue-300 border border-blue-500/30 transition-all cursor-pointer active:scale-95"
                                 title="Abrir Historia Clínica"
                               >
@@ -469,7 +469,7 @@ export function CitasTable({
                             </button>
                             <button
                               type="button"
-                              onClick={() => navigate("/historia-clinica")}
+                              onClick={() => navigate("/historia-clinica", { state: { patientId: cita.patientId, patientName: cita.paciente, patientDocument: cita.pacienteCedula } })}
                               className="p-1.5 rounded-xl bg-blue-500/15 hover:bg-blue-500/25 text-blue-700 dark:text-blue-300 border border-blue-500/30 transition-all cursor-pointer active:scale-95"
                               title="Abrir Historia Clínica"
                             >
@@ -611,7 +611,7 @@ export function CitasTable({
                 {!isRecepcionista && (
                   <button
                     type="button"
-                    onClick={() => navigate("/historia-clinica")}
+                    onClick={() => navigate("/historia-clinica", { state: { patientId: cita.patientId, patientName: cita.paciente, patientDocument: cita.pacienteCedula } })}
                     className="py-2 rounded-xl bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30 font-bold text-xs text-center flex items-center justify-center gap-1"
                   >
                     <FileText size={14} />

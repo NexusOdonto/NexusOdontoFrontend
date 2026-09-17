@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo, useEffect, useCallback } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { pdf } from "@react-pdf/renderer";
 import { useTheme } from "../../context/ThemeContext";
 import { OdontogramaGrid } from "./components/OdontogramaGrid";
@@ -235,6 +235,7 @@ function OdontogramaUI() {
   const { user } = useAuth();
   const { theme } = useTheme();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const navState = location.state as {
     appointmentId?: string;
     patientId?: string;
@@ -242,6 +243,10 @@ function OdontogramaUI() {
     patientName?: string;
     patientDocument?: string;
   } | null;
+
+  const targetPatientId = navState?.patientId || searchParams.get("patientId") || searchParams.get("pacienteId");
+  const targetPatientDoc = navState?.patientDocument || searchParams.get("documento") || searchParams.get("cedula");
+  const targetPatientName = navState?.patientName || searchParams.get("paciente") || searchParams.get("patientName");
   const isDarkMode = theme === "dark";
   const userRole = getUserRole(user);
   const isOdontologo = userRole === "ODONTOLOGO";
@@ -352,7 +357,26 @@ function OdontogramaUI() {
         });
 
         setPacientesList(mapped);
-        setSelectedPaciente((prev) => prev || mapped[0]);
+
+        if (targetPatientId || targetPatientDoc || targetPatientName) {
+          const matched = mapped.find((p) =>
+            (targetPatientId && (areGuidsEqual(p.id, targetPatientId) || String(p.id) === String(targetPatientId))) ||
+            (targetPatientDoc && String(p.cedula).trim().toLowerCase() === String(targetPatientDoc).trim().toLowerCase()) ||
+            (targetPatientName && p.nombre.toLowerCase().trim() === targetPatientName.toLowerCase().trim()) ||
+            (targetPatientName && p.nombre.toLowerCase().includes(targetPatientName.toLowerCase()))
+          );
+          if (matched) {
+            setSelectedPaciente(matched);
+          } else {
+            setSelectedPaciente((prev) => prev || (targetPatientId ? {
+              id: targetPatientId,
+              nombre: targetPatientName || "Paciente",
+              cedula: targetPatientDoc || "",
+            } as any : mapped[0]));
+          }
+        } else {
+          setSelectedPaciente((prev) => prev || mapped[0]);
+        }
       }
     } catch (err) {
       console.warn("API Patients unavailable in Odontograma:", err);
@@ -369,15 +393,15 @@ function OdontogramaUI() {
         setSelectedPaciente(fallbackSelf);
       }
     }
-  }, [user, isOdontologo, isPaciente]);
+  }, [user, isOdontologo, isPaciente, targetPatientId, targetPatientDoc, targetPatientName]);
 
   useEffect(() => {
     fetchPacientes();
   }, [fetchPacientes]);
 
-  // Pre-carga automatica de paciente y profesional si se navega desde una Cita
+  // Pre-carga automatica de paciente y profesional si se navega desde una Cita o Directorio
   useEffect(() => {
-    if (!navState) return;
+    if (!navState && !targetPatientId && !targetPatientDoc && !targetPatientName) return;
     async function initFromNavState() {
       if (navState?.appointmentId) {
         try {
@@ -400,20 +424,48 @@ function OdontogramaUI() {
         }
       }
 
-      if (navState?.patientId) {
-        setSelectedPaciente((prev) => ({
-          id: navState.patientId!,
-          nombre: navState.patientName || prev?.nombre || "Paciente",
-          cedula: navState.patientDocument || prev?.cedula || "",
-          clinicalHistoryId: prev?.clinicalHistoryId,
-        }));
+      if (targetPatientId || targetPatientDoc || targetPatientName) {
+        const matched = pacientesList.find((p) =>
+          (targetPatientId && (areGuidsEqual(p.id, targetPatientId) || String(p.id) === String(targetPatientId))) ||
+          (targetPatientDoc && String(p.cedula).trim().toLowerCase() === String(targetPatientDoc).trim().toLowerCase()) ||
+          (targetPatientName && p.nombre.toLowerCase().trim() === targetPatientName.toLowerCase().trim()) ||
+          (targetPatientName && p.nombre.toLowerCase().includes(targetPatientName.toLowerCase()))
+        );
+
+        if (matched) {
+          setSelectedPaciente(matched);
+        } else if (targetPatientId) {
+          setSelectedPaciente((prev) => ({
+            id: targetPatientId!,
+            nombre: targetPatientName || prev?.nombre || "Paciente",
+            cedula: targetPatientDoc || prev?.cedula || "",
+            clinicalHistoryId: prev?.clinicalHistoryId,
+          }));
+        }
       }
+
       if (navState?.professionalId && !isOdontologo && !lockedProfessionalIdRef.current) {
         setSelectedProfessionalId(navState.professionalId);
       }
     }
     initFromNavState();
-  }, [navState, isOdontologo]);
+  }, [navState, targetPatientId, targetPatientDoc, targetPatientName, pacientesList, isOdontologo]);
+
+  // Reactividad inmediata al cambiar de navegación o paciente
+  useEffect(() => {
+    if (isPaciente || pacientesList.length === 0) return;
+    if (targetPatientId || targetPatientDoc || targetPatientName) {
+      const matched = pacientesList.find((p) =>
+        (targetPatientId && (areGuidsEqual(p.id, targetPatientId) || String(p.id) === String(targetPatientId))) ||
+        (targetPatientDoc && String(p.cedula).trim().toLowerCase() === String(targetPatientDoc).trim().toLowerCase()) ||
+        (targetPatientName && p.nombre.toLowerCase().trim() === targetPatientName.toLowerCase().trim()) ||
+        (targetPatientName && p.nombre.toLowerCase().includes(targetPatientName.toLowerCase()))
+      );
+      if (matched && (!selectedPaciente || !areGuidsEqual(selectedPaciente.id, matched.id))) {
+        setSelectedPaciente(matched);
+      }
+    }
+  }, [location.key, targetPatientId, targetPatientDoc, targetPatientName, pacientesList, isPaciente, selectedPaciente]);
 
   // Si el odontólogo ya quedó bloqueado, reafirmar su id (evita overrides tardíos).
   useEffect(() => {
