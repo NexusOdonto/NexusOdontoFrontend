@@ -156,6 +156,13 @@ export function RolesPermisosView() {
     return desc;
   };
 
+  const isAdministratorRole = (rol?: Role | null): boolean => {
+    if (!rol) return false;
+    const code = (rol.code || "").toUpperCase();
+    const name = (rol.name || "").toLowerCase();
+    return code === "ADMINISTRADOR" || code === "ADMIN" || name.includes("administrador") || name.includes("admin");
+  };
+
   const fetchRoles = useCallback(async () => {
     setLoading(true);
     try {
@@ -166,13 +173,19 @@ export function RolesPermisosView() {
             (fb) => fb.code?.toUpperCase() === r.code?.toUpperCase()
           ) || rolesFallback[idx % rolesFallback.length] || rolesFallback[0];
 
+          const isAdmin = isAdministratorRole(r) || isAdministratorRole(fallbackMatch);
+          const allTruePerms = modulosSistema.reduce((acc, m) => {
+            acc[m.id] = { ver: true, crear: true, editar: true, eliminar: true };
+            return acc;
+          }, {} as Record<string, { ver: boolean; crear: boolean; editar: boolean; eliminar: boolean }>);
+
           return {
             id: r.id,
             code: r.code,
             name: translateRoleName(r.code, r.name),
             description: translateRoleDescription(r.description, fallbackMatch?.description),
             isActive: r.isActive,
-            permisos: fallbackMatch?.permisos || {},
+            permisos: isAdmin ? allTruePerms : (fallbackMatch?.permisos || {}),
           };
         });
         setRoles(mapped);
@@ -195,7 +208,7 @@ export function RolesPermisosView() {
   }, [fetchRoles]);
 
   const handleTogglePermission = (moduloId: string, action: "ver" | "crear" | "editar" | "eliminar") => {
-    if (!selectedRole) return;
+    if (!selectedRole || isAdministratorRole(selectedRole)) return;
 
     setRoles((prevRoles) => {
       const updated = prevRoles.map((r) => {
@@ -394,6 +407,15 @@ export function RolesPermisosView() {
                 </div>
               </div>
 
+              {isAdministratorRole(selectedRole) && (
+                <div className="flex items-center gap-2.5 rounded-xl bg-amber-500/10 dark:bg-amber-500/20 border border-amber-500/30 p-3 text-xs text-amber-800 dark:text-amber-200 animate-fadeIn">
+                  <Lock size={15} className="shrink-0 text-amber-600 dark:text-amber-400" />
+                  <span>
+                    <strong>Rol Maestro Protegido:</strong> Los permisos del Administrador del Sistema son permanentes y están protegidos contra desactivación para garantizar la administración continua del sistema.
+                  </span>
+                </div>
+              )}
+
               {/* TABLA DE MATRIZ CRUD */}
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
@@ -419,6 +441,7 @@ export function RolesPermisosView() {
 
                   <tbody className="divide-y divide-slate-200/60 dark:divide-white/10 text-xs">
                     {modulosSistema.map((mod) => {
+                      const isAdmin = isAdministratorRole(selectedRole);
                       const perm = selectedRole.permisos[mod.id] || { ver: false, crear: false, editar: false, eliminar: false };
                       return (
                         <tr key={mod.id} className="hover:bg-cyan-500/5 dark:hover:bg-cyan-400/10 transition-colors">
@@ -427,18 +450,25 @@ export function RolesPermisosView() {
                           </td>
 
                           {(["ver", "crear", "editar", "eliminar"] as const).map((accion) => {
-                            const isAllowed = perm[accion];
+                            const isAllowed = isAdmin ? true : Boolean(perm[accion]);
                             return (
                               <td key={accion} className="px-3 py-3.5 text-center">
                                 <button
                                   type="button"
-                                  onClick={() => handleTogglePermission(mod.id, accion)}
-                                  className={`h-7 w-7 rounded-xl inline-flex items-center justify-center transition-all cursor-pointer ${
-                                    isAllowed
-                                      ? "bg-emerald-500 text-white shadow-sm hover:scale-105 active:scale-95"
-                                      : "bg-slate-200/80 dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:bg-slate-300 dark:hover:bg-slate-700"
+                                  disabled={isAdmin}
+                                  onClick={() => !isAdmin && handleTogglePermission(mod.id, accion)}
+                                  className={`h-7 w-7 rounded-xl inline-flex items-center justify-center transition-all ${
+                                    isAdmin
+                                      ? "bg-emerald-500/85 text-white cursor-not-allowed shadow-sm ring-1 ring-emerald-400/40 opacity-90"
+                                      : isAllowed
+                                      ? "bg-emerald-500 text-white shadow-sm hover:scale-105 active:scale-95 cursor-pointer"
+                                      : "bg-slate-200/80 dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:bg-slate-300 dark:hover:bg-slate-700 cursor-pointer"
                                   }`}
-                                  title={`${isAllowed ? "Permitido" : "Denegado"} - Clic para cambiar`}
+                                  title={
+                                    isAdmin
+                                      ? "Permiso fijo del Administrador (Acceso total protegido)"
+                                      : `${isAllowed ? "Permitido" : "Denegado"} - Clic para cambiar`
+                                  }
                                 >
                                   {isAllowed ? <Check size={14} /> : <X size={14} />}
                                 </button>

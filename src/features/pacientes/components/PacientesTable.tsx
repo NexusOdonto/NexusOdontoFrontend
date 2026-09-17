@@ -100,22 +100,30 @@ export function PacientesTable({
                   </td>
 
                   <td className="px-4 py-3.5 text-right">
-                    <span
-                      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold backdrop-blur-sm border ${
-                        paciente.estado?.toLowerCase() === "activo"
-                          ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-500/30 dark:border-emerald-400/30"
-                          : "bg-slate-500/15 text-slate-700 dark:text-slate-400 border-slate-500/30 dark:border-slate-500/20"
-                      }`}
-                    >
-                      <span
-                        className={`h-1.5 w-1.5 rounded-full ${
-                          paciente.estado?.toLowerCase() === "activo"
-                            ? "bg-emerald-500 dark:bg-emerald-400 animate-pulse"
-                            : "bg-slate-400"
-                        }`}
-                      />
-                      {paciente.estado || "Activo"}
-                    </span>
+                    {(() => {
+                      const isActivo =
+                        paciente.estado?.toLowerCase() === "activo" ||
+                        ((paciente as any).isActive !== false && paciente.estado?.toLowerCase() !== "inactivo");
+
+                      return (
+                        <span
+                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold backdrop-blur-sm border ${
+                            isActivo
+                              ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-500/30 dark:border-emerald-400/30"
+                              : "bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30 dark:border-rose-500/30"
+                          }`}
+                        >
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${
+                              isActivo
+                                ? "bg-emerald-500 dark:bg-emerald-400 animate-pulse"
+                                : "bg-rose-500 dark:bg-rose-400"
+                            }`}
+                          />
+                          {isActivo ? "Activo" : "Inactivo"}
+                        </span>
+                      );
+                    })()}
                   </td>
                 </tr>
               ))

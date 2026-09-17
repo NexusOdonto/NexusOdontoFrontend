@@ -8,15 +8,20 @@ import { UserAvatar } from "../../../components/common/UserAvatar";
 interface PacienteDetailModalProps {
   paciente: Paciente | null;
   onClose: () => void;
+  onToggleEstado?: (paciente: Paciente) => void;
 }
 
-export function PacienteDetailModal({ paciente, onClose }: PacienteDetailModalProps) {
+export function PacienteDetailModal({ paciente, onClose, onToggleEstado }: PacienteDetailModalProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const role = getUserRole(user);
   const isClinicianOrAdmin = role === "ADMINISTRADOR" || role === "ODONTOLOGO";
 
   if (!paciente) return null;
+
+  const isActivo =
+    paciente.estado?.toLowerCase() === "activo" ||
+    ((paciente as any).isActive !== false && paciente.estado?.toLowerCase() !== "inactivo");
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-md animate-fadeIn">
@@ -41,18 +46,45 @@ export function PacienteDetailModal({ paciente, onClose }: PacienteDetailModalPr
               className="h-full w-full object-cover"
               fallbackClassName="h-full w-full flex items-center justify-center font-bold text-2xl sm:text-3xl"
             />
+            <span
+              className={`absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full border-2 border-white dark:border-slate-900 shadow-sm ${
+                isActivo ? "bg-emerald-500 dark:bg-emerald-400" : "bg-rose-500 dark:bg-rose-400"
+              }`}
+            />
           </div>
 
           <div className="space-y-2 flex-1">
-            {/* Nombre prominente + Estado cian sutil */}
-            <div className="flex flex-wrap items-baseline gap-3">
+            {/* Nombre prominente + Estado dinámico */}
+            <div className="flex flex-wrap items-center gap-3">
               <h2 className="font-sans text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
                 {paciente.nombre}
               </h2>
-              <span className="inline-flex items-center gap-1.5 text-xs font-sans font-semibold tracking-wide text-teal-700 dark:text-cyan-300">
-                <span className="h-1.5 w-1.5 rounded-full bg-teal-500 dark:bg-cyan-400 animate-pulse" />
-                {paciente.estado || "Activo"}
-              </span>
+              <div className="flex items-center gap-2">
+                <span
+                  className={`inline-flex items-center gap-1.5 text-xs font-sans font-semibold tracking-wide px-2.5 py-0.5 rounded-full border ${
+                    isActivo
+                      ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-500/30 dark:border-emerald-400/30"
+                      : "bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30 dark:border-rose-500/30"
+                  }`}
+                >
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${
+                      isActivo ? "bg-emerald-500 dark:bg-emerald-400 animate-pulse" : "bg-rose-500 dark:bg-rose-400"
+                    }`}
+                  />
+                  {isActivo ? "Activo" : "Inactivo"}
+                </span>
+
+                {onToggleEstado && isClinicianOrAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => onToggleEstado(paciente)}
+                    className="text-[11px] font-semibold text-cyan-600 dark:text-cyan-400 hover:underline cursor-pointer"
+                  >
+                    {isActivo ? "Desactivar" : "Activar"}
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Datos Personales: Sans Serif muy pequeña con iconos finos */}

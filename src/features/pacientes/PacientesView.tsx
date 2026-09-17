@@ -40,7 +40,7 @@ export function PacientesView() {
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
-  const [activeTab, setActiveTab] = useState<"todos" | "activos" | "citas">("todos");
+  const [activeTab, setActiveTab] = useState<"todos" | "activos" | "inactivos" | "citas">("todos");
   const [selectedPaciente, setSelectedPaciente] = useState<Paciente | null>(null);
 
   const fetchPacientes = useCallback(async () => {
@@ -70,6 +70,15 @@ export function PacientesView() {
             return;
           }
 
+          const rawIsActive = p.isActive !== undefined 
+            ? p.isActive 
+            : ((p as any).status !== undefined 
+                ? ((p as any).status === 1 || (p as any).status === 'Activo' || (p as any).status === 'Active' || (p as any).status === true) 
+                : (person?.isActive !== undefined 
+                    ? person.isActive 
+                    : ((p as any).estado ? String((p as any).estado).toLowerCase() === 'activo' : true)));
+          const resolvedEstado = (rawIsActive === false || (p as any).estado === 'Inactivo' || (p as any).status === 'Inactive' || (p as any).status === 0 || p.isActive === false) ? 'Inactivo' : 'Activo';
+
           const key = (doc || email || fullName).toLowerCase();
 
           if (!seenIdentifiers.has(key)) {
@@ -81,7 +90,7 @@ export function PacientesView() {
               nombre: fullName,
               documento: doc,
               telefono: tel,
-              estado: "Activo",
+              estado: resolvedEstado,
               correo: email,
               fechaNacimiento: person?.dateOfBirth || p.dateOfBirth,
             });
@@ -113,6 +122,13 @@ export function PacientesView() {
                 return;
               }
 
+              const rawIsActive = item.isActive !== undefined 
+                ? item.isActive 
+                : (item.status !== undefined 
+                    ? (item.status === 1 || item.status === 'Activo' || item.status === 'Active' || item.status === true) 
+                    : (item.estado ? item.estado.toLowerCase() === 'activo' : true));
+              const resolvedEstado = (rawIsActive === false || item.estado === 'Inactivo' || item.status === 'Inactive' || item.status === 0 || item.isActive === false) ? 'Inactivo' : 'Activo';
+
               const key = (doc || email || fullName).toLowerCase();
 
               if (fullName && !seenIdentifiers.has(key)) {
@@ -124,7 +140,7 @@ export function PacientesView() {
                   nombre: fullName,
                   documento: doc,
                   telefono: tel,
-                  estado: "Activo",
+                  estado: resolvedEstado,
                   correo: email,
                   fechaNacimiento: item.fechaNacimiento || item.dateOfBirth,
                 });
@@ -163,12 +179,42 @@ export function PacientesView() {
     return pacientes.filter((p) => !isSystemOrAdminAccount(p));
   }, [pacientes]);
 
+  const activosCount = useMemo(() => {
+    return clinicalPatients.filter(
+      (p) =>
+        p.estado?.toLowerCase() === "activo" ||
+        ((p as any).isActive !== false && p.estado?.toLowerCase() !== "inactivo")
+    ).length;
+  }, [clinicalPatients]);
+
+  const inactivosCount = useMemo(() => {
+    return clinicalPatients.filter(
+      (p) =>
+        p.estado?.toLowerCase() === "inactivo" ||
+        (p as any).isActive === false
+    ).length;
+  }, [clinicalPatients]);
+
+  const conCitasCount = useMemo(() => {
+    return clinicalPatients.filter((p) => Boolean(p.proximaCita)).length;
+  }, [clinicalPatients]);
+
   const pacientesFiltrados = useMemo(() => {
     let result = clinicalPatients;
 
     // Filtro por tab activo
     if (activeTab === "activos") {
-      result = result.filter((p) => p.estado?.toLowerCase() === "activo");
+      result = result.filter(
+        (p) =>
+          p.estado?.toLowerCase() === "activo" ||
+          ((p as any).isActive !== false && p.estado?.toLowerCase() !== "inactivo")
+      );
+    } else if (activeTab === "inactivos") {
+      result = result.filter(
+        (p) =>
+          p.estado?.toLowerCase() === "inactivo" ||
+          (p as any).isActive === false
+      );
     } else if (activeTab === "citas") {
       result = result.filter((p) => Boolean(p.proximaCita));
     }
@@ -194,6 +240,62 @@ export function PacientesView() {
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
+    }
+  };
+
+  const handleToggleEstado = async (paciente: Paciente) => {
+    const isActivo =
+      paciente.estado?.toLowerCase() === "activo" ||
+      ((paciente as any).isActive !== false && paciente.estado?.toLowerCase() !== "inactivo");
+    const nuevoEstado = isActivo ? "Inactivo" : "Activo";
+    const nuevoIsActive = !isActivo;
+
+    // Actualización optimista del estado local
+    setPacientes((prev) =>
+      prev.map((p) =>
+        p.id === paciente.id || (p.patientId && p.patientId === paciente.patientId)
+          ? { ...p, estado: nuevoEstado, isActive: nuevoIsActive }
+          : p
+      )
+    );
+
+    if (
+      selectedPaciente &&
+      (selectedPaciente.id === paciente.id || selectedPaciente.patientId === paciente.patientId)
+    ) {
+      setSelectedPaciente((prev) => (prev ? { ...prev, estado: nuevoEstado, isActive: nuevoIsActive } : null));
+    }
+
+    // Sincronizar con API
+    if (paciente.patientId) {
+      try {
+        await patientService.update(paciente.patientId, { isActive: nuevoIsActive });
+      } catch (err) {
+        console.warn("No se pudo actualizar estado en API:", err);
+      }
+    }
+
+    // Sincronizar con almacenamiento local
+    try {
+      const raw = localStorage.getItem(PACIENTES_STORAGE_KEY);
+      if (raw) {
+        const list = JSON.parse(raw);
+        if (Array.isArray(list)) {
+          const updated = list.map((item: any) => {
+            if (
+              item.id === paciente.id ||
+              item.patientId === paciente.patientId ||
+              item.documento === paciente.documento
+            ) {
+              return { ...item, estado: nuevoEstado, isActive: nuevoIsActive };
+            }
+            return item;
+          });
+          localStorage.setItem(PACIENTES_STORAGE_KEY, JSON.stringify(updated));
+        }
+      }
+    } catch {
+      // Ignore
     }
   };
 
@@ -223,20 +325,20 @@ export function PacientesView() {
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-slate-900 dark:text-white">
             Directorio de Pacientes
           </h1>
-          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1 font-medium">
-            Gestión integral de expedientes clínicos, registros y estados de pacientes.
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1">
+            Gestión de fichas clínicas, contacto y estado de pacientes.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <button
             type="button"
             onClick={handleExportCSV}
-            className="inline-flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/30 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-md active:scale-95 text-xs font-semibold shadow-sm"
-            title="Exportar CSV"
+            className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/30 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all text-xs sm:text-sm font-semibold cursor-pointer backdrop-blur-md active:scale-95 shadow-sm"
+            title="Descargar lista en CSV"
           >
-            <Download size={15} className="text-cyan-600 dark:text-cyan-400" />
-            <span className="hidden sm:inline">Exportar CSV</span>
+            <Download size={16} />
+            <span className="hidden sm:inline">Exportar</span>
           </button>
 
           <button
@@ -302,11 +404,23 @@ export function PacientesView() {
               onClick={() => { setActiveTab("activos"); setCurrentPage(1); }}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
                 activeTab === "activos"
-                  ? "bg-cyan-500/15 dark:bg-cyan-500/30 text-cyan-800 dark:text-cyan-200 border border-cyan-500/30 dark:border-cyan-400/40 shadow-sm"
+                  ? "bg-emerald-500/15 dark:bg-emerald-500/30 text-emerald-800 dark:text-emerald-200 border border-emerald-500/30 dark:border-emerald-400/40 shadow-sm"
                   : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
               }`}
             >
-              Activos
+              Activos ({activosCount})
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { setActiveTab("inactivos"); setCurrentPage(1); }}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === "inactivos"
+                  ? "bg-rose-500/15 dark:bg-rose-500/30 text-rose-800 dark:text-rose-200 border border-rose-500/30 dark:border-rose-400/40 shadow-sm"
+                  : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              Inactivos ({inactivosCount})
             </button>
 
             <button
@@ -318,7 +432,7 @@ export function PacientesView() {
                   : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
               }`}
             >
-              Con Citas
+              Con Citas ({conCitasCount})
             </button>
           </div>
         </div>
@@ -385,9 +499,9 @@ export function PacientesView() {
         <PacienteDetailModal
           paciente={selectedPaciente}
           onClose={() => setSelectedPaciente(null)}
+          onToggleEstado={handleToggleEstado}
         />
       )}
     </div>
   );
 }
-
