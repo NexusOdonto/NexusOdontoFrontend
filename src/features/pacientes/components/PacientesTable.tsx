@@ -22,7 +22,7 @@ export function PacientesTable({
 }: PacientesTableProps) {
 
   return (
-    <section className="min-w-0 max-w-full rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl shadow-md dark:shadow-2xl p-5 sm:p-6 transition-all duration-300">
+    <section className="min-w-0 max-w-full rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl shadow-md dark:shadow-2xl p-5 sm:p-6 transition-all duration-300 flex flex-col justify-between min-h-[460px]">
       {/* HEADER DE LA LISTA */}
       <div className="mb-4 flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 pb-3">
         <div className="flex items-center gap-2">
@@ -36,10 +36,10 @@ export function PacientesTable({
       </div>
 
       {/* TABLA MINIMALISTA */}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto flex-1">
         <table className="w-full text-left">
           <thead>
-            <tr className="border-b border-slate-200/80 dark:border-white/10 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <tr className="h-10 border-b border-slate-200/80 dark:border-white/10 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               <th className="px-4 py-3">Nombre</th>
               <th className="px-4 py-3">Documento</th>
               <th className="px-4 py-3">Teléfono</th>
@@ -73,7 +73,7 @@ export function PacientesTable({
                 <tr
                   key={paciente.id}
                   onClick={() => onSelectPaciente?.(paciente)}
-                  className={`group cursor-pointer transition-colors hover:bg-slate-100/90 dark:hover:bg-white/10 animate-fadeIn animate-stagger-${(idx % 6) + 1}`}
+                  className={`group h-[60px] cursor-pointer transition-colors hover:bg-slate-100/90 dark:hover:bg-white/10 animate-fadeIn animate-stagger-${(idx % 6) + 1}`}
                 >
                   <td className="px-4 py-3.5">
                     <div className="flex items-center gap-3">
@@ -142,7 +142,7 @@ export function PacientesTable({
 
       {/* PAGINACIÓN MINIMALISTA */}
       {!loading && pacientes.length > 0 && totalPages > 1 && (
-        <div className="mt-6 flex items-center justify-between border-t border-slate-200/80 dark:border-white/10 pt-4">
+        <div className="mt-auto flex items-center justify-between border-t border-slate-200/80 dark:border-white/10 pt-4">
           <span className="text-xs text-slate-600 dark:text-slate-400">
             Página <strong className="text-slate-900 dark:text-white">{currentPage}</strong> de{" "}
             <strong className="text-slate-900 dark:text-white">{totalPages}</strong>

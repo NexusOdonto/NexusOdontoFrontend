@@ -204,6 +204,8 @@ interface PacienteItem {
   cedula: string;
   personId?: string;
   clinicalHistoryId?: string;
+  fotoUrl?: string;
+  avatarUrl?: string;
 }
 
 interface ProfesionalItem {
@@ -213,6 +215,8 @@ interface ProfesionalItem {
   personId?: string;
   documentNumber?: string;
   email?: string;
+  fotoUrl?: string;
+  avatarUrl?: string;
 }
 
 function matchLoggedInProfessional(
@@ -269,7 +273,9 @@ function OdontogramaUI() {
   const [errorToast, setErrorToast] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isPatientDropdownOpen, setIsPatientDropdownOpen] = useState(false);
+  const [isDoctorDropdownOpen, setIsDoctorDropdownOpen] = useState(false);
   const patientDropdownRef = useRef<HTMLDivElement>(null);
+  const doctorDropdownRef = useRef<HTMLDivElement>(null);
 
   // Cargar lista dinámica de pacientes y profesionales desde API
   const fetchPacientes = useCallback(async () => {
@@ -293,6 +299,8 @@ function OdontogramaUI() {
             personId: pr.personId,
             documentNumber: pr.documentNumber,
             email: pr.email,
+            fotoUrl: pr.fotoUrl || pr.avatarUrl || pr.avatar,
+            avatarUrl: pr.avatarUrl || pr.fotoUrl || pr.avatar,
           };
         });
         setProfesionalesList(mappedProfs);
@@ -334,6 +342,8 @@ function OdontogramaUI() {
               nombre: userName,
               cedula: userDoc || found.documentNumber || "",
               clinicalHistoryId: history?.id,
+              fotoUrl: user?.avatarUrl || user?.avatar || (found as any).fotoUrl || (found as any).avatarUrl,
+              avatarUrl: user?.avatarUrl || user?.avatar || (found as any).avatarUrl || (found as any).fotoUrl,
             };
           }
         }
@@ -343,6 +353,8 @@ function OdontogramaUI() {
           personId: user?.personId || user?.id || "person-self",
           nombre: userName,
           cedula: userDoc || "1098765432",
+          fotoUrl: user?.avatarUrl || user?.avatar,
+          avatarUrl: user?.avatarUrl || user?.avatar,
         };
 
         setPacientesList([selfPt]);
@@ -353,7 +365,16 @@ function OdontogramaUI() {
           const fullName = person ? `${person.firstName} ${person.lastName}` : (p.firstName ? `${p.firstName} ${p.lastName}` : `Paciente #${idx + 1}`);
           const doc = person?.documentNumber || p.documentNumber || `10${idx}8765432`;
           const history = historiesData.find((h: any) => areGuidsEqual(h.patientId, p.id));
-          return { id: p.id, personId: p.personId, nombre: fullName, cedula: doc, clinicalHistoryId: history?.id } as any;
+          const avatar = (person as any)?.fotoUrl || (person as any)?.avatarUrl || (p as any)?.fotoUrl || (p as any)?.avatarUrl;
+          return {
+            id: p.id,
+            personId: p.personId,
+            nombre: fullName,
+            cedula: doc,
+            clinicalHistoryId: history?.id,
+            fotoUrl: avatar,
+            avatarUrl: avatar,
+          } as any;
         });
 
         setPacientesList(mapped);
@@ -473,7 +494,7 @@ function OdontogramaUI() {
     setSelectedProfessionalId(lockedProfessionalIdRef.current);
   }, [isOdontologo, profesionalesList]);
 
-  // Cerrar dropdown de paciente al hacer clic fuera
+  // Cerrar dropdowns de paciente y odontólogo al hacer clic fuera
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -481,6 +502,12 @@ function OdontogramaUI() {
         !patientDropdownRef.current.contains(event.target as Node)
       ) {
         setIsPatientDropdownOpen(false);
+      }
+      if (
+        doctorDropdownRef.current &&
+        !doctorDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsDoctorDropdownOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -1029,6 +1056,14 @@ function OdontogramaUI() {
     return { counts, totalPathologies, totalTeeth: teethList.length };
   }, [state.teeth, currentQuadrants]);
 
+  const currentDoctor = useMemo(() => {
+    return (
+      profesionalesList.find((pr) => pr.id === selectedProfessionalId) ||
+      (isOdontologo ? matchLoggedInProfessional(profesionalesList, user) : null) ||
+      null
+    );
+  }, [profesionalesList, selectedProfessionalId, isOdontologo, user]);
+
   return (
     <div className="space-y-6 text-slate-900 dark:text-slate-100 pb-8">
       {/* Toasts (CAPA SUPERIOR ABSOLUTA z-[99999] EN ESQUINA INFERIOR DERECHA) */}
@@ -1073,7 +1108,7 @@ function OdontogramaUI() {
               <div className="h-8 w-8 rounded-xl overflow-hidden border border-cyan-500/40 dark:border-cyan-400/50 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform bg-slate-100 dark:bg-slate-900">
                 <UserAvatar
                   name={isPaciente ? (user?.name || selectedPaciente?.nombre) : (selectedPaciente?.nombre || "Paciente")}
-                  avatar={isPaciente ? (user?.avatarUrl || user?.avatar) : undefined}
+                  avatar={isPaciente ? (user?.avatarUrl || user?.avatar) : (selectedPaciente?.fotoUrl || selectedPaciente?.avatarUrl)}
                   size="sm"
                 />
               </div>
@@ -1106,40 +1141,58 @@ function OdontogramaUI() {
 
             {/* Menú Desplegable Personalizado (Solo para profesionales y admins) */}
             {!isPaciente && isPatientDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-72 p-2 rounded-2xl bg-white/95 dark:bg-slate-900/98 border border-slate-200/90 dark:border-white/15 shadow-[0_20px_50px_rgba(0,0,0,0.6)] backdrop-blur-2xl z-50 animate-scaleIn space-y-1">
+              <div className="absolute right-0 mt-2 w-72 sm:w-80 p-2 rounded-2xl bg-white/95 dark:bg-slate-900/98 border border-slate-200/90 dark:border-white/15 shadow-[0_20px_50px_rgba(0,0,0,0.6)] backdrop-blur-2xl z-50 animate-scaleIn space-y-1">
                 <div className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-white/5">
                   Seleccionar Paciente
                 </div>
-                {pacientesList.map((pac) => {
-                  const isSelected = selectedPaciente ? pac.id === selectedPaciente.id : false;
-                  return (
-                    <button
-                      key={pac.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedPaciente(pac);
-                        setIsPatientDropdownOpen(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer text-left ${
-                        isSelected
-                          ? "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30"
-                          : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5"
-                      }`}
-                    >
-                      <div className="flex flex-col">
-                        <span className="font-bold text-slate-900 dark:text-white">
-                          {pac.nombre}
-                        </span>
-                        <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
-                          CC: {pac.cedula}
-                        </span>
-                      </div>
-                      {isSelected && (
-                        <CheckCircle2 size={15} className="text-cyan-500 flex-shrink-0" />
-                      )}
-                    </button>
-                  );
-                })}
+                <div className="max-h-[200px] overflow-y-auto space-y-1 pr-1 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700">
+                  {pacientesList.length === 0 ? (
+                    <div className="px-3 py-4 text-center text-xs text-slate-400">
+                      No hay pacientes registrados
+                    </div>
+                  ) : (
+                    pacientesList.map((pac) => {
+                      const isSelected = selectedPaciente ? pac.id === selectedPaciente.id : false;
+                      return (
+                        <button
+                          key={pac.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedPaciente(pac);
+                            setIsPatientDropdownOpen(false);
+                          }}
+                          className={`w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer text-left ${
+                            isSelected
+                              ? "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30"
+                              : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                            <div className="h-7 w-7 rounded-lg overflow-hidden border border-cyan-500/30 flex items-center justify-center flex-shrink-0 bg-slate-100 dark:bg-slate-900">
+                              <UserAvatar
+                                name={pac.nombre}
+                                avatar={pac.fotoUrl || pac.avatarUrl}
+                                size="sm"
+                                className="h-full w-full object-cover"
+                              />
+                            </div>
+                            <div className="flex flex-col min-w-0 flex-1">
+                              <span className="font-bold text-slate-900 dark:text-white truncate">
+                                {pac.nombre}
+                              </span>
+                              <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 truncate">
+                                CC: {pac.cedula}
+                              </span>
+                            </div>
+                          </div>
+                          {isSelected && (
+                            <CheckCircle2 size={15} className="text-cyan-500 flex-shrink-0" />
+                          )}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -1160,39 +1213,111 @@ function OdontogramaUI() {
               </div>
             ) : (
               <>
-                {/* Selector de Profesional Responsable — bloqueado si el usuario es odontólogo */}
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-white/80 dark:bg-slate-900/70 border border-slate-200/80 dark:border-white/10 rounded-2xl backdrop-blur-2xl shadow-lg shadow-slate-900/5 dark:shadow-[0_12px_36px_rgba(0,0,0,0.5)] h-[46px]">
-                  <ShieldCheck size={16} className="text-teal-600 dark:text-teal-400 flex-shrink-0" />
-                  <div className="flex flex-col flex-1 min-w-0">
-                    <span className="text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-400 font-bold leading-none mb-0.5">
-                      Odontólogo Responsable
-                    </span>
-                    {isOdontologo ? (
-                      <span
-                        className="text-xs font-bold text-slate-900 dark:text-white truncate"
-                        title="Como odontólogo logueado, tú eres el responsable de este odontograma"
-                      >
-                        {profesionalesList.find((pr) => pr.id === selectedProfessionalId)?.nombre ||
-                          user?.name ||
-                          "Tu sesión"}
+                {/* Selector de Profesional Responsable — réplica visual del selector de paciente con avatares */}
+                <div ref={doctorDropdownRef} className="relative z-40">
+                  <button
+                    type="button"
+                    onClick={!isOdontologo ? () => setIsDoctorDropdownOpen((prev) => !prev) : undefined}
+                    className={`flex items-center gap-3 px-4 py-2.5 bg-white/80 dark:bg-slate-900/70 border border-slate-200/80 dark:border-white/10 rounded-2xl backdrop-blur-2xl shadow-lg shadow-slate-900/5 dark:shadow-[0_12px_36px_rgba(0,0,0,0.5)] text-xs font-bold transition-all h-[46px] w-full ${
+                      isOdontologo
+                        ? "cursor-default"
+                        : "hover:bg-white dark:hover:bg-slate-900/90 hover:border-teal-500/40 dark:hover:border-teal-400/40 cursor-pointer active:scale-98 group"
+                    }`}
+                    title={
+                      isOdontologo
+                        ? "Como odontólogo logueado, tú eres el responsable de este odontograma"
+                        : "Seleccionar odontólogo responsable"
+                    }
+                  >
+                    <div className="h-8 w-8 rounded-xl overflow-hidden border border-teal-500/40 dark:border-teal-400/50 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform bg-slate-100 dark:bg-slate-900">
+                      <UserAvatar
+                        name={currentDoctor?.nombre || (isOdontologo ? (user?.name || "Odontólogo") : "Odontólogo")}
+                        avatar={currentDoctor?.fotoUrl || currentDoctor?.avatarUrl || (isOdontologo ? (user?.avatarUrl || user?.avatar) : undefined)}
+                        size="sm"
+                      />
+                    </div>
+                    <div className="flex flex-col text-left min-w-0 flex-1">
+                      <span className="text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-400 font-bold leading-none mb-0.5">
+                        Odontólogo Responsable
                       </span>
-                    ) : (
-                      <select
-                        value={selectedProfessionalId}
-                        onChange={(e) => setSelectedProfessionalId(e.target.value)}
-                        className="bg-transparent text-xs font-bold text-slate-900 dark:text-white outline-none cursor-pointer border-none p-0 pr-1 truncate w-full"
-                      >
-                        <option value="" className="bg-white dark:bg-slate-900 text-slate-500">
-                          -- Seleccionar Odontólogo --
-                        </option>
-                        {profesionalesList.map((pr) => (
-                          <option key={pr.id} value={pr.id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
-                            {pr.nombre} ({pr.specialty})
-                          </option>
-                        ))}
-                      </select>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="font-bold text-xs text-slate-900 dark:text-white leading-tight truncate">
+                          {currentDoctor?.nombre ||
+                            (isOdontologo ? (user?.name || "Tu sesión") : "-- Seleccionar Odontólogo --")}
+                        </span>
+                        {currentDoctor?.specialty && (
+                          <span className="hidden sm:inline-block text-[9px] font-medium text-teal-600 dark:text-teal-400 bg-teal-500/10 dark:bg-teal-500/20 px-1.5 py-0.5 rounded-md border border-teal-500/30 truncate max-w-[95px]">
+                            {currentDoctor.specialty}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {!isOdontologo && (
+                      <ChevronDown
+                        size={15}
+                        className={`text-slate-400 group-hover:text-teal-400 transition-transform duration-200 ml-1.5 flex-shrink-0 ${
+                          isDoctorDropdownOpen ? "rotate-180 text-teal-500" : ""
+                        }`}
+                      />
                     )}
-                  </div>
+                  </button>
+
+                  {/* Menú Desplegable Personalizado Odontólogos */}
+                  {!isOdontologo && isDoctorDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-72 sm:w-80 p-2 rounded-2xl bg-white/95 dark:bg-slate-900/98 border border-slate-200/90 dark:border-white/15 shadow-[0_20px_50px_rgba(0,0,0,0.6)] backdrop-blur-2xl z-50 animate-scaleIn space-y-1">
+                      <div className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-white/5">
+                        Seleccionar Odontólogo
+                      </div>
+                      <div className="max-h-[200px] overflow-y-auto space-y-1 pr-1 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700">
+                        {profesionalesList.length === 0 ? (
+                          <div className="px-3 py-4 text-center text-xs text-slate-400">
+                            No hay odontólogos disponibles
+                          </div>
+                        ) : (
+                          profesionalesList.map((pr) => {
+                            const isSelected = selectedProfessionalId === pr.id;
+                            return (
+                              <button
+                                key={pr.id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedProfessionalId(pr.id);
+                                  setIsDoctorDropdownOpen(false);
+                                }}
+                                className={`w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer text-left ${
+                                  isSelected
+                                    ? "bg-teal-500/15 text-teal-700 dark:text-teal-300 border border-teal-500/30"
+                                    : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5"
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                  <div className="h-7 w-7 rounded-lg overflow-hidden border border-teal-500/30 flex items-center justify-center flex-shrink-0 bg-slate-100 dark:bg-slate-900">
+                                    <UserAvatar
+                                      name={pr.nombre}
+                                      avatar={pr.fotoUrl || pr.avatarUrl}
+                                      size="sm"
+                                      className="h-full w-full object-cover"
+                                    />
+                                  </div>
+                                  <div className="flex flex-col min-w-0 flex-1">
+                                    <span className="font-bold text-slate-900 dark:text-white truncate">
+                                      {pr.nombre}
+                                    </span>
+                                    <span className="text-[10px] text-teal-600 dark:text-teal-400 font-medium truncate">
+                                      {pr.specialty || "Odontología General"}
+                                    </span>
+                                  </div>
+                                </div>
+                                {isSelected && (
+                                  <CheckCircle2 size={15} className="text-teal-500 flex-shrink-0" />
+                                )}
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Botón de Acción Principal Guardar */}

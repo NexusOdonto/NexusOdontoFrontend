@@ -8,6 +8,7 @@ import { formatCurrency } from "../../utils/currency";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
 import { useAuth } from "../auth/AuthContext";
 import { getUserRole } from "../../utils/routePermissions";
+import { GlassSelect } from "../../components/common/GlassSelect";
 import {
   Plus,
   Filter,
@@ -18,7 +19,6 @@ import {
   DollarSign,
   LayoutGrid,
   Table as TableIcon,
-  ArrowUpDown,
   AlertCircle,
   Stethoscope,
 } from "lucide-react";
@@ -560,19 +560,17 @@ export function ServiciosView() {
         {/* Acciones de barra: Selector de orden, Filtros avanzados y Switch Vista */}
         <div className="flex items-center gap-2.5 flex-wrap">
           {/* Ordenar */}
-          <div className="relative flex items-center">
-            <ArrowUpDown size={14} className="absolute left-3.5 text-cyan-600 dark:text-cyan-400 pointer-events-none" />
-            <select
-              value={orden}
-              onChange={(e) => setOrden(e.target.value as any)}
-              className="pl-9 pr-5 py-3 rounded-2xl bg-white/85 dark:bg-slate-900/70 border border-slate-200/80 dark:border-white/15 text-xs font-bold text-slate-800 dark:text-white outline-none focus:border-cyan-500 dark:focus:border-cyan-400 transition-all backdrop-blur-2xl shadow-sm cursor-pointer"
-            >
-              <option value="nombre" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Nombre (A-Z)</option>
-              <option value="precio-asc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Menor precio</option>
-              <option value="precio-desc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Mayor precio</option>
-              <option value="duracion" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Menor duración</option>
-            </select>
-          </div>
+          <GlassSelect
+            value={orden}
+            onChange={(val) => setOrden(val as any)}
+            options={[
+              { value: "nombre", label: "Nombre (A-Z)" },
+              { value: "precio-asc", label: "Menor precio" },
+              { value: "precio-desc", label: "Mayor precio" },
+              { value: "duracion", label: "Menor duración" },
+            ]}
+            ariaLabel="Ordenar catálogo de servicios"
+          />
 
           {/* Filtros avanzados */}
           <button
@@ -653,15 +651,17 @@ export function ServiciosView() {
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
               Estado del Procedimiento
             </label>
-            <select
+            <GlassSelect
               value={estado}
-              onChange={(e) => setEstado(e.target.value as any)}
-              className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-white/15 rounded-xl text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 cursor-pointer font-medium"
-            >
-              <option value="todos" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Todos los estados</option>
-              <option value="activo" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Solo Activos</option>
-              <option value="inactivo" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Solo Inactivos</option>
-            </select>
+              onChange={(val) => setEstado(val as any)}
+              className="w-full"
+              options={[
+                { value: "todos", label: "Todos los estados" },
+                { value: "activo", label: "Solo Activos" },
+                { value: "inactivo", label: "Solo Inactivos" },
+              ]}
+              ariaLabel="Filtrar por estado del procedimiento"
+            />
           </div>
 
           <div className="sm:col-span-3 flex justify-end pt-1">

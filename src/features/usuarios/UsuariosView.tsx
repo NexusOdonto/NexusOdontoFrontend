@@ -14,6 +14,7 @@ import { UsuariosTable } from "./components/UsuariosTable";
 import { useAuth } from "../auth/AuthContext";
 import { areGuidsEqual, isSeedAdminUser } from "../../utils/roleUtils";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
+import { GlassSelect } from "../../components/common/GlassSelect";
 
 import type {
   Usuario,
@@ -306,6 +307,19 @@ export function UsuariosView() {
     setCurrentPage(1);
   };
 
+  const roleOptions = useMemo(() => {
+    return [
+      { value: "Todos", label: "Todos los roles" },
+      ...roles.map((r) => ({ value: r.id, label: r.name })),
+    ];
+  }, [roles]);
+
+  const estadoOptions = useMemo(() => [
+    { value: "all", label: "Todos los estados" },
+    { value: "active", label: "Activos" },
+    { value: "inactive", label: "Inactivos" },
+  ], []);
+
   const usuariosFiltrados = useMemo(() => {
     return usuarios.filter((usuario) => {
       // 1. Mantener la búsqueda por texto existente (nombre, documento, email, rol)
@@ -586,28 +600,19 @@ export function UsuariosView() {
         </div>
 
         <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
-          <select
+          <GlassSelect
             value={rol}
-            onChange={(e) => handleRolChange(e.target.value)}
-            className="px-3.5 py-2.5 bg-white/90 dark:bg-slate-950/65 border border-slate-200 dark:border-white/20 rounded-2xl text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all backdrop-blur-xl shadow-md cursor-pointer"
-          >
-            <option value="Todos">Todos los roles</option>
-            {roles.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
-          </select>
+            onChange={handleRolChange}
+            options={roleOptions}
+            ariaLabel="Filtrar por rol de usuario"
+          />
 
-          <select
+          <GlassSelect
             value={estado}
-            onChange={(e) => handleEstadoChange(e.target.value as "all" | "active" | "inactive")}
-            className="px-3.5 py-2.5 bg-white/90 dark:bg-slate-950/65 border border-slate-200 dark:border-white/20 rounded-2xl text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all backdrop-blur-xl shadow-md cursor-pointer"
-          >
-            <option value="all">Todos los estados</option>
-            <option value="active">Activos</option>
-            <option value="inactive">Inactivos</option>
-          </select>
+            onChange={handleEstadoChange}
+            options={estadoOptions}
+            ariaLabel="Filtrar por estado de cuenta"
+          />
 
           {(search || rol !== "Todos" || (estado !== "all" && estado !== "Todos")) && (
             <button
@@ -623,7 +628,7 @@ export function UsuariosView() {
       </div>
 
       {/* Tabla Principal de Usuarios */}
-      <div className="rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl shadow-md overflow-hidden animate-slideUp animate-stagger-2">
+      <div className="rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl shadow-md overflow-hidden animate-slideUp animate-stagger-2 flex flex-col min-h-[460px]">
         <UsuariosTable
           usuarios={usuariosPagina}
           loading={loading}
