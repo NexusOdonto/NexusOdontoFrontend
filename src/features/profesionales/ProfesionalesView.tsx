@@ -488,7 +488,7 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
       )}
 
       {/* BANNER PRINCIPAL / HERO ELEGANTE */}
-      <div className="relative overflow-hidden rounded-3xl bg-white/85 dark:bg-slate-950/70 text-slate-900 dark:text-white border border-slate-200/80 dark:border-white/10 shadow-lg dark:shadow-[0_12px_36px_rgba(0,0,0,0.5)] p-6 sm:p-8 backdrop-blur-xl transition-all">
+      <div className="relative overflow-hidden rounded-3xl bg-white/80 dark:bg-slate-950/70 border border-slate-200/80 dark:border-white/10 text-slate-900 dark:text-white p-6 sm:p-8 backdrop-blur-xl shadow-lg transition-all">
         <div className="absolute -right-12 -top-12 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute right-1/4 -bottom-16 w-80 h-80 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
 

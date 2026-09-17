@@ -79,8 +79,9 @@ export default function UserProfileDropdown() {
         type="button"
         onClick={() => setIsOpen((previous) => !previous)}
         className="flex items-center gap-2.5 rounded-xl px-2.5 py-1.5 transition-all hover:bg-slate-100 dark:hover:bg-slate-800/80 cursor-pointer active:scale-95 border border-transparent hover:border-slate-200 dark:hover:border-slate-700/60"
-        aria-label="Abrir menú de usuario"
+        aria-label="Menú de perfil de usuario"
         aria-expanded={isOpen}
+        aria-haspopup="true"
       >
         <div className="relative shrink-0">
           <div className="h-8 w-8 rounded-full overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-center">

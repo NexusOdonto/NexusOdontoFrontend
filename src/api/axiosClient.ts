@@ -45,12 +45,20 @@ axiosClient.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       const url = error.config?.url || '';
-      // Si la verificación de perfil o me da 401, el token ha expirado
-      if (url.includes('/auth/me') || url.includes('/auth/profile')) {
+      // No auto-expirar en intentos fallidos del formulario de login
+      if (!isPublicAuthRequest(url)) {
         localStorage.removeItem('auth_token');
         localStorage.removeItem('nexus_token');
         localStorage.removeItem('auth_user');
         localStorage.removeItem('nexus_user');
+        localStorage.removeItem('refresh_token');
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('auth:expired', {
+              detail: { reason: '401_unauthorized' },
+            })
+          );
+        }
       }
     }
     return Promise.reject(error);

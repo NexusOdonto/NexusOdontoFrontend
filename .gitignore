@@ -98,3 +98,5 @@ $RECYCLE.BIN/
 **/*.md
 !README.md
 !**/README.md
+testsprite_tests/tmp/
+testsprite_tests/tmp/config.json

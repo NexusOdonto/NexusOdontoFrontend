@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../../api/authService';
 import { formatRoleName } from '../../utils/roleUtils';
@@ -44,10 +44,40 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Tiempo límite de inactividad: 20 minutos (1,200,000 ms)
+const INACTIVITY_TIMEOUT_MS = 20 * 60 * 1000;
+
+function isJwtExpired(token: string | null): boolean {
+  if (!token) return true;
+  try {
+    const parts = token.split('.');
+    if (parts.length < 2) return true;
+    const payloadBase64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(payloadBase64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    const decoded = JSON.parse(jsonPayload);
+    if (!decoded.exp) return false;
+    // Si faltan menos de 10 segundos o ya expiró
+    return Date.now() >= decoded.exp * 1000 - 10000;
+  } catch {
+    return false;
+  }
+}
+
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(() => {
     try {
       const savedUser = localStorage.getItem('auth_user');
+      const token = localStorage.getItem('auth_token');
+      if (token && isJwtExpired(token)) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_user');
+        return null;
+      }
       return savedUser ? JSON.parse(savedUser) : null;
     } catch {
       return null;
@@ -61,6 +91,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   });
 
   const navigate = useNavigate();
+  const lastActivityRef = useRef<number>(Date.now());
 
   const clearSessionStorage = useCallback(() => {
     localStorage.removeItem('auth_token');
@@ -69,6 +100,72 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     localStorage.removeItem('nexus_user');
     localStorage.removeItem('refresh_token');
   }, []);
+
+  const handleSessionExpired = useCallback(
+    (reason = 'token_expired') => {
+      clearSessionStorage();
+      setUser(null);
+      navigate(`/login?sessionExpired=true&reason=${reason}`, {
+        replace: true,
+        state: { sessionExpired: true, reason },
+      });
+    },
+    [clearSessionStorage, navigate]
+  );
+
+  // Monitor de inactividad del usuario y de expiración del token JWT
+  useEffect(() => {
+    if (!user) return;
+
+    const handleUserActivity = () => {
+      lastActivityRef.current = Date.now();
+    };
+
+    const events = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart'];
+    events.forEach((evt) =>
+      window.addEventListener(evt, handleUserActivity, { passive: true })
+    );
+
+    // Verificación periódica cada 15 segundos
+    const interval = setInterval(() => {
+      const token =
+        localStorage.getItem('auth_token') || localStorage.getItem('nexus_token');
+      if (!token) {
+        handleSessionExpired('no_token');
+        return;
+      }
+
+      // 1. Verificación de expiración de JWT
+      if (isJwtExpired(token)) {
+        console.warn('JWT expirado, cerrando sesión...');
+        handleSessionExpired('token_expired');
+        return;
+      }
+
+      // 2. Verificación de inactividad del usuario
+      const inactiveDuration = Date.now() - lastActivityRef.current;
+      if (inactiveDuration >= INACTIVITY_TIMEOUT_MS) {
+        console.warn('Sesión cerrada por inactividad...');
+        handleSessionExpired('inactivity');
+        return;
+      }
+    }, 15000);
+
+    // Evento emitido por el interceptor de Axios ante error 401
+    const handleAuthExpiredEvent = (e: any) => {
+      const detailReason = e?.detail?.reason || '401_unauthorized';
+      handleSessionExpired(detailReason);
+    };
+    window.addEventListener('auth:expired', handleAuthExpiredEvent);
+
+    return () => {
+      events.forEach((evt) =>
+        window.removeEventListener(evt, handleUserActivity)
+      );
+      clearInterval(interval);
+      window.removeEventListener('auth:expired', handleAuthExpiredEvent);
+    };
+  }, [user, handleSessionExpired]);
 
   const parseProfileToUser = (profile: any, fallbackPrev?: User | null): User => {
     const userObj = profile.user || profile;

@@ -889,7 +889,8 @@ export function CitasView() {
       } else if (!targetServiceId && servicesEntities.length > 0) {
         targetServiceId = servicesEntities[0].id;
       } else if (!targetServiceId) {
-        targetServiceId = "30000000-0000-0000-0000-000000000001";
+        const fallbackServiceId = "30000000-0000-0000-0000-000000000001";
+        targetServiceId = fallbackServiceId;
       }
 
       const { startsAt, endsAt } = calculateEndDateTime(fechaValida, horaValida, 30);

@@ -35,6 +35,18 @@ export default function LoginPage() {
   }, [isAlreadyAuth, navigate]);
 
   useEffect(() => {
+    const sessionExpiredParam = searchParams.get('sessionExpired');
+    const reasonParam = searchParams.get('reason');
+
+    if (sessionExpiredParam === 'true') {
+      if (reasonParam === 'inactivity') {
+        setError('Tu sesión ha finalizado por inactividad. Por favor inicia sesión nuevamente.');
+      } else {
+        setError('Tu sesión ha expirado por seguridad. Por favor inicia sesión nuevamente.');
+      }
+      return;
+    }
+
     const errorParam = searchParams.get('error');
 
     if (!errorParam) return;

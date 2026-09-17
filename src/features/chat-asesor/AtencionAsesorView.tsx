@@ -776,10 +776,12 @@ export function AtencionAsesorView() {
     const formattedNow = formatTime(currentTimeIso);
 
     setSendingMessage(true);
+    let isDispatched = false;
 
     try {
-      // 1. Enviar mensaje a WhatsApp
+      // 1. Enviar mensaje a WhatsApp (QA-003: bandera isDispatched para prevenir duplicidad si la BD interna reintenta)
       await chatbotService.sendConversationWhatsApp(selectedChat.id, text, roleId);
+      isDispatched = true;
 
       // Inserción segura solo después de confirmar la entrega en servidor
       const newMsgObj: ChatbotMessage = {
@@ -815,8 +817,12 @@ export function AtencionAsesorView() {
       setTimeout(() => scrollToBottom(true), 50);
     } catch (err: any) {
       console.error("Error al enviar mensaje:", err);
-      const errMsg = err?.response?.data?.message || err?.message || "No se pudo entregar el mensaje. Error de conexión con el servidor.";
-      showErrorToast(errMsg);
+      if (isDispatched) {
+        showToast("Mensaje entregado por WhatsApp. Sincronización interna en curso.");
+      } else {
+        const errMsg = err?.response?.data?.message || err?.message || "No se pudo entregar el mensaje. Error de conexión con el servidor.";
+        showErrorToast(errMsg);
+      }
     } finally {
       setSendingMessage(false);
     }
@@ -1636,85 +1642,73 @@ export function AtencionAsesorView() {
                   )}
                 </div>
 
-                {/* BANNER DE BLOQUEO CUANDO EL BOT ESTÁ OPERANDO EN AUTOMÁTICO */}
-                {selectedChat.status !== "ATENDIDA_HUMANO" && (
-                  <div className="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-2xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs shadow-xs animate-fadeIn">
+                {/* ÁREA INFERIOR DE MENSAJERÍA / CONTROL UNIFICADO */}
+                {selectedChat.status === "ATENDIDA_HUMANO" ? (
+                  <form onSubmit={handleSendMessage} className="flex items-center gap-2 animate-fadeIn">
+                    <input
+                      ref={chatInputRef}
+                      type="text"
+                      placeholder="Escribe tu respuesta personalizada como asesor de recepción..."
+                      value={inputText}
+                      onChange={(e) => setInputText(e.target.value)}
+                      disabled={sendingMessage}
+                      className="flex-1 px-4 py-3 rounded-2xl text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 shadow-inner transition-all"
+                    />
+
+                    <button
+                      type="submit"
+                      disabled={!inputText.trim() || sendingMessage}
+                      className={`p-3.5 rounded-2xl flex items-center justify-center transition-all shadow-lg ${
+                        inputText.trim() && !sendingMessage
+                          ? "bg-gradient-to-tr from-teal-500 to-emerald-500 text-white hover:scale-105 active:scale-95 shadow-teal-500/20 cursor-pointer"
+                          : "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed border border-slate-300 dark:border-white/5"
+                      }`}
+                      title="Enviar mensaje a WhatsApp"
+                    >
+                      <Send size={18} />
+                    </button>
+                  </form>
+                ) : (
+                  <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-slate-100/90 dark:bg-slate-900/80 border border-slate-200/90 dark:border-white/10 text-slate-700 dark:text-slate-200 shadow-xs animate-fadeIn">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-7 h-7 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/30">
-                        <Lock size={14} />
+                      <div className="w-8 h-8 rounded-xl bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 flex items-center justify-center shrink-0 border border-cyan-500/20">
+                        {selectedChat.status === "ESCALADA" ? (
+                          <AlertTriangle size={16} className="text-rose-500 animate-bounce" />
+                        ) : selectedChat.status === "CERRADA" ? (
+                          <Check size={16} className="text-slate-400" />
+                        ) : (
+                          <Bot size={16} className="text-cyan-500 animate-pulse" />
+                        )}
                       </div>
-                      <p className="text-[11px] sm:text-xs truncate">
-                        {selectedChat.status === "ESCALADA"
-                          ? "El paciente solicitó atención de un asesor. Pasa a 'Uso Manual' para responder."
-                          : selectedChat.status === "CERRADA"
-                          ? "La conversación está cerrada. Pasa a 'Uso Manual' para reabrirla y responder."
-                          : "NexusBot está respondiendo en automático. Desbloquea para intervenir manualmente."}
-                      </p>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate">
+                          {selectedChat.status === "ESCALADA"
+                            ? "Paciente en espera de atención de un asesor"
+                            : selectedChat.status === "CERRADA"
+                            ? "Conversación finalizada y cerrada"
+                            : "NexusBot está respondiendo en automático"}
+                        </p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                          {selectedChat.status === "ESCALADA"
+                            ? "Haz clic en 'Tomar Caso' para responder directamente al paciente."
+                            : selectedChat.status === "CERRADA"
+                            ? "Haz clic en 'Reabrir' para habilitar la escritura nuevamente."
+                            : "Desbloquea el 'Uso Manual' para intervenir y redactar mensajes."}
+                        </p>
+                      </div>
                     </div>
 
                     <button
                       type="button"
                       onClick={handleSwitchToManual}
-                      className="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-[11px] shadow-md hover:shadow-teal-500/20 flex items-center gap-1.5 shrink-0 active:scale-95 transition-all cursor-pointer"
+                      className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-white text-xs font-bold shadow-md hover:shadow-teal-500/25 flex items-center gap-1.5 shrink-0 active:scale-95 transition-all cursor-pointer"
                       title="Desbloquear chat y tomar el control manual"
                     >
-                      <Unlock size={13} />
-                      <span>{selectedChat.status === "ESCALADA" ? "Tomar Caso" : selectedChat.status === "CERRADA" ? "Reabrir y Escribir" : "Desbloquear (Uso Manual)"}</span>
+                      <Unlock size={14} />
+                      <span>{selectedChat.status === "ESCALADA" ? "Tomar Caso" : selectedChat.status === "CERRADA" ? "Reabrir Caso" : "Uso Manual"}</span>
                     </button>
                   </div>
                 )}
-
-                <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <input
-                      ref={chatInputRef}
-                      type="text"
-                      placeholder={
-                        selectedChat.status === "ATENDIDA_HUMANO"
-                          ? "Escribe tu respuesta personalizada como asesor de recepción..."
-                          : selectedChat.status === "ESCALADA"
-                          ? "⚠️ Caso escalado: Activa 'Uso Manual' para responder..."
-                          : selectedChat.status === "CERRADA"
-                          ? "🔒 Conversación cerrada: Activa 'Uso Manual' para responder..."
-                          : "🔒 Modo Bot activo: Desbloquea con 'Uso Manual' para escribir..."
-                      }
-                      value={selectedChat.status === "ATENDIDA_HUMANO" ? inputText : ""}
-                      onChange={(e) => {
-                        if (selectedChat.status === "ATENDIDA_HUMANO") {
-                          setInputText(e.target.value);
-                        }
-                      }}
-                      disabled={selectedChat.status !== "ATENDIDA_HUMANO" || sendingMessage}
-                      className={`w-full px-4 py-3 rounded-2xl text-xs border transition-all ${
-                        selectedChat.status === "ATENDIDA_HUMANO"
-                          ? "bg-white dark:bg-slate-900 border-slate-300 dark:border-white/10 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 shadow-inner"
-                          : "bg-slate-100/80 dark:bg-slate-900/40 border-slate-200 dark:border-white/5 text-slate-400 dark:text-slate-500 placeholder-slate-400 dark:placeholder-slate-500 cursor-not-allowed select-none pr-10"
-                      }`}
-                    />
-                    {selectedChat.status !== "ATENDIDA_HUMANO" && (
-                      <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none">
-                        <Lock size={15} />
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={selectedChat.status !== "ATENDIDA_HUMANO" || !inputText.trim() || sendingMessage}
-                    className={`p-3.5 rounded-2xl flex items-center justify-center transition-all shadow-lg ${
-                      selectedChat.status === "ATENDIDA_HUMANO" && inputText.trim() && !sendingMessage
-                        ? "bg-gradient-to-tr from-teal-500 to-emerald-500 text-white hover:scale-105 active:scale-95 shadow-teal-500/20 cursor-pointer"
-                        : "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed border border-slate-300 dark:border-white/5"
-                    }`}
-                    title={
-                      selectedChat.status === "ATENDIDA_HUMANO"
-                        ? "Enviar mensaje a WhatsApp"
-                        : "Desbloquea el 'Uso Manual' para enviar mensajes"
-                    }
-                  >
-                    {selectedChat.status === "ATENDIDA_HUMANO" ? <Send size={18} /> : <Lock size={18} />}
-                  </button>
-                </form>
               </div>
             </>
           ) : (

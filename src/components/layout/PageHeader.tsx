@@ -143,7 +143,7 @@ export function PageHeader({
           </button>
 
           {showHelpModal && (
-            <div className="fixed top-16 right-2 left-2 sm:left-auto sm:right-0 sm:absolute mt-2 w-auto sm:w-80 max-w-sm ml-auto rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl z-50 p-4 animate-scaleIn text-slate-900 dark:text-slate-100">
+            <div className="fixed top-14 right-2 left-2 sm:left-auto sm:right-0 sm:absolute sm:top-11 w-auto sm:w-80 max-w-sm ml-auto rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl z-50 p-4 animate-scaleIn text-slate-900 dark:text-slate-100">
               <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
                 <div className="flex items-center gap-2 font-bold text-sm text-teal-600 dark:text-teal-400">
                   <CircleHelp size={17} />
@@ -184,7 +184,7 @@ export function PageHeader({
 
           {/* Panel Desplegable de Notificaciones */}
           {showNotifications && (
-            <div className="fixed top-16 right-2 left-2 sm:left-auto sm:right-0 sm:absolute mt-2 w-auto sm:w-96 max-w-md ml-auto rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl z-50 overflow-hidden animate-scaleIn">
+            <div className="fixed top-14 right-2 left-2 sm:left-auto sm:right-0 sm:absolute sm:top-11 w-auto sm:w-96 max-w-md ml-auto rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl z-50 overflow-hidden animate-scaleIn">
               <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800">
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-sm text-slate-900 dark:text-white">
