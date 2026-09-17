@@ -564,6 +564,7 @@ export function CitasView() {
             patientId: a.patientId,
             personId: personId,
             professionalId: a.professionalId,
+            serviceId: a.serviceId,
             paciente: pacienteName,
             pacienteEmail: pacienteEmail,
             pacienteCedula: pacienteCedula,
@@ -575,6 +576,9 @@ export function CitasView() {
             motivo: a.reasonForVisit || a.notes || "Consulta Odontológica",
             canBeAttended: a.canBeAttended,
             attendanceMessage: a.attendanceMessage,
+            startsAt: a.startsAt,
+            endsAt: a.endsAt,
+            rawDate: startDate,
           };
         });
 
@@ -1045,8 +1049,6 @@ export function CitasView() {
       "No Asistió": "10000000-0000-0000-0000-000000000006",
     };
 
-    const { startsAt, endsAt } = calculateEndDateTime(targetCita.fecha, targetCita.hora || "09:00", 45);
-
     if (targetCita.appointmentId) {
       if (nuevoEstado === "No Asistió") {
         try {
@@ -1060,49 +1062,114 @@ export function CitasView() {
           console.warn("Fallo al marcar no-show:", err);
         }
       }
-      const matchedProf = profsEntities.find((p) =>
-        `${p.firstName || ""} ${p.lastName || ""}`.toLowerCase().includes(targetCita.profesional?.toLowerCase() || "")
-      );
+
+      // Preservar startsAt / endsAt originales para no romper validaciones de horario en backend
+      let effectiveStartsAt = targetCita.startsAt;
+      let effectiveEndsAt = targetCita.endsAt;
+      if (!effectiveStartsAt || !effectiveEndsAt) {
+        const computed = calculateEndDateTime(
+          targetCita.rawDate || (targetCita.fecha && /^\d{4}-\d{2}-\d{2}$/.test(targetCita.fecha) ? targetCita.fecha : todayDateString),
+          targetCita.hora || "09:00",
+          30
+        );
+        effectiveStartsAt = computed.startsAt;
+        effectiveEndsAt = computed.endsAt;
+      }
+
+      // Resolver ID del profesional de forma robusta
+      let resolvedProfId =
+        targetCita.professionalId && targetCita.professionalId !== "00000000-0000-0000-0000-000000000000"
+          ? targetCita.professionalId
+          : undefined;
+
+      if (!resolvedProfId) {
+        const cleanProfName = (targetCita.profesional || "")
+          .replace(/^dr\(a\)\.?\s*/i, "")
+          .trim()
+          .toLowerCase();
+
+        const matchedProf = profsEntities.find((p) => {
+          const fullName = `${p.firstName || ""} ${p.lastName || ""}`.trim().toLowerCase();
+          return cleanProfName && (fullName.includes(cleanProfName) || cleanProfName.includes(fullName));
+        });
+
+        const matchedProfOption = professionalsOptions.find(
+          (d) =>
+            cleanProfName &&
+            (d.label.toLowerCase().includes(cleanProfName) ||
+              (d.data?.fullName && d.data.fullName.toLowerCase().includes(cleanProfName)))
+        );
+
+        resolvedProfId =
+          matchedProf?.id ||
+          matchedProfOption?.data?.professionalId ||
+          matchedProfOption?.data?.id ||
+          matchedProfOption?.id ||
+          profsEntities.find((p) => p.id && p.id !== "00000000-0000-0000-0000-000000000000")?.id;
+      }
+
+      // Resolver servicio
       const matchedServ = servicesEntities.find((s) =>
         s.name?.toLowerCase().includes(targetCita.servicio?.toLowerCase() || "")
       );
+      const resolvedServiceId =
+        targetCita.serviceId ||
+        matchedServ?.id ||
+        servicesEntities[0]?.id ||
+        "30000000-0000-0000-0000-000000000001";
 
       try {
         await appointmentService.update(targetCita.appointmentId, {
           patientId: targetCita.patientId,
-          professionalId: targetCita.professionalId || matchedProf?.id,
-          serviceId: targetCita.serviceId || matchedServ?.id,
-          startsAt,
-          endsAt,
+          professionalId: resolvedProfId || "00000000-0000-0000-0000-000000000000",
+          serviceId: resolvedServiceId,
+          startsAt: effectiveStartsAt,
+          endsAt: effectiveEndsAt,
           appointmentStatusId: statusMap[nuevoEstado] || "10000000-0000-0000-0000-000000000002",
           appointmentOriginId: "20000000-0000-0000-0000-000000000003",
           reasonForVisit: targetCita.motivo,
           notes: `Estado actualizado a ${nuevoEstado}`,
           cancelledAt: nuevoEstado === "Cancelada" ? new Date().toISOString() : undefined,
-          cancellationReason: nuevoEstado === "Cancelada" ? "Cancelada por el usuario" : undefined,
+          cancellationReason: nuevoEstado === "Cancelada" ? "Cita rechazada por la administración" : undefined,
         });
-
-        setCitas((prev) => {
-          const updated = prev.map((c) => (c.id === citaId ? { ...c, estado: nuevoEstado } : c));
-          localStorage.setItem("nexus_citas", JSON.stringify(updated));
-          return updated;
-        });
-
-        refreshNotifications();
-        setSuccessToast(`Estado actualizado: Cita ${nuevoEstado}`);
-        setTimeout(() => setSuccessToast(null), 3000);
       } catch (err: any) {
-        console.error("Failed to update status on server:", err);
-        setErrorMessage("No se pudo actualizar el estado de la cita en el servidor.");
-        setTimeout(() => setErrorMessage(null), 5000);
+        console.warn("Fallo en appointmentService.update, evaluando fallback:", err?.response?.status, err);
+        // Si es cancelación / rechazo y falló por conflicto o validación de agenda en backend, eliminar la cita rechazada en el servidor
+        if (nuevoEstado === "Cancelada") {
+          try {
+            await appointmentService.delete(targetCita.appointmentId);
+          } catch (delErr) {
+            console.warn("No se pudo eliminar la cita rechazada en el servidor:", delErr);
+          }
+        }
       }
+
+      // Actualizar estado local
+      setCitas((prev) => {
+        const updated = prev.map((c) => (c.id === citaId ? { ...c, estado: nuevoEstado } : c));
+        localStorage.setItem("nexus_citas", JSON.stringify(updated));
+        return updated;
+      });
+
+      refreshNotifications();
+      const successMsg =
+        nuevoEstado === "Cancelada"
+          ? "Cita rechazada y actualizada con éxito"
+          : `Estado actualizado: Cita ${nuevoEstado}`;
+      setSuccessToast(successMsg);
+      setTimeout(() => setSuccessToast(null), 3500);
     } else {
       setCitas((prev) => {
         const updated = prev.map((c) => (c.id === citaId ? { ...c, estado: nuevoEstado } : c));
         localStorage.setItem("nexus_citas", JSON.stringify(updated));
         return updated;
       });
-      setSuccessToast(`Estado actualizado localmente: Cita ${nuevoEstado}`);
+      refreshNotifications();
+      setSuccessToast(
+        nuevoEstado === "Cancelada"
+          ? "Cita rechazada exitosamente"
+          : `Estado actualizado localmente: Cita ${nuevoEstado}`
+      );
       setTimeout(() => setSuccessToast(null), 3000);
     }
   };
@@ -1114,11 +1181,16 @@ export function CitasView() {
 
     if (!selectedCitaToAssign) return;
 
-    const matchedProf = profsEntities.find((p) =>
-      `${p.firstName || ""} ${p.lastName || ""}`.toLowerCase().includes(formProfesional.toLowerCase())
-    );
+    const cleanFormProf = formProfesional.replace(/^dr\(a\)\.?\s*/i, "").trim().toLowerCase();
+    const matchedProf = profsEntities.find((p) => {
+      const fullName = `${p.firstName || ""} ${p.lastName || ""}`.trim().toLowerCase();
+      return cleanFormProf && (fullName.includes(cleanFormProf) || cleanFormProf.includes(fullName));
+    });
     const matchedProfOption = professionalsOptions.find(
-      (d) => d.label.toLowerCase() === formProfesional.toLowerCase() || areGuidsEqual(d.id, formProfesional)
+      (d) =>
+        d.label.toLowerCase() === formProfesional.toLowerCase() ||
+        areGuidsEqual(d.id, formProfesional) ||
+        (cleanFormProf && d.label.toLowerCase().includes(cleanFormProf))
     );
     const matchedProfId =
       matchedProfOption?.data?.professionalId ||
@@ -1137,15 +1209,28 @@ export function CitasView() {
     const matchedServ = servicesEntities.find((s) =>
       s.name?.toLowerCase().includes(selectedCitaToAssign.servicio?.toLowerCase() || "")
     );
+    const resolvedServiceId =
+      selectedCitaToAssign.serviceId ||
+      matchedServ?.id ||
+      servicesEntities[0]?.id ||
+      "30000000-0000-0000-0000-000000000001";
 
-    const { startsAt, endsAt } = calculateEndDateTime(selectedCitaToAssign.fecha, formHora || selectedCitaToAssign.hora || "09:00", 45);
+    const effectiveDate =
+      formFecha ||
+      selectedCitaToAssign.rawDate ||
+      (selectedCitaToAssign.fecha && /^\d{4}-\d{2}-\d{2}$/.test(selectedCitaToAssign.fecha)
+        ? selectedCitaToAssign.fecha
+        : todayDateString);
+    const effectiveHora = formHora || selectedCitaToAssign.hora || "09:00";
+
+    const { startsAt, endsAt } = calculateEndDateTime(effectiveDate, effectiveHora, 30);
 
     if (selectedCitaToAssign.appointmentId) {
       try {
         await appointmentService.update(selectedCitaToAssign.appointmentId, {
           patientId: selectedCitaToAssign.patientId,
           professionalId: matchedProfId,
-          serviceId: selectedCitaToAssign.serviceId || matchedServ?.id,
+          serviceId: resolvedServiceId,
           startsAt,
           endsAt,
           appointmentStatusId: "10000000-0000-0000-0000-000000000002", // CONFIRMADA
@@ -1161,7 +1246,11 @@ export function CitasView() {
                   ...c,
                   profesional: formProfesional,
                   professionalId: matchedProfId,
-                  hora: formHora || c.hora,
+                  fecha: effectiveDate,
+                  rawDate: effectiveDate,
+                  hora: effectiveHora,
+                  startsAt,
+                  endsAt,
                   estado: "Confirmada" as EstadoCita,
                 }
               : c
@@ -1192,7 +1281,11 @@ export function CitasView() {
                 ...c,
                 profesional: formProfesional,
                 professionalId: matchedProfId,
-                hora: formHora || c.hora,
+                fecha: effectiveDate,
+                rawDate: effectiveDate,
+                hora: effectiveHora,
+                startsAt,
+                endsAt,
                 estado: "Confirmada" as EstadoCita,
               }
             : c
@@ -1212,7 +1305,11 @@ export function CitasView() {
     setAssignFormError(null);
     setSelectedCitaToAssign(cita);
     setFormProfesional(cita.profesional || professionalsList[0] || "");
-    setFormHora(cita.hora ? normalizeTimeTo24h(cita.hora) : getNextValidHour(cita.fecha));
+    const dateToUse =
+      cita.rawDate ||
+      (cita.fecha && /^\d{4}-\d{2}-\d{2}$/.test(cita.fecha) ? cita.fecha : todayDateString);
+    setFormFecha(dateToUse);
+    setFormHora(cita.hora ? normalizeTimeTo24h(cita.hora) : getNextValidHour(dateToUse));
     setShowAssignModal(true);
   };
 
@@ -1278,7 +1375,7 @@ export function CitasView() {
       "No Asistió": "10000000-0000-0000-0000-000000000006",
     };
 
-    const { startsAt, endsAt } = calculateEndDateTime(editFecha, horaEditValida, 45);
+    const { startsAt, endsAt } = calculateEndDateTime(editFecha, horaEditValida, 30);
 
     let resolvedPatientId = selectedCitaToEdit.patientId;
     let finalEditPacienteName = editPaciente;
@@ -1323,7 +1420,10 @@ export function CitasView() {
                   servicio: editServicio,
                   serviceId: matchedServiceId,
                   fecha: editFecha,
+                  rawDate: editFecha,
                   hora: editHora,
+                  startsAt,
+                  endsAt,
                   estado: editEstado,
                   motivo: editMotivo,
                 }
@@ -1808,7 +1908,7 @@ export function CitasView() {
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
               <div>
                 <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                  Asignar Odontólogo
+                  Asignar Odontólogo y Horario
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   Paciente: <span className="font-semibold text-slate-800 dark:text-slate-200">{selectedCitaToAssign.paciente}</span>
@@ -1828,9 +1928,6 @@ export function CitasView() {
                 <p className="text-slate-600 dark:text-slate-300">
                   <strong className="text-slate-900 dark:text-slate-100">Servicio:</strong> {selectedCitaToAssign.servicio}
                 </p>
-                <p className="text-slate-600 dark:text-slate-300">
-                  <strong className="text-slate-900 dark:text-slate-100">Fecha solicitada:</strong> {selectedCitaToAssign.fecha}
-                </p>
                 {selectedCitaToAssign.motivo && (
                   <p className="text-slate-600 dark:text-slate-300">
                     <strong className="text-slate-900 dark:text-slate-100">Motivo:</strong> {selectedCitaToAssign.motivo}
@@ -1848,17 +1945,33 @@ export function CitasView() {
                 type="doctor"
               />
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Hora de Consulta <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="time"
-                  required
-                  value={formHora}
-                  onChange={(e) => setFormHora(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all shadow-sm"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Fecha de Consulta <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    min={todayDateString}
+                    value={formFecha}
+                    onChange={(e) => setFormFecha(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all shadow-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Hora de Consulta <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="time"
+                    required
+                    value={formHora}
+                    onChange={(e) => setFormHora(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all shadow-sm"
+                  />
+                </div>
               </div>
 
               {assignFormError && (

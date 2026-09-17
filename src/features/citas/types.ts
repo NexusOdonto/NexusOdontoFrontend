@@ -24,4 +24,7 @@ export interface Cita {
   motivo?: string;
   canBeAttended?: boolean;
   attendanceMessage?: string;
+  startsAt?: string;
+  endsAt?: string;
+  rawDate?: string;
 }
