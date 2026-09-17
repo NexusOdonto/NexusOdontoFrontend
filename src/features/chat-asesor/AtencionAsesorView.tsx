@@ -334,6 +334,8 @@ export function AtencionAsesorView() {
   const fetchQr = useCallback(async () => {
     try {
       const data = await chatbotService.getQrData();
+      // Un 502 o timeout no es un cierre de sesión. Conservar el último estado.
+      if (!data || data.state === "error") return;
       setQrData(data);
     } catch (e) {
       console.warn("Error consultando estado de QR WhatsApp:", e);
