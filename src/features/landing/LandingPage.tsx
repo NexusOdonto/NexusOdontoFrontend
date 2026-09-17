@@ -24,10 +24,10 @@ import {
 
 import { useTheme } from "../../context/ThemeContext";
 
-import logoNexus from "../../assets/nexus-odonto-logo.webp";
+const logoNexus = "/nexus-odonto-logo.webp";
 import fondoLight from "../../assets/landingfondo-white.webp";
 import fondoDark from "../../assets/landingfondo-black.webp";
-import cuadroLandingDark from "../../assets/cuadro-landing-dark.webp";
+const cuadroLandingDark = "/cuadro-landing-dark.webp";
 
 export default function LandingPage() {
   const navigate = useNavigate();

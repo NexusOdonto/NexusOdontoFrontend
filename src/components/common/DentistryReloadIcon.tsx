@@ -36,3 +36,4 @@ export function DentistryReloadIcon({
 
 export default DentistryReloadIcon;
 
+
