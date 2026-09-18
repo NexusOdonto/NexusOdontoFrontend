@@ -77,12 +77,25 @@
 }
 
 @layer base {
+  /* Prevenir selección accidental y arrastre de elementos en clicks rápidos */
+  *,
+  *::before,
+  *::after {
+    -webkit-user-drag: none;
+    user-drag: none;
+  }
+
   html,
   body,
   #root {
     width: 100%;
     min-height: 100vh;
     margin: 0;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
   }
 
   body {
@@ -94,6 +107,43 @@
   .dark body {
     color: #f8fafc;
     background-color: #020617;
+  }
+
+  /* Permitir selección de texto explícita en campos de texto, inputs y áreas editables */
+  input,
+  textarea,
+  [contenteditable="true"],
+  .select-text,
+  .selectable-text,
+  .prose,
+  pre,
+  code {
+    -webkit-user-select: text !important;
+    -moz-user-select: text !important;
+    -ms-user-select: text !important;
+    user-select: text !important;
+  }
+
+  /* Asegurar que botones, enlaces, selectores y tablas no se seleccionen como texto */
+  button,
+  a,
+  select,
+  option,
+  nav,
+  aside,
+  header,
+  img,
+  .no-select,
+  .select-none {
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    user-select: none !important;
+  }
+
+  img {
+    -webkit-user-drag: none;
+    user-drag: none;
   }
 }
 

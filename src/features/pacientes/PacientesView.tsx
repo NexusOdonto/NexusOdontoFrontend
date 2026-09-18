@@ -14,7 +14,10 @@ import { patientService } from "../../api/patientService";
 import { personService } from "../../api/personService";
 import { areGuidsEqual } from "../../utils/roleUtils";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
-import { Plus, LayoutGrid, List, Download } from "lucide-react";
+import { Plus, LayoutGrid, List, Download, FileText, Table as TableIcon } from "lucide-react";
+import { pdf } from "@react-pdf/renderer";
+import { PacientesPdfDocument } from "./components/PacientesPdfDocument";
+import { generateBlobatarPng } from "../../utils/blobatarHelper";
 
 const ITEMS_PER_PAGE = 6;
 
@@ -47,6 +50,8 @@ export function PacientesView() {
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const [activeTab, setActiveTab] = useState<"todos" | "activos" | "inactivos" | "citas">("todos");
   const [selectedPaciente, setSelectedPaciente] = useState<Paciente | null>(null);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   const fetchPacientes = useCallback(async () => {
     setLoading(true);
@@ -232,7 +237,50 @@ export function PacientesView() {
     }
   };
 
+  const handleExportPDF = async () => {
+    if (pacientesFiltrados.length === 0) return;
+    setIsExportingPdf(true);
+    setShowExportMenu(false);
+    try {
+      // Generar avatars Blobatar PNG para cada paciente
+      const avatarMap: Record<string, string> = {};
+      await Promise.all(
+        pacientesFiltrados.map(async (p) => {
+          const effectiveName = p.nombre && p.nombre.trim().length > 0 ? p.nombre.trim() : "Paciente";
+          if (p.fotoUrl && (p.fotoUrl.startsWith("data:image/") || p.fotoUrl.startsWith("http"))) {
+            avatarMap[p.id] = p.fotoUrl;
+          } else {
+            const png = await generateBlobatarPng(effectiveName, 72);
+            if (png) avatarMap[p.id] = png;
+          }
+        })
+      );
+
+      const doc = (
+        <PacientesPdfDocument
+          pacientes={pacientesFiltrados}
+          avatarMap={avatarMap}
+          generatedBy={user?.name || "Administración"}
+        />
+      );
+      const blob = await pdf(doc).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Directorio_Pacientes_NexusOdonto_${new Date().toISOString().split("T")[0]}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Error al generar PDF de pacientes:", err);
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
   const handleExportCSV = () => {
+    setShowExportMenu(false);
     const headers = "ID,Nombre,Documento,Telefono,Estado,Proxima Cita,Correo\n";
     const rows = pacientesFiltrados
       .map(
@@ -264,15 +312,49 @@ export function PacientesView() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <button
-            type="button"
-            onClick={handleExportCSV}
-            className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/30 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all text-xs sm:text-sm font-semibold cursor-pointer backdrop-blur-md active:scale-95 shadow-sm"
-            title="Descargar lista en CSV"
-          >
-            <Download size={16} />
-            <span className="hidden sm:inline">Exportar</span>
-          </button>
+          {/* BOTÓN EXPORTAR CON OPCIONES PDF Y CSV */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowExportMenu((prev) => !prev)}
+              disabled={isExportingPdf || pacientesFiltrados.length === 0}
+              className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/30 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all text-xs sm:text-sm font-semibold cursor-pointer backdrop-blur-md active:scale-95 shadow-sm disabled:opacity-50"
+              title="Exportar directorio de pacientes"
+            >
+              {isExportingPdf ? (
+                <DentistryReloadIcon size={16} loading={true} />
+              ) : (
+                <Download size={16} />
+              )}
+              <span className="hidden sm:inline">
+                {isExportingPdf ? "Exportando..." : "Exportar"}
+              </span>
+            </button>
+
+            {showExportMenu && (
+              <div
+                className="absolute right-0 mt-1.5 w-52 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl py-1.5 z-40 animate-scaleIn backdrop-blur-xl"
+                onMouseLeave={() => setShowExportMenu(false)}
+              >
+                <button
+                  type="button"
+                  onClick={handleExportPDF}
+                  className="w-full px-3.5 py-2 text-left text-xs sm:text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 font-medium cursor-pointer"
+                >
+                  <FileText size={16} className="text-rose-500 shrink-0" />
+                  <span>Exportar como PDF (.pdf)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExportCSV}
+                  className="w-full px-3.5 py-2 text-left text-xs sm:text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2.5 font-medium cursor-pointer"
+                >
+                  <TableIcon size={16} className="text-emerald-500 shrink-0" />
+                  <span>Exportar como CSV (.csv)</span>
+                </button>
+              </div>
+            )}
+          </div>
 
           <button
             type="button"

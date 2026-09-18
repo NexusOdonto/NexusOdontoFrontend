@@ -27,6 +27,10 @@ import {
   Activity,
   Send,
   UserCheck,
+  Edit3,
+  Save,
+  RotateCcw,
+  AlertCircle,
 } from "lucide-react";
 
 import {
@@ -64,7 +68,29 @@ const SILLONES_DISPONIBLES = [
   "Sillón 1 - Principal",
   "Sillón 2 - Quirúrgico",
   "Sillón 3 - Estética Dental",
+  "Sillón 4 - Infantil & Preventivo",
 ];
+
+const SCHEDULES_STORAGE_KEY = "nexus_doctor_schedules";
+
+const loadSavedSchedules = (): Record<string, TurnoDisponibilidad[]> => {
+  try {
+    const raw = localStorage.getItem(SCHEDULES_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};
+
+const saveDoctorSchedule = (profIdOrName: string, turnos: TurnoDisponibilidad[]) => {
+  try {
+    const schedules = loadSavedSchedules();
+    schedules[profIdOrName.toLowerCase().trim()] = turnos;
+    localStorage.setItem(SCHEDULES_STORAGE_KEY, JSON.stringify(schedules));
+  } catch (err) {
+    console.error("Error saving doctor schedule:", err);
+  }
+};
 
 const getTurnosForDoctor = (idx: number, customSillon?: string): TurnoDisponibilidad[] => {
   const mainSillon = customSillon || SILLONES_DISPONIBLES[idx % SILLONES_DISPONIBLES.length];
@@ -218,6 +244,9 @@ export function ProfesionalesView() {
 
   // Modales
   const [selectedProfForSchedule, setSelectedProfForSchedule] = useState<ProfessionalFull | null>(null);
+  const [editingTurnos, setEditingTurnos] = useState<TurnoDisponibilidad[]>([]);
+  const [isEditingSchedule, setIsEditingSchedule] = useState(false);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
@@ -235,6 +264,56 @@ export function ProfesionalesView() {
     setTimeout(() => setSuccessToast(null), 3500);
   }, []);
 
+  const handleOpenScheduleModal = useCallback((prof: ProfessionalFull) => {
+    setSelectedProfForSchedule(prof);
+    setEditingTurnos(prof.turnos ? JSON.parse(JSON.stringify(prof.turnos)) : getTurnosForDoctor(0));
+    setIsEditingSchedule(false);
+    setScheduleError(null);
+  }, []);
+
+  const handleSaveCustomSchedule = () => {
+    if (!selectedProfForSchedule) return;
+    setScheduleError(null);
+
+    // Validar horarios en días activos
+    for (const t of editingTurnos) {
+      if (t.activo) {
+        if (!t.horaInicio || !t.horaFin) {
+          setScheduleError(`Por favor completa la hora de inicio y fin para el día ${t.dia}.`);
+          return;
+        }
+        if (t.horaInicio >= t.horaFin) {
+          setScheduleError(`La hora de inicio (${t.horaInicio}) debe ser menor que la hora de fin (${t.horaFin}) para el día ${t.dia}.`);
+          return;
+        }
+      }
+    }
+
+    const doctorId = selectedProfForSchedule.id || selectedProfForSchedule.nombreCompleto;
+    saveDoctorSchedule(doctorId, editingTurnos);
+    saveDoctorSchedule(selectedProfForSchedule.nombreCompleto, editingTurnos);
+
+    const updatedTurnos = JSON.parse(JSON.stringify(editingTurnos));
+
+    setProfesionales((prev) =>
+      prev.map((p) =>
+        p.id === selectedProfForSchedule.id || p.nombreCompleto === selectedProfForSchedule.nombreCompleto
+          ? { ...p, turnos: updatedTurnos }
+          : p
+      )
+    );
+
+    setSelectedProfForSchedule((prev) => (prev ? { ...prev, turnos: updatedTurnos } : null));
+    setIsEditingSchedule(false);
+    showToast(`¡Horarios de ${selectedProfForSchedule.nombreCompleto} guardados y actualizados con éxito!`);
+  };
+
+  const handleResetScheduleToDefault = (idx: number = 0) => {
+    const defaultTurnos = getTurnosForDoctor(idx);
+    setEditingTurnos(defaultTurnos);
+    setScheduleError(null);
+  };
+
 const SPECIALTY_ID_MAP: Record<string, string> = {
   "Odontología General": "18000000-0000-0000-0000-000000000001",
   "Ortodoncia & Brackets Invisibles": "18000000-0000-0000-0000-000000000002",
@@ -251,6 +330,7 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
     try {
       const profData = await professionalService.getAll().catch(() => []);
       const profs = Array.isArray(profData) ? profData : [];
+      const savedSchedules = loadSavedSchedules();
 
       if (profs && profs.length > 0) {
         const mapped: ProfessionalFull[] = profs.map((p, idx) => {
@@ -283,6 +363,11 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
 
           const theme = SPECIALTY_STYLES[specialtyName] || SPECIALTY_STYLES["Odontología General"];
 
+          const customTurnos = savedSchedules[p.id?.toLowerCase() || ""] ||
+                               savedSchedules[fullName.toLowerCase().trim()] ||
+                               savedSchedules[(p.firstName || "").toLowerCase().trim()] ||
+                               getTurnosForDoctor(idx);
+
           return {
             ...p,
             nombreCompleto: fullName,
@@ -291,7 +376,7 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
             email,
             phone,
             bio,
-            turnos: getTurnosForDoctor(idx),
+            turnos: customTurnos,
             rating: fallback.rating,
             pacientesAtendidos: fallback.pacientesAtendidos + (idx * 35),
             experienciaAnios: fallback.experienciaAnios,
@@ -301,7 +386,40 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
 
         setProfesionales(mapped);
       } else {
-        const fallbacks: ProfessionalFull[] = DOCTOR_FALLBACK_PROFILES.map((f, idx) => ({
+        const fallbacks: ProfessionalFull[] = DOCTOR_FALLBACK_PROFILES.map((f, idx) => {
+          const customTurnos = savedSchedules[`prof-fallback-${idx + 1}`] ||
+                               savedSchedules[f.nombre.toLowerCase().trim()] ||
+                               getTurnosForDoctor(idx);
+
+          return {
+            id: `prof-fallback-${idx + 1}`,
+            employeeId: `emp-fallback-${idx + 1}`,
+            isActive: true,
+            createdAt: new Date().toISOString(),
+            nombreCompleto: f.nombre,
+            especialidad: f.especialidad,
+            licenseNumber: f.registro,
+            email: f.email,
+            phone: f.phone,
+            bio: f.bio,
+            turnos: customTurnos,
+            rating: f.rating,
+            pacientesAtendidos: f.pacientesAtendidos,
+            experienciaAnios: f.experienciaAnios,
+            colorTheme: SPECIALTY_STYLES[f.especialidad] || SPECIALTY_STYLES["Odontología General"],
+          };
+        });
+        setProfesionales(fallbacks);
+      }
+    } catch (err) {
+      console.error("Error al cargar profesionales:", err);
+      const savedSchedules = loadSavedSchedules();
+      const fallbacks: ProfessionalFull[] = DOCTOR_FALLBACK_PROFILES.map((f, idx) => {
+        const customTurnos = savedSchedules[`prof-fallback-${idx + 1}`] ||
+                             savedSchedules[f.nombre.toLowerCase().trim()] ||
+                             getTurnosForDoctor(idx);
+
+        return {
           id: `prof-fallback-${idx + 1}`,
           employeeId: `emp-fallback-${idx + 1}`,
           isActive: true,
@@ -312,33 +430,13 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
           email: f.email,
           phone: f.phone,
           bio: f.bio,
-          turnos: getTurnosForDoctor(idx),
+          turnos: customTurnos,
           rating: f.rating,
           pacientesAtendidos: f.pacientesAtendidos,
           experienciaAnios: f.experienciaAnios,
           colorTheme: SPECIALTY_STYLES[f.especialidad] || SPECIALTY_STYLES["Odontología General"],
-        }));
-        setProfesionales(fallbacks);
-      }
-    } catch (err) {
-      console.error("Error al cargar profesionales:", err);
-      const fallbacks: ProfessionalFull[] = DOCTOR_FALLBACK_PROFILES.map((f, idx) => ({
-        id: `prof-fallback-${idx + 1}`,
-        employeeId: `emp-fallback-${idx + 1}`,
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        nombreCompleto: f.nombre,
-        especialidad: f.especialidad,
-        licenseNumber: f.registro,
-        email: f.email,
-        phone: f.phone,
-        bio: f.bio,
-        turnos: getTurnosForDoctor(idx),
-        rating: f.rating,
-        pacientesAtendidos: f.pacientesAtendidos,
-        experienciaAnios: f.experienciaAnios,
-        colorTheme: SPECIALTY_STYLES[f.especialidad] || SPECIALTY_STYLES["Odontología General"],
-      }));
+        };
+      });
       setProfesionales(fallbacks);
     } finally {
       setTimeout(() => setLoading(false), 450);
@@ -843,16 +941,17 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                 </div>
 
                 {/* Acciones de la Tarjeta */}
+                {/* Acciones de la Tarjeta */}
                 <div className="pt-5 border-t border-slate-200/80 dark:border-white/10 flex items-center gap-2 mt-4">
                   {canScheduleDirectly ? (
                     <>
                       <button
                         type="button"
-                        onClick={() => setSelectedProfForSchedule(prof)}
+                        onClick={() => handleOpenScheduleModal(prof)}
                         className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-95"
                       >
                         <Calendar size={14} className="text-cyan-500" />
-                        <span>Ver Horarios</span>
+                        <span>Ver / Modificar Horarios</span>
                       </button>
 
                       <button
@@ -867,7 +966,7 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                   ) : (
                     <button
                       type="button"
-                      onClick={() => setSelectedProfForSchedule(prof)}
+                      onClick={() => handleOpenScheduleModal(prof)}
                       className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-95"
                     >
                       <Calendar size={14} className="text-cyan-500" />
@@ -980,9 +1079,9 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                             <>
                               <button
                                 type="button"
-                                onClick={() => setSelectedProfForSchedule(prof)}
+                                onClick={() => handleOpenScheduleModal(prof)}
                                 className="p-1.5 rounded-lg border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
-                                title="Ver horarios y sillones"
+                                title="Ver y modificar horarios y turnos"
                               >
                                 <Calendar size={14} />
                               </button>
@@ -998,7 +1097,7 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                           ) : (
                             <button
                               type="button"
-                              onClick={() => setSelectedProfForSchedule(prof)}
+                              onClick={() => handleOpenScheduleModal(prof)}
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 text-xs font-semibold transition-colors cursor-pointer"
                               title="Ver horarios y disponibilidad"
                             >
@@ -1017,10 +1116,10 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
         </div>
       )}
 
-      {/* MODAL INTERACTIVO DE HORARIO Y SILLONES DEL DOCTOR */}
+      {/* MODAL INTERACTIVO DE HORARIO Y SILLONES DEL DOCTOR CON EDICIÓN PERSONALIZADA */}
       {selectedProfForSchedule && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-xl rounded-3xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/20 p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+          <div className="w-full max-w-2xl rounded-3xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/20 p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-700 dark:text-cyan-300">
@@ -1035,59 +1134,284 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setSelectedProfForSchedule(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
-              >
-                <X size={18} />
-              </button>
-            </div>
 
-            {/* Listado de Días y Sillones */}
-            <div className="space-y-2.5">
-              {selectedProfForSchedule.turnos?.map((turno, idx) => (
-                <div
-                  key={idx}
-                  className={`p-3.5 rounded-2xl border flex items-center justify-between transition-all ${
-                    turno.activo
-                      ? "bg-slate-50 dark:bg-slate-900/90 border-slate-200/90 dark:border-white/10"
-                      : "bg-slate-100/50 dark:bg-slate-950/40 border-dashed border-slate-200 dark:border-white/5 opacity-60"
-                  }`}
+              <div className="flex items-center gap-2">
+                {canCreateProfessional && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditingSchedule((prev) => !prev);
+                      setScheduleError(null);
+                    }}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                      isEditingSchedule
+                        ? "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
+                        : "bg-cyan-500/15 text-cyan-800 dark:text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/25"
+                    }`}
+                  >
+                    <Edit3 size={13} />
+                    <span>{isEditingSchedule ? "Vista Previa" : "Personalizar Horarios"}</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSelectedProfForSchedule(null)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
                 >
-                  <div className="flex items-center gap-3">
-                    <span
-                      className={`w-2.5 h-2.5 rounded-full ${
-                        turno.activo ? "bg-emerald-500" : "bg-slate-400"
-                      }`}
-                    />
-                    <div>
-                      <span className="font-bold text-xs text-slate-900 dark:text-white block">
-                        {turno.dia}
-                      </span>
-                      <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                        {turno.sillon}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-1 rounded-lg bg-cyan-500/15 text-cyan-800 dark:text-cyan-300 font-mono text-[11px] font-bold">
-                      {turno.activo ? `${turno.horaInicio} - ${turno.horaFin}` : "No disponible"}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                  <X size={18} />
+                </button>
+              </div>
             </div>
 
-            <div className="pt-3 border-t border-slate-200 dark:border-white/10 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setSelectedProfForSchedule(null)}
-                className="px-5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-900 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
-              >
-                Cerrar
-              </button>
+            {/* PRESETS RÁPIDOS CUANDO ESTÁ EN MODO EDICIÓN */}
+            {isEditingSchedule && canCreateProfessional && (
+              <div className="p-3.5 rounded-2xl bg-cyan-500/10 dark:bg-cyan-950/30 border border-cyan-500/20 space-y-2">
+                <span className="text-xs font-bold text-cyan-900 dark:text-cyan-200 block">
+                  Plantillas Rápidas de Horario:
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingTurnos((prev) =>
+                        prev.map((t) => ({
+                          ...t,
+                          activo: t.dia !== "Domingo",
+                          horaInicio: "08:00",
+                          horaFin: t.dia === "Sábado" ? "13:00" : "17:00",
+                        }))
+                      );
+                    }}
+                    className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:border-cyan-500 cursor-pointer shadow-xs"
+                  >
+                    🌅 Jornada Completa (08:00 - 17:00)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingTurnos((prev) =>
+                        prev.map((t) => ({
+                          ...t,
+                          activo: t.dia !== "Domingo" && t.dia !== "Sábado",
+                          horaInicio: "08:00",
+                          horaFin: "13:00",
+                        }))
+                      );
+                    }}
+                    className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:border-cyan-500 cursor-pointer shadow-xs"
+                  >
+                    🌤️ Solo Mañanas (08:00 - 13:00)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingTurnos((prev) =>
+                        prev.map((t) => ({
+                          ...t,
+                          activo: t.dia !== "Domingo" && t.dia !== "Sábado",
+                          horaInicio: "13:00",
+                          horaFin: "18:00",
+                        }))
+                      );
+                    }}
+                    className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:border-cyan-500 cursor-pointer shadow-xs"
+                  >
+                    🌇 Solo Tardes (13:00 - 18:00)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleResetScheduleToDefault(0)}
+                    className="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer inline-flex items-center gap-1"
+                  >
+                    <RotateCcw size={11} />
+                    <span>Restablecer</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {scheduleError && (
+              <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
+                <AlertCircle size={16} className="shrink-0 text-rose-500" />
+                <span>{scheduleError}</span>
+              </div>
+            )}
+
+            {/* LISTADO DE DÍAS (MODO EDICIÓN O MODO LECTURA) */}
+            <div className="space-y-2.5">
+              {isEditingSchedule && canCreateProfessional
+                ? editingTurnos.map((turno, idx) => (
+                    <div
+                      key={turno.dia}
+                      className={`p-3.5 rounded-2xl border transition-all ${
+                        turno.activo
+                          ? "bg-slate-50 dark:bg-slate-900/90 border-slate-200/90 dark:border-white/10"
+                          : "bg-slate-100/40 dark:bg-slate-950/40 border-dashed border-slate-200 dark:border-white/5 opacity-70"
+                      }`}
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            id={`check-dia-${idx}`}
+                            checked={turno.activo}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setEditingTurnos((prev) =>
+                                prev.map((t, i) => (i === idx ? { ...t, activo: checked } : t))
+                              );
+                            }}
+                            className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500 cursor-pointer"
+                          />
+                          <label
+                            htmlFor={`check-dia-${idx}`}
+                            className="font-bold text-xs text-slate-900 dark:text-white cursor-pointer select-none"
+                          >
+                            {turno.dia}
+                          </label>
+                        </div>
+
+                        {turno.activo ? (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="flex items-center gap-1 text-xs">
+                              <span className="text-[10px] text-slate-400 font-semibold">De:</span>
+                              <input
+                                type="time"
+                                value={turno.horaInicio}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setEditingTurnos((prev) =>
+                                    prev.map((t, i) => (i === idx ? { ...t, horaInicio: val } : t))
+                                  );
+                                }}
+                                className="px-2 py-1 rounded-lg bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-xs font-mono text-slate-900 dark:text-white outline-none focus:border-cyan-500"
+                              />
+                            </div>
+
+                            <div className="flex items-center gap-1 text-xs">
+                              <span className="text-[10px] text-slate-400 font-semibold">A:</span>
+                              <input
+                                type="time"
+                                value={turno.horaFin}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setEditingTurnos((prev) =>
+                                    prev.map((t, i) => (i === idx ? { ...t, horaFin: val } : t))
+                                  );
+                                }}
+                                className="px-2 py-1 rounded-lg bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-xs font-mono text-slate-900 dark:text-white outline-none focus:border-cyan-500"
+                              />
+                            </div>
+
+                            <select
+                              value={turno.sillon}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setEditingTurnos((prev) =>
+                                  prev.map((t, i) => (i === idx ? { ...t, sillon: val } : t))
+                                );
+                              }}
+                              className="px-2 py-1 rounded-lg bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-[11px] text-slate-800 dark:text-slate-200 outline-none focus:border-cyan-500 cursor-pointer"
+                            >
+                              {SILLONES_DISPONIBLES.map((s) => (
+                                <option key={s} value={s}>
+                                  {s}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        ) : (
+                          <span className="text-[11px] text-slate-400 italic">
+                            Día no laboral / Descanso
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                : selectedProfForSchedule.turnos?.map((turno, idx) => (
+                    <div
+                      key={idx}
+                      className={`p-3.5 rounded-2xl border flex items-center justify-between transition-all ${
+                        turno.activo
+                          ? "bg-slate-50 dark:bg-slate-900/90 border-slate-200/90 dark:border-white/10"
+                          : "bg-slate-100/50 dark:bg-slate-950/40 border-dashed border-slate-200 dark:border-white/5 opacity-60"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={`w-2.5 h-2.5 rounded-full ${
+                            turno.activo ? "bg-emerald-500" : "bg-slate-400"
+                          }`}
+                        />
+                        <div>
+                          <span className="font-bold text-xs text-slate-900 dark:text-white block">
+                            {turno.dia}
+                          </span>
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                            {turno.sillon}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="px-2.5 py-1 rounded-lg bg-cyan-500/15 text-cyan-800 dark:text-cyan-300 font-mono text-[11px] font-bold">
+                          {turno.activo ? `${turno.horaInicio} - ${turno.horaFin}` : "No disponible"}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+            </div>
+
+            <div className="pt-3 border-t border-slate-200 dark:border-white/10 flex items-center justify-between gap-2">
+              <div>
+                {isEditingSchedule && canCreateProfessional && (
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                    * Los cambios se aplicarán inmediatamente en la agenda y citas.
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                {isEditingSchedule && canCreateProfessional ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingSchedule(false)}
+                      className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveCustomSchedule}
+                      className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-sm transition-all active:scale-95 cursor-pointer"
+                    >
+                      <Save size={14} />
+                      <span>Guardar Horarios</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {canCreateProfessional && (
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingSchedule(true)}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 text-xs font-semibold transition-all cursor-pointer"
+                      >
+                        <Edit3 size={13} />
+                        <span>Modificar Horarios</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedProfForSchedule(null)}
+                      className="px-5 py-2 rounded-xl bg-slate-100 dark:bg-slate-900 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                    >
+                      Cerrar
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>

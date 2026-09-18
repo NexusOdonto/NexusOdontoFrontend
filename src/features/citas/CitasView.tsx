@@ -844,15 +844,16 @@ export function CitasView() {
       const finalPatientName = resolvedPatient.patientName || pacienteNombre;
 
       // 2. Resolver Professional ID
-      // Paciente: no elige odontólogo (el equipo clínico asigna). Se envía un preferido opcional
-      // y AutoAssignProfessional=true para que el backend pruebe otros si hay conflicto.
+      // Si el paciente o administrador seleccionó un doctor, buscar su ID correspondiente.
       let targetProfId = "";
-      if (!isPaciente) {
+      const cleanSelectedProf = (formProfesional || "").trim();
+
+      if (cleanSelectedProf) {
         const selectedDocOption = professionalsOptions.find((d) => 
-          d.label.toLowerCase() === formProfesional.toLowerCase() || 
-          d.label.toLowerCase().includes(formProfesional.toLowerCase()) ||
-          formProfesional.toLowerCase().includes(d.label.toLowerCase()) ||
-          areGuidsEqual(d.id, formProfesional)
+          d.label.toLowerCase() === cleanSelectedProf.toLowerCase() || 
+          d.label.toLowerCase().includes(cleanSelectedProf.toLowerCase()) ||
+          cleanSelectedProf.toLowerCase().includes(d.label.toLowerCase()) ||
+          areGuidsEqual(d.id, cleanSelectedProf)
         );
         const docIdFromOpt = selectedDocOption?.data?.professionalId || selectedDocOption?.id;
         const matchedProfEntity = profsEntities.find((p) => areGuidsEqual(p.id, docIdFromOpt));
@@ -862,11 +863,18 @@ export function CitasView() {
           targetProfId = docIdFromOpt;
         } else if (profsEntities.length > 0 && profsEntities[0].id) {
           targetProfId = profsEntities[0].id;
+        }
+      }
+
+      if (!targetProfId && !isPaciente) {
+        if (profsEntities.length > 0 && profsEntities[0].id) {
+          targetProfId = profsEntities[0].id;
         } else {
           targetProfId = "1d000000-0000-0000-0000-000000000001";
         }
-      } else if (profsEntities.length > 0 && profsEntities[0].id) {
-        targetProfId = profsEntities[0].id;
+      } else if (!targetProfId && isPaciente) {
+        // Asignación automática: enviar profesional por defecto como candidato preferido
+        targetProfId = profsEntities[0]?.id || "1d000000-0000-0000-0000-000000000001";
       }
 
       // 3. Resolver Service ID
@@ -921,12 +929,16 @@ export function CitasView() {
         return;
       }
 
+      const resolvedProfDisplayName = cleanSelectedProf
+        ? (professionalsOptions.find(d => areGuidsEqual(d.id, targetProfId) || d.label.toLowerCase() === cleanSelectedProf.toLowerCase())?.label || cleanSelectedProf)
+        : (isPaciente ? "Por Asignar (Asignación automática)" : (professionalsOptions[0]?.label || "Dra. Laura Gómez"));
+
       const nuevaCita: Cita = {
         id: newId,
         paciente: finalPatientName,
         pacienteEmail: isPaciente ? (user?.email || "paciente@nexusodonto.com") : "",
         pacienteCedula: isPaciente ? (user?.cedula || "1076543210") : "",
-        profesional: isPaciente ? "" : (formProfesional || (professionalsOptions[0]?.label || "Dra. Laura Gómez")),
+        profesional: resolvedProfDisplayName,
         servicio: formServicio || servicesList[0] || "Valoración General Odontológica",
         fecha: fechaValida,
         hora: horaValida,
@@ -950,7 +962,7 @@ export function CitasView() {
             : "10000000-0000-0000-0000-000000000002", // CONFIRMADA
           appointmentOriginId: "20000000-0000-0000-0000-000000000003", // WEB
           reasonForVisit: nuevaCita.motivo || "Solicitud agendada vía portal web",
-          notes: `Servicio: ${nuevaCita.servicio}. Paciente: ${nuevaCita.paciente}`,
+          notes: `Servicio: ${nuevaCita.servicio}. Paciente: ${nuevaCita.paciente}${cleanSelectedProf ? `. Preferencia: ${cleanSelectedProf}` : ""}`,
           autoAssignProfessional: isPaciente,
         });
 
@@ -958,6 +970,10 @@ export function CitasView() {
           nuevaCita.appointmentId = createdFromApi.id;
           if (createdFromApi.professionalId) {
             nuevaCita.professionalId = createdFromApi.professionalId;
+            const docOpt = professionalsOptions.find(d => areGuidsEqual(d.id, createdFromApi.professionalId));
+            if (docOpt) {
+              nuevaCita.profesional = docOpt.label;
+            }
           }
         }
       } catch (err: any) {
@@ -1740,7 +1756,7 @@ export function CitasView() {
                 <div className="p-3 rounded-xl bg-teal-50 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800/50 text-xs text-teal-800 dark:text-teal-200 flex items-center gap-2.5">
                   <Stethoscope size={16} className="text-teal-600 dark:text-teal-400 shrink-0" />
                   <p className="leading-relaxed">
-                    El <strong>Odontólogo Especialista</strong> y el horario exacto serán confirmados por el equipo clínico.
+                    Puedes elegir tu <strong>Odontólogo de preferencia</strong> o dejar la opción por defecto para que el equipo clínico te asigne el especialista disponible.
                   </p>
                 </div>
               ) : (
@@ -1791,6 +1807,43 @@ export function CitasView() {
                 </select>
               </div>
 
+              {isPaciente ? (
+                <div>
+                  <label htmlFor="patientDoctorSelect" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
+                    <span>Odontólogo de Preferencia</span>
+                    <span className="text-[11px] font-normal text-teal-600 dark:text-teal-400">Opcional</span>
+                  </label>
+                  <select
+                    id="patientDoctorSelect"
+                    value={formProfesional}
+                    onChange={(e) => {
+                      setFormProfesional(e.target.value);
+                      setFormError(null);
+                    }}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all shadow-sm cursor-pointer"
+                  >
+                    <option value="">
+                      ✨ Sin preferencia (Cualquier odontólogo disponible)
+                    </option>
+                    {professionalsOptions.map((opt) => (
+                      <option key={opt.id || opt.label} value={opt.label}>
+                        {opt.label} {opt.subLabel ? `— ${opt.subLabel}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <SelectOrWriteInput
+                  label="Odontólogo Asignado"
+                  value={formProfesional}
+                  onChange={(val) => setFormProfesional(val)}
+                  options={professionalsOptions}
+                  placeholder="Seleccionar doctor..."
+                  required
+                  type="doctor"
+                />
+              )}
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
@@ -1840,18 +1893,6 @@ export function CitasView() {
                   </span>
                 </div>
               </div>
-
-              {!isPaciente && (
-                <SelectOrWriteInput
-                  label="Odontólogo Asignado"
-                  value={formProfesional}
-                  onChange={(val) => setFormProfesional(val)}
-                  options={professionalsOptions}
-                  placeholder="Seleccionar doctor..."
-                  required
-                  type="doctor"
-                />
-              )}
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
