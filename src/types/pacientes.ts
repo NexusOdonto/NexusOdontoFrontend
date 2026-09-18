@@ -61,8 +61,36 @@ export interface Paciente {
 
 export const PACIENTES_STORAGE_KEY = "nexusodontopacientes";
 
+export const isPatientActive = (paciente?: Paciente | null): boolean => {
+  if (!paciente) return false;
+
+  // Revisar si está en la lista de cuentas bloqueadas/desactivadas
+  try {
+    const deactivatedListRaw = localStorage.getItem("nexus_deactivated_accounts");
+    if (deactivatedListRaw) {
+      const deactivatedList: string[] = JSON.parse(deactivatedListRaw);
+      const doc = (paciente.documento || "").trim();
+      const email = (paciente.correo || "").toLowerCase().trim();
+      const pId = paciente.patientId || String(paciente.id || "");
+      if (doc && deactivatedList.includes(doc)) return false;
+      if (email && deactivatedList.includes(email)) return false;
+      if (pId && deactivatedList.includes(pId)) return false;
+    }
+  } catch {}
+
+  const raw = (paciente as any).isActive ?? (paciente as any).is_active ?? (paciente as any).activo;
+  if (raw !== undefined) return Boolean(raw);
+
+  const estadoLower = (paciente.estado || "").toLowerCase().trim();
+  if (estadoLower === "inactivo" || estadoLower === "inactive" || estadoLower === "0" || estadoLower === "false") {
+    return false;
+  }
+  return true;
+};
+
 export const isPatientOnline = (paciente?: Paciente | null, currentUser?: any): boolean => {
   if (!paciente) return false;
+  if (!isPatientActive(paciente)) return false;
 
   const doc = (paciente.documento || "").trim();
   const email = (paciente.correo || "").toLowerCase().trim();

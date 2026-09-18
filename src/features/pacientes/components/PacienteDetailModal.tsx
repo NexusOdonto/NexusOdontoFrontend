@@ -1,5 +1,5 @@
 import type { Paciente } from "../../../types/pacientes";
-import { isPatientOnline } from "../../../types/pacientes";
+import { isPatientActive, isPatientOnline } from "../../../types/pacientes";
 import { X, Calendar, Phone, Mail, FileText, Activity, AlertTriangle, ShieldCheck, Clock, MessageSquare } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
@@ -22,6 +22,7 @@ export function PacienteDetailModal({ paciente, onClose }: PacienteDetailModalPr
   if (!paciente) return null;
 
   const isOnline = isPatientOnline(paciente, user);
+  const isActivo = isPatientActive(paciente);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-md animate-fadeIn">
@@ -48,7 +49,7 @@ export function PacienteDetailModal({ paciente, onClose }: PacienteDetailModalPr
             />
             <span
               className={`absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full border-2 border-white dark:border-slate-900 shadow-sm ${
-                isOnline ? "bg-emerald-500 dark:bg-emerald-400" : "bg-slate-400 dark:bg-slate-600"
+                isOnline || isActivo ? "bg-emerald-500 dark:bg-emerald-400" : "bg-rose-500 dark:bg-rose-400"
               }`}
             />
           </div>
@@ -62,17 +63,21 @@ export function PacienteDetailModal({ paciente, onClose }: PacienteDetailModalPr
               <div className="flex items-center gap-2">
                 <span
                   className={`inline-flex items-center gap-1.5 text-xs font-sans font-semibold tracking-wide px-2.5 py-0.5 rounded-full border ${
-                    isOnline
+                    isOnline || isActivo
                       ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-500/30 dark:border-emerald-400/30"
-                      : "bg-slate-500/15 text-slate-700 dark:text-slate-400 border-slate-500/30 dark:border-slate-600/30"
+                      : "bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30 dark:border-rose-500/30"
                   }`}
                 >
                   <span
                     className={`h-1.5 w-1.5 rounded-full ${
-                      isOnline ? "bg-emerald-500 dark:bg-emerald-400 animate-pulse" : "bg-slate-400 dark:bg-slate-500"
+                      isOnline
+                        ? "bg-emerald-500 dark:bg-emerald-400 animate-pulse"
+                        : isActivo
+                        ? "bg-emerald-500 dark:bg-emerald-400"
+                        : "bg-rose-500 dark:bg-rose-400"
                     }`}
                   />
-                  {isOnline ? "En línea" : "Desconectado"}
+                  {isOnline ? "En línea" : isActivo ? "Activo" : "Inactivo"}
                 </span>
               </div>
             </div>

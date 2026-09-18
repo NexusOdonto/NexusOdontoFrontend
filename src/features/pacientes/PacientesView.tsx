@@ -6,7 +6,7 @@ import { PacienteDetailModal } from "./components/PacienteDetailModal";
 import {
   PACIENTES_STORAGE_KEY,
   type Paciente,
-  isPatientOnline,
+  isPatientActive,
 } from "../../types/pacientes";
 import { useAuth } from "../auth/AuthContext";
 import { usePresenceTick } from "../auth/usePresenceTick";
@@ -185,12 +185,12 @@ export function PacientesView() {
   }, [pacientes]);
 
   const activosCount = useMemo(() => {
-    return clinicalPatients.filter((p) => isPatientOnline(p, user)).length;
-  }, [clinicalPatients, user, presenceTick]);
+    return clinicalPatients.filter((p) => isPatientActive(p)).length;
+  }, [clinicalPatients]);
 
   const inactivosCount = useMemo(() => {
-    return clinicalPatients.filter((p) => !isPatientOnline(p, user)).length;
-  }, [clinicalPatients, user, presenceTick]);
+    return clinicalPatients.filter((p) => !isPatientActive(p)).length;
+  }, [clinicalPatients]);
 
   const conCitasCount = useMemo(() => {
     return clinicalPatients.filter((p) => Boolean(p.proximaCita)).length;
@@ -199,11 +199,11 @@ export function PacientesView() {
   const pacientesFiltrados = useMemo(() => {
     let result = clinicalPatients;
 
-    // Filtro por tab activo (En línea vs Desconectados según sesión real)
+    // Filtro por tab activo (Activos vs Inactivos)
     if (activeTab === "activos") {
-      result = result.filter((p) => isPatientOnline(p, user));
+      result = result.filter((p) => isPatientActive(p));
     } else if (activeTab === "inactivos") {
-      result = result.filter((p) => !isPatientOnline(p, user));
+      result = result.filter((p) => !isPatientActive(p));
     } else if (activeTab === "citas") {
       result = result.filter((p) => Boolean(p.proximaCita));
     }
@@ -341,7 +341,7 @@ export function PacientesView() {
                   : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
               }`}
             >
-              En Línea ({activosCount})
+              Activos ({activosCount})
             </button>
 
             <button
@@ -349,11 +349,11 @@ export function PacientesView() {
               onClick={() => { setActiveTab("inactivos"); setCurrentPage(1); }}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
                 activeTab === "inactivos"
-                  ? "bg-slate-500/15 dark:bg-slate-500/30 text-slate-800 dark:text-slate-200 border border-slate-500/30 dark:border-slate-400/40 shadow-sm"
+                  ? "bg-rose-500/15 dark:bg-rose-500/30 text-rose-800 dark:text-rose-200 border border-rose-500/30 dark:border-rose-400/40 shadow-sm"
                   : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
               }`}
             >
-              Desconectados ({inactivosCount})
+              Inactivos ({inactivosCount})
             </button>
 
             <button

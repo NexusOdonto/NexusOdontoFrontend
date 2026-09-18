@@ -421,13 +421,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.error('Error al autenticar contra Backend API .NET:', error);
 
       const status = error.response?.status;
-      const respMsg = (error.response?.data?.message || '').toLowerCase();
+      const rawMsg = error.response?.data?.message || error.response?.data?.title || error.response?.data?.error || error.message || '';
+      const respMsg = String(rawMsg).trim();
+      const respMsgLower = respMsg.toLowerCase();
+
       const isDeactivatedInBackend =
         status === 403 ||
-        respMsg.includes('inactiv') ||
-        respMsg.includes('desactiv') ||
-        respMsg.includes('bloquead') ||
-        respMsg.includes('disabled');
+        respMsgLower.includes('inactiv') ||
+        respMsgLower.includes('desactiv') ||
+        respMsgLower.includes('bloquead') ||
+        respMsgLower.includes('disabled') ||
+        respMsgLower.includes('locked');
 
       let isDeactivatedLocally = false;
       try {
@@ -448,6 +452,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         };
       }
 
+      if (respMsg && !respMsgLower.includes('invalid login id or password') && !respMsgLower.includes('invalid email or password') && !respMsgLower.includes('unauthorized') && !respMsgLower.includes('request failed')) {
+        return { success: false, error: respMsg };
+      }
+
       let errorMessage = 'Error de conexión con el servidor. Inténtalo más tarde.';
 
       if (status === 401) {
@@ -456,16 +464,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         } else {
           errorMessage = 'Credenciales incorrectas. Verifica tu número de documento y contraseña.';
         }
-      } else if (error.response?.data?.message) {
-        if (error.response.data.message === 'Invalid email or password.' || error.response.data.message === 'Invalid login ID or password.') {
-          if (cleanIdentifier.includes('@')) {
-            errorMessage = 'Credenciales incorrectas. Si estás ingresando con correo, intenta con tu número de cédula/documento.';
-          } else {
-            errorMessage = 'Credenciales incorrectas. Verifica tu usuario y contraseña.';
-          }
-        } else {
-          errorMessage = error.response.data.message;
-        }
+      } else if (respMsg) {
+        errorMessage = respMsg;
       }
 
       return { success: false, error: errorMessage };

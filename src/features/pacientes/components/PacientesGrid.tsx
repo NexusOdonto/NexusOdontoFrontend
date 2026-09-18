@@ -1,4 +1,4 @@
-import { type Paciente, isPatientOnline } from "../../../types/pacientes";
+import { type Paciente, isPatientActive, isPatientOnline } from "../../../types/pacientes";
 import { CalendarPlus, FileText, Phone, IdCard, Activity, MoreVertical, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
@@ -78,6 +78,7 @@ export function PacientesGrid({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {pacientes.map((paciente, idx) => {
           const isOnline = isPatientOnline(paciente, user);
+          const isActivo = isPatientActive(paciente);
 
           return (
             <div
@@ -102,9 +103,11 @@ export function PacientesGrid({
                         className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-slate-950 shadow-sm transition-colors ${
                           isOnline
                             ? "bg-emerald-500 dark:bg-emerald-400"
-                            : "bg-slate-400 dark:bg-slate-500"
+                            : isActivo
+                            ? "bg-emerald-500 dark:bg-emerald-400"
+                            : "bg-rose-500 dark:bg-rose-400"
                         }`}
-                        title={isOnline ? "En línea (Sesión activa)" : "Desconectado (Sin sesión activa)"}
+                        title={isOnline ? "En línea (Sesión activa)" : isActivo ? "Activo" : "Inactivo"}
                       />
                     </div>
 
@@ -117,19 +120,23 @@ export function PacientesGrid({
                       </h3>
                       <span
                         className={`inline-flex items-center gap-1.5 text-xs font-semibold ${
-                          isOnline
+                          isOnline || isActivo
                             ? "text-emerald-700 dark:text-emerald-300"
-                            : "text-slate-500 dark:text-slate-400"
+                            : "text-rose-600 dark:text-rose-400"
                         }`}
                       >
                         <span
                           className={`h-1.5 w-1.5 rounded-full shrink-0 ${
                             isOnline
                               ? "bg-emerald-500 dark:bg-emerald-400 animate-pulse"
-                              : "bg-slate-400 dark:bg-slate-500"
+                              : isActivo
+                              ? "bg-emerald-500 dark:bg-emerald-400"
+                              : "bg-rose-500 dark:bg-rose-400"
                           }`}
                         />
-                        <span className="truncate">{isOnline ? "En línea" : "Desconectado"}</span>
+                        <span className="truncate">
+                          {isOnline ? "En línea" : isActivo ? "Activo" : "Inactivo"}
+                        </span>
                       </span>
                     </div>
                   </div>

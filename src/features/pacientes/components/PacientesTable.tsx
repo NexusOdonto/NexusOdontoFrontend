@@ -1,4 +1,4 @@
-import { type Paciente, isPatientOnline } from "../../../types/pacientes";
+import { type Paciente, isPatientActive, isPatientOnline } from "../../../types/pacientes";
 import { UserAvatar } from "../../../components/common/UserAvatar";
 import { useAuth } from "../../auth/AuthContext";
 import { usePresenceTick } from "../../auth/usePresenceTick";
@@ -62,19 +62,20 @@ export function PacientesTable({
                     </div>
                   </td>
                   <td className="px-4 py-4">
-                    <div className="h-4 w-28 animate-pulse rounded bg-slate-200 dark:bg-white/10" />
-                  </td>
-                  <td className="px-4 py-4">
                     <div className="h-4 w-24 animate-pulse rounded bg-slate-200 dark:bg-white/10" />
                   </td>
+                  <td className="px-4 py-4">
+                    <div className="h-4 w-28 animate-pulse rounded bg-slate-200 dark:bg-white/10" />
+                  </td>
                   <td className="px-4 py-4 text-right">
-                    <div className="ml-auto h-5 w-16 animate-pulse rounded-full bg-slate-200 dark:bg-white/10" />
+                    <div className="h-6 w-20 ml-auto animate-pulse rounded-full bg-slate-200 dark:bg-white/10" />
                   </td>
                 </tr>
               ))
             ) : pacientes.length > 0 ? (
               pacientes.map((paciente, idx) => {
                 const isOnline = isPatientOnline(paciente, user);
+                const isActivo = isPatientActive(paciente);
 
                 return (
                   <tr
@@ -109,19 +110,21 @@ export function PacientesTable({
                     <td className="px-4 py-3.5 text-right">
                       <span
                         className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold backdrop-blur-sm border ${
-                          isOnline
+                          isOnline || isActivo
                             ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-500/30 dark:border-emerald-400/30"
-                            : "bg-slate-500/15 text-slate-600 dark:text-slate-400 border-slate-500/30 dark:border-slate-500/20"
+                            : "bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30 dark:border-rose-400/30"
                         }`}
                       >
                         <span
                           className={`h-1.5 w-1.5 rounded-full ${
                             isOnline
                               ? "bg-emerald-500 dark:bg-emerald-400 animate-pulse"
-                              : "bg-slate-400"
+                              : isActivo
+                              ? "bg-emerald-500 dark:bg-emerald-400"
+                              : "bg-rose-500 dark:bg-rose-400"
                           }`}
                         />
-                        {isOnline ? "En línea" : "Desconectado"}
+                        {isOnline ? "En línea" : isActivo ? "Activo" : "Inactivo"}
                       </span>
                     </td>
                   </tr>
