@@ -2,6 +2,7 @@ import { type Paciente, isPatientOnline } from "../../../types/pacientes";
 import { CalendarPlus, FileText, Phone, IdCard, Activity, MoreVertical, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
+import { usePresenceTick } from "../../auth/usePresenceTick";
 import { getUserRole } from "../../../utils/routePermissions";
 import { UserAvatar } from "../../../components/common/UserAvatar";
 
@@ -25,6 +26,7 @@ export function PacientesGrid({
 }: PacientesGridProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
+  usePresenceTick();
   const role = getUserRole(user);
   const isClinicianOrAdmin = role === "ADMINISTRADOR" || role === "ODONTOLOGO";
 

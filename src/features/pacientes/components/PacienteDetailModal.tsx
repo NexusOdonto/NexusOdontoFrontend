@@ -3,6 +3,7 @@ import { isPatientOnline } from "../../../types/pacientes";
 import { X, Calendar, Phone, Mail, FileText, Activity, AlertTriangle, ShieldCheck, Clock, MessageSquare } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
+import { usePresenceTick } from "../../auth/usePresenceTick";
 import { getUserRole } from "../../../utils/routePermissions";
 import { UserAvatar } from "../../../components/common/UserAvatar";
 
@@ -14,6 +15,7 @@ interface PacienteDetailModalProps {
 export function PacienteDetailModal({ paciente, onClose }: PacienteDetailModalProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
+  usePresenceTick();
   const role = getUserRole(user);
   const isClinicianOrAdmin = role === "ADMINISTRADOR" || role === "ODONTOLOGO";
 

@@ -2,6 +2,8 @@
  * Entidades y tipos del módulo de Pacientes e Historia Clínica correspondientes al esquema Oracle.
  */
 
+import { isAnyKeyOnline } from "../features/auth/presenceService";
+
 export interface DocumentTypeEntity {
   id: string; // GUID RAW(16)
   code: string; // CC, TI, CE, PASAPORTE, etc.
@@ -62,13 +64,13 @@ export const PACIENTES_STORAGE_KEY = "nexusodontopacientes";
 export const isPatientOnline = (paciente?: Paciente | null, currentUser?: any): boolean => {
   if (!paciente) return false;
 
-  // 1. Si coincide con el usuario autenticado con sesión abierta
-  if (currentUser) {
-    const doc = (paciente.documento || "").trim();
-    const email = (paciente.correo || "").toLowerCase().trim();
-    const pId = paciente.patientId || String(paciente.id || "");
-    const perId = paciente.personId || "";
+  const doc = (paciente.documento || "").trim();
+  const email = (paciente.correo || "").toLowerCase().trim();
+  const pId = paciente.patientId || String(paciente.id || "");
+  const perId = paciente.personId || "";
 
+  // 1. Coincide con el usuario autenticado en esta pestaña
+  if (currentUser) {
     const userDoc = (currentUser.cedula || currentUser.documento || "").trim();
     const userEmail = (currentUser.email || currentUser.correo || "").toLowerCase().trim();
     const userId = currentUser.id || "";
@@ -80,23 +82,6 @@ export const isPatientOnline = (paciente?: Paciente | null, currentUser?: any): 
     if (userPersonId && perId && userPersonId === perId) return true;
   }
 
-  // 2. Si su identificador está en el registro de sesiones activas en línea
-  try {
-    const onlineListRaw = localStorage.getItem("nexus_online_users");
-    if (onlineListRaw) {
-      const onlineList: string[] = JSON.parse(onlineListRaw);
-      if (Array.isArray(onlineList)) {
-        const doc = (paciente.documento || "").trim();
-        const email = (paciente.correo || "").toLowerCase().trim();
-        const pId = paciente.patientId || String(paciente.id || "");
-        if (doc && onlineList.includes(doc)) return true;
-        if (email && onlineList.some((k) => k && k.toLowerCase() === email)) return true;
-        if (pId && onlineList.includes(pId)) return true;
-      }
-    }
-  } catch {
-    // Ignore
-  }
-
-  return false;
-};
+  // 2. Registro de sesiones activas (localStorage + otras pestañas)
+  return isAnyKeyOnline([doc, email, pId, perId, paciente.id != null ? String(paciente.id) : ""]);
+}

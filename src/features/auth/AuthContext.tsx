@@ -6,6 +6,8 @@ import {
   isBotServiceUser,
   RESERVED_ACCOUNT_LOGIN_MESSAGE,
 } from './reservedServiceAccounts';
+import { markUserOffline, markUserOnline, touchPresence } from './presenceService';
+import { usePresenceSync } from './usePresenceSync';
 
 export interface User {
   id: string;
@@ -93,6 +95,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
   const lastActivityRef = useRef<number>(Date.now());
 
+  // Presencia remota vía SignalR (hub de notificaciones existente)
+  usePresenceSync(user?.id);
+
   const clearSessionStorage = useCallback(() => {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('nexus_token');
@@ -103,6 +108,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const handleSessionExpired = useCallback(
     (reason = 'token_expired') => {
+      try {
+        const saved = localStorage.getItem('auth_user');
+        if (saved) markUserOffline(JSON.parse(saved));
+      } catch {
+        // ignore
+      }
       clearSessionStorage();
       setUser(null);
       navigate(`/login?sessionExpired=true&reason=${reason}`, {
@@ -116,6 +127,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // Monitor de inactividad del usuario y de expiración del token JWT
   useEffect(() => {
     if (!user) return;
+
+    // Marcar / refrescar presencia mientras la sesión esté viva
+    markUserOnline(user);
+    const heartbeat = window.setInterval(() => {
+      touchPresence(user);
+    }, 30_000);
 
     const handleUserActivity = () => {
       lastActivityRef.current = Date.now();
@@ -163,6 +180,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         window.removeEventListener(evt, handleUserActivity)
       );
       clearInterval(interval);
+      clearInterval(heartbeat);
       window.removeEventListener('auth:expired', handleAuthExpiredEvent);
     };
   }, [user, handleSessionExpired]);
@@ -221,6 +239,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
         setUser(userData);
         localStorage.setItem('auth_user', JSON.stringify(userData));
+        markUserOnline(userData);
 
         const fullName = `${userData.nombre || ''} ${userData.apellido || ''}`.trim() || userData.name;
         if (fullName) {
@@ -387,17 +406,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         setUser(userData);
         localStorage.setItem('auth_user', JSON.stringify(userData));
-
-        // Registrar presencia en línea
-        try {
-          const onlineList: string[] = JSON.parse(localStorage.getItem('nexus_online_users') || '[]');
-          [userData.cedula, userData.email?.toLowerCase(), userData.id].forEach((k) => {
-            if (k && !onlineList.includes(k)) onlineList.push(k);
-          });
-          localStorage.setItem('nexus_online_users', JSON.stringify(onlineList));
-        } catch {
-          // Ignore
-        }
+        markUserOnline(userData);
 
         if (userData.mustChangePassword) {
           navigate('/cambiar-password', { replace: true });
@@ -496,12 +505,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     try {
-      const onlineList: string[] = JSON.parse(localStorage.getItem('nexus_online_users') || '[]');
-      const myDoc = user?.cedula;
-      const myEmail = user?.email?.toLowerCase();
-      const myId = user?.id;
-      const updated = onlineList.filter((k) => k !== myDoc && k !== myEmail && k !== myId);
-      localStorage.setItem('nexus_online_users', JSON.stringify(updated));
+      markUserOffline(user);
     } catch {
       // Ignore
     }

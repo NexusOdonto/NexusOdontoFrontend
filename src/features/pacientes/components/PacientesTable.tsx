@@ -1,6 +1,7 @@
 import { type Paciente, isPatientOnline } from "../../../types/pacientes";
 import { UserAvatar } from "../../../components/common/UserAvatar";
 import { useAuth } from "../../auth/AuthContext";
+import { usePresenceTick } from "../../auth/usePresenceTick";
 
 interface PacientesTableProps {
   pacientes: Paciente[];
@@ -22,6 +23,7 @@ export function PacientesTable({
   onSelectPaciente,
 }: PacientesTableProps) {
   const { user } = useAuth();
+  usePresenceTick();
 
   return (
     <section className="min-w-0 max-w-full rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl shadow-md dark:shadow-2xl p-5 sm:p-6 transition-all duration-300 flex flex-col justify-between min-h-[460px]">

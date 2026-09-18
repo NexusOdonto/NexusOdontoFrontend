@@ -9,6 +9,7 @@ import {
   isPatientOnline,
 } from "../../types/pacientes";
 import { useAuth } from "../auth/AuthContext";
+import { usePresenceTick } from "../auth/usePresenceTick";
 import { patientService } from "../../api/patientService";
 import { personService } from "../../api/personService";
 import { areGuidsEqual } from "../../utils/roleUtils";
@@ -37,6 +38,7 @@ const isSystemOrAdminAccount = (item: { nombre?: string; name?: string; correo?:
 export function PacientesView() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const presenceTick = usePresenceTick();
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -184,11 +186,11 @@ export function PacientesView() {
 
   const activosCount = useMemo(() => {
     return clinicalPatients.filter((p) => isPatientOnline(p, user)).length;
-  }, [clinicalPatients, user]);
+  }, [clinicalPatients, user, presenceTick]);
 
   const inactivosCount = useMemo(() => {
     return clinicalPatients.filter((p) => !isPatientOnline(p, user)).length;
-  }, [clinicalPatients, user]);
+  }, [clinicalPatients, user, presenceTick]);
 
   const conCitasCount = useMemo(() => {
     return clinicalPatients.filter((p) => Boolean(p.proximaCita)).length;
@@ -215,7 +217,7 @@ export function PacientesView() {
         paciente.documento.includes(query) ||
         paciente.telefono.includes(query)
     );
-  }, [clinicalPatients, debouncedSearch, activeTab, user]);
+  }, [clinicalPatients, debouncedSearch, activeTab, user, presenceTick]);
 
   const totalPages = Math.max(1, Math.ceil(pacientesFiltrados.length / ITEMS_PER_PAGE));
 
