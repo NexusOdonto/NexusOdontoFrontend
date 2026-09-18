@@ -14,10 +14,15 @@
 [![SignalR](https://img.shields.io/badge/SignalR-v10.0-512BD4?logo=dotnet&logoColor=white)](https://learn.microsoft.com/aspnet/core/signalr/)
 [![Google Auth](https://img.shields.io/badge/Google_OAuth-1--Click-4285F4?logo=google&logoColor=white)](https://developers.google.com/identity)
 [![PDF Generation](https://img.shields.io/badge/%40react--pdf%2Frenderer-v4.3-EC1C24?logo=adobeacrobatreader&logoColor=white)](https://react-pdf.org/)
+[![Docs](https://img.shields.io/badge/Docs-Netlify-00C7B7?logo=netlify&logoColor=white)](https://nexusdocumentacion.netlify.app/)
 [![License](https://img.shields.io/badge/Licencia-Privada-blue)](#)
 [![QA Audit](https://img.shields.io/badge/QA_Audit-Aprobado_100%25-brightgreen)](#)
 
 </div>
+
+---
+
+> 📚 **Portal de Documentación Oficial:** [https://nexusdocumentacion.netlify.app/](https://nexusdocumentacion.netlify.app/)
 
 ---
 
