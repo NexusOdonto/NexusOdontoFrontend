@@ -10,6 +10,7 @@ import {
   PlayCircle,
   FileText,
   Smile,
+  Pencil,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -268,8 +269,8 @@ export function CitasTable({
                 </td>
 
                 {/* ACCIONES SEGÚN ROL */}
-                <td className="px-4 py-3.5 whitespace-nowrap text-right">
-                  <div className="flex items-center justify-end gap-1.5 text-xs">
+                <td className="px-4 py-3.5 text-right">
+                  <div className="flex flex-wrap items-center justify-end gap-1.5 text-xs max-w-[9.5rem] sm:max-w-none ml-auto">
                     {/* 1. PACIENTE */}
                     {isPaciente && (
                       <>
@@ -280,10 +281,11 @@ export function CitasTable({
                               e.stopPropagation();
                               onUpdateStatus(cita.id, "Cancelada");
                             }}
-                            className="px-2.5 py-1 rounded-xl border border-rose-500/30 hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 transition-all cursor-pointer text-xs font-semibold active:scale-95"
+                            className="px-2.5 py-1 rounded-xl border border-rose-500/30 hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 transition-all cursor-pointer text-xs font-semibold active:scale-95 flex items-center gap-1 shrink-0"
                             title="Cancelar mi cita"
                           >
-                            Cancelar
+                            <X size={13} />
+                            <span className="hidden sm:inline">Cancelar</span>
                           </button>
                         )}
                         {cita.estado === "Completada" && (
@@ -296,7 +298,7 @@ export function CitasTable({
                     {(isRecepcionista || isAdmin) && (
                       <>
                         {cita.estado === "Pendiente" && (
-                          <div className="flex items-center justify-end gap-1.5">
+                          <div className="flex flex-wrap items-center justify-end gap-1.5 max-w-[9.5rem] sm:max-w-none">
                             {onUpdateStatus && (
                               <button
                                 type="button"
@@ -304,11 +306,11 @@ export function CitasTable({
                                   e.stopPropagation();
                                   onUpdateStatus(cita.id, "Confirmada");
                                 }}
-                                className="px-2.5 py-1 rounded-xl bg-teal-500 hover:bg-teal-600 text-white font-semibold transition-all cursor-pointer shadow-xs active:scale-95 text-xs flex items-center gap-1"
+                                className="px-2.5 py-1 rounded-xl bg-teal-500 hover:bg-teal-600 text-white font-semibold transition-all cursor-pointer shadow-xs active:scale-95 text-xs flex items-center gap-1 shrink-0"
                                 title="Aprobar y Confirmar Cita"
                               >
                                 <Check size={13} />
-                                <span>Aprobar</span>
+                                <span className="hidden sm:inline">Aprobar</span>
                               </button>
                             )}
                             {onUpdateStatus && (
@@ -318,11 +320,11 @@ export function CitasTable({
                                   e.stopPropagation();
                                   onUpdateStatus(cita.id, "Cancelada");
                                 }}
-                                className="px-2.5 py-1 rounded-xl border border-rose-500/40 hover:bg-rose-500/15 text-rose-600 dark:text-rose-400 font-semibold transition-all cursor-pointer text-xs flex items-center gap-1"
+                                className="px-2.5 py-1 rounded-xl border border-rose-500/40 hover:bg-rose-500/15 text-rose-600 dark:text-rose-400 font-semibold transition-all cursor-pointer text-xs flex items-center gap-1 shrink-0"
                                 title="Rechazar Cita"
                               >
                                 <X size={13} />
-                                <span>Rechazar</span>
+                                <span className="hidden sm:inline">Rechazar</span>
                               </button>
                             )}
                             {onOpenAssignModal && (
@@ -332,16 +334,17 @@ export function CitasTable({
                                   e.stopPropagation();
                                   onOpenAssignModal(cita);
                                 }}
-                                className="px-2 py-1 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition-all cursor-pointer text-xs"
+                                className="px-2 py-1 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition-all cursor-pointer text-xs flex items-center gap-1 shrink-0"
                                 title="Reasignar Doctor u Horario"
                               >
-                                Editar
+                                <Pencil size={13} />
+                                <span className="hidden sm:inline">Editar</span>
                               </button>
                             )}
                           </div>
                         )}
                         {cita.estado === "Confirmada" && (
-                          <div className="flex items-center justify-end gap-1.5">
+                          <div className="flex flex-wrap items-center justify-end gap-1.5 max-w-[9.5rem] sm:max-w-none">
                             {onUpdateStatus && (
                               <button
                                 type="button"
@@ -349,11 +352,11 @@ export function CitasTable({
                                   e.stopPropagation();
                                   onUpdateStatus(cita.id, "En Atención");
                                 }}
-                                className="px-2.5 py-1 rounded-xl bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold transition-all cursor-pointer shadow-xs active:scale-95 text-xs flex items-center gap-1"
+                                className="px-2.5 py-1 rounded-xl bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold transition-all cursor-pointer shadow-xs active:scale-95 text-xs flex items-center gap-1 shrink-0"
                                 title="Pasar cita a En Atención"
                               >
                                 <PlayCircle size={13} />
-                                <span>Atender</span>
+                                <span className="hidden sm:inline">Atender</span>
                               </button>
                             )}
                             {onOpenEditModal && (
@@ -363,10 +366,11 @@ export function CitasTable({
                                   e.stopPropagation();
                                   onOpenEditModal(cita);
                                 }}
-                                className="px-2 py-1 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition-all cursor-pointer text-xs"
+                                className="px-2 py-1 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition-all cursor-pointer text-xs flex items-center gap-1 shrink-0"
                                 title="Editar Cita"
                               >
-                                Editar
+                                <Pencil size={13} />
+                                <span className="hidden sm:inline">Editar</span>
                               </button>
                             )}
                             {onUpdateStatus && (
@@ -376,20 +380,21 @@ export function CitasTable({
                                   e.stopPropagation();
                                   onUpdateStatus(cita.id, "Cancelada");
                                 }}
-                                className="px-2.5 py-1 rounded-xl border border-rose-500/30 hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 transition-all cursor-pointer text-xs font-semibold active:scale-95"
+                                className="px-2.5 py-1 rounded-xl border border-rose-500/30 hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 transition-all cursor-pointer text-xs font-semibold active:scale-95 flex items-center gap-1 shrink-0"
                                 title="Cancelar Cita"
                               >
-                                Cancelar
+                                <X size={13} />
+                                <span className="hidden sm:inline">Cancelar</span>
                               </button>
                             )}
                           </div>
                         )}
                         {cita.estado === "En Atención" && (
-                          <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex flex-wrap items-center justify-end gap-1.5 max-w-[9.5rem] sm:max-w-none" onClick={(e) => e.stopPropagation()}>
                             <button
                               type="button"
                               onClick={() => navigate("/odontograma", { state: { appointmentId: cita.appointmentId, patientId: cita.patientId, professionalId: cita.professionalId, patientName: cita.paciente, patientDocument: cita.pacienteCedula } })}
-                              className="p-1.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 transition-all cursor-pointer active:scale-95"
+                              className="p-1.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 transition-all cursor-pointer active:scale-95 shrink-0"
                               title="Abrir Odontograma"
                             >
                               <Smile size={14} />
@@ -398,7 +403,7 @@ export function CitasTable({
                               <button
                                 type="button"
                                 onClick={() => navigate("/historia-clinica", { state: { patientId: cita.patientId, patientName: cita.paciente, patientDocument: cita.pacienteCedula } })}
-                                className="p-1.5 rounded-xl bg-blue-500/15 hover:bg-blue-500/25 text-blue-700 dark:text-blue-300 border border-blue-500/30 transition-all cursor-pointer active:scale-95"
+                                className="p-1.5 rounded-xl bg-blue-500/15 hover:bg-blue-500/25 text-blue-700 dark:text-blue-300 border border-blue-500/30 transition-all cursor-pointer active:scale-95 shrink-0"
                                 title="Abrir Historia Clínica"
                               >
                                 <FileText size={14} />
@@ -408,9 +413,11 @@ export function CitasTable({
                               <button
                                 type="button"
                                 onClick={() => onUpdateStatus(cita.id, "Completada")}
-                                className="px-2.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold transition-all cursor-pointer shadow-sm active:scale-95 text-xs"
+                                className="px-2.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold transition-all cursor-pointer shadow-sm active:scale-95 text-xs flex items-center gap-1 shrink-0"
+                                title="Completar cita"
                               >
-                                Completar
+                                <CheckCircle size={13} />
+                                <span className="hidden sm:inline">Completar</span>
                               </button>
                             )}
                           </div>
@@ -422,7 +429,7 @@ export function CitasTable({
                     {isOdontologo && onUpdateStatus && (
                       <>
                         {cita.estado === "Confirmada" && (
-                          <div className="flex items-center justify-end gap-1.5">
+                          <div className="flex flex-wrap items-center justify-end gap-1.5 max-w-[9.5rem] sm:max-w-none">
                             <button
                               type="button"
                               onClick={(e) => {
@@ -438,11 +445,11 @@ export function CitasTable({
                                   },
                                 });
                               }}
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold transition-all cursor-pointer shadow-sm active:scale-95 text-xs"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold transition-all cursor-pointer shadow-sm active:scale-95 text-xs shrink-0"
                               title="Iniciar Atención y abrir Odontograma"
                             >
                               <PlayCircle size={14} />
-                              <span>Atender</span>
+                              <span className="hidden sm:inline">Atender</span>
                             </button>
                             <button
                               type="button"
@@ -450,19 +457,20 @@ export function CitasTable({
                                 e.stopPropagation();
                                 onUpdateStatus(cita.id, "Cancelada");
                               }}
-                              className="px-2.5 py-1.5 rounded-xl border border-rose-500/30 hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 transition-all cursor-pointer text-xs font-semibold active:scale-95"
+                              className="px-2.5 py-1.5 rounded-xl border border-rose-500/30 hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 transition-all cursor-pointer text-xs font-semibold active:scale-95 flex items-center gap-1 shrink-0"
                               title="Cancelar Cita"
                             >
-                              Cancelar
+                              <X size={13} />
+                              <span className="hidden sm:inline">Cancelar</span>
                             </button>
                           </div>
                         )}
                         {cita.estado === "En Atención" && (
-                          <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex flex-wrap items-center justify-end gap-1.5 max-w-[9.5rem] sm:max-w-none" onClick={(e) => e.stopPropagation()}>
                             <button
                               type="button"
                               onClick={() => navigate("/odontograma", { state: { appointmentId: cita.appointmentId, patientId: cita.patientId, professionalId: cita.professionalId, patientName: cita.paciente, patientDocument: cita.pacienteCedula } })}
-                              className="p-1.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 transition-all cursor-pointer active:scale-95"
+                              className="p-1.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 transition-all cursor-pointer active:scale-95 shrink-0"
                               title="Abrir Odontograma"
                             >
                               <Smile size={14} />
@@ -470,7 +478,7 @@ export function CitasTable({
                             <button
                               type="button"
                               onClick={() => navigate("/historia-clinica", { state: { patientId: cita.patientId, patientName: cita.paciente, patientDocument: cita.pacienteCedula } })}
-                              className="p-1.5 rounded-xl bg-blue-500/15 hover:bg-blue-500/25 text-blue-700 dark:text-blue-300 border border-blue-500/30 transition-all cursor-pointer active:scale-95"
+                              className="p-1.5 rounded-xl bg-blue-500/15 hover:bg-blue-500/25 text-blue-700 dark:text-blue-300 border border-blue-500/30 transition-all cursor-pointer active:scale-95 shrink-0"
                               title="Abrir Historia Clínica"
                             >
                               <FileText size={14} />
@@ -479,9 +487,11 @@ export function CitasTable({
                               <button
                                 type="button"
                                 onClick={() => onUpdateStatus(cita.id, "Completada")}
-                                className="px-2.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold transition-all cursor-pointer shadow-sm active:scale-95 text-xs"
+                                className="px-2.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold transition-all cursor-pointer shadow-sm active:scale-95 text-xs flex items-center gap-1 shrink-0"
+                                title="Completar cita"
                               >
-                                Completar
+                                <CheckCircle size={13} />
+                                <span className="hidden sm:inline">Completar</span>
                               </button>
                             )}
                           </div>

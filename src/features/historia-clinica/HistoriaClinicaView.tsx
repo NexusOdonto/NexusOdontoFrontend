@@ -912,11 +912,11 @@ export function HistoriaClinicaView() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-start">
           <button
             type="button"
             onClick={() => setShowPrintExpedienteModal(true)}
-            className="group inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/65 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-xl active:scale-95 text-xs font-semibold shadow-sm"
+            className="group inline-flex items-center justify-center gap-2 shrink-0 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/65 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-xl active:scale-95 text-xs font-semibold shadow-sm"
           >
             <FileDown size={15} className="text-cyan-600 dark:text-cyan-400 icon-animated-interactive group-hover:scale-125 group-hover:animate-icon-bounce" />
             <span>Imprimir Expediente</span>
@@ -926,7 +926,7 @@ export function HistoriaClinicaView() {
             <button
               type="button"
               onClick={() => setShowPrescriptionModal(true)}
-              className="group inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-cyan-500/40 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-800 dark:text-cyan-200 transition-all cursor-pointer backdrop-blur-xl active:scale-95 text-xs font-semibold shadow-sm"
+              className="group inline-flex items-center justify-center gap-2 shrink-0 px-4 py-2.5 rounded-xl border border-cyan-500/40 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-800 dark:text-cyan-200 transition-all cursor-pointer backdrop-blur-xl active:scale-95 text-xs font-semibold shadow-sm"
               title="Generar e imprimir receta odontológica oficial"
             >
               <FileText size={15} className="text-cyan-600 dark:text-cyan-400 icon-animated-interactive group-hover:scale-125 group-hover:animate-icon-wiggle" />
@@ -941,7 +941,7 @@ export function HistoriaClinicaView() {
               await loadClinicalData();
             }}
             disabled={loading}
-            className="group p-2 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/65 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-xl active:scale-95 shadow-sm flex items-center justify-center disabled:opacity-60"
+            className="group p-2 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/65 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-xl active:scale-95 shadow-sm flex items-center justify-center disabled:opacity-60 shrink-0"
             title="Recargar historia clínica y pacientes"
           >
             <DentistryReloadIcon size={20} loading={loading} />
@@ -951,7 +951,7 @@ export function HistoriaClinicaView() {
             <button
               type="button"
               onClick={() => setShowNewAttentionModal(true)}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 px-5 py-2.5 text-xs font-semibold text-white dark:text-slate-950 shadow-md dark:shadow-[0_0_25px_rgba(34,211,238,0.3)] transition-all active:scale-95 cursor-pointer"
+              className="inline-flex items-center justify-center gap-2 shrink-0 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 px-5 py-2.5 text-xs font-semibold text-white dark:text-slate-950 shadow-md dark:shadow-[0_0_25px_rgba(34,211,238,0.3)] transition-all active:scale-95 cursor-pointer"
             >
               <Plus size={18} />
               <span>Nueva Evolución</span>

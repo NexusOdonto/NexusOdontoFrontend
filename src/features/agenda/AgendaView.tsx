@@ -1012,7 +1012,7 @@ export function AgendaView() {
 
   const posicionHoraActual = obtenerPosicionHoraActual();
 
-  const gridTemplateColumnsSemana = "50px repeat(7, minmax(0, 1fr))";
+  const gridTemplateColumnsSemana = "50px repeat(7, minmax(72px, 1fr))";
   const gridTemplateColumnsDoctores = `50px repeat(${Math.max(doctoresParaColumnas.length, 1)}, minmax(180px, 1fr))`;
   const gridTemplateColumns = modoVista === "semana" ? gridTemplateColumnsSemana : gridTemplateColumnsDoctores;
 
@@ -1037,7 +1037,7 @@ export function AgendaView() {
           left: cita.leftStyle,
           width: cita.widthStyle,
         }}
-        className="group absolute z-20 rounded-xl sm:rounded-2xl border-2 border-teal-500/70 dark:border-teal-400/80 bg-gradient-to-br from-teal-500/20 via-cyan-500/15 to-blue-500/20 dark:from-teal-950/90 dark:via-cyan-950/80 dark:to-blue-950/90 backdrop-blur-xl shadow-md hover:shadow-2xl hover:border-teal-400 hover:-translate-y-1.5 hover:scale-[1.02] active:scale-95 transition-all duration-300 cursor-pointer p-2 sm:p-2.5 flex flex-col justify-between overflow-hidden text-center"
+        className="group absolute z-20 rounded-xl sm:rounded-2xl border-2 border-teal-500/70 dark:border-teal-400/80 bg-gradient-to-br from-teal-500/20 via-cyan-500/15 to-blue-500/20 dark:from-teal-950/90 dark:via-cyan-950/80 dark:to-blue-950/90 backdrop-blur-xl shadow-md hover:shadow-2xl hover:border-teal-400 hover:-translate-y-1.5 hover:scale-[1.02] active:scale-95 transition-all duration-300 cursor-pointer p-1.5 sm:p-2.5 flex flex-col justify-between overflow-hidden text-center"
         title={`Ver ${totalCitas} ${totalCitas === 1 ? "cita agendada" : "citas agendadas"} a las ${cita.horaInicio}`}
       >
         {/* Cabecera: Icono Carpeta + Horario */}
@@ -1058,7 +1058,7 @@ export function AgendaView() {
 
         {/* Centro: Badge Notificación grande y limpio con número de citas (Sin nombres) */}
         <div className="my-auto py-1 flex items-center justify-center">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-gradient-to-r from-teal-500 to-cyan-400 text-slate-950 shadow-md animate-pulse">
+          <span className="inline-flex items-center gap-1.5 px-2 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-black bg-gradient-to-r from-teal-500 to-cyan-400 text-slate-950 shadow-md animate-pulse">
             <span className="h-2 w-2 rounded-full bg-slate-950" />
             <span>{totalCitas} {totalCitas === 1 ? "Cita" : "Citas"}</span>
           </span>
@@ -1067,10 +1067,10 @@ export function AgendaView() {
         {/* Pie: Clic para desplegar dossier */}
         <div className="flex items-center justify-between text-[9px] sm:text-[10px] text-teal-700 dark:text-teal-300 font-bold pt-1 border-t border-teal-500/20">
           <span className="group-hover:underline flex items-center gap-1">
-            <span>Ver citas</span>
-            <span>→</span>
+            <span className="hidden sm:inline">Ver citas</span>
+            <span aria-hidden="true">→</span>
           </span>
-          <span className="text-[9px] font-mono opacity-80">📁 Desplegar</span>
+          <span className="hidden sm:inline text-[9px] font-mono opacity-80">📁 Desplegar</span>
         </div>
       </div>
     );
@@ -1261,7 +1261,7 @@ export function AgendaView() {
 
                 {/* Matriz Calendario */}
                 <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/60">
-                  <div className={modoVista === "semana" ? "w-full min-w-0" : "w-full min-w-[700px]"}>
+                  <div className={modoVista === "semana" ? "w-full min-w-[554px]" : "w-full min-w-[700px]"}>
                     {/* Encabezado Columnas Días u Odontólogos */}
                     {modoVista === "semana" ? (
                       <div

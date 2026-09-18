@@ -462,11 +462,11 @@ export default function RegisterPage() {
             max-md:overscroll-contain
           "
         >
-          <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-4 min-w-0">
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700/80 pb-4 min-w-0">
             <button
               type="button"
               onClick={() => navigate("/login")}
-              className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-teal-600 dark:hover:text-teal-300 transition-colors bg-transparent border-none cursor-pointer py-1 px-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 shrink-0"
+              className="flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-teal-600 dark:text-slate-300 dark:hover:text-teal-300 transition-colors bg-transparent border-none cursor-pointer py-1 px-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 shrink-0"
             >
               <ArrowLeft className="w-4 h-4" />
               <span>Volver al Login</span>
@@ -496,7 +496,7 @@ export default function RegisterPage() {
           </div>
 
           {isGoogle && (
-            <div className="p-4 rounded-2xl bg-teal-500/10 dark:bg-teal-500/15 border border-teal-500/20 dark:border-teal-400/30 text-teal-900 dark:text-teal-200 text-xs flex items-center gap-3 animate-fadeIn min-w-0">
+            <div className="p-4 rounded-2xl bg-teal-50 dark:bg-teal-500/15 border border-teal-200 dark:border-teal-400/30 text-teal-800 dark:text-teal-200 text-xs flex items-center gap-3 animate-fadeIn min-w-0">
               <div className="p-2 rounded-xl bg-teal-500/15 dark:bg-teal-500/20 text-teal-600 dark:text-teal-300 flex-shrink-0">
                 <ShieldCheck className="w-5 h-5" />
               </div>
@@ -506,11 +506,11 @@ export default function RegisterPage() {
                   <span>Autenticación con Google verificada</span>
                   <Sparkles
                     size={13}
-                    className="text-teal-500 dark:text-teal-300"
+                    className="text-teal-600 dark:text-teal-300"
                   />
                 </p>
 
-                <p className="text-teal-800/90 dark:text-teal-200/90 leading-relaxed break-words">
+                <p className="text-teal-700/90 dark:text-teal-200/90 leading-relaxed break-words">
                   Hemos precargado tu correo ({email}). Completa tu
                   documento y teléfono para activar tu expediente.
                 </p>
@@ -520,7 +520,7 @@ export default function RegisterPage() {
 
           {error && (
             <div
-              className="flex items-center gap-2.5 p-3.5 bg-rose-500/15 border border-rose-500/40 rounded-2xl text-rose-700 dark:text-rose-200 text-xs sm:text-sm font-semibold animate-fadeIn shadow-lg shadow-rose-950/10 min-w-0"
+              className="flex items-center justify-center gap-2 p-3.5 bg-rose-500/15 border border-rose-500/40 rounded-xl text-rose-700 dark:text-rose-200 text-xs sm:text-sm text-center animate-fadeIn min-w-0"
               role="alert"
             >
               <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-500 dark:text-rose-400" />
@@ -529,8 +529,8 @@ export default function RegisterPage() {
           )}
 
           {isSuccess ? (
-            <div className="p-8 rounded-2xl bg-teal-500/10 border border-teal-500/30 text-center space-y-4 animate-fadeIn">
-              <div className="w-16 h-16 rounded-full bg-teal-500/20 border border-teal-500/40 text-teal-600 dark:text-teal-400 mx-auto flex items-center justify-center">
+            <div className="p-8 rounded-2xl bg-teal-50 dark:bg-teal-500/10 border border-teal-200 dark:border-teal-500/30 text-center space-y-4 animate-fadeIn">
+              <div className="w-16 h-16 rounded-full bg-teal-500/15 dark:bg-teal-500/20 border border-teal-300 dark:border-teal-500/40 text-teal-600 dark:text-teal-400 mx-auto flex items-center justify-center">
                 <CheckCircle2 className="w-8 h-8" />
               </div>
 
@@ -581,7 +581,7 @@ export default function RegisterPage() {
                       onChange={(e) =>
                         setFirstName(e.target.value)
                       }
-                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-slate-50/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:border-teal-500 dark:focus:border-teal-400 focus:ring-1 focus:ring-teal-500 dark:focus:ring-teal-400 focus:outline-none transition-colors"
+                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 dark:bg-slate-800/70 dark:border-slate-700/60 dark:text-white dark:placeholder:text-slate-500 dark:focus:bg-slate-800 dark:focus:border-teal-400 dark:focus:ring-teal-400 focus:outline-none transition-colors"
                       required
                     />
                   </div>
@@ -605,7 +605,7 @@ export default function RegisterPage() {
                       onChange={(e) =>
                         setLastName(e.target.value)
                       }
-                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-slate-50/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:border-teal-500 dark:focus:border-teal-400 focus:ring-1 focus:ring-teal-500 dark:focus:ring-teal-400 focus:outline-none transition-colors"
+                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 dark:bg-slate-800/70 dark:border-slate-700/60 dark:text-white dark:placeholder:text-slate-500 dark:focus:bg-slate-800 dark:focus:border-teal-400 dark:focus:ring-teal-400 focus:outline-none transition-colors"
                       required
                     />
                   </div>
@@ -630,7 +630,7 @@ export default function RegisterPage() {
                         setDocumentTypeId(e.target.value)
                       }
                       disabled={loadingCatalogs}
-                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-slate-50/80 dark:bg-slate-900/90 border border-slate-200 dark:border-white/10 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:border-teal-500 dark:focus:border-teal-400 focus:ring-1 focus:ring-teal-500 dark:focus:ring-teal-400 focus:outline-none transition-colors cursor-pointer"
+                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:bg-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 dark:bg-slate-800/70 dark:border-slate-700/60 dark:text-white dark:focus:bg-slate-800 dark:focus:border-teal-400 dark:focus:ring-teal-400 focus:outline-none transition-colors cursor-pointer"
                       required
                     >
                       {documentTypes.map((dt) => (
@@ -666,7 +666,7 @@ export default function RegisterPage() {
                           e.target.value.replace(/\D/g, "")
                         )
                       }
-                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-slate-50/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:border-teal-500 dark:focus:border-teal-400 focus:ring-1 focus:ring-teal-500 dark:focus:ring-teal-400 focus:outline-none transition-colors"
+                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 dark:bg-slate-800/70 dark:border-slate-700/60 dark:text-white dark:placeholder:text-slate-500 dark:focus:bg-slate-800 dark:focus:border-teal-400 dark:focus:ring-teal-400 focus:outline-none transition-colors"
                       required
                     />
                   </div>
@@ -691,10 +691,10 @@ export default function RegisterPage() {
                       value={email}
                       readOnly={isGoogle}
                       onChange={(e) => setEmail(e.target.value)}
-                      className={`w-full min-w-0 pl-10 pr-3 py-2.5 border rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:border-teal-500 dark:focus:border-teal-400 focus:ring-1 focus:ring-teal-500 dark:focus:ring-teal-400 focus:outline-none transition-colors ${
+                      className={`w-full min-w-0 pl-10 pr-3 py-2.5 border rounded-xl text-sm placeholder:text-slate-400 focus:ring-1 focus:outline-none transition-colors ${
                         isGoogle
-                          ? "bg-slate-100 dark:bg-slate-900/60 border-teal-500/30 text-teal-700 dark:text-teal-200 cursor-not-allowed"
-                          : "bg-slate-50/80 dark:bg-white/5 border-slate-200 dark:border-white/10"
+                          ? "bg-teal-50 border-teal-300 text-teal-800 cursor-not-allowed dark:bg-slate-900/60 dark:border-teal-500/30 dark:text-teal-200"
+                          : "bg-slate-50 border-slate-200 text-slate-900 focus:bg-white focus:border-teal-500 focus:ring-teal-500 dark:bg-slate-800/70 dark:border-slate-700/60 dark:text-white dark:placeholder:text-slate-500 dark:focus:bg-slate-800 dark:focus:border-teal-400 dark:focus:ring-teal-400"
                       }`}
                       required
                     />
@@ -716,7 +716,7 @@ export default function RegisterPage() {
                       placeholder="Ej. 3001234567"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-slate-50/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:border-teal-500 dark:focus:border-teal-400 focus:ring-1 focus:ring-teal-500 dark:focus:ring-teal-400 focus:outline-none transition-colors"
+                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 dark:bg-slate-800/70 dark:border-slate-700/60 dark:text-white dark:placeholder:text-slate-500 dark:focus:bg-slate-800 dark:focus:border-teal-400 dark:focus:ring-teal-400 focus:outline-none transition-colors"
                     />
                   </div>
                 </div>
@@ -739,7 +739,7 @@ export default function RegisterPage() {
                       onChange={(e) =>
                         setDateOfBirth(e.target.value)
                       }
-                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-slate-50/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:border-teal-500 dark:focus:border-teal-400 focus:ring-1 focus:ring-teal-500 dark:focus:ring-teal-400 focus:outline-none transition-colors"
+                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 dark:bg-slate-800/70 dark:border-slate-700/60 dark:text-white dark:placeholder:text-slate-500 dark:focus:bg-slate-800 dark:focus:border-teal-400 dark:focus:ring-teal-400 focus:outline-none transition-colors [color-scheme:light] dark:[color-scheme:dark]"
                     />
                   </div>
                 </div>
@@ -757,7 +757,7 @@ export default function RegisterPage() {
                     <select
                       value={sexId}
                       onChange={(e) => setSexId(e.target.value)}
-                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-slate-50/80 dark:bg-slate-900/90 border border-slate-200 dark:border-white/10 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:border-teal-500 dark:focus:border-teal-400 focus:ring-1 focus:ring-teal-500 dark:focus:ring-teal-400 focus:outline-none transition-colors cursor-pointer"
+                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:bg-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 dark:bg-slate-800/70 dark:border-slate-700/60 dark:text-white dark:focus:bg-slate-800 dark:focus:border-teal-400 dark:focus:ring-teal-400 focus:outline-none transition-colors cursor-pointer"
                     >
                       <option
                         value=""
@@ -795,7 +795,7 @@ export default function RegisterPage() {
                     placeholder="Ej. Calle 123 # 45-67"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-slate-50/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:border-teal-500 dark:focus:border-teal-400 focus:ring-1 focus:ring-teal-500 dark:focus:ring-teal-400 focus:outline-none transition-colors"
+                    className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 dark:bg-slate-800/70 dark:border-slate-700/60 dark:text-white dark:placeholder:text-slate-500 dark:focus:bg-slate-800 dark:focus:border-teal-400 dark:focus:ring-teal-400 focus:outline-none transition-colors"
                   />
                 </div>
               </div>
@@ -820,7 +820,7 @@ export default function RegisterPage() {
                         onChange={(e) =>
                           setPassword(e.target.value)
                         }
-                        className="w-full min-w-0 pl-10 pr-10 py-2.5 bg-slate-50/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:border-teal-500 dark:focus:border-teal-400 focus:ring-1 focus:ring-teal-500 dark:focus:ring-teal-400 focus:outline-none transition-colors"
+                        className="w-full min-w-0 pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 dark:bg-slate-800/70 dark:border-slate-700/60 dark:text-white dark:placeholder:text-slate-500 dark:focus:bg-slate-800 dark:focus:border-teal-400 dark:focus:ring-teal-400 focus:outline-none transition-colors"
                         required={!isGoogle}
                       />
 
@@ -863,7 +863,7 @@ export default function RegisterPage() {
                         onChange={(e) =>
                           setConfirmPassword(e.target.value)
                         }
-                        className="w-full min-w-0 pl-10 pr-10 py-2.5 bg-slate-50/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:border-teal-500 dark:focus:border-teal-400 focus:ring-1 focus:ring-teal-500 dark:focus:ring-teal-400 focus:outline-none transition-colors"
+                        className="w-full min-w-0 pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 dark:bg-slate-800/70 dark:border-slate-700/60 dark:text-white dark:placeholder:text-slate-500 dark:focus:bg-slate-800 dark:focus:border-teal-400 dark:focus:ring-teal-400 focus:outline-none transition-colors"
                         required={!isGoogle}
                       />
 
@@ -918,7 +918,7 @@ export default function RegisterPage() {
                   <button
                     type="button"
                     onClick={() => navigate("/login")}
-                    className="text-teal-600 dark:text-teal-300 hover:underline font-semibold transition-colors bg-transparent border-none cursor-pointer"
+                    className="text-teal-600 hover:text-teal-700 dark:text-teal-300 dark:hover:text-teal-200 hover:underline font-medium transition-colors bg-transparent border-none cursor-pointer"
                   >
                     Inicia sesión aquí
                   </button>

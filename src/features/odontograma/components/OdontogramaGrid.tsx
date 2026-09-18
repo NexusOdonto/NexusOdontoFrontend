@@ -113,7 +113,7 @@ export function OdontogramaGrid({
       {/* ========================================================================= */}
       {/* 1. RECUADRO SUPERIOR: ARCADA MAXILAR (COLORES DE BOCA / ENCÍA / PALADAR)  */}
       {/* ========================================================================= */}
-      <div className="relative rounded-3xl border border-rose-200/80 dark:border-rose-500/20 bg-gradient-to-br from-rose-50/70 via-white/85 to-rose-100/40 dark:from-[#1b0a13]/80 dark:via-slate-900/85 dark:to-[#160910]/80 backdrop-blur-2xl p-5 sm:p-6 shadow-xl shadow-rose-950/5 dark:shadow-[0_12px_36px_rgba(20,2,10,0.5)] overflow-hidden">
+      <div className="relative rounded-3xl border border-rose-200/80 dark:border-rose-500/20 bg-gradient-to-br from-rose-50/70 via-white/85 to-rose-100/40 dark:from-[#1b0a13]/80 dark:via-slate-900/85 dark:to-[#160910]/80 backdrop-blur-2xl p-5 sm:p-6 shadow-xl shadow-rose-950/5 dark:shadow-[0_12px_36px_rgba(20,2,10,0.5)]">
         {/* Fondo sutil de encía y paladar */}
         <div className="absolute inset-0 pointer-events-none opacity-40 dark:opacity-25 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-rose-500/20 via-transparent to-transparent" />
 
@@ -151,9 +151,9 @@ export function OdontogramaGrid({
 
         {/* Hilera de Dientes Superiores (18 -> 11 | 21 -> 28) */}
         <div className={`overflow-x-auto scrollbar-thin scrollbar-thumb-rose-200 dark:scrollbar-thumb-rose-950/60 relative z-10 ${
-          isBocaMode ? "pt-5 pb-8 sm:pt-6 sm:pb-9" : "py-4"
+          isBocaMode ? "pt-5 pb-8 sm:pt-6 sm:pb-9" : "py-4 pb-1"
         }`}>
-          <div className="flex items-center justify-center w-full min-w-[560px] gap-1.5 sm:gap-3">
+          <div className="flex items-center justify-center w-full min-w-[560px] gap-1 sm:gap-3">
             {/* Cuadrante 1 (Superior Derecho del Paciente: 18 -> 11) */}
             <div className="flex items-center justify-end gap-1 sm:gap-1.5 flex-1">
               {visibleTopRight.map((id: number, idx: number) => (
@@ -200,7 +200,7 @@ export function OdontogramaGrid({
       {/* ========================================================================= */}
       {/* 2. RECUADRO INFERIOR: ARCADA MANDIBULAR (COLORES DE BOCA / ENCÍA / LENGUA)*/}
       {/* ========================================================================= */}
-      <div className="relative rounded-3xl border border-rose-200/80 dark:border-rose-500/20 bg-gradient-to-br from-rose-50/70 via-white/85 to-rose-100/40 dark:from-[#1b0a13]/80 dark:via-slate-900/85 dark:to-[#160910]/80 backdrop-blur-2xl p-5 sm:p-6 shadow-xl shadow-rose-950/5 dark:shadow-[0_12px_36px_rgba(20,2,10,0.5)] overflow-hidden">
+      <div className="relative rounded-3xl border border-rose-200/80 dark:border-rose-500/20 bg-gradient-to-br from-rose-50/70 via-white/85 to-rose-100/40 dark:from-[#1b0a13]/80 dark:via-slate-900/85 dark:to-[#160910]/80 backdrop-blur-2xl p-5 sm:p-6 shadow-xl shadow-rose-950/5 dark:shadow-[0_12px_36px_rgba(20,2,10,0.5)]">
         {/* Fondo sutil de encía inferior y piso de boca */}
         <div className="absolute inset-0 pointer-events-none opacity-40 dark:opacity-25 bg-[radial-gradient(ellipse_at_bottom,_var(--tw-gradient-stops))] from-rose-500/20 via-transparent to-transparent" />
 
@@ -238,9 +238,9 @@ export function OdontogramaGrid({
 
         {/* Hilera de Dientes Inferiores (48 -> 41 | 31 -> 38) */}
         <div className={`overflow-x-auto scrollbar-thin scrollbar-thumb-rose-200 dark:scrollbar-thumb-rose-950/60 relative z-10 ${
-          isBocaMode ? "pt-8 pb-5 sm:pt-9 sm:pb-6" : "py-4"
+          isBocaMode ? "pt-8 pb-5 sm:pt-9 sm:pb-6" : "py-4 pb-1"
         }`}>
-          <div className="flex items-center justify-center w-full min-w-[560px] gap-1.5 sm:gap-3">
+          <div className="flex items-center justify-center w-full min-w-[560px] gap-1 sm:gap-3">
             {/* Cuadrante 4 (Inferior Derecho del Paciente: 48 -> 41) */}
             <div className="flex items-center justify-end gap-1 sm:gap-1.5 flex-1">
               {visibleBottomRight.map((id: number, idx: number) => (

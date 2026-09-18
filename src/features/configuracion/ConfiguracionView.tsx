@@ -555,8 +555,8 @@ export default function ConfiguracionView() {
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-white dark:bg-slate-950/60 border border-slate-200/80 dark:border-white/10 flex items-center justify-between">
-              <div>
+            <div className="p-4 rounded-2xl bg-white dark:bg-slate-950/60 border border-slate-200/80 dark:border-white/10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
                 <p className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm">
                   Copias de Seguridad Automáticas Diarias
                 </p>
@@ -567,7 +567,7 @@ export default function ConfiguracionView() {
               <button
                 type="button"
                 onClick={() => handleChange("backupAutomatico", !config.backupAutomatico)}
-                className={`h-7 w-12 rounded-full transition-colors cursor-pointer p-1 relative flex items-center ${
+                className={`h-7 w-12 shrink-0 self-end sm:self-auto rounded-full transition-colors cursor-pointer p-1 relative flex items-center ${
                   config.backupAutomatico ? "bg-emerald-500" : "bg-slate-300 dark:bg-slate-700"
                 }`}
               >

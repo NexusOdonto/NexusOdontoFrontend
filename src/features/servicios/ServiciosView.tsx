@@ -457,7 +457,7 @@ export function ServiciosView() {
             <Layers size={22} className="group-hover:animate-icon-bounce" />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">
+            <p className="text-[10px] sm:text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate" title="Total Tratamientos">
               Total Tratamientos
             </p>
             <p className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
@@ -472,7 +472,7 @@ export function ServiciosView() {
             <CheckCircle2 size={22} className="group-hover:animate-icon-wiggle" />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">
+            <p className="text-[10px] sm:text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate" title="Servicios Activos">
               Servicios Activos
             </p>
             <p className="text-2xl sm:text-3xl font-black text-emerald-700 dark:text-emerald-300 font-mono tracking-tight">
@@ -487,7 +487,7 @@ export function ServiciosView() {
             <Clock size={22} className="group-hover:animate-icon-pulse" />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">
+            <p className="text-[10px] sm:text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate" title="Duración Media">
               Duración Media
             </p>
             <p className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
@@ -506,10 +506,10 @@ export function ServiciosView() {
             )}
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">
+            <p className="text-[10px] sm:text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate" title={isAdmin ? "Tarifa Promedio" : "Especialidades"}>
               {isAdmin ? "Tarifa Promedio" : "Especialidades"}
             </p>
-            <p className="text-xl sm:text-2xl font-black text-teal-700 dark:text-emerald-300 font-mono tracking-tight truncate">
+            <p className="text-xl sm:text-2xl font-black text-teal-700 dark:text-emerald-300 font-mono tracking-tight truncate" title={isAdmin ? formatCurrency(precioPromedio) : `${CATEGORIAS_FILTRO.length - 1} áreas`}>
               {isAdmin ? formatCurrency(precioPromedio) : `${CATEGORIAS_FILTRO.length - 1} áreas`}
             </p>
             <p className="text-[10px] text-purple-700 dark:text-purple-300 font-semibold mt-0.5">
@@ -528,7 +528,7 @@ export function ServiciosView() {
               key={cat.id}
               type="button"
               onClick={() => setCategoriaSeleccionada(cat.id)}
-              className={`px-4 py-2.5 rounded-2xl transition-all duration-200 cursor-pointer whitespace-nowrap border text-xs font-bold backdrop-blur-2xl ${
+              className={`shrink-0 px-4 py-2.5 rounded-2xl transition-all duration-200 cursor-pointer whitespace-nowrap border text-xs font-bold backdrop-blur-2xl ${
                 isActive
                   ? "bg-cyan-600 text-white border-cyan-600 shadow-md dark:bg-cyan-500/30 dark:border-cyan-400/70 dark:text-cyan-100"
                   : "bg-white/80 border-slate-200/90 text-slate-700 hover:text-slate-900 hover:bg-white hover:border-slate-300 dark:bg-slate-900/60 dark:border-white/10 dark:text-slate-300 dark:hover:bg-slate-800/80 dark:hover:border-cyan-400/40 dark:hover:text-white"

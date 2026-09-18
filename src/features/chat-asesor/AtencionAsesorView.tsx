@@ -984,13 +984,13 @@ export function AtencionAsesorView() {
         )}
 
       {/* BARRA SUPERIOR DEL MÓDULO */}
-      <header className={`px-4 sm:px-6 py-3.5 sm:py-4 bg-slate-50/90 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200/80 dark:border-white/10 items-center justify-between flex-shrink-0 ${selectedChatId ? "hidden md:flex" : "flex"}`}>
-        <div className="flex items-center gap-4">
-          <div className="p-3 rounded-2xl bg-gradient-to-br from-emerald-500/20 via-teal-500/20 to-cyan-500/20 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 shadow-lg shadow-emerald-500/10">
+      <header className={`px-4 sm:px-6 py-3.5 sm:py-4 bg-slate-50/90 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200/80 dark:border-white/10 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between flex-shrink-0 ${selectedChatId ? "hidden md:flex" : "flex"}`}>
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+          <div className="p-3 rounded-2xl bg-gradient-to-br from-emerald-500/20 via-teal-500/20 to-cyan-500/20 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 shadow-lg shadow-emerald-500/10 shrink-0">
             <MessageSquare size={22} />
           </div>
-          <div>
-            <div className="flex items-center gap-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <h1 className="text-base font-black tracking-tight text-slate-900 dark:text-white">
                 Atención y Escalamiento WhatsApp
               </h1>
@@ -998,32 +998,35 @@ export function AtencionAsesorView() {
                 <button
                   type="button"
                   onClick={() => setShowQrModal(true)}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[11px] font-semibold transition-all cursor-pointer"
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[11px] font-semibold transition-all cursor-pointer shrink-0"
                   title="WhatsApp conectado. Clic para ver estado o administrar"
                 >
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
                   <span className="w-2 h-2 rounded-full bg-emerald-500 -ml-3.5" />
-                  <span>Evolution WhatsApp Conectado</span>
+                  <span className="sm:hidden">Conectado</span>
+                  <span className="hidden sm:inline">Evolution WhatsApp Conectado</span>
                 </button>
               ) : qrData?.state === "connecting" ? (
                 <button
                   type="button"
                   onClick={() => setShowQrModal(true)}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-[11px] font-semibold transition-all cursor-pointer animate-pulse"
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-[11px] font-semibold transition-all cursor-pointer animate-pulse shrink-0"
                   title="WhatsApp requiere escanear código QR. Haz clic aquí."
                 >
                   <QrCode size={13} />
-                  <span>Escanear QR WhatsApp</span>
+                  <span className="sm:hidden">Escanear QR</span>
+                  <span className="hidden sm:inline">Escanear QR WhatsApp</span>
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={() => setShowQrModal(true)}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-[11px] font-semibold transition-all cursor-pointer"
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-[11px] font-semibold transition-all cursor-pointer shrink-0"
                   title="WhatsApp desconectado. Clic para vincular mediante código QR"
                 >
                   <span className="w-2 h-2 rounded-full bg-rose-500" />
-                  <span>WhatsApp Desconectado (Vincular)</span>
+                  <span className="sm:hidden">Desconectado</span>
+                  <span className="hidden sm:inline">WhatsApp Desconectado (Vincular)</span>
                 </button>
               )}
             </div>
@@ -1033,7 +1036,7 @@ export function AtencionAsesorView() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0">
           {/* BOTÓN VINCULAR QR WHATSAPP */}
           <button
             type="button"
