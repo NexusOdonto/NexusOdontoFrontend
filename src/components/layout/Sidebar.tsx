@@ -115,7 +115,7 @@ export function Sidebar({
       {/* 1. BACKDROP / OVERLAY MÓVIL (z-40) */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-md lg:hidden transition-opacity duration-300"
+          className="fixed inset-0 z-40 bg-slate-900/35 dark:bg-slate-950/60 backdrop-blur-sm lg:hidden transition-opacity duration-300"
           onClick={onMobileClose}
           aria-hidden="true"
         />

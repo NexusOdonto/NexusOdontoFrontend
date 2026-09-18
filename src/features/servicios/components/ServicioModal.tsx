@@ -174,9 +174,9 @@ export function ServicioModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-xl animate-fadeIn">
+    <div className="fixed inset-0 z-[60] flex items-start sm:items-center justify-center overflow-y-auto p-3 sm:p-4 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-sm animate-fadeIn">
       <div
-        className="w-full max-w-xl rounded-3xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-white/15 shadow-2xl overflow-hidden backdrop-blur-3xl animate-scaleIn flex flex-col max-h-[92vh]"
+        className="w-full max-w-lg mx-2 my-2 rounded-3xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-white/15 shadow-2xl overflow-hidden backdrop-blur-3xl animate-scaleIn flex flex-col max-h-[min(92dvh,100%)]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Cabecera del modal con Icono reactivo a la especialidad */}

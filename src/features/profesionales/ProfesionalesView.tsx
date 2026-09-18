@@ -1118,8 +1118,8 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
 
       {/* MODAL INTERACTIVO DE HORARIO Y SILLONES DEL DOCTOR CON EDICIÓN PERSONALIZADA */}
       {selectedProfForSchedule && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-2xl rounded-3xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/20 p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center overflow-y-auto p-3 sm:p-4 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-2xl my-2 rounded-3xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/20 p-6 shadow-2xl space-y-4 max-h-[min(92dvh,100%)] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-700 dark:text-cyan-300">
@@ -1419,8 +1419,8 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
 
       {/* MODAL NUEVO ODONTÓLOGO */}
       {showCreateModal && canCreateProfessional && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-lg rounded-3xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/20 p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center overflow-y-auto p-3 sm:p-4 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-lg my-2 rounded-3xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/20 p-6 shadow-2xl space-y-4 max-h-[min(92dvh,100%)] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 rounded-xl bg-cyan-500/15 text-cyan-700 dark:text-cyan-300">

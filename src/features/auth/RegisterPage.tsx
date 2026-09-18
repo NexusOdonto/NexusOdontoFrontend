@@ -421,16 +421,16 @@ export default function RegisterPage() {
       <button
         type="button"
         onClick={() => navigate("/")}
-        className="hidden md:inline-flex absolute top-3 left-3 sm:top-6 sm:left-6 z-30 items-center gap-2 px-4 py-2 rounded-2xl bg-slate-950/70 hover:bg-slate-900/90 text-slate-200 hover:text-white border border-white/15 backdrop-blur-xl shadow-lg text-xs font-bold transition-all hover:-translate-x-1 active:scale-95 cursor-pointer"
+        className="hidden md:inline-flex absolute top-3 left-3 sm:top-6 sm:left-6 z-30 items-center gap-2 px-4 py-2 rounded-2xl bg-white/80 hover:bg-white text-slate-700 hover:text-slate-900 border border-slate-200/80 dark:bg-slate-950/70 dark:hover:bg-slate-900/90 dark:text-slate-200 dark:hover:text-white dark:border-white/15 backdrop-blur-xl shadow-lg text-xs font-bold transition-all hover:-translate-x-1 active:scale-95 cursor-pointer"
       >
-        <ArrowLeft size={16} className="text-teal-400" />
+        <ArrowLeft size={16} className="text-teal-600 dark:text-teal-400" />
         <span>Volver a la Página Principal</span>
       </button>
 
       <div className="relative w-full max-w-2xl mx-auto my-auto min-w-0 group transition-all duration-500">
         <div className="absolute -inset-4 rotate-[-2deg] rounded-3xl bg-teal-500/10 backdrop-blur-sm border border-teal-300/20 shadow-xl pointer-events-none transition-all duration-500 ease-out group-hover:-inset-6 group-hover:rotate-[-4deg] group-hover:bg-teal-500/20" />
 
-        <div className="absolute -inset-2 rotate-2deg rounded-3xl bg-slate-900/30 backdrop-blur-md border border-cyan-400/20 shadow-2xl pointer-events-none transition-all duration-500 ease-out group-hover:-inset-4 group-hover:rotate-[3deg] group-hover:bg-slate-900/60" />
+        <div className="absolute -inset-2 rotate-2deg rounded-3xl bg-slate-200/40 dark:bg-slate-900/30 backdrop-blur-md border border-cyan-400/20 shadow-2xl pointer-events-none transition-all duration-500 ease-out group-hover:-inset-4 group-hover:rotate-[3deg] group-hover:bg-slate-200/70 dark:group-hover:bg-slate-900/60" />
 
         <div
           className="
@@ -441,11 +441,15 @@ export default function RegisterPage() {
             p-6
             sm:p-10
             rounded-3xl
-            bg-slate-950/80
+            bg-white/85
+            dark:bg-slate-900/80
             backdrop-blur-xl
             border
-            border-white/15
-            shadow-[0_20px_50px_rgba(0,0,0,0.6)]
+            border-slate-200/80
+            dark:border-slate-800/80
+            text-slate-800
+            dark:text-white
+            shadow-2xl
             flex
             flex-col
             gap-6
@@ -458,11 +462,11 @@ export default function RegisterPage() {
             max-md:overscroll-contain
           "
         >
-          <div className="flex items-center justify-between border-b border-white/10 pb-4 min-w-0">
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700/80 pb-4 min-w-0">
             <button
               type="button"
               onClick={() => navigate("/login")}
-              className="flex items-center gap-2 text-xs font-semibold text-slate-300 hover:text-teal-300 transition-colors bg-transparent border-none cursor-pointer py-1 px-2 rounded-lg hover:bg-white/5 shrink-0"
+              className="flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-teal-600 dark:text-slate-300 dark:hover:text-teal-300 transition-colors bg-transparent border-none cursor-pointer py-1 px-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 shrink-0"
             >
               <ArrowLeft className="w-4 h-4" />
               <span>Volver al Login</span>
@@ -478,13 +482,13 @@ export default function RegisterPage() {
           </div>
 
           <div className="text-center space-y-1 min-w-0">
-            <h1 className="font-prata bg-gradient-to-r from-white via-slate-100 to-teal-300 bg-clip-text text-transparent font-bold text-3xl sm:text-4xl tracking-tight">
+            <h1 className="font-prata bg-gradient-to-r from-slate-900 via-slate-800 to-teal-600 dark:from-white dark:via-slate-100 dark:to-teal-300 bg-clip-text text-transparent font-bold text-3xl sm:text-4xl tracking-tight">
               {isGoogle
                 ? "Completa tu Registro"
                 : "Crear Nueva Cuenta"}
             </h1>
 
-            <p className="font-sans text-xs sm:text-sm text-slate-300 break-words">
+            <p className="font-sans text-xs sm:text-sm text-slate-600 dark:text-slate-300 break-words">
               {isGoogle
                 ? "Estás a un paso de acceder. Ingresa tus datos clínicos y de identificación."
                 : "Regístrate para agendar consultas, ver tus citas y acceder a tu odontograma."}
@@ -492,21 +496,21 @@ export default function RegisterPage() {
           </div>
 
           {isGoogle && (
-            <div className="p-4 rounded-2xl bg-teal-500/15 border border-teal-400/30 text-teal-200 text-xs flex items-center gap-3 animate-fadeIn min-w-0">
-              <div className="p-2 rounded-xl bg-teal-500/20 text-teal-300 flex-shrink-0">
+            <div className="p-4 rounded-2xl bg-teal-50 dark:bg-teal-500/15 border border-teal-200 dark:border-teal-400/30 text-teal-800 dark:text-teal-200 text-xs flex items-center gap-3 animate-fadeIn min-w-0">
+              <div className="p-2 rounded-xl bg-teal-500/15 dark:bg-teal-500/20 text-teal-600 dark:text-teal-300 flex-shrink-0">
                 <ShieldCheck className="w-5 h-5" />
               </div>
 
               <div className="space-y-0.5 min-w-0">
-                <p className="font-bold text-white flex items-center gap-1.5 flex-wrap">
+                <p className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
                   <span>Autenticación con Google verificada</span>
                   <Sparkles
                     size={13}
-                    className="text-teal-300"
+                    className="text-teal-600 dark:text-teal-300"
                   />
                 </p>
 
-                <p className="text-teal-200/90 leading-relaxed break-words">
+                <p className="text-teal-700/90 dark:text-teal-200/90 leading-relaxed break-words">
                   Hemos precargado tu correo ({email}). Completa tu
                   documento y teléfono para activar tu expediente.
                 </p>
@@ -516,26 +520,26 @@ export default function RegisterPage() {
 
           {error && (
             <div
-              className="p-3.5 bg-red-500/20 border border-red-500/50 rounded-xl text-red-300 text-xs sm:text-sm text-center flex items-center justify-center gap-2 animate-fadeIn min-w-0"
+              className="flex items-center justify-center gap-2 p-3.5 bg-rose-500/15 border border-rose-500/40 rounded-xl text-rose-700 dark:text-rose-200 text-xs sm:text-sm text-center animate-fadeIn min-w-0"
               role="alert"
             >
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-500 dark:text-rose-400" />
               <span className="break-words">{error}</span>
             </div>
           )}
 
           {isSuccess ? (
-            <div className="p-8 rounded-2xl bg-teal-500/10 border border-teal-500/30 text-center space-y-4 animate-fadeIn">
-              <div className="w-16 h-16 rounded-full bg-teal-500/20 border border-teal-500/40 text-teal-400 mx-auto flex items-center justify-center">
+            <div className="p-8 rounded-2xl bg-teal-50 dark:bg-teal-500/10 border border-teal-200 dark:border-teal-500/30 text-center space-y-4 animate-fadeIn">
+              <div className="w-16 h-16 rounded-full bg-teal-500/15 dark:bg-teal-500/20 border border-teal-300 dark:border-teal-500/40 text-teal-600 dark:text-teal-400 mx-auto flex items-center justify-center">
                 <CheckCircle2 className="w-8 h-8" />
               </div>
 
               <div className="space-y-1">
-                <h2 className="text-xl font-bold text-white">
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">
                   ¡Registro completado con éxito!
                 </h2>
 
-                <p className="text-xs sm:text-sm text-slate-300">
+                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300">
                   Tu perfil ha sido creado satisfactoriamente en
                   NexusOdonto.
                 </p>
@@ -560,9 +564,9 @@ export default function RegisterPage() {
             >
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5 min-w-0">
-                  <label className="block text-xs font-medium text-slate-200">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
                     Nombres{" "}
-                    <span className="text-teal-400">*</span>
+                    <span className="text-teal-600 dark:text-teal-400">*</span>
                   </label>
 
                   <div className="relative min-w-0">
@@ -577,16 +581,16 @@ export default function RegisterPage() {
                       onChange={(e) =>
                         setFirstName(e.target.value)
                       }
-                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-400 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 focus:outline-none transition-colors"
+                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 dark:bg-slate-800/70 dark:border-slate-700/60 dark:text-white dark:placeholder:text-slate-500 dark:focus:bg-slate-800 dark:focus:border-teal-400 dark:focus:ring-teal-400 focus:outline-none transition-colors"
                       required
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1.5 min-w-0">
-                  <label className="block text-xs font-medium text-slate-200">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
                     Apellidos{" "}
-                    <span className="text-teal-400">*</span>
+                    <span className="text-teal-600 dark:text-teal-400">*</span>
                   </label>
 
                   <div className="relative min-w-0">
@@ -601,7 +605,7 @@ export default function RegisterPage() {
                       onChange={(e) =>
                         setLastName(e.target.value)
                       }
-                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-400 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 focus:outline-none transition-colors"
+                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 dark:bg-slate-800/70 dark:border-slate-700/60 dark:text-white dark:placeholder:text-slate-500 dark:focus:bg-slate-800 dark:focus:border-teal-400 dark:focus:ring-teal-400 focus:outline-none transition-colors"
                       required
                     />
                   </div>
@@ -610,9 +614,9 @@ export default function RegisterPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5 min-w-0">
-                  <label className="block text-xs font-medium text-slate-200">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
                     Tipo de Documento{" "}
-                    <span className="text-teal-400">*</span>
+                    <span className="text-teal-600 dark:text-teal-400">*</span>
                   </label>
 
                   <div className="relative min-w-0">
@@ -626,14 +630,14 @@ export default function RegisterPage() {
                         setDocumentTypeId(e.target.value)
                       }
                       disabled={loadingCatalogs}
-                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-slate-900/90 border border-white/10 rounded-xl text-sm text-slate-100 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 focus:outline-none transition-colors"
+                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:bg-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 dark:bg-slate-800/70 dark:border-slate-700/60 dark:text-white dark:focus:bg-slate-800 dark:focus:border-teal-400 dark:focus:ring-teal-400 focus:outline-none transition-colors"
                       required
                     >
                       {documentTypes.map((dt) => (
                         <option
                           key={dt.id}
                           value={dt.id}
-                          className="bg-slate-900 text-slate-100"
+                          className="bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100"
                         >
                           {dt.name} ({dt.code})
                         </option>
@@ -643,9 +647,9 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="space-y-1.5 min-w-0">
-                  <label className="block text-xs font-medium text-slate-200">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
                     Número de Documento{" "}
-                    <span className="text-teal-400">*</span>
+                    <span className="text-teal-600 dark:text-teal-400">*</span>
                   </label>
 
                   <div className="relative min-w-0">
@@ -662,7 +666,7 @@ export default function RegisterPage() {
                           e.target.value.replace(/\D/g, "")
                         )
                       }
-                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-400 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 focus:outline-none transition-colors"
+                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 dark:bg-slate-800/70 dark:border-slate-700/60 dark:text-white dark:placeholder:text-slate-500 dark:focus:bg-slate-800 dark:focus:border-teal-400 dark:focus:ring-teal-400 focus:outline-none transition-colors"
                       required
                     />
                   </div>
@@ -671,9 +675,9 @@ export default function RegisterPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5 min-w-0">
-                  <label className="block text-xs font-medium text-slate-200">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
                     Correo Electrónico{" "}
-                    <span className="text-teal-400">*</span>
+                    <span className="text-teal-600 dark:text-teal-400">*</span>
                   </label>
 
                   <div className="relative min-w-0">
@@ -687,10 +691,10 @@ export default function RegisterPage() {
                       value={email}
                       readOnly={isGoogle}
                       onChange={(e) => setEmail(e.target.value)}
-                      className={`w-full min-w-0 pl-10 pr-3 py-2.5 border rounded-xl text-sm text-slate-100 placeholder:text-slate-400 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 focus:outline-none transition-colors ${
+                      className={`w-full min-w-0 pl-10 pr-3 py-2.5 border rounded-xl text-sm placeholder:text-slate-400 focus:ring-1 focus:outline-none transition-colors ${
                         isGoogle
-                          ? "bg-slate-900/60 border-teal-500/30 text-teal-200 cursor-not-allowed"
-                          : "bg-white/5 border-white/10"
+                          ? "bg-teal-50 border-teal-300 text-teal-800 cursor-not-allowed dark:bg-slate-900/60 dark:border-teal-500/30 dark:text-teal-200"
+                          : "bg-slate-50 border-slate-200 text-slate-900 focus:bg-white focus:border-teal-500 focus:ring-teal-500 dark:bg-slate-800/70 dark:border-slate-700/60 dark:text-white dark:placeholder:text-slate-500 dark:focus:bg-slate-800 dark:focus:border-teal-400 dark:focus:ring-teal-400"
                       }`}
                       required
                     />
@@ -698,7 +702,7 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="space-y-1.5 min-w-0">
-                  <label className="block text-xs font-medium text-slate-200">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
                     Teléfono / Celular (Opcional)
                   </label>
 
@@ -712,7 +716,7 @@ export default function RegisterPage() {
                       placeholder="Ej. 3001234567"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-400 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 focus:outline-none transition-colors"
+                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 dark:bg-slate-800/70 dark:border-slate-700/60 dark:text-white dark:placeholder:text-slate-500 dark:focus:bg-slate-800 dark:focus:border-teal-400 dark:focus:ring-teal-400 focus:outline-none transition-colors"
                     />
                   </div>
                 </div>
@@ -720,7 +724,7 @@ export default function RegisterPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5 min-w-0">
-                  <label className="block text-xs font-medium text-slate-200">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
                     Fecha de Nacimiento (Opcional)
                   </label>
 
@@ -735,13 +739,13 @@ export default function RegisterPage() {
                       onChange={(e) =>
                         setDateOfBirth(e.target.value)
                       }
-                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-400 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 focus:outline-none transition-colors [color-scheme:dark]"
+                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 dark:bg-slate-800/70 dark:border-slate-700/60 dark:text-white dark:placeholder:text-slate-500 dark:focus:bg-slate-800 dark:focus:border-teal-400 dark:focus:ring-teal-400 focus:outline-none transition-colors [color-scheme:light] dark:[color-scheme:dark]"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1.5 min-w-0">
-                  <label className="block text-xs font-medium text-slate-200">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
                     Sexo / Género (Opcional)
                   </label>
 
@@ -753,11 +757,11 @@ export default function RegisterPage() {
                     <select
                       value={sexId}
                       onChange={(e) => setSexId(e.target.value)}
-                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-slate-900/90 border border-white/10 rounded-xl text-sm text-slate-100 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 focus:outline-none transition-colors"
+                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:bg-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 dark:bg-slate-800/70 dark:border-slate-700/60 dark:text-white dark:focus:bg-slate-800 dark:focus:border-teal-400 dark:focus:ring-teal-400 focus:outline-none transition-colors"
                     >
                       <option
                         value=""
-                        className="bg-slate-900 text-slate-400"
+                        className="bg-white text-slate-500 dark:bg-slate-900 dark:text-slate-400"
                       >
                         Selecciona sexo (opcional)
                       </option>
@@ -766,7 +770,7 @@ export default function RegisterPage() {
                         <option
                           key={s.id}
                           value={s.id}
-                          className="bg-slate-900 text-slate-100"
+                          className="bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100"
                         >
                           {s.name}
                         </option>
@@ -777,7 +781,7 @@ export default function RegisterPage() {
               </div>
 
               <div className="space-y-1.5 min-w-0">
-                <label className="block text-xs font-medium text-slate-200">
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
                   Dirección de Residencia (Opcional)
                 </label>
 
@@ -791,7 +795,7 @@ export default function RegisterPage() {
                     placeholder="Ej. Calle 123 # 45-67"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-400 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 focus:outline-none transition-colors"
+                    className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 dark:bg-slate-800/70 dark:border-slate-700/60 dark:text-white dark:placeholder:text-slate-500 dark:focus:bg-slate-800 dark:focus:border-teal-400 dark:focus:ring-teal-400 focus:outline-none transition-colors"
                   />
                 </div>
               </div>
@@ -799,9 +803,9 @@ export default function RegisterPage() {
               {!isGoogle && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5 min-w-0">
-                    <label className="block text-xs font-medium text-slate-200">
+                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
                       Contraseña{" "}
-                      <span className="text-teal-400">*</span>
+                      <span className="text-teal-600 dark:text-teal-400">*</span>
                     </label>
 
                     <div className="relative min-w-0">
@@ -816,7 +820,7 @@ export default function RegisterPage() {
                         onChange={(e) =>
                           setPassword(e.target.value)
                         }
-                        className="w-full min-w-0 pl-10 pr-10 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-400 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 focus:outline-none transition-colors"
+                        className="w-full min-w-0 pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 dark:bg-slate-800/70 dark:border-slate-700/60 dark:text-white dark:placeholder:text-slate-500 dark:focus:bg-slate-800 dark:focus:border-teal-400 dark:focus:ring-teal-400 focus:outline-none transition-colors"
                         required={!isGoogle}
                       />
 
@@ -825,7 +829,7 @@ export default function RegisterPage() {
                         onClick={() =>
                           setShowPassword(!showPassword)
                         }
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-300 transition-colors bg-transparent border-none cursor-pointer"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600 dark:hover:text-teal-300 transition-colors bg-transparent border-none cursor-pointer"
                         aria-label="Toggle password visibility"
                       >
                         {showPassword ? (
@@ -838,9 +842,9 @@ export default function RegisterPage() {
                   </div>
 
                   <div className="space-y-1.5 min-w-0">
-                    <label className="block text-xs font-medium text-slate-200">
+                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-200">
                       Confirmar Contraseña{" "}
-                      <span className="text-teal-400">*</span>
+                      <span className="text-teal-600 dark:text-teal-400">*</span>
                     </label>
 
                     <div className="relative min-w-0">
@@ -859,7 +863,7 @@ export default function RegisterPage() {
                         onChange={(e) =>
                           setConfirmPassword(e.target.value)
                         }
-                        className="w-full min-w-0 pl-10 pr-10 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-slate-100 placeholder:text-slate-400 focus:border-teal-400 focus:ring-1 focus:ring-teal-400 focus:outline-none transition-colors"
+                        className="w-full min-w-0 pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 dark:bg-slate-800/70 dark:border-slate-700/60 dark:text-white dark:placeholder:text-slate-500 dark:focus:bg-slate-800 dark:focus:border-teal-400 dark:focus:ring-teal-400 focus:outline-none transition-colors"
                         required={!isGoogle}
                       />
 
@@ -870,7 +874,7 @@ export default function RegisterPage() {
                             !showConfirmPassword
                           )
                         }
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-300 transition-colors bg-transparent border-none cursor-pointer"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-teal-600 dark:hover:text-teal-300 transition-colors bg-transparent border-none cursor-pointer"
                         aria-label="Toggle confirm password visibility"
                       >
                         {showConfirmPassword ? (
@@ -909,12 +913,12 @@ export default function RegisterPage() {
               </button>
 
               <div className="text-center pt-2">
-                <p className="text-sm text-slate-300">
+                <p className="text-sm text-slate-600 dark:text-slate-300">
                   ¿Ya tienes una cuenta?{" "}
                   <button
                     type="button"
                     onClick={() => navigate("/login")}
-                    className="text-teal-300 hover:underline font-medium transition-colors bg-transparent border-none cursor-pointer"
+                    className="text-teal-600 hover:text-teal-700 dark:text-teal-300 dark:hover:text-teal-200 hover:underline font-medium transition-colors bg-transparent border-none cursor-pointer"
                   >
                     Inicia sesión aquí
                   </button>
