@@ -8,9 +8,22 @@ export default defineConfig({
   server: {
     port: 5174,
     strictPort: false,
+    headers: {
+      'Cache-Control': 'no-cache',
+    },
+  },
+  preview: {
+    port: 4173,
+    headers: {
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'SAMEORIGIN',
+    },
   },
   build: {
     target: 'esnext',
+    cssCodeSplit: true,
+    assetsInlineLimit: 4096,
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
@@ -18,6 +31,12 @@ export default defineConfig({
           if (id.includes('node_modules')) {
             if (id.includes('@react-pdf') || id.includes('pdfkit') || id.includes('fontkit') || id.includes('restructure') || id.includes('yoga-layout')) {
               return 'vendor-pdf';
+            }
+            if (id.includes('motion') || id.includes('framer-motion')) {
+              return 'vendor-motion';
+            }
+            if (id.includes('@blobatar') || id.includes('blobatar')) {
+              return 'vendor-blobatar';
             }
             if (id.includes('@microsoft/signalr')) {
               return 'vendor-signalr';
