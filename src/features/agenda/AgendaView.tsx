@@ -22,7 +22,9 @@ import {
   Folder,
   FolderOpen,
   Smile,
+  Utensils,
 } from "lucide-react";
+import { CarruselAlmuerzoVertical } from "./CarruselAlmuerzoVertical";
 import { useNavigate } from "react-router-dom";
 import { UserAvatar } from "../../components/common/UserAvatar";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
@@ -1364,13 +1366,20 @@ export function AgendaView() {
                       <div className="relative border-r border-slate-200 dark:border-slate-800 text-right pr-2 bg-slate-50/50 dark:bg-slate-900/30 sticky left-0 z-25 backdrop-blur-xs">
                         {Array.from({ length: 12 }, (_, i) => {
                           const hora = i + 7;
+                          const esAlmuerzo = hora === 12 || hora === 13;
                           return (
                             <div
                               key={hora}
-                              className="absolute right-2 text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400"
+                              className={`absolute right-2 text-[11px] font-mono font-semibold flex items-center justify-end gap-1 ${
+                                esAlmuerzo
+                                  ? "text-amber-600 dark:text-amber-400 font-bold"
+                                  : "text-slate-500 dark:text-slate-400"
+                              }`}
                               style={{ top: `${i * HORA_ALTURA_PX - 7}px` }}
+                              title={esAlmuerzo ? "Horario de almuerzo clínico (12:00 - 14:00)" : undefined}
                             >
-                              {`${String(hora).padStart(2, "0")}:00`}
+                              {esAlmuerzo && <Utensils size={10} className="text-amber-500 shrink-0" />}
+                              <span>{`${String(hora).padStart(2, "0")}:00`}</span>
                             </div>
                           );
                         })}
@@ -1409,6 +1418,15 @@ export function AgendaView() {
                                   title={`Agendar para el día ${dia.toLocaleDateString("es-CO")} a las ${String(i + 7).padStart(2, "0")}:00`}
                                 />
                               ))}
+
+                              {/* Carrusel Vertical de Almuerzo (12:00 y 13:00) */}
+                              <CarruselAlmuerzoVertical
+                                horaAlturaPx={HORA_ALTURA_PX}
+                                onIntentarAgendar={() => {
+                                  setErrorMessage("🍽️ Horario de almuerzo clínico (12:00 a 14:00). Durante este periodo el personal médico se encuentra almorzando.");
+                                  setTimeout(() => setErrorMessage(null), 4500);
+                                }}
+                              />
 
                               {/* Citas / Eventos */}
                               {citasPosicionadas.map(renderCitaCard)}
@@ -1449,6 +1467,16 @@ export function AgendaView() {
                                   title={`Agendar con ${doc.nombre} a las ${String(i + 7).padStart(2, "0")}:00`}
                                 />
                               ))}
+
+                              {/* Carrusel Vertical de Almuerzo (12:00 y 13:00) */}
+                              <CarruselAlmuerzoVertical
+                                horaAlturaPx={HORA_ALTURA_PX}
+                                doctorNombre={doc.nombre}
+                                onIntentarAgendar={() => {
+                                  setErrorMessage(`🍽️ Horario de almuerzo de ${doc.nombre} (12:00 a 14:00). El profesional se encuentra almorzando.`);
+                                  setTimeout(() => setErrorMessage(null), 4500);
+                                }}
+                              />
 
                               {/* Citas del Odontólogo */}
                               {citasPosicionadas.map(renderCitaCard)}
