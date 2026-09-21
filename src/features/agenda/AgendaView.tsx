@@ -23,6 +23,8 @@ import {
   FolderOpen,
   Smile,
   Utensils,
+  Ban,
+  Moon,
 } from "lucide-react";
 import { CarruselAlmuerzoVertical } from "./CarruselAlmuerzoVertical";
 import { useNavigate } from "react-router-dom";
@@ -52,6 +54,8 @@ import { SelectOrWriteInput, type SelectOption } from "../../components/common/S
 import { areGuidsEqual } from "../../utils/roleUtils";
 import { resolveOrCreatePatient } from "../../utils/patientResolution";
 import { validateClinicAppointmentSchedule } from "../../utils/clinicSchedule";
+import { GlassSelect } from "../../components/common/GlassSelect";
+import { GlassTimePicker } from "../../components/common/GlassTimePicker";
 
 const getDoctorColorClass = (docName: string, lista: { nombre: string; color: string }[]) => {
   const found = lista.find(
@@ -616,11 +620,19 @@ export function AgendaView() {
   };
 
   const abrirNuevaCita = (fecha: Date, hora: string, odontologoPredeterminado?: string) => {
+    const fechaStr = formatoFechaInput(fecha);
+    const scheduleError = validateClinicAppointmentSchedule(fechaStr, hora);
+    if (scheduleError) {
+      setErrorMessage(scheduleError);
+      setTimeout(() => setErrorMessage(null), 5000);
+      return;
+    }
+
     const horaNumero = Number(hora.split(":")[0]);
     const horaFin = `${String(horaNumero + 1).padStart(2, "0")}:00`;
 
     setFormError(null);
-    setFechaSeleccionada(formatoFechaInput(fecha));
+    setFechaSeleccionada(fechaStr);
 
     let docToSelect = odontologoPredeterminado;
     if (!docToSelect) {
@@ -1366,19 +1378,19 @@ export function AgendaView() {
                       <div className="relative border-r border-slate-200 dark:border-slate-800 text-right pr-2 bg-slate-50/50 dark:bg-slate-900/30 sticky left-0 z-25 backdrop-blur-xs">
                         {Array.from({ length: 12 }, (_, i) => {
                           const hora = i + 7;
-                          const esAlmuerzo = hora === 12 || hora === 13;
+                          const esDescanso = hora === 12 || hora === 13;
                           return (
                             <div
                               key={hora}
                               className={`absolute right-2 text-[11px] font-mono font-semibold flex items-center justify-end gap-1 ${
-                                esAlmuerzo
+                                esDescanso
                                   ? "text-amber-600 dark:text-amber-400 font-bold"
                                   : "text-slate-500 dark:text-slate-400"
                               }`}
                               style={{ top: `${i * HORA_ALTURA_PX - 7}px` }}
-                              title={esAlmuerzo ? "Horario de almuerzo clínico (12:00 - 14:00)" : undefined}
+                              title={esDescanso ? "Horario de descanso clínico (12:00 - 14:00)" : undefined}
                             >
-                              {esAlmuerzo && <Utensils size={10} className="text-amber-500 shrink-0" />}
+                              {esDescanso && <Utensils size={10} className="text-amber-500 shrink-0" />}
                               <span>{`${String(hora).padStart(2, "0")}:00`}</span>
                             </div>
                           );
@@ -1392,6 +1404,7 @@ export function AgendaView() {
                           const citasPosicionadas = calcularPosicionesDia(citasDia);
                           const esHoy =
                             formatoFechaInput(dia) === formatoFechaInput(horaActual);
+                          const dayOfWeek = dia.getDay(); // 0 = Domingo, 6 = Sábado, 1-5 = Lunes-Viernes
 
                           return (
                             <div
@@ -1419,14 +1432,100 @@ export function AgendaView() {
                                 />
                               ))}
 
-                              {/* Carrusel Vertical de Almuerzo (12:00 y 13:00) */}
-                              <CarruselAlmuerzoVertical
-                                horaAlturaPx={HORA_ALTURA_PX}
-                                onIntentarAgendar={() => {
-                                  setErrorMessage("🍽️ Horario de almuerzo clínico (12:00 a 14:00). Durante este periodo el personal médico se encuentra almorzando.");
-                                  setTimeout(() => setErrorMessage(null), 4500);
-                                }}
-                              />
+                              {/* Domingo: Día no laboral (Todo el día bloqueado) */}
+                              {dayOfWeek === 0 && (
+                                <div
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setErrorMessage("🚫 Los domingos la clínica permanece cerrada. No es posible agendar citas este día.");
+                                    setTimeout(() => setErrorMessage(null), 5000);
+                                  }}
+                                  className="absolute inset-x-0.5 z-20 flex flex-col items-center justify-center p-2 rounded-xl border border-rose-500/40 bg-rose-500/[0.08] dark:bg-rose-950/40 backdrop-blur-[1.5px] cursor-not-allowed select-none transition-all hover:bg-rose-500/[0.12] dark:hover:bg-rose-950/50"
+                                  style={{
+                                    top: "2px",
+                                    height: `${12 * HORA_ALTURA_PX - 4}px`,
+                                    backgroundImage: "repeating-linear-gradient(135deg, rgba(244,63,94,0.06) 0px, rgba(244,63,94,0.06) 10px, transparent 10px, transparent 20px)",
+                                  }}
+                                  title="Día no laboral • Clínica cerrada los Domingos"
+                                >
+                                  <div className="flex flex-col items-center gap-1.5 text-center px-2 py-3 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-rose-500/30 shadow-md">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-500/20 text-rose-600 dark:text-rose-400">
+                                      <Ban size={18} />
+                                    </div>
+                                    <span className="text-xs font-bold text-rose-700 dark:text-rose-300">
+                                      Día No Laboral
+                                    </span>
+                                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-tight">
+                                      Clínica cerrada
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Sábado: Tarde cerrada (12:00 a 19:00 bloqueado) */}
+                              {dayOfWeek === 6 && (
+                                <div
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setErrorMessage("🚫 Los sábados la clínica atiende únicamente en la mañana (08:00 a 12:00). En la tarde permanece cerrada.");
+                                    setTimeout(() => setErrorMessage(null), 5000);
+                                  }}
+                                  className="absolute inset-x-0.5 z-20 flex flex-col items-center justify-center p-2 rounded-xl border border-rose-500/40 bg-rose-500/[0.08] dark:bg-rose-950/40 backdrop-blur-[1.5px] cursor-not-allowed select-none transition-all hover:bg-rose-500/[0.12] dark:hover:bg-rose-950/50"
+                                  style={{
+                                    top: `${5 * HORA_ALTURA_PX + 2}px`,
+                                    height: `${7 * HORA_ALTURA_PX - 4}px`,
+                                    backgroundImage: "repeating-linear-gradient(135deg, rgba(244,63,94,0.06) 0px, rgba(244,63,94,0.06) 10px, transparent 10px, transparent 20px)",
+                                  }}
+                                  title="No se labora • Sábado tarde cerrado (12:00 a 19:00)"
+                                >
+                                  <div className="flex flex-col items-center gap-1 text-center px-2 py-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-rose-500/30 shadow-md">
+                                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-500/20 text-rose-600 dark:text-rose-400">
+                                      <Moon size={15} />
+                                    </div>
+                                    <span className="text-[11px] font-bold text-rose-700 dark:text-rose-300">
+                                      No se labora
+                                    </span>
+                                    <span className="text-[9.5px] text-slate-500 dark:text-slate-400 font-medium leading-tight">
+                                      Sábado tarde cerrado
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Lunes a Viernes: Descanso Clínico (12:00 a 14:00) y Cierre (17:00 a 19:00) */}
+                              {dayOfWeek >= 1 && dayOfWeek <= 5 && (
+                                <>
+                                  <CarruselAlmuerzoVertical
+                                    horaAlturaPx={HORA_ALTURA_PX}
+                                    horaInicioDescanso="12:00"
+                                    horaFinDescanso="14:00"
+                                    horaInicioCalendario={7}
+                                    onIntentarAgendar={() => {
+                                      setErrorMessage("☕ Horario de descanso clínico (12:00 a 14:00). Durante este periodo el personal médico se encuentra en descanso/almuerzo.");
+                                      setTimeout(() => setErrorMessage(null), 4500);
+                                    }}
+                                  />
+                                  <div
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setErrorMessage("🌙 La jornada de atención finaliza a las 17:00 (5:00 PM).");
+                                      setTimeout(() => setErrorMessage(null), 5000);
+                                    }}
+                                    className="absolute inset-x-0.5 z-20 flex items-center justify-center p-2 rounded-xl border border-slate-300/70 dark:border-slate-800 bg-slate-200/40 dark:bg-slate-950/50 backdrop-blur-[1px] cursor-not-allowed select-none transition-all hover:bg-slate-200/60"
+                                    style={{
+                                      top: `${10 * HORA_ALTURA_PX + 2}px`,
+                                      height: `${2 * HORA_ALTURA_PX - 4}px`,
+                                      backgroundImage: "repeating-linear-gradient(135deg, rgba(148,163,184,0.1) 0px, rgba(148,163,184,0.1) 10px, transparent 10px, transparent 20px)",
+                                    }}
+                                    title="Cierre de Clínica • Atención hasta las 17:00"
+                                  >
+                                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-[10px] font-semibold shadow-xs">
+                                      <Moon size={12} className="text-slate-500" />
+                                      <span>Cierre 17:00</span>
+                                    </div>
+                                  </div>
+                                </>
+                              )}
 
                               {/* Citas / Eventos */}
                               {citasPosicionadas.map(renderCitaCard)}
@@ -1442,6 +1541,7 @@ export function AgendaView() {
                             return cDoc === dDoc || cDoc.includes(dDoc) || dDoc.includes(cDoc);
                           });
                           const citasPosicionadas = calcularPosicionesDia(citasDoc);
+                          const dayOfWeek = fechaActual.getDay(); // 0 = Domingo, 6 = Sábado, 1-5 = L-V
 
                           return (
                             <div
@@ -1468,15 +1568,101 @@ export function AgendaView() {
                                 />
                               ))}
 
-                              {/* Carrusel Vertical de Almuerzo (12:00 y 13:00) */}
-                              <CarruselAlmuerzoVertical
-                                horaAlturaPx={HORA_ALTURA_PX}
-                                doctorNombre={doc.nombre}
-                                onIntentarAgendar={() => {
-                                  setErrorMessage(`🍽️ Horario de almuerzo de ${doc.nombre} (12:00 a 14:00). El profesional se encuentra almorzando.`);
-                                  setTimeout(() => setErrorMessage(null), 4500);
-                                }}
-                              />
+                              {/* Domingo: Día no laboral (Todo el día bloqueado) */}
+                              {dayOfWeek === 0 && (
+                                <div
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setErrorMessage("🚫 Los domingos la clínica permanece cerrada. No es posible agendar citas este día.");
+                                    setTimeout(() => setErrorMessage(null), 5000);
+                                  }}
+                                  className="absolute inset-x-0.5 z-20 flex flex-col items-center justify-center p-2 rounded-xl border border-rose-500/40 bg-rose-500/[0.08] dark:bg-rose-950/40 backdrop-blur-[1.5px] cursor-not-allowed select-none transition-all hover:bg-rose-500/[0.12] dark:hover:bg-rose-950/50"
+                                  style={{
+                                    top: "2px",
+                                    height: `${12 * HORA_ALTURA_PX - 4}px`,
+                                    backgroundImage: "repeating-linear-gradient(135deg, rgba(244,63,94,0.06) 0px, rgba(244,63,94,0.06) 10px, transparent 10px, transparent 20px)",
+                                  }}
+                                  title="Día no laboral • Clínica cerrada los Domingos"
+                                >
+                                  <div className="flex flex-col items-center gap-1.5 text-center px-2 py-3 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-rose-500/30 shadow-md">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-500/20 text-rose-600 dark:text-rose-400">
+                                      <Ban size={18} />
+                                    </div>
+                                    <span className="text-xs font-bold text-rose-700 dark:text-rose-300">
+                                      Día No Laboral
+                                    </span>
+                                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-tight">
+                                      Clínica cerrada
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Sábado: Tarde cerrada (12:00 a 19:00 bloqueado) */}
+                              {dayOfWeek === 6 && (
+                                <div
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setErrorMessage("🚫 Los sábados la clínica atiende únicamente en la mañana (08:00 a 12:00). En la tarde permanece cerrada.");
+                                    setTimeout(() => setErrorMessage(null), 5000);
+                                  }}
+                                  className="absolute inset-x-0.5 z-20 flex flex-col items-center justify-center p-2 rounded-xl border border-rose-500/40 bg-rose-500/[0.08] dark:bg-rose-950/40 backdrop-blur-[1.5px] cursor-not-allowed select-none transition-all hover:bg-rose-500/[0.12] dark:hover:bg-rose-950/50"
+                                  style={{
+                                    top: `${5 * HORA_ALTURA_PX + 2}px`,
+                                    height: `${7 * HORA_ALTURA_PX - 4}px`,
+                                    backgroundImage: "repeating-linear-gradient(135deg, rgba(244,63,94,0.06) 0px, rgba(244,63,94,0.06) 10px, transparent 10px, transparent 20px)",
+                                  }}
+                                  title="No se labora • Sábado tarde cerrado (12:00 a 19:00)"
+                                >
+                                  <div className="flex flex-col items-center gap-1 text-center px-2 py-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-rose-500/30 shadow-md">
+                                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-500/20 text-rose-600 dark:text-rose-400">
+                                      <Moon size={15} />
+                                    </div>
+                                    <span className="text-[11px] font-bold text-rose-700 dark:text-rose-300">
+                                      No se labora
+                                    </span>
+                                    <span className="text-[9.5px] text-slate-500 dark:text-slate-400 font-medium leading-tight">
+                                      Sábado tarde cerrado
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Lunes a Viernes: Descanso Clínico (12:00 a 14:00) y Cierre (17:00 a 19:00) */}
+                              {dayOfWeek >= 1 && dayOfWeek <= 5 && (
+                                <>
+                                  <CarruselAlmuerzoVertical
+                                    horaAlturaPx={HORA_ALTURA_PX}
+                                    doctorNombre={doc.nombre}
+                                    horaInicioDescanso="12:00"
+                                    horaFinDescanso="14:00"
+                                    horaInicioCalendario={7}
+                                    onIntentarAgendar={() => {
+                                      setErrorMessage(`☕ Horario de descanso de ${doc.nombre} (12:00 a 14:00). El profesional se encuentra en su receso.`);
+                                      setTimeout(() => setErrorMessage(null), 4500);
+                                    }}
+                                  />
+                                  <div
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setErrorMessage("🌙 La jornada de atención finaliza a las 17:00 (5:00 PM).");
+                                      setTimeout(() => setErrorMessage(null), 5000);
+                                    }}
+                                    className="absolute inset-x-0.5 z-20 flex items-center justify-center p-2 rounded-xl border border-slate-300/70 dark:border-slate-800 bg-slate-200/40 dark:bg-slate-950/50 backdrop-blur-[1px] cursor-not-allowed select-none transition-all hover:bg-slate-200/60"
+                                    style={{
+                                      top: `${10 * HORA_ALTURA_PX + 2}px`,
+                                      height: `${2 * HORA_ALTURA_PX - 4}px`,
+                                      backgroundImage: "repeating-linear-gradient(135deg, rgba(148,163,184,0.1) 0px, rgba(148,163,184,0.1) 10px, transparent 10px, transparent 20px)",
+                                    }}
+                                    title="Cierre de Clínica • Atención hasta las 17:00"
+                                  >
+                                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-[10px] font-semibold shadow-xs">
+                                      <Moon size={12} className="text-slate-500" />
+                                      <span>Cierre 17:00</span>
+                                    </div>
+                                  </div>
+                                </>
+                              )}
 
                               {/* Citas del Odontólogo */}
                               {citasPosicionadas.map(renderCitaCard)}
@@ -2040,24 +2226,22 @@ export function AgendaView() {
                 <label className="mb-1.5 block text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Odontólogo *
                 </label>
-                <select
+                <GlassSelect
                   value={nuevaCita.odontologo}
-                  onChange={(event) =>
+                  onChange={(val) =>
                     setNuevaCita((actual) => ({
                       ...actual,
-                      odontologo: event.target.value,
+                      odontologo: val,
                     }))
                   }
-                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2.5 text-sm text-slate-900 dark:text-white outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-cyan-500 cursor-pointer transition-all"
-                >
-                  {listaOdontologos
+                  options={listaOdontologos
                     .filter((o) => o.nombre !== "Todos los odontólogos")
-                    .map((o) => (
-                      <option key={o.nombre} value={o.nombre}>
-                        {o.nombre}
-                      </option>
-                    ))}
-                </select>
+                    .map((o) => ({
+                      value: o.nombre,
+                      label: o.nombre,
+                    }))}
+                  className="w-full py-2.5 text-xs rounded-xl"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -2065,12 +2249,9 @@ export function AgendaView() {
                   <label className="mb-1.5 block text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Hora Inicio *
                   </label>
-                  <input
-                    type="time"
-                    required
+                  <GlassTimePicker
                     value={nuevaCita.horaInicio}
-                    onChange={(event) => {
-                      const val = event.target.value;
+                    onChange={(val) => {
                       const [h, m] = val.split(":").map(Number);
                       const endMinutesTotal = (isNaN(h) ? 9 : h) * 60 + (isNaN(m) ? 0 : m) + 45;
                       const endH = Math.floor(endMinutesTotal / 60) % 24;
@@ -2082,7 +2263,12 @@ export function AgendaView() {
                         horaFin: endStr,
                       }));
                     }}
-                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2.5 text-sm text-slate-900 dark:text-white outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-cyan-500 transition-all"
+                    minHour={7}
+                    maxHour={19}
+                    minuteStep={15}
+                    variant="cyan"
+                    quickPresets={["08:00", "09:00", "10:00", "14:00", "15:00", "16:00"]}
+                    className="w-full py-2"
                   />
                 </div>
 
@@ -2090,17 +2276,20 @@ export function AgendaView() {
                   <label className="mb-1.5 block text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Hora Finalización *
                   </label>
-                  <input
-                    type="time"
-                    required
+                  <GlassTimePicker
                     value={nuevaCita.horaFin}
-                    onChange={(event) =>
+                    onChange={(val) =>
                       setNuevaCita((actual) => ({
                         ...actual,
-                        horaFin: event.target.value,
+                        horaFin: val,
                       }))
                     }
-                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2.5 text-sm text-slate-900 dark:text-white outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-cyan-500 transition-all"
+                    minHour={8}
+                    maxHour={20}
+                    minuteStep={15}
+                    variant="cyan"
+                    quickPresets={["09:00", "10:00", "11:00", "15:00", "16:00", "17:00"]}
+                    className="w-full py-2"
                   />
                 </div>
               </div>
@@ -2109,20 +2298,21 @@ export function AgendaView() {
                 <label className="mb-1.5 block text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Estado de la Cita
                 </label>
-                <select
+                <GlassSelect
                   value={nuevaCita.estado}
-                  onChange={(event) =>
+                  onChange={(val) =>
                     setNuevaCita((actual) => ({
                       ...actual,
-                      estado: event.target.value as EstadoCita,
+                      estado: val as EstadoCita,
                     }))
                   }
-                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2.5 text-sm text-slate-900 dark:text-white outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-cyan-500 cursor-pointer transition-all"
-                >
-                  <option value="Confirmada">Confirmada</option>
-                  <option value="Pendiente">Pendiente</option>
-                  <option value="En Atención">En Atención</option>
-                </select>
+                  options={[
+                    { value: "Confirmada", label: "Confirmada" },
+                    { value: "Pendiente", label: "Pendiente" },
+                    { value: "En Atención", label: "En Atención" },
+                  ]}
+                  className="w-full py-2.5 text-xs rounded-xl"
+                />
               </div>
             </div>
 

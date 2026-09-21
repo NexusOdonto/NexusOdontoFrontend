@@ -42,7 +42,7 @@ const CONFIG_DEFAULT: ConfiguracionClinica = {
   direccion: "Calle 100 # 15-20, Centro Médico Odontológico",
   ciudad: "Bogotá, Colombia",
   horaApertura: "08:00",
-  horaCierre: "18:00",
+  horaCierre: "17:00",
   duracionCitaDefault: 45,
   diasHabiles: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"],
   moneda: "COP ($)",

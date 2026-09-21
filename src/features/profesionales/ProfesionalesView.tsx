@@ -41,6 +41,8 @@ import {
 import { useAuth } from "../auth/AuthContext";
 import { getUserRole } from "../../utils/routePermissions";
 import { UserAvatar } from "../../components/common/UserAvatar";
+import { GlassSelect, type GlassSelectOption } from "../../components/common/GlassSelect";
+import { GlassTimePicker } from "../../components/common/GlassTimePicker";
 
 interface TurnoDisponibilidad {
   dia: string;
@@ -120,12 +122,24 @@ const getTurnosForDoctor = (idx: number, customSillon?: string): TurnoDisponibil
     { dia: "Martes", horaInicio: "08:00", horaFin: "17:00", sillon: mainSillon, activo: true, almuerzoActivo: true, horaAlmuerzoInicio: "12:00", horaAlmuerzoFin: "14:00" },
     { dia: "Miércoles", horaInicio: "08:00", horaFin: "17:00", sillon: secondarySillon, activo: true, almuerzoActivo: true, horaAlmuerzoInicio: "12:00", horaAlmuerzoFin: "14:00" },
     { dia: "Jueves", horaInicio: "08:00", horaFin: "17:00", sillon: mainSillon, activo: true, almuerzoActivo: true, horaAlmuerzoInicio: "12:00", horaAlmuerzoFin: "14:00" },
-    { dia: "Viernes", horaInicio: "08:00", horaFin: "16:00", sillon: mainSillon, activo: true, almuerzoActivo: true, horaAlmuerzoInicio: "12:00", horaAlmuerzoFin: "14:00" },
-    { dia: "Sábado", horaInicio: "08:00", horaFin: "13:00", sillon: mainSillon, activo: idx % 2 === 0, almuerzoActivo: false, horaAlmuerzoInicio: "12:00", horaAlmuerzoFin: "13:00" },
+    { dia: "Viernes", horaInicio: "08:00", horaFin: "17:00", sillon: mainSillon, activo: true, almuerzoActivo: true, horaAlmuerzoInicio: "12:00", horaAlmuerzoFin: "14:00" },
+    { dia: "Sábado", horaInicio: "08:00", horaFin: "12:00", sillon: mainSillon, activo: idx % 2 === 0, almuerzoActivo: false, horaAlmuerzoInicio: "12:00", horaAlmuerzoFin: "14:00" },
   ];
 };
 
 const DIAS_SEMANA_DEFAULT = getTurnosForDoctor(0);
+
+export const formatTurnoHorario = (turno?: TurnoDisponibilidad): string => {
+  if (!turno || !turno.activo) return "No disponible";
+  const hasAlmuerzo = turno.almuerzoActivo ?? (turno.dia !== "Sábado" && turno.horaFin > "13:00");
+  const almLlegada = turno.horaAlmuerzoInicio || "12:00";
+  const almSalida = turno.horaAlmuerzoFin || "14:00";
+
+  if (hasAlmuerzo && almLlegada && almSalida && almLlegada > turno.horaInicio && almSalida < turno.horaFin) {
+    return `${turno.horaInicio} a ${almLlegada} — ${almSalida} a ${turno.horaFin}`;
+  }
+  return `${turno.horaInicio} a ${turno.horaFin}`;
+};
 
 const ESPECIALIDADES_CATALOGO = [
   "Todas",
@@ -136,6 +150,25 @@ const ESPECIALIDADES_CATALOGO = [
   "Odontopediatría & Prevención",
   "Periodoncia & Salud Gingival",
   "Odontología General",
+];
+
+const SILLON_SELECT_OPTIONS: GlassSelectOption[] = SILLONES_DISPONIBLES.map((s) => ({
+  value: s,
+  label: s,
+}));
+
+const ESPECIALIDADES_SELECT_OPTIONS: GlassSelectOption[] = ESPECIALIDADES_CATALOGO.filter(
+  (e) => e !== "Todas"
+).map((esp) => ({
+  value: esp,
+  label: esp,
+}));
+
+const SILLON_CREATE_OPTIONS: GlassSelectOption[] = [
+  { value: "Sillón 1 - Principal", label: "Sillón 1 - Principal (Odontología General & Ortodoncia)" },
+  { value: "Sillón 2 - Quirúrgico", label: "Sillón 2 - Quirúrgico (Implantes & Cirugía Oral)" },
+  { value: "Sillón 3 - Estética Dental", label: "Sillón 3 - Estética Dental (Diseño de Sonrisa)" },
+  { value: "Sillón 4 - Infantil & Preventivo", label: "Sillón 4 - Infantil & Preventivo" },
 ];
 
 const SPECIALTY_STYLES: Record<string, { bg: string; text: string; border: string; glow: string }> = {
@@ -952,20 +985,20 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                     <div className="flex items-center justify-between">
                       <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-1.5">
                         <Clock size={13} className="text-teal-500" />
-                        Horario habitual:
+                        Horario de atención:
                       </span>
-                      <span className="font-bold text-slate-900 dark:text-white">
-                        {activeTurno?.horaInicio} - {activeTurno?.horaFin}
+                      <span className="font-bold text-slate-900 dark:text-white font-mono text-[11px]">
+                        {formatTurnoHorario(activeTurno)}
                       </span>
                     </div>
                     {activeTurno?.activo && (activeTurno?.almuerzoActivo ?? (activeTurno?.dia !== "Sábado" && activeTurno?.horaFin > "13:00")) && (
-                      <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-white/5">
+                      <div className="flex items-center justify-between pt-1.5 border-t border-slate-200/60 dark:border-white/5">
                         <span className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1.5">
                           <Utensils size={12} className="text-amber-500" />
-                          Almuerzo:
+                          Descanso / Almuerzo:
                         </span>
-                        <span className="font-bold text-amber-700 dark:text-amber-300 font-mono text-[11px]">
-                          {activeTurno?.horaAlmuerzoInicio || "12:00"} - {activeTurno?.horaAlmuerzoFin || "14:00"}
+                        <span className="font-bold text-amber-700 dark:text-amber-300 font-mono text-[11px] bg-amber-500/10 dark:bg-amber-500/20 px-2 py-0.5 rounded-lg border border-amber-500/25">
+                          {activeTurno?.horaAlmuerzoInicio || "12:00"} a {activeTurno?.horaAlmuerzoFin || "14:00"}
                         </span>
                       </div>
                     )}
@@ -1222,7 +1255,7 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                           ...t,
                           activo: t.dia !== "Domingo",
                           horaInicio: "08:00",
-                          horaFin: t.dia === "Sábado" ? "13:00" : "17:00",
+                          horaFin: t.dia === "Sábado" ? "12:00" : "17:00",
                           almuerzoActivo: t.dia !== "Sábado",
                           horaAlmuerzoInicio: "12:00",
                           horaAlmuerzoFin: "14:00",
@@ -1231,7 +1264,7 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                     }}
                     className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:border-cyan-500 cursor-pointer shadow-xs"
                   >
-                    🌅 Jornada Completa (08:00 - 17:00 • Almuerzo 12-14)
+                    🌅 Jornada Estándar (L-V 08-17 • Sáb 08-12)
                   </button>
                   <button
                     type="button"
@@ -1239,37 +1272,37 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                       setEditingTurnos((prev) =>
                         prev.map((t) => ({
                           ...t,
-                          activo: t.dia !== "Domingo" && t.dia !== "Sábado",
+                          activo: t.dia !== "Domingo",
                           horaInicio: "08:00",
-                          horaFin: "13:00",
+                          horaFin: "12:00",
                           almuerzoActivo: false,
                           horaAlmuerzoInicio: "12:00",
-                          horaAlmuerzoFin: "13:00",
-                        }))
-                      );
-                    }}
-                    className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:border-cyan-500 cursor-pointer shadow-xs"
-                  >
-                    🌤️ Solo Mañanas (08:00 - 13:00)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingTurnos((prev) =>
-                        prev.map((t) => ({
-                          ...t,
-                          activo: t.dia !== "Domingo" && t.dia !== "Sábado",
-                          horaInicio: "13:00",
-                          horaFin: "18:00",
-                          almuerzoActivo: false,
-                          horaAlmuerzoInicio: "13:00",
                           horaAlmuerzoFin: "14:00",
                         }))
                       );
                     }}
                     className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:border-cyan-500 cursor-pointer shadow-xs"
                   >
-                    🌇 Solo Tardes (13:00 - 18:00)
+                    🌤️ Solo Mañanas (08:00 - 12:00)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingTurnos((prev) =>
+                        prev.map((t) => ({
+                          ...t,
+                          activo: t.dia !== "Domingo" && t.dia !== "Sábado",
+                          horaInicio: "14:00",
+                          horaFin: "17:00",
+                          almuerzoActivo: false,
+                          horaAlmuerzoInicio: "12:00",
+                          horaAlmuerzoFin: "14:00",
+                        }))
+                      );
+                    }}
+                    className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:border-cyan-500 cursor-pointer shadow-xs"
+                  >
+                    🌇 Solo Tardes L-V (14:00 - 17:00)
                   </button>
                   <button
                     type="button"
@@ -1325,53 +1358,51 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                         </div>
 
                         {turno.activo ? (
-                          <div className="flex flex-wrap items-center gap-2">
-                            <div className="flex items-center gap-1 text-xs">
-                              <span className="text-[10px] text-slate-400 font-semibold">De:</span>
-                              <input
-                                type="time"
+                          <div className="flex flex-wrap items-center gap-2.5">
+                            <div className="flex items-center gap-1.5 text-xs">
+                              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">De:</span>
+                              <GlassTimePicker
                                 value={turno.horaInicio}
-                                onChange={(e) => {
-                                  const val = e.target.value;
+                                onChange={(val) => {
                                   setEditingTurnos((prev) =>
                                     prev.map((t, i) => (i === idx ? { ...t, horaInicio: val } : t))
                                   );
                                 }}
-                                className="px-2 py-1 rounded-lg bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-xs font-mono text-slate-900 dark:text-white outline-none focus:border-cyan-500"
+                                minHour={6}
+                                maxHour={20}
+                                minuteStep={15}
+                                variant="cyan"
+                                quickPresets={["07:00", "08:00", "09:00", "13:00"]}
                               />
                             </div>
 
-                            <div className="flex items-center gap-1 text-xs">
-                              <span className="text-[10px] text-slate-400 font-semibold">A:</span>
-                              <input
-                                type="time"
+                            <div className="flex items-center gap-1.5 text-xs">
+                              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">A:</span>
+                              <GlassTimePicker
                                 value={turno.horaFin}
-                                onChange={(e) => {
-                                  const val = e.target.value;
+                                onChange={(val) => {
                                   setEditingTurnos((prev) =>
                                     prev.map((t, i) => (i === idx ? { ...t, horaFin: val } : t))
                                   );
                                 }}
-                                className="px-2 py-1 rounded-lg bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-xs font-mono text-slate-900 dark:text-white outline-none focus:border-cyan-500"
+                                minHour={7}
+                                maxHour={22}
+                                minuteStep={15}
+                                variant="cyan"
+                                quickPresets={["12:00", "13:00", "17:00", "18:00"]}
                               />
                             </div>
 
-                            <select
+                            <GlassSelect
                               value={turno.sillon}
-                              onChange={(e) => {
-                                const val = e.target.value;
+                              onChange={(val) => {
                                 setEditingTurnos((prev) =>
                                   prev.map((t, i) => (i === idx ? { ...t, sillon: val } : t))
                                 );
                               }}
-                              className="px-2 py-1 rounded-lg bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-[11px] text-slate-800 dark:text-slate-200 outline-none focus:border-cyan-500 cursor-pointer"
-                            >
-                              {SILLONES_DISPONIBLES.map((s) => (
-                                <option key={s} value={s}>
-                                  {s}
-                                </option>
-                              ))}
-                            </select>
+                              options={SILLON_SELECT_OPTIONS}
+                              className="py-1 px-3 text-xs rounded-xl"
+                            />
                           </div>
                         ) : (
                           <span className="text-[11px] text-slate-400 italic">
@@ -1380,9 +1411,9 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                         )}
                       </div>
 
-                      {/* Configuración de Horario de Almuerzo cuando el día está activo */}
+                      {/* Configuración de Horario de Descanso / Almuerzo cuando el día está activo */}
                       {turno.activo && (
-                        <div className="mt-2.5 pt-2 border-t border-slate-200/70 dark:border-white/10 flex flex-wrap items-center justify-between gap-2 text-xs">
+                        <div className="mt-2.5 pt-2 border-t border-slate-200/70 dark:border-white/10 flex flex-wrap items-center justify-between gap-2.5 text-xs">
                           <label className="flex items-center gap-2 cursor-pointer select-none">
                             <input
                               type="checkbox"
@@ -1406,44 +1437,51 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                             />
                             <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-600 dark:text-amber-400">
                               <Utensils size={12} />
-                              Horario de Almuerzo:
+                              Hora de Descanso / Receso:
                             </span>
                           </label>
 
                           {(turno.almuerzoActivo ?? (turno.dia !== "Sábado" && turno.horaFin > "13:00")) ? (
-                            <div className="flex items-center gap-2">
-                              <div className="flex items-center gap-1 text-xs">
-                                <span className="text-[10px] text-slate-400 font-semibold">De:</span>
-                                <input
-                                  type="time"
+                            <div className="flex flex-wrap items-center gap-2.5">
+                              <div className="flex items-center gap-1.5 text-xs">
+                                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Desde:</span>
+                                <GlassTimePicker
                                   value={turno.horaAlmuerzoInicio || "12:00"}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
+                                  onChange={(val) => {
                                     setEditingTurnos((prev) =>
                                       prev.map((t, i) => (i === idx ? { ...t, horaAlmuerzoInicio: val } : t))
                                     );
                                   }}
-                                  className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-xs font-mono text-slate-900 dark:text-white outline-none focus:border-amber-500"
+                                  minHour={11}
+                                  maxHour={15}
+                                  minuteStep={15}
+                                  variant="amber"
+                                  quickPresets={["12:00", "12:30", "13:00"]}
                                 />
                               </div>
-                              <div className="flex items-center gap-1 text-xs">
-                                <span className="text-[10px] text-slate-400 font-semibold">A:</span>
-                                <input
-                                  type="time"
+                              <div className="flex items-center gap-1.5 text-xs">
+                                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Hasta:</span>
+                                <GlassTimePicker
                                   value={turno.horaAlmuerzoFin || "14:00"}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
+                                  onChange={(val) => {
                                     setEditingTurnos((prev) =>
                                       prev.map((t, i) => (i === idx ? { ...t, horaAlmuerzoFin: val } : t))
                                     );
                                   }}
-                                  className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-xs font-mono text-slate-900 dark:text-white outline-none focus:border-amber-500"
+                                  minHour={12}
+                                  maxHour={16}
+                                  minuteStep={15}
+                                  variant="amber"
+                                  quickPresets={["13:30", "14:00", "14:30", "15:00"]}
                                 />
                               </div>
+                              <span className="text-[10px] font-mono font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 px-2 py-1 rounded-xl border border-emerald-500/25 shadow-2xs">
+                                {formatTurnoHorario(turno)}
+                              </span>
                             </div>
                           ) : (
                             <span className="text-[10px] text-slate-400 italic">
-                              Sin receso de almuerzo asignado
+                              Sin receso de descanso asignado ({turno.horaInicio} - {turno.horaFin})
                             </span>
                           )}
                         </div>
@@ -1477,13 +1515,13 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
 
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="px-2.5 py-1 rounded-lg bg-cyan-500/15 text-cyan-800 dark:text-cyan-300 font-mono text-[11px] font-bold">
-                          {turno.activo ? `${turno.horaInicio} - ${turno.horaFin}` : "No disponible"}
+                          {turno.activo ? formatTurnoHorario(turno) : "No disponible"}
                         </span>
 
                         {turno.activo && (turno.almuerzoActivo ?? (turno.dia !== "Sábado" && turno.horaFin > "13:00")) && (
                           <span className="px-2.5 py-1 rounded-lg bg-amber-500/15 text-amber-800 dark:text-amber-300 font-mono text-[11px] font-bold inline-flex items-center gap-1.5 border border-amber-500/20 shadow-2xs">
                             <Utensils size={11} className="text-amber-500 shrink-0" />
-                            <span>Almuerzo: {turno.horaAlmuerzoInicio || "12:00"} - {turno.horaAlmuerzoFin || "14:00"}</span>
+                            <span>Descanso: {turno.horaAlmuerzoInicio || "12:00"} a {turno.horaAlmuerzoFin || "14:00"}</span>
                           </span>
                         )}
                       </div>
@@ -1593,17 +1631,12 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                   <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Especialidad Médica *
                   </label>
-                  <select
+                  <GlassSelect
                     value={formEspecialidad}
-                    onChange={(e) => setFormEspecialidad(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 cursor-pointer"
-                  >
-                    {ESPECIALIDADES_CATALOGO.filter((e) => e !== "Todas").map((esp) => (
-                      <option key={esp} value={esp}>
-                        {esp}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => setFormEspecialidad(val)}
+                    options={ESPECIALIDADES_SELECT_OPTIONS}
+                    className="w-full py-2.5 text-xs rounded-xl"
+                  />
                 </div>
 
                 <div>
@@ -1652,15 +1685,12 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Sillón / Consultorio Habitual
                 </label>
-                <select
+                <GlassSelect
                   value={formSillon}
-                  onChange={(e) => setFormSillon(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 cursor-pointer"
-                >
-                  <option value="Sillón 1 - Principal">Sillón 1 - Principal (Odontología General & Ortodoncia)</option>
-                  <option value="Sillón 2 - Quirúrgico">Sillón 2 - Quirúrgico (Implantes & Cirugía Oral)</option>
-                  <option value="Sillón 3 - Estética">Sillón 3 - Estética (Diseño de Sonrisa & Carillas)</option>
-                </select>
+                  onChange={(val) => setFormSillon(val)}
+                  options={SILLON_CREATE_OPTIONS}
+                  className="w-full py-2.5 text-xs rounded-xl"
+                />
               </div>
 
               <div>

@@ -317,7 +317,7 @@ export default function LoginPage() {
                 </p>
 
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Horario: Lunes a Sábado de 08:00 AM a 06:00 PM.
+                  Horario: Lunes a Viernes de 08:00 AM - 12:00 PM y 02:00 PM - 05:00 PM • Sábados de 08:00 AM - 12:00 PM.
                 </p>
               </div>
             </div>

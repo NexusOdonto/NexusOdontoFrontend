@@ -2,10 +2,13 @@
 const CLINIC_TIME_ZONE = "America/Bogota";
 
 const PAST_MSG = "No se pueden programar citas en fechas u horas pasadas.";
+const SUNDAY_MSG = "Los domingos la clínica permanece cerrada (día no laboral). Por favor selecciona de lunes a sábado.";
+const SATURDAY_MSG =
+  "Los sábados se atiende únicamente de 08:00 a 12:00 (última cita 11:30). La clínica no atiende los sábados en la tarde.";
 const LUNCH_MSG =
-  "El horario de 12:00 a 14:00 corresponde al receso de almuerzo clínico. La jornada es 08:00-12:00 | 14:00-17:00 (última cita 16:30).";
+  "El horario de 12:00 a 14:00 corresponde al descanso clínico del equipo. La jornada es 08:00 a 12:00 | 14:00 a 17:00.";
 const OUTSIDE_HOURS_MSG =
-  "La cita está fuera de la jornada de atención (08:00-12:00 | 14:00-17:00, última cita 16:30).";
+  "La cita está fuera de la jornada de atención (Lunes a Viernes: 08:00-12:00 | 14:00-17:00, última cita 16:30; Sábados: 08:00-12:00, última cita 11:30).";
 
 /** Current clinic wall-clock as a comparable local Date (date/time parts from America/Bogota). */
 export function getColombiaNow(): Date {
@@ -56,11 +59,27 @@ export function validateClinicAppointmentSchedule(
     return PAST_MSG;
   }
 
+  const dayOfWeek = selected.getDay(); // 0 = Domingo, 6 = Sábado
   const timeInMinutes = h * 60 + m;
+
+  // 1. Domingos cerrado
+  if (dayOfWeek === 0) {
+    return SUNDAY_MSG;
+  }
+
+  // 2. Sábados: 08:00 a 12:00 (última cita 11:30)
+  if (dayOfWeek === 6) {
+    if (timeInMinutes < 8 * 60 || timeInMinutes > 11 * 60 + 30) {
+      return SATURDAY_MSG;
+    }
+    return null;
+  }
+
+  // 3. Lunes a Viernes: 08:00 a 12:00 (descanso 12:00 a 14:00) y 14:00 a 17:00 (última cita 16:30)
   if (timeInMinutes >= 12 * 60 && timeInMinutes < 14 * 60) {
     return LUNCH_MSG;
   }
-  if (timeInMinutes < 8 * 60 || timeInMinutes > 16 * 60 + 30) {
+  if (timeInMinutes < 8 * 60 || (timeInMinutes > 11 * 60 + 30 && timeInMinutes < 14 * 60) || timeInMinutes > 16 * 60 + 30) {
     return OUTSIDE_HOURS_MSG;
   }
 

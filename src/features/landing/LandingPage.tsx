@@ -656,20 +656,37 @@ export default function LandingPage() {
                   </div>
 
                   <div className="space-y-7">
-                    <div className="flex items-end justify-between gap-8">
-                      <div>
-                        <p className="text-sm font-bold text-[#0A0A0A] dark:text-[#B4CEC5]">
-                          Horarios de Atención
-                        </p>
+                    <div className="space-y-2.5">
+                      <p className="text-sm font-bold text-[#0A0A0A] dark:text-[#B4CEC5]">
+                        Horarios de Atención
+                      </p>
 
-                        <p className="mt-1 font-prata text-lg font-bold text-[#050505] dark:text-[#F4F0E6]">
-                          Lun a Sáb
+                      <div className="flex items-center justify-between gap-4">
+                        <p className="font-prata text-base font-bold text-[#050505] dark:text-[#F4F0E6]">
+                          Lunes a Viernes
+                        </p>
+                        <p className="font-spacemono text-xs sm:text-sm font-bold text-[#1F3F3B] dark:text-[#A7BFB7]">
+                          08:00 a 12:00 — 14:00 a 17:00
                         </p>
                       </div>
 
-                      <p className="font-spacemono text-sm font-bold text-[#1F3F3B] dark:text-[#A7BFB7]">
-                        08:00 - 18:00
-                      </p>
+                      <div className="flex items-center justify-between gap-4">
+                        <p className="font-prata text-base font-bold text-[#050505] dark:text-[#F4F0E6]">
+                          Sábados
+                        </p>
+                        <p className="font-spacemono text-xs sm:text-sm font-bold text-[#1F3F3B] dark:text-[#A7BFB7]">
+                          08:00 a 12:00
+                        </p>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-4">
+                        <p className="font-prata text-base font-bold text-slate-500 dark:text-slate-400">
+                          Domingos
+                        </p>
+                        <p className="font-spacemono text-xs sm:text-sm font-bold text-rose-600 dark:text-rose-400">
+                          Cerrado
+                        </p>
+                      </div>
                     </div>
 
                     <div className="h-px bg-[#050505]/20 dark:bg-white/20" />
@@ -894,23 +911,21 @@ export default function LandingPage() {
                 <p className="font-semibold text-[#050505] dark:text-[#D4DACD]">
                   Lunes a Viernes
                 </p>
-
-                <p>08:00 AM - 06:00 PM</p>
+                <p>08:00 AM - 12:00 PM | 02:00 PM - 05:00 PM</p>
+                <p className="text-xs text-amber-600 dark:text-amber-400">Descanso clínico: 12:00 PM a 02:00 PM</p>
               </div>
 
               <div>
                 <p className="font-semibold text-[#050505] dark:text-[#D4DACD]">
                   Sábados
                 </p>
-
-                <p>08:00 AM - 02:00 PM</p>
+                <p>08:00 AM - 12:00 PM (Jornada Continua)</p>
               </div>
 
               <div>
                 <p className="font-semibold text-[#050505] dark:text-[#D4DACD]">
                   Domingos y Festivos
                 </p>
-
                 <p>Cerrado</p>
               </div>
             </div>
