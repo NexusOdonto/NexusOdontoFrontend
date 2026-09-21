@@ -281,7 +281,8 @@ export function ProfesionalesView() {
   const isOdontologo = userRole === "ODONTOLOGO";
   const isRecepcionista = userRole === "RECEPCIONISTA";
   const isAdmin = userRole === "ADMINISTRADOR";
-  const canCreateProfessional = isAdmin || isRecepcionista;
+  const canEditSchedule = isAdmin;
+  const canCreateProfessional = isAdmin;
   const canScheduleDirectly = isAdmin || isRecepcionista;
 
   const [profesionales, setProfesionales] = useState<ProfessionalFull[]>([]);
@@ -324,7 +325,7 @@ export function ProfesionalesView() {
   }, []);
 
   const handleSaveCustomSchedule = () => {
-    if (!selectedProfForSchedule) return;
+    if (!selectedProfForSchedule || !canEditSchedule) return;
     setScheduleError(null);
 
     // Validar horarios en días activos
@@ -1026,9 +1027,10 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                         type="button"
                         onClick={() => handleOpenScheduleModal(prof)}
                         className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-95"
+                        title={canEditSchedule ? "Modificar horarios del odontólogo" : "Consultar horarios del odontólogo"}
                       >
                         <Calendar size={14} className="text-cyan-500" />
-                        <span>Ver / Modificar Horarios</span>
+                        <span>{canEditSchedule ? "Modificar Horarios" : "Ver Horarios"}</span>
                       </button>
 
                       <button
@@ -1213,7 +1215,7 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
               </div>
 
               <div className="flex items-center gap-2">
-                {canCreateProfessional && (
+                {canEditSchedule ? (
                   <button
                     type="button"
                     onClick={() => {
@@ -1229,6 +1231,11 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                     <Edit3 size={13} />
                     <span>{isEditingSchedule ? "Vista Previa" : "Personalizar Horarios"}</span>
                   </button>
+                ) : (
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-[11px] font-semibold">
+                    <ShieldCheck size={13} className="text-cyan-500" />
+                    <span>Modo Consulta</span>
+                  </div>
                 )}
                 <button
                   type="button"
@@ -1241,7 +1248,7 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
             </div>
 
             {/* PRESETS RÁPIDOS CUANDO ESTÁ EN MODO EDICIÓN */}
-            {isEditingSchedule && canCreateProfessional && (
+            {isEditingSchedule && canEditSchedule && (
               <div className="p-3.5 rounded-2xl bg-cyan-500/10 dark:bg-cyan-950/30 border border-cyan-500/20 space-y-2">
                 <span className="text-xs font-bold text-cyan-900 dark:text-cyan-200 block">
                   Plantillas Rápidas de Horario:
@@ -1325,7 +1332,7 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
 
             {/* LISTADO DE DÍAS (MODO EDICIÓN O MODO LECTURA) */}
             <div className="space-y-2.5">
-              {isEditingSchedule && canCreateProfessional
+              {isEditingSchedule && canEditSchedule
                 ? editingTurnos.map((turno, idx) => (
                     <div
                       key={turno.dia}
@@ -1531,7 +1538,7 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
 
             <div className="pt-3 border-t border-slate-200 dark:border-white/10 flex items-center justify-between gap-2">
               <div>
-                {isEditingSchedule && canCreateProfessional && (
+                {isEditingSchedule && canEditSchedule && (
                   <span className="text-[11px] text-slate-500 dark:text-slate-400">
                     * Los cambios se aplicarán inmediatamente en la agenda y citas.
                   </span>
@@ -1539,7 +1546,7 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
               </div>
 
               <div className="flex items-center gap-2">
-                {isEditingSchedule && canCreateProfessional ? (
+                {isEditingSchedule && canEditSchedule ? (
                   <>
                     <button
                       type="button"
@@ -1559,7 +1566,7 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                   </>
                 ) : (
                   <>
-                    {canCreateProfessional && (
+                    {canEditSchedule && (
                       <button
                         type="button"
                         onClick={() => setIsEditingSchedule(true)}
