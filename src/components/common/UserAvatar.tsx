@@ -8,7 +8,7 @@ interface UserAvatarProps {
   className?: string;
   fallbackClassName?: string;
   size?: "sm" | "md" | "lg" | "xl";
-  animate?: "hover" | "idle" | false;
+  animate?: "always" | "hover" | "idle" | boolean | false;
   traits?: any;
 }
 
@@ -25,7 +25,7 @@ export function UserAvatar({
   name,
   className = "w-full h-full rounded-xl object-cover",
   fallbackClassName = "w-full h-full flex items-center justify-center rounded-xl overflow-hidden select-none",
-  animate = "hover",
+  animate = "always",
   traits,
 }: UserAvatarProps) {
   const [hasError, setHasError] = useState(false);
@@ -50,17 +50,23 @@ export function UserAvatar({
   }
 
   const effectiveName = (name && name.trim().length > 0) ? name.trim() : "Nexus Odonto";
+  const blobatarAnimate =
+    animate === false
+      ? false
+      : animate === "hover"
+      ? "hover"
+      : "always";
 
   return (
     <div
-      className={`${fallbackClassName} relative flex items-center justify-center p-0.5 transition-transform duration-200`}
+      className={`${fallbackClassName} relative flex items-center justify-center p-0.5`}
       title={effectiveName}
     >
       <Blobatar
         name={effectiveName}
-        animate={animate ? (animate as any) : undefined}
+        animate={blobatarAnimate ? (blobatarAnimate as any) : undefined}
         traits={traits}
-        className="w-full h-full object-contain pointer-events-auto transition-transform hover:scale-105"
+        className="w-full h-full object-contain pointer-events-none"
       />
     </div>
   );
