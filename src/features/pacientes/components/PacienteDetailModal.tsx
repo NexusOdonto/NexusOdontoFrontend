@@ -1,5 +1,10 @@
+import { useEffect, useState } from "react";
 import type { Paciente } from "../../../types/pacientes";
 import { isPatientActive, isPatientOnline } from "../../../types/pacientes";
+import {
+  ANTECEDENT_TYPE_IDS,
+  patientAntecedentService,
+} from "../../../api/patientAntecedentService";
 import { X, Calendar, Phone, Mail, FileText, Activity, AlertTriangle, ShieldCheck, Clock, MessageSquare } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
@@ -19,10 +24,56 @@ export function PacienteDetailModal({ paciente, onClose }: PacienteDetailModalPr
   const role = getUserRole(user);
   const isClinicianOrAdmin = role === "ADMINISTRADOR" || role === "ODONTOLOGO";
 
+  // Las alergias viven como antecedente clínico tipo ALERGIA, no como campo
+  // del paciente: hay que traerlas del backend para la ficha.
+  const [alergiasRemotas, setAlergiasRemotas] = useState<string | null>(null);
+  const patientId = paciente?.patientId;
+
+  useEffect(() => {
+    if (!patientId) {
+      setAlergiasRemotas(null);
+      return;
+    }
+
+    let cancelado = false;
+    patientAntecedentService
+      .getByPatient(patientId)
+      .then((antecedentes) => {
+        if (cancelado) return;
+        const alergias = antecedentes
+          .filter(
+            (a) =>
+              a.isActive &&
+              String(a.antecedentTypeId).toLowerCase() === ANTECEDENT_TYPE_IDS.ALERGIA,
+          )
+          .map((a) => (a.description || "").trim())
+          .filter(Boolean);
+        setAlergiasRemotas(alergias.length > 0 ? alergias.join(", ") : null);
+      })
+      .catch(() => {
+        // Sin permiso o sin red: se cae al dato local del paciente.
+        if (!cancelado) setAlergiasRemotas(null);
+      });
+
+    return () => {
+      cancelado = true;
+    };
+  }, [patientId]);
+
   if (!paciente) return null;
 
   const isOnline = isPatientOnline(paciente, user);
   const isActivo = isPatientActive(paciente);
+
+  const alergiasLocales = (paciente.antecedentes || [])
+    .filter((a) => String(a.backgroundTypeId).toLowerCase() === ANTECEDENT_TYPE_IDS.ALERGIA)
+    .map((a) => (a.description || "").trim())
+    .filter(Boolean)
+    .join(", ");
+
+  const alergiasTexto =
+    alergiasRemotas || paciente.alergias || alergiasLocales || "";
+  const tieneAlergias = alergiasTexto.length > 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-md animate-fadeIn">
@@ -121,12 +172,24 @@ export function PacienteDetailModal({ paciente, onClose }: PacienteDetailModalPr
               <AlertTriangle size={14} strokeWidth={1.5} className="text-amber-500 dark:text-amber-400" />
               <span>Alertas Médicas</span>
             </div>
-            <p className="text-lg sm:text-xl font-sans font-black text-slate-900 dark:text-slate-100 leading-snug">
-              {paciente.alergias || "Sin alergias declaradas"}
+            <p
+              className={`text-lg sm:text-xl font-sans font-black leading-snug ${
+                tieneAlergias
+                  ? "text-amber-600 dark:text-amber-400"
+                  : "text-slate-900 dark:text-slate-100"
+              }`}
+            >
+              {tieneAlergias ? alergiasTexto : "Sin alergias declaradas"}
             </p>
-            <p className="text-xs font-sans text-emerald-600 dark:text-emerald-400 font-medium">
-              Estado de salud verificado
-            </p>
+            {tieneAlergias ? (
+              <p className="text-xs font-sans text-amber-600 dark:text-amber-400 font-medium">
+                Alergia registrada en la historia clínica
+              </p>
+            ) : (
+              <p className="text-xs font-sans text-emerald-600 dark:text-emerald-400 font-medium">
+                Estado de salud verificado
+              </p>
+            )}
           </div>
         </div>
 

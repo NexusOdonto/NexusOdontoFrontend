@@ -22,6 +22,10 @@ import {
 } from "../../../types/pacientes";
 import { personService } from "../../../api/personService";
 import { patientService } from "../../../api/patientService";
+import {
+  ANTECEDENT_TYPE_IDS,
+  patientAntecedentService,
+} from "../../../api/patientAntecedentService";
 
 const pacienteSchema = z.object({
   nombres: z
@@ -138,6 +142,7 @@ export function PacienteForm() {
   const navigate = useNavigate();
   const [tutorEnabled, setTutorEnabled] = useState(false);
   const [alergico, setAlergico] = useState(false);
+  const [alergiaDetalle, setAlergiaDetalle] = useState("");
   const [medicacionCronica, setMedicacionCronica] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
@@ -225,12 +230,18 @@ export function PacienteForm() {
         ? Math.max(0, ...pacientes.map((paciente) => (typeof paciente.id === "number" ? paciente.id : parseInt(String(paciente.id), 10) || 0))) + 1
         : 1;
 
+    // El checkbox de alergia se registra como antecedente clínico tipo ALERGIA.
+    const descripcionAlergia = alergico
+      ? alergiaDetalle.trim() || "Alergia a medicamentos (no especificada)"
+      : null;
+
     const nuevoPaciente: Paciente = {
       id: nuevoId,
       nombre: `${data.nombres} ${data.apellidos}`.trim(),
       documento: documentoIngresado,
       telefono: data.telefono.trim(),
       estado: "Activo",
+      alergias: descripcionAlergia ?? undefined,
     };
 
     const docTypeMap: Record<string, string> = {
@@ -274,16 +285,36 @@ export function PacienteForm() {
     }
 
     if (createdPersonId) {
+      let createdPatientId: string | null = null;
       try {
-        await patientService.create({
+        const createdPatient = await patientService.create({
           personId: createdPersonId,
           emergencyContactName: tutorEnabled ? "Tutor Legal" : undefined,
           emergencyContactPhone: tutorEnabled ? data.telefono.trim() : undefined,
         });
+        createdPatientId = createdPatient?.id || null;
       } catch (patientErr: any) {
         console.error("Error al vincular registro clínico de paciente:", patientErr);
         setSubmitError("Persona registrada, pero falló la vinculación del registro clínico de paciente.");
         return;
+      }
+
+      if (descripcionAlergia && createdPatientId) {
+        try {
+          await patientAntecedentService.create({
+            patientId: createdPatientId,
+            antecedentTypeId: ANTECEDENT_TYPE_IDS.ALERGIA,
+            description: descripcionAlergia,
+          });
+        } catch (antecedentErr: any) {
+          console.error("Error al registrar el antecedente de alergia:", antecedentErr);
+          setSubmitError(
+            antecedentErr?.response?.status === 403
+              ? "Paciente creado, pero tu rol no tiene permiso para registrar antecedentes clínicos. Avisa a un administrador."
+              : "Paciente creado, pero no se pudo registrar la alergia en su historia clínica.",
+          );
+          return;
+        }
       }
     }
 
@@ -294,6 +325,8 @@ export function PacienteForm() {
     );
 
     setTutorEnabled(false);
+    setAlergico(false);
+    setAlergiaDetalle("");
     navigate("/pacientes");
   };
 
@@ -584,6 +617,25 @@ export function PacienteForm() {
                 onChange={setAlergico}
                 label="¿Es alérgico a algún medicamento?"
               />
+
+              {alergico && (
+                <div className="space-y-1 pl-1">
+                  <label htmlFor="alergiaDetalle" className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                    ¿A cuál medicamento?
+                  </label>
+                  <input
+                    id="alergiaDetalle"
+                    type="text"
+                    value={alergiaDetalle}
+                    onChange={(e) => setAlergiaDetalle(e.target.value)}
+                    placeholder="Ej: Penicilina, Ibuprofeno"
+                    className="w-full px-3.5 py-2 bg-slate-50/70 dark:bg-slate-900/80 border border-slate-300 dark:border-white/15 rounded-xl text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all shadow-sm"
+                  />
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Si lo dejas vacío se registra como alergia sin especificar.
+                  </p>
+                </div>
+              )}
 
               <ToothCheckbox
                 checked={medicacionCronica}
