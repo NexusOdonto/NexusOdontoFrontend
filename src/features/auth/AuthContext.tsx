@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../../api/authService';
+import { signalRService } from '../../api/signalrService';
 import { formatRoleName } from '../../utils/roleUtils';
 import {
   isBotServiceUser,
@@ -494,8 +495,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const logout = async () => {
+    // Cerrar el hub antes que nada: el backend solo emite UserOffline desde
+    // OnDisconnectedAsync, así que sin este stop el usuario sigue apareciendo
+    // activo para los demás aunque haya cerrado sesión.
+    try {
+      await signalRService.stopConnection();
+    } catch (error) {
+      console.error('Error al cerrar la conexión de presencia:', error);
+    }
+
     const refreshToken = localStorage.getItem('refresh_token');
-    
+
     if (refreshToken) {
       try {
         await authService.logout(refreshToken);
@@ -509,7 +519,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch {
       // Ignore
     }
-    
+
     clearSessionStorage();
     setUser(null);
     navigate('/login', { replace: true });
