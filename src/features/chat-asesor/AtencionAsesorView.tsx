@@ -429,6 +429,18 @@ export function AtencionAsesorView() {
   const chatsRef = useRef<ChatItemDisplay[]>([]);
   /** Mobile back to list: polling must not re-open a chat until the user picks one again. */
   const userDismissedSelectionRef = useRef(false);
+  /**
+   * Sticky Uso Manual by phone (last 10 digits). Polling merges JID/LID twins and can
+   * briefly see one twin still ACTIVA → UI flips to bot while the advisor is typing.
+   * Cleared only when the user explicitly returns to bot or closes the case.
+   */
+  const manualStickyByPhoneRef = useRef<Map<string, number>>(new Map());
+  const MANUAL_STICKY_MS = 60 * 60 * 1000; // 1h or until explicit release
+
+  const phoneStickyKey = (phoneOrId?: string) => {
+    const digits = (phoneOrId || "").replace(/\D/g, "");
+    return digits.length >= 10 ? digits.slice(-10) : (phoneOrId || "").trim();
+  };
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -619,6 +631,21 @@ export function AtencionAsesorView() {
           }
         }
 
+        // Sticky Uso Manual: no dejar que un gemelo JID/LID aún ACTIVA tumbe el modo asesor
+        const nowSticky = Date.now();
+        for (const [k, ts] of [...manualStickyByPhoneRef.current.entries()]) {
+          if (nowSticky - ts > MANUAL_STICKY_MS) manualStickyByPhoneRef.current.delete(k);
+        }
+        for (const chat of groupedByPhone.values()) {
+          const sk = phoneStickyKey(chat.phone || chat.chatIdentifier);
+          const stickyAt = manualStickyByPhoneRef.current.get(sk);
+          if (stickyAt && nowSticky - stickyAt <= MANUAL_STICKY_MS) {
+            if (chat.status !== "CERRADA") {
+              chat.status = "ATENDIDA_HUMANO";
+            }
+          }
+        }
+
         const consolidated = Array.from(groupedByPhone.values()).sort(compareChatsByActivity);
 
         setChats(consolidated);
@@ -626,6 +653,10 @@ export function AtencionAsesorView() {
         setSelectedChatId((prev) => {
           if (prev && consolidated.some((ch) => ch.id === prev || ch.allConversationIds?.includes(prev))) {
             const matching = consolidated.find((ch) => ch.id === prev || ch.allConversationIds?.includes(prev));
+            // Keep the same conversation id when possible so status/UI don't jump between JID/LID twins
+            if (matching && matching.allConversationIds?.includes(prev)) {
+              return prev;
+            }
             return matching ? matching.id : prev;
           }
           // User tapped back to the chat list — keep list until they select again
@@ -899,10 +930,10 @@ export function AtencionAsesorView() {
     const previousTicket = selectedChat.ticket;
     readSetRef.current.add(targetConvId);
 
-    // Optimistic UI
+    // Optimistic UI — apply to all JID/LID twins in the group
     setChats((prev) =>
       prev.map((c) =>
-        c.id === targetConvId
+        c.id === targetConvId || convIdsToUpdate.includes(c.id) || c.allConversationIds?.some((id) => convIdsToUpdate.includes(id))
           ? {
               ...c,
               status: newStatus,
@@ -917,11 +948,15 @@ export function AtencionAsesorView() {
       )
     );
 
+    const stickyKey = phoneStickyKey(selectedChat.phone || selectedChat.chatIdentifier);
     if (newStatus === "ATENDIDA_HUMANO") {
+      manualStickyByPhoneRef.current.set(stickyKey, Date.now());
       setFilterTab("ATENDIDAS");
     } else if (newStatus === "ACTIVA") {
+      manualStickyByPhoneRef.current.delete(stickyKey);
       setFilterTab("BOT");
     } else if (newStatus === "CERRADA") {
+      manualStickyByPhoneRef.current.delete(stickyKey);
       setFilterTab("TODAS");
     }
 
