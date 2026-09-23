@@ -24,6 +24,7 @@ import { userService } from "../../api/userService";
 import { roleService } from "../../api/roleService";
 import { documentTypeService } from "../../api/documentTypeService";
 import { personService } from "../../api/personService";
+import { sessionService, isSessionActive, type SessionResponseDto } from "../../api/sessionService";
 
 const ITEMS_PER_PAGE = 5;
 
@@ -176,11 +177,15 @@ export function UsuariosView() {
   const fetchUsuarios = async () => {
     try {
       setLoading(true);
-      const [data, personsData, rolesData] = await Promise.all([
+      const [data, personsData, rolesData, sessionsData] = await Promise.all([
         userService.getAll({ includeInactive: true }).catch(() => userService.getAll().catch(() => [])),
         personService.getAll().catch(() => []),
         roleService.getAll().catch(() => []),
+        sessionService.getAll().catch(() => []),
       ]);
+
+      const activeSessions = (sessionsData || []).filter(isSessionActive);
+      const activeUserIds = new Set(activeSessions.map((s: SessionResponseDto) => (s.userId || "").toLowerCase()));
 
       const isBotUser = (u: any) => {
         const email = (u.email || "").toLowerCase();
@@ -231,15 +236,8 @@ export function UsuariosView() {
           permissions: {},
         };
 
-        // Determine raw active status directly from API (F-20)
-        let rawActive = u.isActive ?? u.activo ?? u.is_active;
-        if (rawActive === undefined && u.status) {
-          rawActive = !["inactivo", "inactive", "false", "0"].includes(String(u.status).toLowerCase());
-        }
-        if (rawActive === undefined && u.state) {
-          rawActive = !["inactivo", "inactive", "false", "0"].includes(String(u.state).toLowerCase());
-        }
-        const isUserActive = rawActive !== undefined ? Boolean(rawActive) : true;
+        // Determine active status: default to Inactivo, and pass to Activo only if session is active
+        const isUserActive = activeUserIds.has(String(u.id || "").toLowerCase());
 
         return {
           id: u.id,

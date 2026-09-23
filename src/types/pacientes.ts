@@ -85,7 +85,7 @@ export const isPatientActive = (paciente?: Paciente | null): boolean => {
   if (estadoLower === "inactivo" || estadoLower === "inactive" || estadoLower === "0" || estadoLower === "false") {
     return false;
   }
-  return true;
+  return estadoLower === "activo" || estadoLower === "active" || estadoLower === "1" || estadoLower === "true";
 };
 
 export const isPatientOnline = (paciente?: Paciente | null, currentUser?: any): boolean => {

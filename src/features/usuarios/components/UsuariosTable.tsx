@@ -177,7 +177,7 @@ export function UsuariosTable({
                 (currentUser?.email && usuario.email && currentUser.email.toLowerCase() === usuario.email.toLowerCase())
               );
               const cannotToggle = isProtectedAdmin || isSelf;
-              const isUserActive = (usuario.isActive ?? (usuario as any).is_active ?? true);
+              const isUserActive = Boolean(usuario.isActive ?? (usuario as any).is_active ?? false);
 
               return (
                 <tr

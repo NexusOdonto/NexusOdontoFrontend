@@ -12,6 +12,8 @@ import { useAuth } from "../auth/AuthContext";
 import { usePresenceTick } from "../auth/usePresenceTick";
 import { patientService } from "../../api/patientService";
 import { personService } from "../../api/personService";
+import { userService } from "../../api/userService";
+import { sessionService, isSessionActive } from "../../api/sessionService";
 import { areGuidsEqual } from "../../utils/roleUtils";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
 import { Plus, LayoutGrid, List, Download, FileText, Table as TableIcon } from "lucide-react";
@@ -56,13 +58,28 @@ export function PacientesView() {
   const fetchPacientes = useCallback(async () => {
     setLoading(true);
     try {
-      const [patientsRes, personsRes] = await Promise.allSettled([
+      const [patientsRes, personsRes, usersRes, sessionsRes] = await Promise.allSettled([
         patientService.getAll(),
-        personService.getAll()
+        personService.getAll(),
+        userService.getAll({ includeInactive: true }).catch(() => userService.getAll().catch(() => [])),
+        sessionService.getAll().catch(() => [])
       ]);
 
       const patientsData = patientsRes.status === "fulfilled" && Array.isArray(patientsRes.value) ? patientsRes.value : [];
       const personsData = personsRes.status === "fulfilled" && Array.isArray(personsRes.value) ? personsRes.value : [];
+      const usersData = usersRes.status === "fulfilled" && Array.isArray(usersRes.value) ? usersRes.value : [];
+      const sessionsData = sessionsRes.status === "fulfilled" && Array.isArray(sessionsRes.value) ? sessionsRes.value : [];
+
+      // Computar sesiones activas según sessionStatusId (15000000-0000-0000-0000-000000000001)
+      const activeSessions = sessionsData.filter(isSessionActive);
+      const activeUserIds = new Set(activeSessions.map((s) => (s.userId || "").toLowerCase()));
+
+      const activePersonIds = new Set<string>();
+      usersData.forEach((u: any) => {
+        if (u.id && activeUserIds.has(String(u.id).toLowerCase()) && u.personId) {
+          activePersonIds.add(String(u.personId).toLowerCase());
+        }
+      });
 
       const combinedPacientes: Paciente[] = [];
       const seenIdentifiers = new Set<string>();
@@ -80,14 +97,10 @@ export function PacientesView() {
             return;
           }
 
-          const rawIsActive = p.isActive !== undefined 
-            ? p.isActive 
-            : ((p as any).status !== undefined 
-                ? ((p as any).status === 1 || (p as any).status === 'Activo' || (p as any).status === 'Active' || (p as any).status === true) 
-                : (person?.isActive !== undefined 
-                    ? person.isActive 
-                    : ((p as any).estado ? String((p as any).estado).toLowerCase() === 'activo' : true)));
-          const resolvedEstado = (rawIsActive === false || (p as any).estado === 'Inactivo' || (p as any).status === 'Inactive' || (p as any).status === 0 || p.isActive === false) ? 'Inactivo' : 'Activo';
+          const patientPersonId = (p.personId || "").toLowerCase();
+          const patientId = (p.id || "").toString().toLowerCase();
+          const hasActiveSession = (patientPersonId && activePersonIds.has(patientPersonId)) || (patientId && activeUserIds.has(patientId));
+          const resolvedEstado = hasActiveSession ? "Activo" : "Inactivo";
 
           const key = (doc || email || fullName).toLowerCase();
 
@@ -132,12 +145,10 @@ export function PacientesView() {
                 return;
               }
 
-              const rawIsActive = item.isActive !== undefined 
-                ? item.isActive 
-                : (item.status !== undefined 
-                    ? (item.status === 1 || item.status === 'Activo' || item.status === 'Active' || item.status === true) 
-                    : (item.estado ? item.estado.toLowerCase() === 'activo' : true));
-              const resolvedEstado = (rawIsActive === false || item.estado === 'Inactivo' || item.status === 'Inactive' || item.status === 0 || item.isActive === false) ? 'Inactivo' : 'Activo';
+              const localPersonId = (item.personId || "").toLowerCase();
+              const localPatientId = (item.patientId || item.id || "").toString().toLowerCase();
+              const hasActiveSession = (localPersonId && activePersonIds.has(localPersonId)) || (localPatientId && activeUserIds.has(localPatientId));
+              const resolvedEstado = hasActiveSession ? "Activo" : "Inactivo";
 
               const key = (doc || email || fullName).toLowerCase();
 
