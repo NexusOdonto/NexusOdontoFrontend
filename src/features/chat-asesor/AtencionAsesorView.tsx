@@ -567,12 +567,19 @@ export function AtencionAsesorView() {
         const groupedByPhone = new Map<string, ChatItemDisplay>();
 
         for (const item of mapped) {
-          const key = item.phone || item.chatIdentifier;
+          const cleanDigits = (str?: string) => (str || '').replace(/\D/g, '');
+          const keyDigits = cleanDigits(item.phone || item.chatIdentifier);
+          const key = keyDigits.length >= 10 ? keyDigits.slice(-10) : (item.phone || item.chatIdentifier);
+
           if (!groupedByPhone.has(key)) {
             groupedByPhone.set(key, { ...item, allConversationIds: [item.id] });
           } else {
             const existing = groupedByPhone.get(key)!;
-            existing.allConversationIds = [...(existing.allConversationIds || [existing.id]), item.id];
+            const existingIds = existing.allConversationIds || [existing.id];
+            if (!existingIds.includes(item.id)) {
+              existingIds.push(item.id);
+            }
+            existing.allConversationIds = existingIds;
             const isHumanActive = existing.status === "ATENDIDA_HUMANO" || item.status === "ATENDIDA_HUMANO";
             const isEscalated = existing.status === "ESCALADA" || item.status === "ESCALADA";
 
@@ -652,7 +659,7 @@ export function AtencionAsesorView() {
       );
       const targetIds =
         currentChat?.allConversationIds && currentChat.allConversationIds.length > 0
-          ? currentChat.allConversationIds
+          ? Array.from(new Set([...currentChat.allConversationIds, convId]))
           : [convId];
 
       const allResults = await Promise.all(
@@ -677,7 +684,7 @@ export function AtencionAsesorView() {
           const newTime = formatTime(rawTime);
           setChats((prev) => {
             const updated = prev.map((ch) =>
-              ch.id === convId
+              (ch.id === convId || ch.allConversationIds?.includes(convId))
                 ? { ...ch, lastMessage: lastUserOrBotMsg.content, lastMessageTime: newTime, rawTimestamp: rawTime }
                 : ch
             );
