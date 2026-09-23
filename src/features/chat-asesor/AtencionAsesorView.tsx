@@ -228,6 +228,16 @@ function parseTimestamp(dateStr?: string): number {
   return isNaN(t) ? 0 : t;
 }
 
+/** Orden por actividad reciente; id como desempate para que el poll no “baile”. */
+function compareChatsByActivity(
+  a: { id: string; rawTimestamp?: string },
+  b: { id: string; rawTimestamp?: string }
+): number {
+  const diff = parseTimestamp(b.rawTimestamp) - parseTimestamp(a.rawTimestamp);
+  if (diff !== 0) return diff;
+  return String(a.id).localeCompare(String(b.id));
+}
+
 function formatTicketSummary(summary?: string, reason?: string): string {
   const text = summary || reason || "";
   if (!text) return "Conversación en curso por WhatsApp";
@@ -609,13 +619,7 @@ export function AtencionAsesorView() {
           }
         }
 
-        const consolidated = Array.from(groupedByPhone.values()).sort(
-          (a, b) => {
-            const diff = parseTimestamp(b.rawTimestamp) - parseTimestamp(a.rawTimestamp);
-            if (diff !== 0) return diff;
-            return String(a.id).localeCompare(String(b.id));
-          }
-        );
+        const consolidated = Array.from(groupedByPhone.values()).sort(compareChatsByActivity);
 
         setChats(consolidated);
 
@@ -671,28 +675,38 @@ export function AtencionAsesorView() {
       );
       const msgs = allResults.flat();
       if (msgs && msgs.length > 0) {
-        setMessages(deduplicateMessages(msgs));
+        const chronological = deduplicateMessages(msgs);
+        setMessages(chronological);
 
         const prevCount = lastMsgCountRef.current[convId] || 0;
-        if (isSilent && msgs.length > prevCount) {
-          const lastMsg = msgs[msgs.length - 1];
-          if (isUserMessage(lastMsg.messageRoleId)) {
-            showToast(`💬 Nuevo mensaje de WhatsApp: ${lastMsg.content.slice(0, 30)}...`);
+        const lastUserOrBotMsg = chronological[chronological.length - 1];
+        if (isSilent && chronological.length > prevCount) {
+          if (lastUserOrBotMsg && isUserMessage(lastUserOrBotMsg.messageRoleId)) {
+            showToast(`💬 Nuevo mensaje de WhatsApp: ${lastUserOrBotMsg.content.slice(0, 30)}...`);
           }
         }
-        lastMsgCountRef.current[convId] = msgs.length;
+        lastMsgCountRef.current[convId] = chronological.length;
 
-        const lastUserOrBotMsg = msgs[msgs.length - 1];
         if (lastUserOrBotMsg?.content) {
           const rawTime = lastUserOrBotMsg.createdAt;
           const newTime = formatTime(rawTime);
+          const newEpoch = parseTimestamp(rawTime);
           setChats((prev) => {
-            const updated = prev.map((ch) =>
-              (ch.id === convId || ch.allConversationIds?.includes(convId))
-                ? { ...ch, lastMessage: lastUserOrBotMsg.content, lastMessageTime: newTime, rawTimestamp: rawTime }
-                : ch
-            );
-            return updated.sort((a, b) => parseTimestamp(b.rawTimestamp) - parseTimestamp(a.rawTimestamp));
+            let moved = false;
+            const updated = prev.map((ch) => {
+              if (!(ch.id === convId || ch.allConversationIds?.includes(convId))) return ch;
+              const prevEpoch = parseTimestamp(ch.rawTimestamp);
+              // Solo subir en la lista si hay actividad más reciente (mensaje nuevo)
+              if (newEpoch > prevEpoch) {
+                moved = true;
+                return { ...ch, lastMessage: lastUserOrBotMsg.content, lastMessageTime: newTime, rawTimestamp: rawTime };
+              }
+              if (newEpoch === prevEpoch && ch.lastMessage !== lastUserOrBotMsg.content) {
+                return { ...ch, lastMessage: lastUserOrBotMsg.content, lastMessageTime: newTime };
+              }
+              return ch;
+            });
+            return moved ? updated.sort(compareChatsByActivity) : updated;
           });
         }
       } else {
@@ -783,11 +797,7 @@ export function AtencionAsesorView() {
       return matchSearch && matchTab;
     });
 
-    return list.sort((a, b) => {
-      const diff = parseTimestamp(b.rawTimestamp) - parseTimestamp(a.rawTimestamp);
-      if (diff !== 0) return diff;
-      return String(a.id).localeCompare(String(b.id));
-    });
+    return list.sort(compareChatsByActivity);
   }, [chats, searchQuery, filterTab]);
 
   const resizeChatInput = () => {
@@ -854,7 +864,7 @@ export function AtencionAsesorView() {
               }
             : c
         );
-        return updated.sort((a, b) => parseTimestamp(b.rawTimestamp) - parseTimestamp(a.rawTimestamp));
+        return updated.sort(compareChatsByActivity);
       });
 
       showToast("Mensaje enviado a WhatsApp como Asesor Humano de Recepción.");
