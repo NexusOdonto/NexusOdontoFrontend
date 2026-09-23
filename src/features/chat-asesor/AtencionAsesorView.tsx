@@ -430,12 +430,14 @@ export function AtencionAsesorView() {
   /** Mobile back to list: polling must not re-open a chat until the user picks one again. */
   const userDismissedSelectionRef = useRef(false);
   /**
-   * Sticky Uso Manual by phone (last 10 digits). Polling merges JID/LID twins and can
-   * briefly see one twin still ACTIVA → UI flips to bot while the advisor is typing.
-   * Cleared only when the user explicitly returns to bot or closes the case.
+   * Sticky mode by phone (last 10 digits). Polling merges JID/LID twins and can
+   * briefly disagree (one twin ACTIVA, another ATENDIDA_HUMANO) → UI flips while typing
+   * or right after Activar NexusBot.
+   * Cleared/overwritten only by explicit user action (Uso Manual / Activar NexusBot / Cerrar).
    */
-  const manualStickyByPhoneRef = useRef<Map<string, number>>(new Map());
-  const MANUAL_STICKY_MS = 60 * 60 * 1000; // 1h or until explicit release
+  const modeStickyByPhoneRef = useRef<Map<string, { mode: "manual" | "bot"; at: number }>>(new Map());
+  const MODE_STICKY_MS = 60 * 60 * 1000; // 1h
+  const statusUpdateInFlightRef = useRef(false);
 
   const phoneStickyKey = (phoneOrId?: string) => {
     const digits = (phoneOrId || "").replace(/\D/g, "");
@@ -631,18 +633,20 @@ export function AtencionAsesorView() {
           }
         }
 
-        // Sticky Uso Manual: no dejar que un gemelo JID/LID aún ACTIVA tumbe el modo asesor
+        // Sticky mode: no dejar que gemelos JID/LID desincronizados tumben Manual↔Bot
         const nowSticky = Date.now();
-        for (const [k, ts] of [...manualStickyByPhoneRef.current.entries()]) {
-          if (nowSticky - ts > MANUAL_STICKY_MS) manualStickyByPhoneRef.current.delete(k);
+        for (const [k, entry] of [...modeStickyByPhoneRef.current.entries()]) {
+          if (nowSticky - entry.at > MODE_STICKY_MS) modeStickyByPhoneRef.current.delete(k);
         }
         for (const chat of groupedByPhone.values()) {
           const sk = phoneStickyKey(chat.phone || chat.chatIdentifier);
-          const stickyAt = manualStickyByPhoneRef.current.get(sk);
-          if (stickyAt && nowSticky - stickyAt <= MANUAL_STICKY_MS) {
-            if (chat.status !== "CERRADA") {
-              chat.status = "ATENDIDA_HUMANO";
-            }
+          const sticky = modeStickyByPhoneRef.current.get(sk);
+          if (!sticky || nowSticky - sticky.at > MODE_STICKY_MS) continue;
+          if (chat.status === "CERRADA") continue;
+          if (sticky.mode === "manual") {
+            chat.status = "ATENDIDA_HUMANO";
+          } else if (sticky.mode === "bot") {
+            chat.status = "ACTIVA";
           }
         }
 
@@ -915,6 +919,8 @@ export function AtencionAsesorView() {
 
   const handleUpdateStatus = async (newStatus: "ESCALADA" | "ATENDIDA_HUMANO" | "ACTIVA" | "CERRADA") => {
     if (!selectedChat) return;
+    if (statusUpdateInFlightRef.current) return;
+    statusUpdateInFlightRef.current = true;
 
     let statusGuid: string = CONVERSATION_STATUS_IDS.ATENDIDA_HUMANO;
     if (newStatus === "ACTIVA") statusGuid = CONVERSATION_STATUS_IDS.ACTIVA;
@@ -950,13 +956,13 @@ export function AtencionAsesorView() {
 
     const stickyKey = phoneStickyKey(selectedChat.phone || selectedChat.chatIdentifier);
     if (newStatus === "ATENDIDA_HUMANO") {
-      manualStickyByPhoneRef.current.set(stickyKey, Date.now());
+      modeStickyByPhoneRef.current.set(stickyKey, { mode: "manual", at: Date.now() });
       setFilterTab("ATENDIDAS");
     } else if (newStatus === "ACTIVA") {
-      manualStickyByPhoneRef.current.delete(stickyKey);
+      modeStickyByPhoneRef.current.set(stickyKey, { mode: "bot", at: Date.now() });
       setFilterTab("BOT");
     } else if (newStatus === "CERRADA") {
-      manualStickyByPhoneRef.current.delete(stickyKey);
+      modeStickyByPhoneRef.current.delete(stickyKey);
       setFilterTab("TODAS");
     }
 
@@ -972,30 +978,25 @@ export function AtencionAsesorView() {
         )
       );
 
-      // "Devolver a Bot": resume FastAPI ONCE. Prefer resolveTicket(returnToBot)
-      // which already calls ResumeConversationAsync — calling resumeConversation
-      // again sent the patient the same WhatsApp notice twice.
-      // "Cerrar" must NOT call resume (would reopen as ACTIVA).
+      // Ticket resolve never resumes the bot (that caused double WhatsApp notices).
+      // Resume FastAPI exactly once from the front when returning to ACTIVA.
       const ticketId = selectedChat.ticket?.id;
-      const hasTicket =
-        !!ticketId && isValidGuid(ticketId) && (newStatus === "CERRADA" || newStatus === "ACTIVA");
-
-      if (hasTicket) {
-        const returnToBot = newStatus === "ACTIVA";
+      if (ticketId && isValidGuid(ticketId) && (newStatus === "CERRADA" || newStatus === "ACTIVA")) {
         try {
           await chatbotService.resolveTicket(
             ticketId,
-            returnToBot
+            newStatus === "ACTIVA"
               ? "Devuelto al bot para atención automática."
               : "Atendido y cerrado por recepcionista.",
-            returnToBot
+            false
           );
         } catch (ticketErr) {
-          // Conversation status already persisted; ticket failure should not undo Cerrar in the UI.
           if (newStatus !== "CERRADA") throw ticketErr;
           console.warn("Ticket resolve failed after conversation close:", ticketErr);
         }
-      } else if (newStatus === "ACTIVA") {
+      }
+
+      if (newStatus === "ACTIVA") {
         await chatbotService.resumeConversation(selectedChat.chatIdentifier, false).catch(() => null);
       }
 
@@ -1027,7 +1028,7 @@ export function AtencionAsesorView() {
           setChats((prev) =>
             prev
               .map((c) =>
-                c.id === targetConvId
+                c.id === targetConvId || convIdsToUpdate.includes(c.id)
                   ? {
                       ...c,
                       lastMessage: handoffMsg,
@@ -1053,10 +1054,11 @@ export function AtencionAsesorView() {
           : "Caso resuelto y marcado como cerrado."
       );
 
-      // Refresh list so CERRADA sticks after silent poll
-      setTimeout(() => loadData(true), 200);
+      // Delay refresh so Oracle twins settle; sticky mode prevents flicker meanwhile
+      setTimeout(() => loadData(true), 1500);
     } catch (err: any) {
       console.warn("Could not update conversation status via API:", err);
+      modeStickyByPhoneRef.current.delete(stickyKey);
       setChats((prev) =>
         prev.map((c) =>
           c.id === targetConvId
@@ -1069,6 +1071,8 @@ export function AtencionAsesorView() {
         err?.message ||
         "No se pudo actualizar el estado del caso. Intenta de nuevo.";
       showErrorToast(errMsg);
+    } finally {
+      statusUpdateInFlightRef.current = false;
     }
   };
 
