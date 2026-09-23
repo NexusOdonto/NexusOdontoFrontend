@@ -966,17 +966,68 @@ export function AtencionAsesorView() {
       setFilterTab("TODAS");
     }
 
+    // Aviso WhatsApp al paciente en paralelo (no esperar updates de Oracle)
+    const shouldNotifyAdvisorTakeover =
+      newStatus === "ATENDIDA_HUMANO" && previousStatus !== "ATENDIDA_HUMANO";
+    const handoffMsg =
+      "👤 *Nexus Odonto — Atención humana*\n\n" +
+      "Un asesor de recepción está atendiendo tu conversación ahora. " +
+      "En breve te responderá por este chat. 🦷✨";
+    const notifyPromise = shouldNotifyAdvisorTakeover
+      ? chatbotService
+          .sendAgentDirectMessage({
+            phoneNumber: selectedChat.chatIdentifier,
+            message: handoffMsg,
+            senderRole: "AGENTE_HUMANO",
+            skipDbRegister: false,
+          })
+          .then(() => {
+            const nowIso = new Date().toISOString();
+            setMessages((prev) =>
+              deduplicateMessages([
+                ...prev,
+                {
+                  id: `local-handoff-${Date.now()}`,
+                  chatbotConversationId: targetConvId,
+                  messageRoleId: MESSAGE_ROLE_IDS.AGENTE_HUMANO,
+                  content: handoffMsg,
+                  createdAt: nowIso,
+                },
+              ])
+            );
+            setChats((prev) =>
+              prev
+                .map((c) =>
+                  c.id === targetConvId || convIdsToUpdate.includes(c.id)
+                    ? {
+                        ...c,
+                        lastMessage: handoffMsg,
+                        lastMessageTime: formatTime(nowIso),
+                        rawTimestamp: nowIso,
+                      }
+                    : c
+                )
+                .sort(compareChatsByActivity)
+            );
+            setTimeout(() => scrollToBottom(true), 50);
+          })
+          .catch((handoffErr) => {
+            console.warn("No se pudo notificar al paciente el paso a asesor:", handoffErr);
+            showErrorToast("Tomaste el caso, pero no se pudo avisar por WhatsApp al paciente.");
+          })
+      : Promise.resolve();
+
     try {
-      // Close/update every JID/LID twin so phone-grouped chats stay consistent.
-      await Promise.all(
-        convIdsToUpdate.map((id) =>
+      await Promise.all([
+        notifyPromise,
+        ...convIdsToUpdate.map((id) =>
           chatbotService.updateConversation(id, {
             conversationStatusId: statusGuid,
             patientId: selectedChat.patientId,
             closedAt: newStatus === "CERRADA" ? new Date().toISOString() : undefined,
           })
-        )
-      );
+        ),
+      ]);
 
       // Ticket resolve never resumes the bot (that caused double WhatsApp notices).
       // Resume FastAPI exactly once from the front when returning to ACTIVA.
@@ -998,52 +1049,6 @@ export function AtencionAsesorView() {
 
       if (newStatus === "ACTIVA") {
         await chatbotService.resumeConversation(selectedChat.chatIdentifier, false).catch(() => null);
-      }
-
-      // Aviso al paciente al pasar de bot → asesor (Uso Manual)
-      if (newStatus === "ATENDIDA_HUMANO" && previousStatus !== "ATENDIDA_HUMANO") {
-        const handoffMsg =
-          "👤 *Nexus Odonto — Atención humana*\n\n" +
-          "Un asesor de recepción está atendiendo tu conversación ahora. " +
-          "En breve te responderá por este chat. 🦷✨";
-        try {
-          await chatbotService.sendConversationWhatsApp(
-            targetConvId,
-            handoffMsg,
-            MESSAGE_ROLE_IDS.AGENTE_HUMANO
-          );
-          const nowIso = new Date().toISOString();
-          setMessages((prev) =>
-            deduplicateMessages([
-              ...prev,
-              {
-                id: `local-handoff-${Date.now()}`,
-                chatbotConversationId: targetConvId,
-                messageRoleId: MESSAGE_ROLE_IDS.AGENTE_HUMANO,
-                content: handoffMsg,
-                createdAt: nowIso,
-              },
-            ])
-          );
-          setChats((prev) =>
-            prev
-              .map((c) =>
-                c.id === targetConvId || convIdsToUpdate.includes(c.id)
-                  ? {
-                      ...c,
-                      lastMessage: handoffMsg,
-                      lastMessageTime: formatTime(nowIso),
-                      rawTimestamp: nowIso,
-                    }
-                  : c
-              )
-              .sort(compareChatsByActivity)
-          );
-          setTimeout(() => scrollToBottom(true), 50);
-        } catch (handoffErr) {
-          console.warn("No se pudo notificar al paciente el paso a asesor:", handoffErr);
-          showErrorToast("Tomaste el caso, pero no se pudo avisar por WhatsApp al paciente.");
-        }
       }
 
       showToast(
