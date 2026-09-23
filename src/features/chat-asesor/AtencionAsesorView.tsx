@@ -422,7 +422,7 @@ export function AtencionAsesorView() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const chatInputRef = useRef<HTMLInputElement>(null);
+  const chatInputRef = useRef<HTMLTextAreaElement>(null);
   /** When false, user scrolled up to read history — do not yank them to bottom on poll. */
   const stickToBottomRef = useRef(true);
 
@@ -789,6 +789,19 @@ export function AtencionAsesorView() {
       return String(a.id).localeCompare(String(b.id));
     });
   }, [chats, searchQuery, filterTab]);
+
+  const resizeChatInput = () => {
+    const el = chatInputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const maxPx = 160; // ~6–7 líneas, estilo WhatsApp
+    el.style.height = `${Math.min(el.scrollHeight, maxPx)}px`;
+    el.style.overflowY = el.scrollHeight > maxPx ? "auto" : "hidden";
+  };
+
+  useEffect(() => {
+    resizeChatInput();
+  }, [inputText, selectedChatId]);
 
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -1681,21 +1694,27 @@ export function AtencionAsesorView() {
 
                 {/* ÁREA INFERIOR DE MENSAJERÍA / CONTROL UNIFICADO */}
                 {selectedChat.status === "ATENDIDA_HUMANO" ? (
-                  <form onSubmit={handleSendMessage} className="flex items-center gap-2 animate-fadeIn">
-                    <input
+                  <form onSubmit={handleSendMessage} className="flex items-end gap-2 animate-fadeIn">
+                    <textarea
                       ref={chatInputRef}
-                      type="text"
+                      rows={1}
                       placeholder="Escribe tu respuesta personalizada como asesor de recepción..."
                       value={inputText}
                       onChange={(e) => setInputText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          void handleSendMessage();
+                        }
+                      }}
                       disabled={sendingMessage}
-                      className="flex-1 px-4 py-3 rounded-2xl text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 shadow-inner transition-all"
+                      className="flex-1 min-h-[44px] max-h-40 px-4 py-3 rounded-2xl text-xs leading-5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 shadow-inner transition-[height] resize-none overflow-hidden"
                     />
 
                     <button
                       type="submit"
                       disabled={!inputText.trim() || sendingMessage}
-                      className={`p-3.5 rounded-2xl flex items-center justify-center transition-all shadow-lg ${
+                      className={`shrink-0 p-3.5 rounded-2xl flex items-center justify-center transition-all shadow-lg ${
                         inputText.trim() && !sendingMessage
                           ? "bg-gradient-to-tr from-teal-500 to-emerald-500 text-white hover:scale-105 active:scale-95 shadow-teal-500/20 cursor-pointer"
                           : "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed border border-slate-300 dark:border-white/5"
