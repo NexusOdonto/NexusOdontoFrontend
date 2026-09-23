@@ -202,9 +202,7 @@ export function CitasTable({
             {displayedCitas.map((cita) => (
               <tr
                 key={cita.id}
-                onClick={() => onOpenEditModal && onOpenEditModal(cita)}
-                title="Haz clic para ver o editar los detalles de esta cita"
-                className="transition-all duration-200 hover:bg-teal-500/10 dark:hover:bg-cyan-400/10 cursor-pointer group"
+                className="transition-all duration-200 hover:bg-slate-500/5 dark:hover:bg-white/5 group"
               >
                 {/* PACIENTE */}
                 <td className="px-4 py-3.5 truncate">
@@ -511,8 +509,7 @@ export function CitasTable({
         {displayedCitas.map((cita) => (
           <div
             key={cita.id}
-            onClick={() => onOpenEditModal && onOpenEditModal(cita)}
-            className="p-5 rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl shadow-md space-y-3 cursor-pointer hover:border-teal-500/50 transition-all"
+            className="p-5 rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl shadow-md space-y-3 transition-all"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">

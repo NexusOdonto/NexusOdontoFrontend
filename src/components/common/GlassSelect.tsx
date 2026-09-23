@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, Check } from "lucide-react";
 
 export interface GlassSelectOption {
@@ -31,29 +32,85 @@ export function GlassSelect({
 }: GlassSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState<{ top: number; left: number; minWidth: number }>({
+    top: 0,
+    left: 0,
+    minWidth: 190,
+  });
+
+  const updateCoords = () => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const dropdownEstimatedHeight = 240;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const openUpward = spaceBelow < dropdownEstimatedHeight && rect.top > dropdownEstimatedHeight;
+
+    const top = openUpward ? Math.max(8, rect.top - dropdownEstimatedHeight - 6) : rect.bottom + 6;
+    const minWidth = Math.max(190, rect.width);
+    let left = rect.left;
+
+    if (left + minWidth > window.innerWidth - 12) {
+      left = Math.max(12, window.innerWidth - minWidth - 12);
+    }
+
+    setCoords({
+      top,
+      left: Math.max(12, left),
+      minWidth,
+    });
+  };
 
   useEffect(() => {
+    if (!isOpen) return;
+
+    updateCoords();
+
+    const handleScrollOrResize = () => {
+      updateCoords();
+    };
+
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(target) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(target)
+      ) {
         setIsOpen(false);
       }
     };
+
+    window.addEventListener("scroll", handleScrollOrResize, true);
+    window.addEventListener("resize", handleScrollOrResize);
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+
+    return () => {
+      window.removeEventListener("scroll", handleScrollOrResize, true);
+      window.removeEventListener("resize", handleScrollOrResize);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
 
   const selectedOption = options.find((opt) => String(opt.value) === String(value));
   const displayText = selectedOption ? selectedOption.label : placeholder;
 
   return (
-    <div ref={containerRef} className={`relative inline-block text-left ${isOpen ? "z-[60]" : "z-10"}`}>
+    <div ref={containerRef} className="relative inline-block text-left">
       <button
         type="button"
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-label={ariaLabel || displayText}
-        onClick={() => !disabled && setIsOpen((prev) => !prev)}
+        onClick={() => {
+          if (disabled) return;
+          if (!isOpen) {
+            updateCoords();
+          }
+          setIsOpen((prev) => !prev);
+        }}
         className={`group flex items-center justify-between gap-2.5 px-3.5 py-2.5 bg-white/90 dark:bg-slate-950/65 hover:bg-white dark:hover:bg-slate-950/90 border border-slate-200/90 dark:border-white/20 hover:border-cyan-500/50 dark:hover:border-cyan-400/50 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 dark:text-white backdrop-blur-xl shadow-md transition-all cursor-pointer select-none active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
       >
         <span className="truncate">{displayText}</span>
@@ -65,41 +122,50 @@ export function GlassSelect({
         />
       </button>
 
-      {isOpen && (
-        <div
-          role="listbox"
-          className={`absolute left-0 sm:right-auto mt-2 min-w-[190px] w-max max-w-xs p-1.5 rounded-2xl bg-white/95 dark:bg-slate-900/98 border border-slate-200/90 dark:border-white/15 shadow-[0_20px_50px_rgba(0,0,0,0.6)] backdrop-blur-2xl z-[9999] animate-scaleIn space-y-1 max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 ${dropdownClassName}`}
-        >
-          {options.map((option) => {
-            const isSelected = String(option.value) === String(value);
-            return (
-              <button
-                key={option.value}
-                type="button"
-                role="option"
-                aria-selected={isSelected}
-                onClick={() => {
-                  onChange(option.value);
-                  setIsOpen(false);
-                }}
-                className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer text-left select-none ${
-                  isSelected
-                    ? "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 font-bold border border-cyan-500/30"
-                    : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white"
-                }`}
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  {option.icon && <span className="shrink-0">{option.icon}</span>}
-                  <span className="truncate">{option.label}</span>
-                </div>
-                {isSelected && (
-                  <Check size={14} className="text-cyan-500 shrink-0 ml-1" />
-                )}
-              </button>
-            );
-          })}
-        </div>
-      )}
+      {isOpen &&
+        createPortal(
+          <div
+            ref={dropdownRef}
+            role="listbox"
+            style={{
+              position: "fixed",
+              top: `${coords.top}px`,
+              left: `${coords.left}px`,
+              minWidth: `${coords.minWidth}px`,
+            }}
+            className={`w-max max-w-xs p-1.5 rounded-2xl bg-white/95 dark:bg-slate-900/98 border border-slate-200/90 dark:border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.45)] backdrop-blur-2xl z-[999999] animate-scaleIn space-y-1 max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 ${dropdownClassName}`}
+          >
+            {options.map((option) => {
+              const isSelected = String(option.value) === String(value);
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                  onClick={() => {
+                    onChange(option.value);
+                    setIsOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer text-left select-none ${
+                    isSelected
+                      ? "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 font-bold border border-cyan-500/30"
+                      : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    {option.icon && <span className="shrink-0">{option.icon}</span>}
+                    <span className="truncate">{option.label}</span>
+                  </div>
+                  {isSelected && (
+                    <Check size={14} className="text-cyan-500 shrink-0 ml-1" />
+                  )}
+                </button>
+              );
+            })}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
