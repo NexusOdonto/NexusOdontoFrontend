@@ -17,7 +17,6 @@ import {
   Calendar,
   X,
   CheckCircle2,
-  Star,
   MapPin,
   ShieldCheck,
   Award,
@@ -59,7 +58,7 @@ interface ProfessionalFull extends ProfessionalResponseDto {
   nombreCompleto: string;
   especialidad: string;
   turnos: TurnoDisponibilidad[];
-  rating: number;
+  rating?: number;
   pacientesAtendidos: number;
   experienciaAnios: number;
   colorTheme: {
@@ -747,14 +746,10 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
         <div className="p-5 rounded-3xl bg-white/85 dark:bg-slate-950/70 border border-slate-200/80 dark:border-white/10 backdrop-blur-xl shadow-lg relative overflow-hidden group hover:border-cyan-500/40 transition-all">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              {isOdontologo ? "Mi Turno Clínico" : "Calificación Pacientes"}
+              {isOdontologo ? "Mi Turno Clínico" : "Jornadas Clínicas"}
             </span>
             <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 icon-animated-interactive group-hover:scale-110 group-hover:bg-amber-500/20 transition-all">
-              {isOdontologo ? (
-                <Clock size={20} className="text-amber-500 group-hover:animate-icon-bounce" />
-              ) : (
-                <Star size={20} className="fill-amber-400 text-amber-400 group-hover:animate-icon-bounce" />
-              )}
+              <Clock size={20} className="text-amber-500 group-hover:animate-icon-bounce" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
@@ -765,13 +760,13 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
               </>
             ) : (
               <>
-                <span className="text-3xl font-black text-slate-900 dark:text-white">4.9</span>
-                <span className="text-xs font-bold text-amber-600 dark:text-amber-400">/ 5.0 (98%)</span>
+                <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">08:00 - 18:00</span>
+                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Turnos Activos</span>
               </>
             )}
           </div>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-medium">
-            {isOdontologo ? "Jornada habitual asignada en agenda" : "+2,400 reseñas verificadas"}
+            {isOdontologo ? "Jornada habitual asignada en agenda" : "Cobertura asistencial y disponibilidad"}
           </p>
         </div>
       </div>
@@ -947,11 +942,6 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                         </div>
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-black">
-                      <Star size={12} className="fill-amber-400 text-amber-400" />
-                      <span>{prof.rating}</span>
-                    </div>
                   </div>
 
                   {/* Badge de Especialidad */}
@@ -1068,7 +1058,6 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                   <th className="py-3.5 px-4">Especialidad</th>
                   <th className="py-3.5 px-4">Consultorio Asignado</th>
                   <th className="py-3.5 px-4">Contacto</th>
-                  <th className="py-3.5 px-4 text-center">Calificación</th>
                   <th className="py-3.5 px-4 text-center">Estado</th>
                   <th className="py-3.5 px-4 text-right">Acciones</th>
                 </tr>
@@ -1126,13 +1115,6 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                           <p className="text-slate-700 dark:text-slate-300">{prof.email}</p>
                           <p className="font-mono text-slate-500 text-[10px]">{prof.phone}</p>
                         </div>
-                      </td>
-
-                      <td className="py-3.5 px-4 text-center">
-                        <span className="inline-flex items-center gap-1 font-bold text-amber-600 dark:text-amber-400">
-                          <Star size={12} className="fill-amber-400 text-amber-400" />
-                          {prof.rating}
-                        </span>
                       </td>
 
                       <td className="py-3.5 px-4 text-center">
