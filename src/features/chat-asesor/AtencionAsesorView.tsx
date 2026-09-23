@@ -610,7 +610,11 @@ export function AtencionAsesorView() {
         }
 
         const consolidated = Array.from(groupedByPhone.values()).sort(
-          (a, b) => parseTimestamp(b.rawTimestamp) - parseTimestamp(a.rawTimestamp)
+          (a, b) => {
+            const diff = parseTimestamp(b.rawTimestamp) - parseTimestamp(a.rawTimestamp);
+            if (diff !== 0) return diff;
+            return String(a.id).localeCompare(String(b.id));
+          }
         );
 
         setChats(consolidated);
@@ -779,7 +783,11 @@ export function AtencionAsesorView() {
       return matchSearch && matchTab;
     });
 
-    return list.sort((a, b) => parseTimestamp(b.rawTimestamp) - parseTimestamp(a.rawTimestamp));
+    return list.sort((a, b) => {
+      const diff = parseTimestamp(b.rawTimestamp) - parseTimestamp(a.rawTimestamp);
+      if (diff !== 0) return diff;
+      return String(a.id).localeCompare(String(b.id));
+    });
   }, [chats, searchQuery, filterTab]);
 
   const handleSendMessage = async (e?: React.FormEvent) => {
@@ -906,14 +914,15 @@ export function AtencionAsesorView() {
         )
       );
 
-      // "Devolver a Bot" resumes auto-replies. "Cerrar" must NOT call resume —
-      // FastAPI resume reopens the Oracle conversation as ACTIVA via obtener_o_crear_conversacion.
-      if (newStatus === "ACTIVA") {
-        await chatbotService.resumeConversation(selectedChat.chatIdentifier, false).catch(() => null);
-      }
-
+      // "Devolver a Bot": resume FastAPI ONCE. Prefer resolveTicket(returnToBot)
+      // which already calls ResumeConversationAsync — calling resumeConversation
+      // again sent the patient the same WhatsApp notice twice.
+      // "Cerrar" must NOT call resume (would reopen as ACTIVA).
       const ticketId = selectedChat.ticket?.id;
-      if (ticketId && isValidGuid(ticketId) && (newStatus === "CERRADA" || newStatus === "ACTIVA")) {
+      const hasTicket =
+        !!ticketId && isValidGuid(ticketId) && (newStatus === "CERRADA" || newStatus === "ACTIVA");
+
+      if (hasTicket) {
         const returnToBot = newStatus === "ACTIVA";
         try {
           await chatbotService.resolveTicket(
@@ -928,6 +937,8 @@ export function AtencionAsesorView() {
           if (newStatus !== "CERRADA") throw ticketErr;
           console.warn("Ticket resolve failed after conversation close:", ticketErr);
         }
+      } else if (newStatus === "ACTIVA") {
+        await chatbotService.resumeConversation(selectedChat.chatIdentifier, false).catch(() => null);
       }
 
       showToast(
