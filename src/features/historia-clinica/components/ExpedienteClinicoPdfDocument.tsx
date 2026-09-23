@@ -1,4 +1,4 @@
-﻿import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
 
 const styles = StyleSheet.create({
   page: {
@@ -267,6 +267,7 @@ export interface ExpedienteClinicoPdfProps {
     nombre: string;
     notas?: string;
   }[];
+  odontogramSummary?: string;
   issuedDate?: string;
 }
 
@@ -276,6 +277,7 @@ export const ExpedienteClinicoPdfDocument = ({
   attentions,
   diagnoses,
   procedures,
+  odontogramSummary,
   issuedDate = new Date().toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" }),
 }: ExpedienteClinicoPdfProps) => {
   return (
@@ -348,7 +350,7 @@ export const ExpedienteClinicoPdfDocument = ({
             <View key={att.id || index} style={styles.attentionCard} wrap={false}>
               <View style={styles.attHeader}>
                 <Text style={styles.attTitle}>{index + 1}. {att.motivo || "Consulta General de Control"}</Text>
-                <Text style={styles.attDate}>{att.fecha} • CIE-10: {att.cie10 || "K02.1"}</Text>
+                <Text style={styles.attDate}>{att.fecha}{att.cie10 ? ` • CIE-10: ${att.cie10}` : ""}</Text>
               </View>
               <Text style={styles.attDoctor}>Tratante: Dr(a). {att.profesional}</Text>
               <Text style={styles.attBody}>
@@ -367,27 +369,39 @@ export const ExpedienteClinicoPdfDocument = ({
 
         {/* 4. DIAGNÓSTICOS CIE-10 Y PROCEDIMIENTOS */}
         <Text style={styles.sectionTitle}>4. Diagnósticos y Procedimientos Odontológicos</Text>
-        <View style={styles.table}>
-          <View style={styles.tableHeader}>
-            <Text style={{ width: "25%" }}>CÓDIGO</Text>
-            <Text style={{ width: "50%" }}>DESCRIPCIÓN / PROCEDIMIENTO</Text>
-            <Text style={{ width: "25%" }}>TIPO / NOTAS</Text>
+        {odontogramSummary ? (
+          <View style={[styles.alertCard, { backgroundColor: "#f0fdf4", borderColor: "#bbf7d0", marginBottom: 6 }]}>
+            <Text style={[styles.alertTitle, { color: "#166534" }]}>Mapeo y Estado Odontológico Activo:</Text>
+            <Text style={[styles.alertText, { color: "#14532d" }]}>{odontogramSummary}</Text>
           </View>
-          {(diagnoses.length > 0 ? diagnoses : [{ cie10Code: "K02.1", description: "Caries de la dentina", diagnosisType: "DENTAL" }]).map((d, i) => (
-            <View key={i} style={[styles.tableRow, i % 2 === 1 ? styles.tableRowAlt : {}]}>
-              <Text style={{ width: "25%", fontFamily: "Helvetica-Bold", color: "#0f766e" }}>{d.cie10Code || "K02.1"}</Text>
-              <Text style={{ width: "50%" }}>{d.description || "Diagnóstico Clínico"}</Text>
-              <Text style={{ width: "25%", color: "#64748b" }}>{d.diagnosisType || "DENTAL"}</Text>
+        ) : null}
+        {diagnoses.length === 0 && procedures.length === 0 ? (
+          <Text style={{ fontSize: 8, color: "#94a3b8", fontStyle: "italic", marginBottom: 8 }}>
+            No se registran diagnósticos codificados ni procedimientos clínicos adicionales para este paciente.
+          </Text>
+        ) : (
+          <View style={styles.table}>
+            <View style={styles.tableHeader}>
+              <Text style={{ width: "25%" }}>CÓDIGO</Text>
+              <Text style={{ width: "50%" }}>DESCRIPCIÓN / PROCEDIMIENTO</Text>
+              <Text style={{ width: "25%" }}>TIPO / NOTAS</Text>
             </View>
-          ))}
-          {procedures.slice(0, 3).map((p, i) => (
-            <View key={`proc-${i}`} style={[styles.tableRow, (i + diagnoses.length) % 2 === 1 ? styles.tableRowAlt : {}]}>
-              <Text style={{ width: "25%", fontFamily: "Helvetica-Bold", color: "#0891b2" }}>{p.codigo}</Text>
-              <Text style={{ width: "50%" }}>{p.nombre}</Text>
-              <Text style={{ width: "25%", color: "#64748b" }}>{p.notas || "Realizado"}</Text>
-            </View>
-          ))}
-        </View>
+            {diagnoses.map((d, i) => (
+              <View key={i} style={[styles.tableRow, i % 2 === 1 ? styles.tableRowAlt : {}]}>
+                <Text style={{ width: "25%", fontFamily: "Helvetica-Bold", color: "#0f766e" }}>{d.cie10Code || "CIE-10"}</Text>
+                <Text style={{ width: "50%" }}>{d.description || "Diagnóstico Clínico"}</Text>
+                <Text style={{ width: "25%", color: "#64748b" }}>{d.diagnosisType || "DENTAL"}</Text>
+              </View>
+            ))}
+            {procedures.map((p, i) => (
+              <View key={`proc-${i}`} style={[styles.tableRow, (i + diagnoses.length) % 2 === 1 ? styles.tableRowAlt : {}]}>
+                <Text style={{ width: "25%", fontFamily: "Helvetica-Bold", color: "#0891b2" }}>{p.codigo}</Text>
+                <Text style={{ width: "50%" }}>{p.nombre}</Text>
+                <Text style={{ width: "25%", color: "#64748b" }}>{p.notas || "Realizado"}</Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* FIRMA Y CERTIFICACIÓN */}
         <View style={styles.signatureContainer} wrap={false}>

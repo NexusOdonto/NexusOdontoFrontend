@@ -225,3 +225,46 @@ export const DIAGNOSIS_LEGEND: DiagnosisLegendItem[] = [
     badgeBorder: 'border-yellow-400/40',
   },
 ];
+
+export const KNOWN_DIAGNOSES: Diagnosis[] = [
+  "caries",
+  "restoration",
+  "sealant",
+  "endodontic",
+  "crown",
+  "bridge",
+  "implant",
+  "extraction",
+  "fracture",
+  "mobility",
+];
+
+export function mapFindingToDiagnosis(findingTypeCode?: string | null, description?: string | null): Diagnosis {
+  const desc = (description || "").trim().toLowerCase();
+  if (desc) {
+    const colonIdx = desc.lastIndexOf(":");
+    const token = (colonIdx >= 0 ? desc.slice(colonIdx + 1) : desc).trim();
+    const fromToken = KNOWN_DIAGNOSES.find((d) => d === token);
+    if (fromToken) return fromToken;
+    for (const d of KNOWN_DIAGNOSES) {
+      if (token.includes(d) || desc.includes(`: ${d}`) || desc.endsWith(d)) return d;
+    }
+  }
+
+  const ft = (findingTypeCode || "").toUpperCase();
+  if (!ft) return "none";
+
+  if (ft.includes("SELL") || ft.includes("SEAL") || ft === "SEL" || ft === "SEA") return "sealant";
+  if (ft.includes("REST") || ft.includes("OBT") || ft.includes("FILL")) return "restoration";
+  if (ft.includes("CAR")) return "caries";
+  if (ft.includes("FRA")) return "fracture";
+  if (ft.includes("EXT")) return "extraction";
+  if (ft.includes("MOB") || ft.includes("MOV")) return "mobility";
+  if (ft.includes("END")) return "endodontic";
+  if (ft.includes("BRIDGE") || ft.includes("PUENTE")) return "bridge";
+  if (ft.includes("IMPLANT") || ft.includes("IMPLANTE") || ft === "IMP") return "implant";
+  if (ft.includes("CROWN") || ft.includes("CORONA") || ft.includes("PROT")) return "crown";
+  if (ft.includes("COR") || ft.includes("CRO")) return "crown";
+
+  return "none";
+}

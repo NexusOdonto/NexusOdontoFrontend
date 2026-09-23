@@ -49,6 +49,9 @@ export interface DiagnosisResponseDto {
   type?: string;
   diagnosisType?: string;
   isPresumptive?: boolean;
+  createdAt?: string;
+  observations?: string;
+  notes?: string;
 }
 
 export interface CreateDiagnosisRequestDto {
@@ -68,6 +71,7 @@ export interface ProcedurePerformedResponseDto {
   notes?: string;
   quantity: number;
   unitPrice: number;
+  createdAt?: string;
 }
 
 export const clinicalHistoryService = {

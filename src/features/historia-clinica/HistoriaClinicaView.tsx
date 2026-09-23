@@ -43,6 +43,17 @@ import { FolderComponent } from "../../components/ui/folder-component";
 import { PrescriptionPdfDocument } from "./components/PrescriptionPdfDocument";
 import { ExpedienteClinicoPdfDocument } from "./components/ExpedienteClinicoPdfDocument";
 import { RegistroIndividualPdfDocument, type ClinicalRecordItem } from "./components/RegistroIndividualPdfDocument";
+import { odontogramService, type FullOdontogramResponseDto } from "../../api/odontogramService";
+import { OdontogramaPdfDocument } from "../odontograma/components/OdontogramaPdfDocument";
+import {
+  type ToothState,
+  type Diagnosis,
+  type Surface,
+  FDI_PERMANENT_QUADRANTS,
+  FDI_TEMPORARY_QUADRANTS,
+  createDefaultToothState,
+  mapFindingToDiagnosis,
+} from "../odontograma/types";
 
 interface LocalAttention {
   id: string;
@@ -57,8 +68,26 @@ interface LocalAttention {
   observaciones?: string;
 }
 
+export interface ToothFindingDetail {
+  toothNumber: number;
+  surfaces: string[];
+  diagnosis: Diagnosis;
+  condition: string;
+  description: string;
+}
+
+export interface OdontogramPatientSummary {
+  dentitionType: "permanent" | "temporary";
+  teeth: Record<number, ToothState>;
+  notasClinicas: string;
+  recordedAt?: string;
+  professionalName?: string;
+  findingsCount: number;
+  countsByType: Record<string, number>;
+  teethWithFindings: ToothFindingDetail[];
+}
+
 const LICENSED_DENTISTS_FALLBACK = [
-  "Dra. Laura Gómez",
   "Dr. Roberto Silva Morales",
   "Dra. Valentina Mendoza Gómez",
   "Dr. Camilo Rincón Casas",
@@ -92,10 +121,11 @@ export function HistoriaClinicaView() {
   const [attentions, setAttentions] = useState<LocalAttention[]>([]);
   const [diagnoses, setDiagnoses] = useState<DiagnosisResponseDto[]>([]);
   const [procedures, setProcedures] = useState<ProcedurePerformedResponseDto[]>([]);
+  const [odontogramSummary, setOdontogramSummary] = useState<OdontogramPatientSummary | null>(null);
   const [nextAppointment, setNextAppointment] = useState<{ servicio: string; profesional: string; fecha: string; hora: string } | null>(null);
   const [dentistsList, setDentistsList] = useState<string[]>(LICENSED_DENTISTS_FALLBACK);
   const [patientAppointmentsList, setPatientAppointmentsList] = useState<any[]>([]);
-  const [folderCategory, setFolderCategory] = useState<"evoluciones" | "diagnosticos" | "procedimientos" | "antecedentes" | null>(null);
+  const [folderCategory, setFolderCategory] = useState<"evoluciones" | "odontograma" | "diagnosticos" | "procedimientos" | "antecedentes" | null>(null);
   const [selectedRecordKeys, setSelectedRecordKeys] = useState<string[]>([]);
   const [selectedRecordDetail, setSelectedRecordDetail] = useState<ClinicalRecordItem | null>(null);
 
@@ -114,7 +144,11 @@ export function HistoriaClinicaView() {
   const [formCie10, setFormCie10] = useState("K02.1");
   const [formPlan, setFormPlan] = useState("");
   const [formObservaciones, setFormObservaciones] = useState("");
-  const [formProfesional, setFormProfesional] = useState(isDentist ? (user?.name || "Dra. Laura Gómez") : "Dra. Laura Gómez");
+  const [formProfesional, setFormProfesional] = useState(
+    user?.name
+      ? (user.name.startsWith("Dr") ? user.name : `Dr(a). ${user.name}`)
+      : "Dr(a). Especialista Odontológico"
+  );
 
   // Modales adicionales
   const [showAntecedentesModal, setShowAntecedentesModal] = useState(false);
@@ -501,52 +535,247 @@ export function HistoriaClinicaView() {
         // ignore
       }
 
-      if (mapped.length === 0 && localAtts.length === 0) {
-        // Mock de contingencia enriquecido: Si no hay evoluciones en backend, cargar evolución clínica inicial verificada
-        const activeApp = patientAppointments.length > 0 ? patientAppointments[0] : null;
-        const profFallback = activeApp?.professionalName || activeApp?.profesional || "Dra. Laura Gómez";
-        const dateFallback = activeApp?.fecha
-          ? `${activeApp.fecha} ${activeApp.hora || "09:00"}`
-          : new Date().toLocaleDateString("es-CO");
+      const allAtts = [...localAtts];
+      mapped.forEach((m) => {
+        if (!allAtts.some((a) => a.id === m.id)) {
+          allAtts.push(m);
+        }
+      });
+      setAttentions(allAtts);
 
-        const initialEvolution: LocalAttention = {
-          id: `att-init-${selectedPatientId}`,
-          fecha: dateFallback,
-          profesional: profFallback,
-          motivo: "Consulta de valoración inicial y diagnóstico general",
-          enfermedadActual: "Paciente acude a control odontológico periódico y valoración integral de cavidad oral. Sin sintomatología dolorosa aguda al momento del examen.",
-          examenFisico: "Tejidos blandos normocrómicos e hidratados. Higiene oral aceptable. Oclusión funcional clase I. Pieza 16 con lesión incipiente en esmalte/dentina.",
-          diagnostico: "K02.1 - Caries de la dentina (Fase inicial)",
-          cie10: "K02.1",
-          planTratamiento: "1. Profilaxis general y destartraje ultrasónico. 2. Restauración estética con resina fotocurada en pieza #16. 3. Aplicación de barniz de flúor.",
-          observaciones: "Se dan recomendaciones de técnica de cepillado Bass modificada y uso diario de seda dental.",
-        };
+      // 4. Cargar Odontograma guardado del paciente (API y/o localStorage)
+      let loadedFullOdonto: FullOdontogramResponseDto | null = null;
+      try {
+        loadedFullOdonto = await odontogramService.getByPatientId(selectedPatientId).catch(() => null);
+      } catch {
+        // ignore
+      }
 
-        setAttentions([initialEvolution]);
-      } else {
-        const allAtts = [...localAtts];
-        mapped.forEach((m) => {
-          if (!allAtts.some((a) => a.id === m.id)) {
-            allAtts.push(m);
+      let localOdontoTeeth: Record<number, ToothState> | null = null;
+      let localDentitionType: "permanent" | "temporary" = "permanent";
+      try {
+        const rawLocal = localStorage.getItem(`nexus_odontograma_${selectedPatientId}`);
+        if (rawLocal) {
+          const parsed = JSON.parse(rawLocal);
+          if (parsed && parsed.teeth) {
+            localOdontoTeeth = parsed.teeth;
+            if (parsed.dentitionType) localDentitionType = parsed.dentitionType;
+          }
+        }
+      } catch {
+        // ignore
+      }
+
+      let localNotes = "";
+      try {
+        localNotes = localStorage.getItem(`nexus_odontograma_notas_${selectedPatientId}`) || "";
+      } catch {
+        // ignore
+      }
+
+      // Reconstruir estado dental
+      let activeTeeth: Record<number, ToothState> = {};
+      let activeDentition: "permanent" | "temporary" = localDentitionType;
+
+      if (localOdontoTeeth && Object.keys(localOdontoTeeth).length > 0) {
+        activeTeeth = localOdontoTeeth;
+      } else if (loadedFullOdonto && loadedFullOdonto.teeth && loadedFullOdonto.teeth.length > 0) {
+        const baseTeeth: Record<number, ToothState> = {};
+        [...Object.values(FDI_PERMANENT_QUADRANTS).flat(), ...Object.values(FDI_TEMPORARY_QUADRANTS).flat()].forEach((num) => {
+          baseTeeth[num] = createDefaultToothState(num);
+        });
+
+        loadedFullOdonto.teeth.forEach((t: any) => {
+          const tooth = baseTeeth[t.fdiNumber];
+          if (tooth) {
+            tooth.isAbsent = t.stateCode === "AUSENTE";
+            tooth.isExtracted = t.stateCode === "EXTRAIDO";
+            tooth.isUnerupted = t.stateCode === "INCLUIDO";
+            if (t.stateCode === "CORONA") {
+              tooth.condition = "healthy";
+              if (tooth.faces?.oclusal) tooth.faces.oclusal.diagnosis = "crown";
+            }
+            if (t.findings && Array.isArray(t.findings)) {
+              t.findings.forEach((f: any) => {
+                let surf: Surface = "oclusal";
+                const s = (f.surfaceCode || "").toUpperCase();
+                if (s === "V") surf = "vestibular";
+                else if (s === "P") surf = "palatino";
+                else if (s === "M") surf = "mesial";
+                else if (s === "D") surf = "distal";
+                else if (s === "O") surf = "oclusal";
+
+                const diag = mapFindingToDiagnosis(f.findingTypeCode, f.description);
+                if (diag !== "none" && tooth.faces && tooth.faces[surf]) {
+                  tooth.faces[surf].diagnosis = diag;
+                }
+              });
+            }
           }
         });
-        setAttentions(allAtts);
+        activeTeeth = baseTeeth;
       }
-    } catch (err) {
-      console.warn("API clinical history offline, setting contingency attentions list:", err);
-      const initialEvolution: LocalAttention = {
-        id: `att-init-${selectedPatientId}`,
-        fecha: new Date().toLocaleDateString("es-CO"),
-        profesional: "Dra. Laura Gómez",
-        motivo: "Consulta de valoración inicial y diagnóstico general",
-        enfermedadActual: "Paciente acude a control odontológico periódico y valoración integral de cavidad oral.",
-        examenFisico: "Tejidos blandos normocrómicos e hidratados. Oclusión funcional.",
-        diagnostico: "K02.1 - Caries de la dentina (Fase inicial)",
-        cie10: "K02.1",
-        planTratamiento: "1. Profilaxis general. 2. Restauración preventiva en resina.",
-        observaciones: "Se recomiendan controles semestrales.",
+
+      // Notas clínicas limpias
+      let finalNotes = localNotes;
+      if (!finalNotes && loadedFullOdonto?.notes) {
+        let clean = loadedFullOdonto.notes;
+        if (clean.includes("=== NOTAS_CLINICAS ===")) {
+          const match = clean.match(/=== NOTAS_CLINICAS ===\s*([\s\S]*?)\s*=== FIN_NOTAS_CLINICAS ===/);
+          clean = match ? match[1].trim() : clean;
+        } else {
+          clean = clean.split("ODONTOGRAM_STATE:")[0].split("Hallazgos Odontograma:")[0].trim();
+        }
+        finalNotes = clean;
+      }
+
+      // Profesional del odontograma
+      let odontoDocName = "Odontólogo Tratante";
+      if (loadedFullOdonto?.professionalId) {
+        const profMatch = professionalsEntities.find((p: any) => areGuidsEqual(p.id, loadedFullOdonto?.professionalId));
+        if (profMatch) {
+          odontoDocName = `Dr(a). ${profMatch.firstName || ""} ${profMatch.lastName || ""}`.trim();
+        }
+      }
+
+      const countsByType: Record<string, number> = {
+        caries: 0,
+        restoration: 0,
+        crown: 0,
+        endodontic: 0,
+        extraction: 0,
+        implant: 0,
+        sealant: 0,
+        fracture: 0,
+        mobility: 0,
+        bridge: 0,
       };
-      setAttentions([initialEvolution]);
+
+      const teethWithFindings: ToothFindingDetail[] = [];
+
+      Object.entries(activeTeeth).forEach(([numStr, t]) => {
+        const toothNum = parseInt(numStr, 10);
+        if (!t || !t.isVisible) return;
+
+        if (t.isAbsent || t.isExtracted) {
+          countsByType.extraction++;
+          teethWithFindings.push({
+            toothNumber: toothNum,
+            surfaces: ["General"],
+            diagnosis: "extraction",
+            condition: t.isExtracted ? "Pieza Extraída" : "Pieza Ausente",
+            description: `Pieza #${toothNum} clasificada como ${t.isExtracted ? "extraída" : "ausente"} en arcada dental.`,
+          });
+          return;
+        }
+
+        const facesWithDiag: { surface: string; diagnosis: Diagnosis }[] = [];
+        (Object.keys(t.faces || {}) as Surface[]).forEach((surf) => {
+          const d = t.faces?.[surf]?.diagnosis;
+          if (d && d !== "none") {
+            facesWithDiag.push({ surface: surf, diagnosis: d });
+            if (countsByType[d] !== undefined) {
+              countsByType[d]++;
+            }
+          }
+        });
+
+        if (facesWithDiag.length > 0) {
+          const primaryDiag = facesWithDiag[0].diagnosis;
+          const surfNames = facesWithDiag.map((f) => f.surface).join(", ");
+          teethWithFindings.push({
+            toothNumber: toothNum,
+            surfaces: facesWithDiag.map((f) => f.surface),
+            diagnosis: primaryDiag,
+            condition: primaryDiag.toUpperCase(),
+            description: `Pieza #${toothNum} con presencia de ${primaryDiag} en cara(s): ${surfNames}.`,
+          });
+        }
+      });
+
+      const totalFindings = teethWithFindings.length;
+      const odontoDate = loadedFullOdonto?.recordedAt
+        ? new Date(loadedFullOdonto.recordedAt).toLocaleDateString("es-CO")
+        : (localNotes || totalFindings > 0 ? new Date().toLocaleDateString("es-CO") : undefined);
+
+      if (totalFindings > 0 || finalNotes) {
+        setOdontogramSummary({
+          dentitionType: activeDentition,
+          teeth: activeTeeth,
+          notasClinicas: finalNotes,
+          recordedAt: odontoDate,
+          professionalName: odontoDocName,
+          findingsCount: totalFindings,
+          countsByType,
+          teethWithFindings,
+        });
+      } else {
+        setOdontogramSummary(null);
+      }
+
+      // 5. Vincular Hallazgos del Odontograma con los Diagnósticos CIE-10 reales
+      const dentalDiagnoses: DiagnosisResponseDto[] = teethWithFindings.map((tf, idx) => {
+        let code = "K02.1";
+        let desc = `Caries de la dentina en Pieza #${tf.toothNumber}`;
+        if (tf.diagnosis === "endodontic") {
+          code = "K04.0";
+          desc = `Pulpitis irreversible / Endodoncia en Pieza #${tf.toothNumber}`;
+        } else if (tf.diagnosis === "crown" || tf.diagnosis === "bridge") {
+          code = "Z46.3";
+          desc = `Prótesis dental fija / Corona en Pieza #${tf.toothNumber}`;
+        } else if (tf.diagnosis === "restoration") {
+          code = "K02.2";
+          desc = `Restauración / Obturación dental en Pieza #${tf.toothNumber}`;
+        } else if (tf.diagnosis === "fracture") {
+          code = "K03.8";
+          desc = `Fractura o trauma dental en Pieza #${tf.toothNumber}`;
+        } else if (tf.diagnosis === "mobility") {
+          code = "K05.3";
+          desc = `Periodontitis con movilidad en Pieza #${tf.toothNumber}`;
+        } else if (tf.diagnosis === "extraction") {
+          code = "K08.1";
+          desc = `Pérdida de diente por extracción/ausencia en Pieza #${tf.toothNumber}`;
+        }
+
+        if (tf.surfaces && tf.surfaces.length > 0 && !tf.surfaces.includes("General")) {
+          desc += ` (Cara ${tf.surfaces.join(", ")})`;
+        }
+
+        return {
+          id: `diag-dental-${tf.toothNumber}-${idx}`,
+          clinicalHistoryId: (selectedPatient as any)?.clinicalHistoryId || "",
+          clinicalAttentionId: "",
+          cie10Code: code,
+          description: desc,
+          diagnosisType: "DENTAL",
+          observations: tf.description,
+          createdAt: odontoDate || new Date().toISOString(),
+        };
+      });
+
+      const existingDiags = Array.isArray(apiDiagnoses) ? [...apiDiagnoses] : [];
+      const mergedDiagnoses = [...existingDiags];
+      dentalDiagnoses.forEach((dd) => {
+        if (!mergedDiagnoses.some((ed) => ed.description === dd.description)) {
+          mergedDiagnoses.push(dd);
+        }
+      });
+      setDiagnoses(mergedDiagnoses);
+
+    } catch (err) {
+      console.warn("API clinical history offline or error, setting real local attentions if any:", err);
+      const localKey = `nexus_attentions_${selectedPatientId}`;
+      let localAtts: LocalAttention[] = [];
+      try {
+        const rawLocal = localStorage.getItem(localKey);
+        if (rawLocal) {
+          const parsed = JSON.parse(rawLocal);
+          if (Array.isArray(parsed)) localAtts = parsed;
+        }
+      } catch {
+        // ignore
+      }
+      setAttentions(localAtts);
       setNextAppointment(null);
     } finally {
       setTimeout(() => setLoading(false), 450);
@@ -559,6 +788,27 @@ export function HistoriaClinicaView() {
     setNextAppointment(null);
     loadClinicalData();
   }, [loadClinicalData]);
+
+  // Sincronización reactiva inmediata cuando se guarda o actualiza el odontograma
+  useEffect(() => {
+    const handleOdontoUpdate = (e: any) => {
+      const updatedPtId = e?.detail?.patientId;
+      if (!updatedPtId || areGuidsEqual(updatedPtId, selectedPatientId)) {
+        loadClinicalData();
+      }
+    };
+    window.addEventListener("nexus_odontograma_updated", handleOdontoUpdate);
+    const handleStorageUpdate = (e: StorageEvent) => {
+      if (e.key && e.key.includes("nexus_odontograma_") && selectedPatientId) {
+        loadClinicalData();
+      }
+    };
+    window.addEventListener("storage", handleStorageUpdate);
+    return () => {
+      window.removeEventListener("nexus_odontograma_updated", handleOdontoUpdate);
+      window.removeEventListener("storage", handleStorageUpdate);
+    };
+  }, [selectedPatientId, loadClinicalData]);
 
   const filteredPatients = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
@@ -803,17 +1053,15 @@ export function HistoriaClinicaView() {
           doctorName={formProfesional}
           attentions={attentions}
           diagnoses={diagnoses}
-          procedures={
-            procedures.length > 0
-              ? procedures.map((p) => ({
-                  codigo: "CUPS-PROC",
-                  nombre: `Procedimiento #${p.serviceId}`,
-                  notas: p.notes || `Cantidad: ${p.quantity} - Valor: $${p.unitPrice?.toLocaleString()}`,
-                }))
-              : [
-                  { codigo: "CUPS-890201", nombre: "Valoración General Odontológica", notas: "Examen clínico completo" },
-                  { codigo: "CUPS-997100", nombre: "Profilaxis y Limpieza Dental", notas: "Remoción de cálculo" },
-                ]
+          procedures={procedures.map((p) => ({
+            codigo: "CUPS-PROC",
+            nombre: `Procedimiento #${p.serviceId}`,
+            notas: p.notes || `Cantidad: ${p.quantity} - Valor: $${p.unitPrice?.toLocaleString()}`,
+          }))}
+          odontogramSummary={
+            odontogramSummary
+              ? `Dentición: ${odontogramSummary.dentitionType === "permanent" ? "Permanente" : "Temporal"} • ${odontogramSummary.findingsCount} hallazgos registrados. ${odontogramSummary.notasClinicas ? "Notas clínicas: " + odontogramSummary.notasClinicas : ""}`
+              : undefined
           }
         />
       ).toBlob();
@@ -830,6 +1078,47 @@ export function HistoriaClinicaView() {
     } catch (err) {
       console.error("Error al generar PDF de expediente:", err);
       setErrorMessage("No se pudo generar el archivo PDF.");
+      setTimeout(() => setErrorMessage(null), 4000);
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
+  const handleDownloadOdontogramPdf = async () => {
+    if (!selectedPatient || !odontogramSummary) return;
+    try {
+      setIsGeneratingPdf(true);
+      const blob = await pdf(
+        <OdontogramaPdfDocument
+          patient={{
+            nombre: selectedPatient.firstName,
+            apellido: selectedPatient.lastName,
+            name: `${selectedPatient.firstName} ${selectedPatient.lastName}`.trim(),
+            cedula: selectedPatient.documentNumber,
+            documentNumber: selectedPatient.documentNumber,
+            phone: selectedPatient.phone,
+            email: selectedPatient.email,
+          }}
+          doctorName={odontogramSummary.professionalName || formProfesional}
+          dentitionType={odontogramSummary.dentitionType}
+          teeth={odontogramSummary.teeth}
+          notasClinicas={odontogramSummary.notasClinicas}
+          issuedDate={new Date().toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" })}
+        />
+      ).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Odontograma_${selectedPatient.documentNumber || "FDI"}_${Date.now()}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      setToastMessage("Odontograma en PDF descargado exitosamente.");
+      setTimeout(() => setToastMessage(null), 3500);
+    } catch (err) {
+      console.error("Error al generar PDF de odontograma:", err);
+      setErrorMessage("No se pudo generar el archivo PDF del odontograma.");
       setTimeout(() => setErrorMessage(null), 4000);
     } finally {
       setIsGeneratingPdf(false);
@@ -1104,12 +1393,31 @@ export function HistoriaClinicaView() {
                   <Smile size={13} className="text-cyan-500" /> Piezas en Tratamiento
                 </span>
                 <div className="flex flex-wrap gap-2">
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-100/90 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-[11px] font-bold text-slate-800 dark:text-slate-200">
-                    <span className="h-1.5 w-1.5 rounded-full bg-cyan-400" /> Pieza #16 (Resina)
-                  </span>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-100/90 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-[11px] font-bold text-slate-800 dark:text-slate-200">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Pieza #24 (Control)
-                  </span>
+                  {odontogramSummary && odontogramSummary.teethWithFindings.length > 0 ? (
+                    odontogramSummary.teethWithFindings.slice(0, 4).map((tf) => (
+                      <span
+                        key={tf.toothNumber}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-100/90 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-[11px] font-bold text-slate-800 dark:text-slate-200"
+                      >
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${
+                            tf.diagnosis === "caries"
+                              ? "bg-rose-500"
+                              : tf.diagnosis === "crown"
+                              ? "bg-emerald-400"
+                              : tf.diagnosis === "endodontic"
+                              ? "bg-purple-500"
+                              : "bg-cyan-400"
+                          }`}
+                        />
+                        Pieza #{tf.toothNumber} ({tf.diagnosis.toUpperCase()})
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 italic">
+                      Sin piezas en tratamiento activo
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -1158,9 +1466,9 @@ export function HistoriaClinicaView() {
                   title="Dossier Activo"
                   subtitle={`${selectedPatient.firstName} ${selectedPatient.lastName}`}
                   items={[
-                    { title: "Odontograma FDI", tag: "3D Dental" },
-                    { title: "Evoluciones", tag: `${attentions.length}` },
-                    { title: "Diagnósticos", tag: "CIE-10" },
+                    { title: "Odontograma FDI", tag: odontogramSummary ? `${odontogramSummary.findingsCount} Hallazgos` : "0 Hallazgos" },
+                    { title: "Evoluciones", tag: `${attentions.length} Reg.` },
+                    { title: "Diagnósticos", tag: `${diagnoses.length} CIE-10` },
                   ]}
                   onCardClick={() => {
                     const fullName = `${selectedPatient.firstName} ${selectedPatient.lastName}`.trim();
@@ -1300,6 +1608,8 @@ export function HistoriaClinicaView() {
                             <span className="text-cyan-600 dark:text-cyan-400 font-bold uppercase">
                               {folderCategory === "evoluciones"
                                 ? "📂 Evoluciones Clínicas"
+                                : folderCategory === "odontograma"
+                                ? "📂 Odontograma & Mapeo FDI"
                                 : folderCategory === "diagnosticos"
                                 ? "📂 Diagnósticos CIE-10"
                                 : folderCategory === "procedimientos"
@@ -1335,59 +1645,63 @@ export function HistoriaClinicaView() {
                                   detalles: {
                                     "Examen Físico": att.examenFisico,
                                     "Diagnóstico": att.diagnostico,
-                                    "Código CIE-10": att.cie10 || "K02.1",
+                                    "Código CIE-10": att.cie10 || "CIE-10",
                                     "Plan de Tratamiento": att.planTratamiento,
                                     "Observaciones": att.observaciones || "Ninguna",
                                   },
                                 }))
+                              : folderCategory === "odontograma"
+                              ? (odontogramSummary?.teethWithFindings || []).map((tf, idx) => ({
+                                  id: `odonto-tooth-${tf.toothNumber}-${idx}`,
+                                  titulo: `Pieza #${tf.toothNumber} — ${tf.condition} (${tf.surfaces.join(", ")})`,
+                                  fecha: odontogramSummary?.recordedAt || "Registrado",
+                                  profesional: odontogramSummary?.professionalName || formProfesional,
+                                  categoria: "Odontograma FDI",
+                                  resumen: tf.description,
+                                  estado: tf.diagnosis === "caries" ? "Requiere Tratamiento" : "Registrado",
+                                  detalles: {
+                                    "Número FDI": String(tf.toothNumber),
+                                    "Superficies": tf.surfaces.join(", ") || "Coronaria",
+                                    "Diagnóstico Dental": tf.diagnosis.toUpperCase(),
+                                    "Condición": tf.condition,
+                                    "Dentición": odontogramSummary?.dentitionType === "permanent" ? "Permanente" : "Temporal",
+                                    "Notas Clínicas": odontogramSummary?.notasClinicas || "Sin notas",
+                                  },
+                                }))
                               : folderCategory === "diagnosticos"
-                              ? (diagnoses.length > 0
-                                  ? diagnoses.map((d, idx) => ({
-                                      id: `diag-${idx}`,
-                                      titulo: `${d.cie10Code || "K02.1"} - ${d.description || "Diagnóstico Clínico"}`,
-                                      fecha: "Registrado",
-                                      profesional: "Odontólogo Tratante",
-                                      categoria: "Diagnóstico CIE-10",
-                                      resumen: `Diagnóstico clasificado bajo estándar internacional CIE-10 para patología ${d.diagnosisType || "DENTAL"}.`,
-                                      estado: "Confirmado",
-                                      detalles: {
-                                        "Código Oficial": d.cie10Code || "K02.1",
-                                        "Descripción": d.description || "Diagnóstico Clínico",
-                                        "Clasificación": d.diagnosisType || "DENTAL",
-                                        "Responsable": "Odontólogo Tratante",
-                                        "Conducta": "Plan de tratamiento odontológico asignado",
-                                      },
-                                    }))
-                                  : [
-                                      { id: "diag-0", titulo: "K02.1 - Caries de la dentina", fecha: "Reciente", profesional: "Dra. Laura Gómez", categoria: "Diagnóstico CIE-10", resumen: "Diagnóstico clínico clasificado bajo estándar CIE-10 para patología DENTAL.", estado: "Confirmado", detalles: { "Código Oficial": "K02.1", "Descripción": "Caries de la dentina", "Clasificación": "DENTAL", "Responsable": "Dra. Laura Gómez", "Conducta": "Plan de tratamiento asignado" } },
-                                      { id: "diag-1", titulo: "K05.1 - Gingivitis crónica simple", fecha: "Control", profesional: "Dra. Laura Gómez", categoria: "Diagnóstico CIE-10", resumen: "Diagnóstico clínico clasificado bajo estándar CIE-10 para patología PERIODONTAL.", estado: "En Tratamiento", detalles: { "Código Oficial": "K05.1", "Descripción": "Gingivitis crónica simple", "Clasificación": "PERIODONTAL", "Responsable": "Dra. Laura Gómez", "Conducta": "Higiene y profilaxis periodontal" } },
-                                      { id: "diag-2", titulo: "K03.0 - Atrición dental excesiva", fecha: "Seguimiento", profesional: "Dra. Laura Gómez", categoria: "Diagnóstico CIE-10", resumen: "Diagnóstico clínico clasificado bajo estándar CIE-10 para patología OCLUSAL.", estado: "Observación", detalles: { "Código Oficial": "K03.0", "Descripción": "Atrición dental excesiva", "Clasificación": "OCLUSAL", "Responsable": "Dra. Laura Gómez", "Conducta": "Placa de bruxismo / oclusión" } },
-                                    ]
-                                )
+                              ? diagnoses.map((d, idx) => ({
+                                  id: d.id || `diag-${idx}`,
+                                  titulo: `${d.cie10Code || "CIE-10"} - ${d.description || "Diagnóstico Clínico"}`,
+                                  fecha: d.createdAt ? new Date(d.createdAt).toLocaleDateString("es-CO") : "Registrado",
+                                  profesional: formProfesional,
+                                  categoria: "Diagnóstico CIE-10",
+                                  resumen: d.observations || `Diagnóstico clasificado bajo estándar internacional CIE-10 para patología ${d.diagnosisType || "DENTAL"}.`,
+                                  estado: "Confirmado",
+                                  detalles: {
+                                    "Código Oficial": d.cie10Code || "CIE-10",
+                                    "Descripción": d.description || "Diagnóstico Clínico",
+                                    "Clasificación": d.diagnosisType || "DENTAL",
+                                    "Responsable": formProfesional,
+                                    "Conducta": "Plan de tratamiento odontológico asignado",
+                                  },
+                                }))
                               : folderCategory === "procedimientos"
-                              ? (procedures.length > 0
-                                  ? procedures.map((p, idx) => ({
-                                      id: `proc-${idx}`,
-                                      titulo: `Procedimiento #${p.serviceId}`,
-                                      fecha: "Registrado",
-                                      profesional: "Dra. Laura Gómez",
-                                      categoria: "Procedimiento Odontológico",
-                                      resumen: p.notes || `Cantidad: ${p.quantity} - Valor: $${p.unitPrice?.toLocaleString()}`,
-                                      estado: "Realizado",
-                                      detalles: {
-                                        "Código": "CUPS-PROC",
-                                        "Procedimiento": `Procedimiento #${p.serviceId}`,
-                                        "Fecha de Ejecución": "Registrado",
-                                        "Profesional Responsable": "Dra. Laura Gómez",
-                                        "Evolución Posoperatoria": "Favorable sin complicaciones",
-                                      },
-                                    }))
-                                  : [
-                                      { id: "proc-0", titulo: "Valoración General Odontológica", fecha: "15/09/2026", profesional: "Dra. Laura Gómez", categoria: "Procedimiento Odontológico", resumen: "Examen clínico completo y registro de odontograma", estado: "Realizado", detalles: { "Código": "CUPS-890201", "Procedimiento": "Valoración General Odontológica", "Fecha de Ejecución": "15/09/2026", "Profesional Responsable": "Dra. Laura Gómez", "Evolución Posoperatoria": "Favorable sin complicaciones" } },
-                                      { id: "proc-1", titulo: "Profilaxis y Limpieza Dental", fecha: "10/09/2026", profesional: "Dra. Laura Gómez", categoria: "Procedimiento Odontológico", resumen: "Remoción de cálculo supragingival y pulido coronario", estado: "Realizado", detalles: { "Código": "CUPS-997100", "Procedimiento": "Profilaxis y Limpieza Dental", "Fecha de Ejecución": "10/09/2026", "Profesional Responsable": "Dra. Laura Gómez", "Evolución Posoperatoria": "Favorable sin complicaciones" } },
-                                      { id: "proc-2", titulo: "Restauración en Resina Fotocurada", fecha: "01/09/2026", profesional: "Dra. Laura Gómez", categoria: "Procedimiento Odontológico", resumen: "Obturación estética en pieza #16 cara oclusal", estado: "Realizado", detalles: { "Código": "CUPS-232101", "Procedimiento": "Restauración en Resina Fotocurada", "Fecha de Ejecución": "01/09/2026", "Profesional Responsable": "Dra. Laura Gómez", "Evolución Posoperatoria": "Favorable sin complicaciones" } },
-                                    ]
-                                )
+                              ? procedures.map((p, idx) => ({
+                                  id: p.id || `proc-${idx}`,
+                                  titulo: `Procedimiento #${p.serviceId}`,
+                                  fecha: p.createdAt ? new Date(p.createdAt).toLocaleDateString("es-CO") : "Registrado",
+                                  profesional: formProfesional,
+                                  categoria: "Procedimiento Odontológico",
+                                  resumen: p.notes || `Cantidad: ${p.quantity} - Valor: $${p.unitPrice?.toLocaleString()}`,
+                                  estado: "Realizado",
+                                  detalles: {
+                                    "Código": "CUPS-PROC",
+                                    "Procedimiento": `Procedimiento #${p.serviceId}`,
+                                    "Fecha de Ejecución": p.createdAt ? new Date(p.createdAt).toLocaleDateString("es-CO") : "Registrado",
+                                    "Profesional Responsable": formProfesional,
+                                    "Notas": p.notes || "Sin notas adicionales",
+                                  },
+                                }))
                               : [];
 
                           if (folderCategory === "antecedentes") {
@@ -1475,7 +1789,105 @@ export function HistoriaClinicaView() {
                           }
 
                           return (
-                            <div className="space-y-3">
+                            <div className="space-y-4">
+                              {/* PANEL DESTACADO PARA LA CARPETA DE ODONTOGRAMA */}
+                              {folderCategory === "odontograma" && (
+                                <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-cyan-500/10 via-teal-500/5 to-slate-50 dark:to-slate-900/60 border border-cyan-500/30 space-y-4 animate-fadeIn">
+                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-cyan-500/20 pb-3">
+                                    <div>
+                                      <div className="flex items-center gap-2">
+                                        <Smile size={18} className="text-cyan-500" />
+                                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                                          Expediente Dental y Mapeo FDI
+                                        </h4>
+                                        <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-800 dark:text-cyan-300 font-bold text-[10px] border border-cyan-500/30">
+                                          {odontogramSummary?.dentitionType === "temporary" ? "Dentición Temporal" : "Dentición Permanente"}
+                                        </span>
+                                      </div>
+                                      <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1">
+                                        {odontogramSummary
+                                          ? `Último registro: ${odontogramSummary.recordedAt || "Reciente"} • ${odontogramSummary.professionalName || formProfesional}`
+                                          : "Aún no se ha completado el mapeo odontológico para este paciente."}
+                                      </p>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const fullName = `${selectedPatient.firstName} ${selectedPatient.lastName}`.trim();
+                                          navigate(`/odontograma?pacienteId=${encodeURIComponent(selectedPatient.id)}&documento=${encodeURIComponent(selectedPatient.documentNumber || "")}&paciente=${encodeURIComponent(fullName)}`, {
+                                            state: {
+                                              patientId: selectedPatient.id,
+                                              patientName: fullName,
+                                              patientDocument: selectedPatient.documentNumber,
+                                            },
+                                          });
+                                        }}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs shadow transition-all cursor-pointer active:scale-95"
+                                      >
+                                        <Smile size={14} />
+                                        <span>Abrir Odontograma 3D →</span>
+                                      </button>
+
+                                      {odontogramSummary && (
+                                        <button
+                                          type="button"
+                                          disabled={isGeneratingPdf}
+                                          onClick={handleDownloadOdontogramPdf}
+                                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+                                        >
+                                          <Download size={14} />
+                                          <span>{isGeneratingPdf ? "Generando..." : "Descargar Odontograma PDF"}</span>
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Chips de conteo cuantitativo */}
+                                  {odontogramSummary && (
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2 pt-1 text-[11px]">
+                                      <div className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-700 dark:text-rose-300 font-bold flex flex-col items-center">
+                                        <span className="text-base">{odontogramSummary.countsByType.caries || 0}</span>
+                                        <span className="text-[10px] uppercase font-semibold">Caries</span>
+                                      </div>
+                                      <div className="p-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-300 font-bold flex flex-col items-center">
+                                        <span className="text-base">{odontogramSummary.countsByType.restoration || 0}</span>
+                                        <span className="text-[10px] uppercase font-semibold">Obturaciones</span>
+                                      </div>
+                                      <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-bold flex flex-col items-center">
+                                        <span className="text-base">{odontogramSummary.countsByType.crown || 0}</span>
+                                        <span className="text-[10px] uppercase font-semibold">Coronas</span>
+                                      </div>
+                                      <div className="p-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-700 dark:text-purple-300 font-bold flex flex-col items-center">
+                                        <span className="text-base">{odontogramSummary.countsByType.endodontic || 0}</span>
+                                        <span className="text-[10px] uppercase font-semibold">Endodoncias</span>
+                                      </div>
+                                      <div className="p-2 rounded-xl bg-slate-500/10 border border-slate-500/20 text-slate-700 dark:text-slate-300 font-bold flex flex-col items-center">
+                                        <span className="text-base">{odontogramSummary.countsByType.extraction || 0}</span>
+                                        <span className="text-[10px] uppercase font-semibold">Ausentes/Extr.</span>
+                                      </div>
+                                      <div className="p-2 rounded-xl bg-teal-500/10 border border-teal-500/20 text-teal-700 dark:text-teal-300 font-bold flex flex-col items-center">
+                                        <span className="text-base">{odontogramSummary.findingsCount}</span>
+                                        <span className="text-[10px] uppercase font-semibold">Total Hallazgos</span>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Caja de notas clínicas guardadas en el odontograma */}
+                                  {odontogramSummary?.notasClinicas && (
+                                    <div className="p-3.5 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-white/10 text-xs">
+                                      <span className="font-bold text-slate-700 dark:text-slate-300 uppercase text-[10px] tracking-wider block mb-1">
+                                        📝 Notas Clínicas Registradas en Odontograma:
+                                      </span>
+                                      <p className="text-slate-900 dark:text-white font-medium whitespace-pre-line">
+                                        {odontogramSummary.notasClinicas}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
                               {/* BARRA DE HERRAMIENTAS DE SELECCIÓN */}
                               {currentCategoryRecords.length > 0 && (
                                 <div className="flex items-center justify-between flex-wrap gap-3 p-3 rounded-xl bg-slate-100/80 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 text-xs">
@@ -1530,10 +1942,61 @@ export function HistoriaClinicaView() {
                                 </div>
                               )}
 
-                              {/* LISTADO DE ITEMS */}
+                              {/* LISTADO DE ITEMS CON ESTADOS VACÍOS PERSONALIZADOS */}
                               {currentCategoryRecords.length === 0 ? (
-                                <div className="py-8 text-center text-slate-400 text-xs">
-                                  No hay registros disponibles en esta categoría.
+                                <div className="py-12 px-4 text-center rounded-2xl border border-dashed border-slate-300 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 space-y-3">
+                                  <div className="h-12 w-12 mx-auto rounded-full bg-slate-200/80 dark:bg-white/10 flex items-center justify-center text-slate-500 dark:text-slate-400">
+                                    <FolderOpen size={24} />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <h5 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                                      {folderCategory === "evoluciones"
+                                        ? "No se registran evoluciones clínicas previas"
+                                        : folderCategory === "odontograma"
+                                        ? "No se ha registrado odontograma para este paciente"
+                                        : folderCategory === "diagnosticos"
+                                        ? "No hay diagnósticos registrados"
+                                        : "No hay procedimientos registrados"}
+                                    </h5>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                                      {folderCategory === "evoluciones"
+                                        ? "Registra la primera evolución médica para iniciar el historial clínico de este paciente."
+                                        : folderCategory === "odontograma"
+                                        ? "Accede al odontograma interactivo para marcar piezas dentales, caras y hallazgos patológicos."
+                                        : folderCategory === "diagnosticos"
+                                        ? "Los diagnósticos se generarán automáticamente a partir de los hallazgos del odontograma o al registrar una atención."
+                                        : "Los procedimientos se registrarán al completar citas y atenciones odontológicas."}
+                                    </p>
+                                  </div>
+                                  {folderCategory === "evoluciones" && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setShowNewAttentionModal(true)}
+                                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow transition-all cursor-pointer"
+                                    >
+                                      <Plus size={14} />
+                                      <span>Nueva Evolución</span>
+                                    </button>
+                                  )}
+                                  {folderCategory === "odontograma" && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const fullName = `${selectedPatient.firstName} ${selectedPatient.lastName}`.trim();
+                                        navigate(`/odontograma?pacienteId=${encodeURIComponent(selectedPatient.id)}&documento=${encodeURIComponent(selectedPatient.documentNumber || "")}&paciente=${encodeURIComponent(fullName)}`, {
+                                          state: {
+                                            patientId: selectedPatient.id,
+                                            patientName: fullName,
+                                            patientDocument: selectedPatient.documentNumber,
+                                          },
+                                        });
+                                      }}
+                                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs shadow transition-all cursor-pointer"
+                                    >
+                                      <Smile size={14} />
+                                      <span>Registrar Odontograma Ahora</span>
+                                    </button>
+                                  )}
                                 </div>
                               ) : (
                                 currentCategoryRecords.map((rec) => {
@@ -1619,8 +2082,8 @@ export function HistoriaClinicaView() {
                         })()}
                       </div>
                     ) : (
-                      /* CUADRÍCULA OBLIGATORIA DE LAS 4 CARPETAS CLÍNICAS 3D */
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6">
+                      /* CUADRÍCULA OFICIAL DE LAS 5 CARPETAS CLÍNICAS 3D (CON ODONTOGRAMA FDI) */
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-6">
                         {/* CARPETA 1: Evoluciones Clínicas */}
                         <div className="flex flex-col items-center justify-between p-6 rounded-2xl bg-slate-100/70 dark:bg-white/5 border border-teal-500/30 hover:border-teal-500/60 shadow-sm transition-all space-y-4">
                           <div className="w-full flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 pb-2.5">
@@ -1639,21 +2102,46 @@ export function HistoriaClinicaView() {
                             subtitle={`Expediente de ${selectedPatient.firstName} ${selectedPatient.lastName}`}
                             items={[
                               { title: "Consultas Realizadas", tag: `${attentions.length} Reg.` },
-                              { title: "Diagnóstico CIE-10", tag: attentions.length > 0 ? (attentions[0].cie10 || "K02.1") : "K02.1" },
-                              { title: "Seguimiento Clínico", tag: "FDI" },
+                              { title: "Última Atención", tag: attentions.length > 0 ? (attentions[0].fecha.split(" ")[0] || "Reciente") : "Sin consultas" },
+                              { title: "Seguimiento", tag: attentions.length > 0 ? "Al día" : "Pendiente" },
                             ]}
                             onCardClick={() => setFolderCategory("evoluciones")}
                           />
                         </div>
 
-                        {/* CARPETA 2: Diagnósticos CIE-10 */}
+                        {/* CARPETA 2: Odontograma & Mapeo FDI */}
+                        <div className="flex flex-col items-center justify-between p-6 rounded-2xl bg-slate-100/70 dark:bg-white/5 border border-cyan-500/30 hover:border-cyan-500/60 shadow-sm transition-all space-y-4">
+                          <div className="w-full flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 pb-2.5">
+                            <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-800 dark:text-cyan-200 text-[11px] font-bold border border-cyan-500/30">
+                              📂 Odontograma FDI
+                            </span>
+                            <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                              {odontogramSummary ? `${odontogramSummary.findingsCount} Hallazgos Dentales` : "Sin Odontograma"}
+                            </span>
+                          </div>
+
+                          <FolderComponent
+                            color="teal"
+                            size="md"
+                            title="Odontograma FDI"
+                            subtitle={`Expediente de ${selectedPatient.firstName} ${selectedPatient.lastName}`}
+                            items={[
+                              { title: "Hallazgos Dentales", tag: odontogramSummary ? `${odontogramSummary.findingsCount} Reg.` : "0 Reg." },
+                              { title: "Dentición", tag: odontogramSummary?.dentitionType === "temporary" ? "Temporal" : "Permanente" },
+                              { title: "Notas Clínicas", tag: odontogramSummary?.notasClinicas ? "Registradas" : "Sin notas" },
+                            ]}
+                            onCardClick={() => setFolderCategory("odontograma")}
+                          />
+                        </div>
+
+                        {/* CARPETA 3: Diagnósticos CIE-10 */}
                         <div className="flex flex-col items-center justify-between p-6 rounded-2xl bg-slate-100/70 dark:bg-white/5 border border-blue-500/30 hover:border-blue-500/60 shadow-sm transition-all space-y-4">
                           <div className="w-full flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 pb-2.5">
                             <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-800 dark:text-blue-200 text-[11px] font-bold border border-blue-500/30">
                               📂 Diagnósticos CIE-10
                             </span>
                             <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                              Codificación OMS / CIE-10
+                              {diagnoses.length} Diagnósticos Registrados
                             </span>
                           </div>
 
@@ -1663,22 +2151,22 @@ export function HistoriaClinicaView() {
                             title="Diagnósticos CIE-10"
                             subtitle={`Expediente de ${selectedPatient.firstName} ${selectedPatient.lastName}`}
                             items={[
-                              { title: "Caries Dentina (K02.1)", tag: "Confirmado" },
-                              { title: "Gingivitis (K05.1)", tag: "Control" },
-                              { title: "Atrición (K03.0)", tag: "Observación" },
+                              { title: "Diagnósticos Activos", tag: `${diagnoses.length} Reg.` },
+                              { title: "Codificación", tag: "CIE-10 / OMS" },
+                              { title: "Origen", tag: odontogramSummary?.findingsCount ? "Clínico / FDI" : "Clínico" },
                             ]}
                             onCardClick={() => setFolderCategory("diagnosticos")}
                           />
                         </div>
 
-                        {/* CARPETA 3: Procedimientos */}
+                        {/* CARPETA 4: Procedimientos */}
                         <div className="flex flex-col items-center justify-between p-6 rounded-2xl bg-slate-100/70 dark:bg-white/5 border border-emerald-500/30 hover:border-emerald-500/60 shadow-sm transition-all space-y-4">
                           <div className="w-full flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 pb-2.5">
                             <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-800 dark:text-emerald-200 text-[11px] font-bold border border-emerald-500/30">
                               📂 Procedimientos
                             </span>
                             <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                              Tratamientos Ejecutados
+                              {procedures.length} Tratamientos Ejecutados
                             </span>
                           </div>
 
@@ -1688,15 +2176,15 @@ export function HistoriaClinicaView() {
                             title="Procedimientos"
                             subtitle={`Expediente de ${selectedPatient.firstName} ${selectedPatient.lastName}`}
                             items={[
-                              { title: "Valoración Odontológica", tag: "CUPS-890201" },
-                              { title: "Profilaxis y Limpieza", tag: "CUPS-997100" },
-                              { title: "Restauración Resina", tag: "CUPS-232101" },
+                              { title: "Procedimientos Ejecutados", tag: `${procedures.length} Reg.` },
+                              { title: "Nomenclatura", tag: "CUPS" },
+                              { title: "Historial", tag: procedures.length > 0 ? "Completado" : "Sin registros" },
                             ]}
                             onCardClick={() => setFolderCategory("procedimientos")}
                           />
                         </div>
 
-                        {/* CARPETA 4: Antecedentes Médicos */}
+                        {/* CARPETA 5: Antecedentes Médicos */}
                         <div className="flex flex-col items-center justify-between p-6 rounded-2xl bg-slate-100/70 dark:bg-white/5 border border-slate-700/30 dark:border-white/20 hover:border-slate-600 shadow-sm transition-all space-y-4">
                           <div className="w-full flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 pb-2.5">
                             <span className="px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-100 text-[11px] font-bold border border-slate-600">

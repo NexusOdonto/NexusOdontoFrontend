@@ -975,6 +975,13 @@ function OdontogramaUI() {
         teeth: teethPayload,
       });
 
+      // Notificar reactivamente a Historia Clínica y archivador clínico digital
+      window.dispatchEvent(
+        new CustomEvent("nexus_odontograma_updated", {
+          detail: { patientId: selectedPaciente.id },
+        })
+      );
+
       setSuccessToast("¡Odontograma, piezas dentales y notas guardados exitosamente en la base de datos!");
       setTimeout(() => setSuccessToast(null), 3500);
     } catch (err: any) {
