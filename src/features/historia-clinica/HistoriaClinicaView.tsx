@@ -1790,8 +1790,8 @@ export function HistoriaClinicaView() {
 
                           return (
                             <div className="space-y-4">
-                              {/* PANEL DESTACADO PARA LA CARPETA DE ODONTOGRAMA */}
-                              {folderCategory === "odontograma" && (
+                              {/* PANEL DESTACADO DE ODONTOGRAMA FDI INTEGRADO EN DIAGNÓSTICOS */}
+                              {(folderCategory === "diagnosticos" || folderCategory === "odontograma") && odontogramSummary && (
                                 <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-cyan-500/10 via-teal-500/5 to-slate-50 dark:to-slate-900/60 border border-cyan-500/30 space-y-4 animate-fadeIn">
                                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-cyan-500/20 pb-3">
                                     <div>
@@ -1978,7 +1978,7 @@ export function HistoriaClinicaView() {
                                       <span>Nueva Evolución</span>
                                     </button>
                                   )}
-                                  {folderCategory === "odontograma" && (
+                                  {(folderCategory === "diagnosticos" || folderCategory === "odontograma") && (
                                     <button
                                       type="button"
                                       onClick={() => {
@@ -2082,8 +2082,7 @@ export function HistoriaClinicaView() {
                         })()}
                       </div>
                     ) : (
-                      /* CUADRÍCULA OFICIAL DE LAS 5 CARPETAS CLÍNICAS 3D (CON ODONTOGRAMA FDI) */
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6">
                         {/* CARPETA 1: Evoluciones Clínicas */}
                         <div className="flex flex-col items-center justify-between p-6 rounded-2xl bg-slate-100/70 dark:bg-white/5 border border-teal-500/30 hover:border-teal-500/60 shadow-sm transition-all space-y-4">
                           <div className="w-full flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 pb-2.5">
@@ -2109,57 +2108,32 @@ export function HistoriaClinicaView() {
                           />
                         </div>
 
-                        {/* CARPETA 2: Odontograma & Mapeo FDI */}
-                        <div className="flex flex-col items-center justify-between p-6 rounded-2xl bg-slate-100/70 dark:bg-white/5 border border-cyan-500/30 hover:border-cyan-500/60 shadow-sm transition-all space-y-4">
-                          <div className="w-full flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 pb-2.5">
-                            <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-800 dark:text-cyan-200 text-[11px] font-bold border border-cyan-500/30">
-                              📂 Odontograma FDI
-                            </span>
-                            <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                              {odontogramSummary ? `${odontogramSummary.findingsCount} Hallazgos Dentales` : "Sin Odontograma"}
-                            </span>
-                          </div>
-
-                          <FolderComponent
-                            color="teal"
-                            size="md"
-                            title="Odontograma FDI"
-                            subtitle={`Expediente de ${selectedPatient.firstName} ${selectedPatient.lastName}`}
-                            items={[
-                              { title: "Hallazgos Dentales", tag: odontogramSummary ? `${odontogramSummary.findingsCount} Reg.` : "0 Reg." },
-                              { title: "Dentición", tag: odontogramSummary?.dentitionType === "temporary" ? "Temporal" : "Permanente" },
-                              { title: "Notas Clínicas", tag: odontogramSummary?.notasClinicas ? "Registradas" : "Sin notas" },
-                            ]}
-                            onCardClick={() => setFolderCategory("odontograma")}
-                          />
-                        </div>
-
-                        {/* CARPETA 3: Diagnósticos CIE-10 */}
+                        {/* CARPETA 2: Diagnósticos CIE-10 & Odontograma FDI */}
                         <div className="flex flex-col items-center justify-between p-6 rounded-2xl bg-slate-100/70 dark:bg-white/5 border border-blue-500/30 hover:border-blue-500/60 shadow-sm transition-all space-y-4">
                           <div className="w-full flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 pb-2.5">
                             <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-800 dark:text-blue-200 text-[11px] font-bold border border-blue-500/30">
-                              📂 Diagnósticos CIE-10
+                              📂 Diagnósticos & Odontograma
                             </span>
                             <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                              {diagnoses.length} Diagnósticos Registrados
+                              {odontogramSummary?.findingsCount ? `${odontogramSummary.findingsCount} Hallazgos FDI` : `${diagnoses.length} Diagnósticos`}
                             </span>
                           </div>
 
                           <FolderComponent
                             color="blue"
                             size="md"
-                            title="Diagnósticos CIE-10"
+                            title="Diagnósticos & Odontograma"
                             subtitle={`Expediente de ${selectedPatient.firstName} ${selectedPatient.lastName}`}
                             items={[
-                              { title: "Diagnósticos Activos", tag: `${diagnoses.length} Reg.` },
-                              { title: "Codificación", tag: "CIE-10 / OMS" },
-                              { title: "Origen", tag: odontogramSummary?.findingsCount ? "Clínico / FDI" : "Clínico" },
+                              { title: "Odontograma FDI", tag: odontogramSummary?.findingsCount ? `${odontogramSummary.findingsCount} Hallazgos` : "Sin hallazgos" },
+                              { title: "Diagnósticos CIE-10", tag: `${diagnoses.length} Reg.` },
+                              { title: "Mapeo Dental", tag: odontogramSummary?.dentitionType === "temporary" ? "Temporal" : "Permanente" },
                             ]}
                             onCardClick={() => setFolderCategory("diagnosticos")}
                           />
                         </div>
 
-                        {/* CARPETA 4: Procedimientos */}
+                        {/* CARPETA 3: Procedimientos */}
                         <div className="flex flex-col items-center justify-between p-6 rounded-2xl bg-slate-100/70 dark:bg-white/5 border border-emerald-500/30 hover:border-emerald-500/60 shadow-sm transition-all space-y-4">
                           <div className="w-full flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 pb-2.5">
                             <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-800 dark:text-emerald-200 text-[11px] font-bold border border-emerald-500/30">
@@ -2184,7 +2158,7 @@ export function HistoriaClinicaView() {
                           />
                         </div>
 
-                        {/* CARPETA 5: Antecedentes Médicos */}
+                        {/* CARPETA 4: Antecedentes Médicos */}
                         <div className="flex flex-col items-center justify-between p-6 rounded-2xl bg-slate-100/70 dark:bg-white/5 border border-slate-700/30 dark:border-white/20 hover:border-slate-600 shadow-sm transition-all space-y-4">
                           <div className="w-full flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 pb-2.5">
                             <span className="px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-100 text-[11px] font-bold border border-slate-600">
