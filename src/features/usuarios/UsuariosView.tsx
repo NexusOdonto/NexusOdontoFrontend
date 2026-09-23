@@ -9,6 +9,7 @@ import {
   Check,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { UsuariosTable } from "./components/UsuariosTable";
 import { useAuth } from "../auth/AuthContext";
@@ -652,11 +653,12 @@ export function UsuariosView() {
       </div>
 
       {/* MODAL INTERACTIVO: GESTIÓN DE ROL Y PERMISOS DE USUARIO */}
-      {selectedUserForPermissions && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-fadeIn"
-          onClick={() => setSelectedUserForPermissions(null)}
-        >
+      {selectedUserForPermissions &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-fadeIn"
+            onClick={() => setSelectedUserForPermissions(null)}
+          >
           <div
             className="w-full max-w-2xl rounded-3xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/20 p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto animate-scaleIn"
             onClick={(e) => e.stopPropagation()}
@@ -780,208 +782,211 @@ export function UsuariosView() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* MODAL CREAR USUARIO */}
-      {showModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-fadeIn"
-          onClick={cerrarModal}
-        >
+      {showModal &&
+        createPortal(
           <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="nuevo-usuario-title"
-            className="w-full max-w-lg rounded-3xl bg-white dark:bg-slate-950 backdrop-blur-2xl border border-slate-200 dark:border-cyan-400/20 shadow-2xl overflow-hidden animate-scaleIn"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-fadeIn"
+            onClick={cerrarModal}
           >
-            <div className="flex items-center justify-between p-6 border-b border-slate-200/80 dark:border-white/15">
-              <div className="flex items-center gap-3">
-                <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500/20 to-cyan-500/20 border border-teal-500/30 text-teal-600 dark:text-teal-400">
-                  <UserRound size={20} />
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="nuevo-usuario-title"
+              className="w-full max-w-lg rounded-3xl bg-white dark:bg-slate-950 backdrop-blur-2xl border border-slate-200 dark:border-cyan-400/20 shadow-2xl overflow-hidden animate-scaleIn my-auto max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-6 border-b border-slate-200/80 dark:border-white/15">
+                <div className="flex items-center gap-3">
+                  <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500/20 to-cyan-500/20 border border-teal-500/30 text-teal-600 dark:text-teal-400">
+                    <UserRound size={20} />
+                  </div>
+                  <div>
+                    <h2 id="nuevo-usuario-title" className="text-lg font-bold text-slate-900 dark:text-white">
+                      Nuevo Usuario
+                    </h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Registra un nuevo usuario con credenciales en el sistema.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h2 id="nuevo-usuario-title" className="text-lg font-bold text-slate-900 dark:text-white">
-                    Nuevo Usuario
-                  </h2>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Registra un nuevo usuario con credenciales en el sistema.
-                  </p>
-                </div>
+
+                <button
+                  type="button"
+                  onClick={cerrarModal}
+                  className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors cursor-pointer"
+                  aria-label="Cerrar modal"
+                >
+                  <X size={18} />
+                </button>
               </div>
 
-              <button
-                type="button"
-                onClick={cerrarModal}
-                className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors cursor-pointer"
-                aria-label="Cerrar modal"
-              >
-                <X size={18} />
-              </button>
+              <div className="p-6 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="nuevo-nombre" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                      Nombre *
+                    </label>
+                    <input
+                      id="nuevo-nombre"
+                      type="text"
+                      required
+                      value={nuevoNombre}
+                      onChange={(e) => setNuevoNombre(e.target.value)}
+                      placeholder="Ej. Carlos"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="nuevo-apellido" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                      Apellido *
+                    </label>
+                    <input
+                      id="nuevo-apellido"
+                      type="text"
+                      required
+                      value={nuevoApellido}
+                      onChange={(e) => setNuevoApellido(e.target.value)}
+                      placeholder="Ej. Gómez"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="nuevo-tipo-doc" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                      Tipo de Documento *
+                    </label>
+                    <select
+                      id="nuevo-tipo-doc"
+                      value={nuevoTipoDocumento}
+                      onChange={(e) => setNuevoTipoDocumento(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all cursor-pointer"
+                    >
+                      {documentTypes.map((dt) => (
+                        <option key={dt.id} value={dt.id}>
+                          {dt.name || dt.code}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label htmlFor="nuevo-documento" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                      Número de Documento *
+                    </label>
+                    <input
+                      id="nuevo-documento"
+                      type="text"
+                      required
+                      value={nuevoDocumento}
+                      onChange={(e) => setNuevoDocumento(e.target.value)}
+                      placeholder="Ej. 1098765432"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="nuevo-correo" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                      Correo Electrónico *
+                    </label>
+                    <input
+                      id="nuevo-correo"
+                      type="email"
+                      required
+                      value={nuevoCorreo}
+                      onChange={(e) => setNuevoCorreo(e.target.value)}
+                      placeholder="carlos@nexusodonto.com"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="nuevo-telefono" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                      Teléfono Móvil
+                    </label>
+                    <input
+                      id="nuevo-telefono"
+                      type="tel"
+                      value={nuevoTelefono}
+                      onChange={(e) => setNuevoTelefono(e.target.value)}
+                      placeholder="+57 300 000 0000"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="nuevo-password" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                      Contraseña Inicial *
+                    </label>
+                    <input
+                      id="nuevo-password"
+                      type="password"
+                      required
+                      value={nuevoPassword}
+                      onChange={(e) => setNuevoPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="nuevo-rol" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                      Rol Inicial *
+                    </label>
+                    <select
+                      id="nuevo-rol"
+                      value={nuevoRol}
+                      onChange={(e) => setNuevoRol(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all cursor-pointer"
+                    >
+                      {roles.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {errorForm && (
+                  <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-medium">
+                    {errorForm}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-3 p-6 border-t border-slate-200/80 dark:border-white/15 bg-slate-50/50 dark:bg-slate-900/30">
+                <button
+                  type="button"
+                  onClick={cerrarModal}
+                  className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-white/20 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={handleCrearUsuario}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 text-slate-950 text-xs font-black shadow-md transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                >
+                  {isSubmitting ? "Registrando..." : "Crear Usuario"}
+                </button>
+              </div>
             </div>
-
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="nuevo-nombre" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                    Nombre *
-                  </label>
-                  <input
-                    id="nuevo-nombre"
-                    type="text"
-                    required
-                    value={nuevoNombre}
-                    onChange={(e) => setNuevoNombre(e.target.value)}
-                    placeholder="Ej. Carlos"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="nuevo-apellido" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                    Apellido *
-                  </label>
-                  <input
-                    id="nuevo-apellido"
-                    type="text"
-                    required
-                    value={nuevoApellido}
-                    onChange={(e) => setNuevoApellido(e.target.value)}
-                    placeholder="Ej. Gómez"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="nuevo-tipo-doc" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                    Tipo de Documento *
-                  </label>
-                  <select
-                    id="nuevo-tipo-doc"
-                    value={nuevoTipoDocumento}
-                    onChange={(e) => setNuevoTipoDocumento(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all cursor-pointer"
-                  >
-                    {documentTypes.map((dt) => (
-                      <option key={dt.id} value={dt.id}>
-                        {dt.name || dt.code}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label htmlFor="nuevo-documento" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                    Número de Documento *
-                  </label>
-                  <input
-                    id="nuevo-documento"
-                    type="text"
-                    required
-                    value={nuevoDocumento}
-                    onChange={(e) => setNuevoDocumento(e.target.value)}
-                    placeholder="Ej. 1098765432"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="nuevo-correo" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                    Correo Electrónico *
-                  </label>
-                  <input
-                    id="nuevo-correo"
-                    type="email"
-                    required
-                    value={nuevoCorreo}
-                    onChange={(e) => setNuevoCorreo(e.target.value)}
-                    placeholder="carlos@nexusodonto.com"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="nuevo-telefono" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                    Teléfono Móvil
-                  </label>
-                  <input
-                    id="nuevo-telefono"
-                    type="tel"
-                    value={nuevoTelefono}
-                    onChange={(e) => setNuevoTelefono(e.target.value)}
-                    placeholder="+57 300 000 0000"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="nuevo-password" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                    Contraseña Inicial *
-                  </label>
-                  <input
-                    id="nuevo-password"
-                    type="password"
-                    required
-                    value={nuevoPassword}
-                    onChange={(e) => setNuevoPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="nuevo-rol" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                    Rol Inicial *
-                  </label>
-                  <select
-                    id="nuevo-rol"
-                    value={nuevoRol}
-                    onChange={(e) => setNuevoRol(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all cursor-pointer"
-                  >
-                    {roles.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {errorForm && (
-                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-medium">
-                  {errorForm}
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center justify-end gap-3 p-6 border-t border-slate-200/80 dark:border-white/15 bg-slate-50/50 dark:bg-slate-900/30">
-              <button
-                type="button"
-                onClick={cerrarModal}
-                className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-white/20 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                disabled={isSubmitting}
-                onClick={handleCrearUsuario}
-                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 text-slate-950 text-xs font-black shadow-md transition-all active:scale-95 cursor-pointer disabled:opacity-50"
-              >
-                {isSubmitting ? "Registrando..." : "Crear Usuario"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

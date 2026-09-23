@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   ShieldCheck,
   Plus,
@@ -281,7 +282,7 @@ export function RolesPermisosView() {
     <div className="space-y-6 text-slate-900 dark:text-slate-100 pb-10 animate-fadeIn">
       {/* Toast Notificación */}
       {successToast && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 px-5 py-3 rounded-2xl shadow-2xl border border-cyan-500/30 animate-slideUp">
+        <div className="fixed bottom-6 right-6 z-[99999] flex items-center gap-3 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 px-5 py-3 rounded-2xl shadow-2xl border border-cyan-500/30 animate-slideUp">
           <CheckCircle2 size={18} className="text-cyan-400 dark:text-cyan-600 shrink-0" />
           <span className="text-xs font-semibold">{successToast}</span>
         </div>
@@ -491,93 +492,102 @@ export function RolesPermisosView() {
       </div>
 
       {/* MODAL CREAR ROL */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-fadeIn">
-          <div className="w-full max-w-lg rounded-3xl bg-white/95 dark:bg-slate-950/95 backdrop-blur-2xl border border-slate-200 dark:border-cyan-400/20 shadow-2xl overflow-hidden animate-scaleIn">
-            <div className="flex items-center justify-between p-6 border-b border-slate-200/80 dark:border-white/15">
-              <div className="flex items-center gap-3">
-                <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500/20 to-cyan-500/20 border border-teal-500/30 text-teal-600 dark:text-teal-400">
-                  <ShieldCheck size={20} />
+      {showCreateModal &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center overflow-y-auto p-3 sm:p-4 bg-slate-900/60 dark:bg-slate-950/75 backdrop-blur-md animate-fadeIn"
+            onClick={() => setShowCreateModal(false)}
+          >
+            <div
+              className="w-full max-w-lg my-auto rounded-3xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/20 shadow-2xl overflow-hidden animate-scaleIn max-h-[min(92dvh,100%)] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-5 sm:p-6 border-b border-slate-200/80 dark:border-white/15">
+                <div className="flex items-center gap-3">
+                  <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500/20 to-cyan-500/20 border border-teal-500/30 text-teal-600 dark:text-teal-400 shrink-0">
+                    <ShieldCheck size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+                      Crear Nuevo Rol de Acceso
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Define un perfil de usuario y configura sus permisos en el sistema.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                    Crear Nuevo Rol de Acceso
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Define un perfil de usuario y configura sus permisos en el sistema.
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowCreateModal(false)}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateRole} className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Nombre del Rol *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ej. Coordinador Clínico"
-                  value={nuevoNombre}
-                  onChange={(e) => setNuevoNombre(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-2xl bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-white/15 text-sm text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all backdrop-blur-md"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Código Único (Identificador) *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ej. COORDINADOR_CLINICO"
-                  value={nuevoCodigo}
-                  onChange={(e) => setNuevoCodigo(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-2xl bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-white/15 text-sm text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all backdrop-blur-md font-mono uppercase"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Descripción del Alcance
-                </label>
-                <textarea
-                  rows={2}
-                  placeholder="Describe qué responsabilidades tiene este rol..."
-                  value={nuevaDescripcion}
-                  onChange={(e) => setNuevaDescripcion(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-2xl bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-white/15 text-sm text-slate-900 dark:text-white outline-none focus:border-cyan-500 resize-none transition-all backdrop-blur-md"
-                />
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/30 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-md text-xs font-semibold"
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                  aria-label="Cerrar modal"
                 >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 px-5 py-2.5 text-xs font-bold text-white dark:text-slate-950 shadow-md transition-all active:scale-95 cursor-pointer"
-                >
-                  Guardar Rol
+                  <X size={18} />
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+
+              <form onSubmit={handleCreateRole} className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 text-xs">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Nombre del Rol *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej. Coordinador Clínico"
+                    value={nuevoNombre}
+                    onChange={(e) => setNuevoNombre(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Código Único (Identificador) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej. COORDINADOR_CLINICO"
+                    value={nuevoCodigo}
+                    onChange={(e) => setNuevoCodigo(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all font-mono uppercase font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Descripción del Alcance
+                  </label>
+                  <textarea
+                    rows={2}
+                    placeholder="Describe qué responsabilidades tiene este rol..."
+                    value={nuevaDescripcion}
+                    onChange={(e) => setNuevaDescripcion(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:border-cyan-500 resize-none transition-all font-medium"
+                  />
+                </div>
+
+                <div className="pt-3 border-t border-slate-200 dark:border-white/10 flex items-center justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateModal(false)}
+                    className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-white/20 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 px-5 py-2.5 text-xs font-bold text-slate-950 shadow-md transition-all active:scale-95 cursor-pointer"
+                  >
+                    Guardar Rol
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

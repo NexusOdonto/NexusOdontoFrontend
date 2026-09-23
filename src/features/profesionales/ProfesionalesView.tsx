@@ -5,6 +5,7 @@ import {
   useMemo,
   type FormEvent,
 } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
 import {
@@ -1178,10 +1179,11 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
       )}
 
       {/* MODAL INTERACTIVO DE HORARIO Y SILLONES DEL DOCTOR CON EDICIÓN PERSONALIZADA */}
-      {selectedProfForSchedule && (
-        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center overflow-y-auto p-3 sm:p-4 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-2xl my-2 rounded-3xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/20 p-6 shadow-2xl space-y-4 max-h-[min(92dvh,100%)] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
+      {selectedProfForSchedule &&
+        createPortal(
+          <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center overflow-y-auto p-3 sm:p-4 bg-slate-900/60 dark:bg-slate-950/75 backdrop-blur-md animate-fadeIn">
+            <div className="w-full max-w-2xl my-auto rounded-3xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/20 p-6 shadow-2xl space-y-4 max-h-[min(92dvh,100%)] overflow-y-auto">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-700 dark:text-cyan-300">
                   <CalendarDays size={22} />
@@ -1570,151 +1572,155 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* MODAL NUEVO ODONTÓLOGO */}
-      {showCreateModal && canCreateProfessional && (
-        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center overflow-y-auto p-3 sm:p-4 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-lg my-2 rounded-3xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/20 p-6 shadow-2xl space-y-4 max-h-[min(92dvh,100%)] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-cyan-500/15 text-cyan-700 dark:text-cyan-300">
-                  <Stethoscope size={20} />
+      {showCreateModal &&
+        canCreateProfessional &&
+        createPortal(
+          <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center overflow-y-auto p-3 sm:p-4 bg-slate-900/60 dark:bg-slate-950/75 backdrop-blur-md animate-fadeIn">
+            <div className="w-full max-w-lg my-auto rounded-3xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/20 p-6 shadow-2xl space-y-4 max-h-[min(92dvh,100%)] overflow-y-auto">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-cyan-500/15 text-cyan-700 dark:text-cyan-300">
+                    <Stethoscope size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                      Alta de Odontólogo Especialista
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Registro de credenciales y asignación de consultorio
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                    Alta de Odontólogo Especialista
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Registro de credenciales y asignación de consultorio
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowCreateModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateProfessional} className="space-y-3.5 text-xs">
-              <div>
-                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Nombre Completo del Doctor(a) *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ej. Dr. Andrés Felipe Morales"
-                  value={formNombre}
-                  onChange={(e) => setFormNombre(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 font-medium"
-                />
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <form onSubmit={handleCreateProfessional} className="space-y-3.5 text-xs">
                 <div>
                   <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Especialidad Médica *
+                    Nombre Completo del Doctor(a) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej. Dr. Andrés Felipe Morales"
+                    value={formNombre}
+                    onChange={(e) => setFormNombre(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 font-medium"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Especialidad Médica *
+                    </label>
+                    <GlassSelect
+                      value={formEspecialidad}
+                      onChange={(val) => setFormEspecialidad(val)}
+                      options={ESPECIALIDADES_SELECT_OPTIONS}
+                      className="w-full py-2.5 text-xs rounded-xl"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Registro Médico / Cédula *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ej. COL-89214"
+                      value={formRegistro}
+                      onChange={(e) => setFormRegistro(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Correo Electrónico
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="doctor@nexusodonto.com"
+                      value={formEmail}
+                      onChange={(e) => setFormEmail(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Teléfono Móvil
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="+57 300 000 0000"
+                      value={formTelefono}
+                      onChange={(e) => setFormTelefono(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Sillón / Consultorio Habitual
                   </label>
                   <GlassSelect
-                    value={formEspecialidad}
-                    onChange={(val) => setFormEspecialidad(val)}
-                    options={ESPECIALIDADES_SELECT_OPTIONS}
+                    value={formSillon}
+                    onChange={(val) => setFormSillon(val)}
+                    options={SILLON_CREATE_OPTIONS}
                     className="w-full py-2.5 text-xs rounded-xl"
                   />
                 </div>
 
                 <div>
                   <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Registro Médico / Cédula *
+                    Perfil y Biografía Profesional
                   </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ej. COL-89214"
-                    value={formRegistro}
-                    onChange={(e) => setFormRegistro(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500"
+                  <textarea
+                    rows={2}
+                    placeholder="Trayectoria clínica, posgrados y enfoque de atención..."
+                    value={formBio}
+                    onChange={(e) => setFormBio(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 resize-none"
                   />
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Correo Electrónico
-                  </label>
-                  <input
-                    type="email"
-                    placeholder="doctor@nexusodonto.com"
-                    value={formEmail}
-                    onChange={(e) => setFormEmail(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500"
-                  />
+                <div className="pt-3 border-t border-slate-200 dark:border-white/10 flex items-center justify-end gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateModal(false)}
+                    className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-white/20 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={creating}
+                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 text-slate-950 font-bold text-xs shadow-md active:scale-95 cursor-pointer disabled:opacity-50"
+                  >
+                    {creating ? "Registrando..." : "Guardar Profesional"}
+                  </button>
                 </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Teléfono Móvil
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="+57 300 000 0000"
-                    value={formTelefono}
-                    onChange={(e) => setFormTelefono(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Sillón / Consultorio Habitual
-                </label>
-                <GlassSelect
-                  value={formSillon}
-                  onChange={(val) => setFormSillon(val)}
-                  options={SILLON_CREATE_OPTIONS}
-                  className="w-full py-2.5 text-xs rounded-xl"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Perfil y Biografía Profesional
-                </label>
-                <textarea
-                  rows={2}
-                  placeholder="Trayectoria clínica, posgrados y enfoque de atención..."
-                  value={formBio}
-                  onChange={(e) => setFormBio(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 resize-none"
-                />
-              </div>
-
-              <div className="pt-3 border-t border-slate-200 dark:border-white/10 flex items-center justify-end gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-white/20 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={creating}
-                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 text-slate-950 font-bold text-xs shadow-md active:scale-95 cursor-pointer disabled:opacity-50"
-                >
-                  {creating ? "Registrando..." : "Guardar Profesional"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

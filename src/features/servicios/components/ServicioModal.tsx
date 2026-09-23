@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import type { Servicio } from "../../../types/servicios";
 import { formatCurrency } from "../../../utils/currency";
 import {
@@ -173,10 +174,12 @@ export function ServicioModal({
     setPrecio((prev) => Math.max(1000, prev + delta));
   };
 
-  return (
-    <div className="fixed inset-0 z-[60] flex items-start sm:items-center justify-center overflow-y-auto p-3 sm:p-4 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-sm animate-fadeIn">
+  if (!isOpen) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center overflow-y-auto p-3 sm:p-4 bg-slate-900/60 dark:bg-slate-950/75 backdrop-blur-md animate-fadeIn">
       <div
-        className="w-full max-w-lg mx-2 my-2 rounded-3xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-white/15 shadow-2xl overflow-hidden backdrop-blur-3xl animate-scaleIn flex flex-col max-h-[min(92dvh,100%)]"
+        className="w-full max-w-lg mx-2 my-auto rounded-3xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-white/15 shadow-2xl overflow-hidden backdrop-blur-3xl animate-scaleIn flex flex-col max-h-[min(92dvh,100%)]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Cabecera del modal con Icono reactivo a la especialidad */}
@@ -436,6 +439,7 @@ export function ServicioModal({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
