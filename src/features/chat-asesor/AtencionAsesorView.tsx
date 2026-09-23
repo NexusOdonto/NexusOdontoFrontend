@@ -1600,7 +1600,7 @@ export function AtencionAsesorView() {
                         >
                           <p className="whitespace-pre-wrap break-words">{cleanMessageContent(msg.content)}</p>
 
-                          {msg.ragConfidence !== undefined && msg.ragConfidence > 0 && (
+                          {typeof msg.ragConfidence === 'number' && msg.ragConfidence > 0 && (
                             <div className="mt-1.5 pt-1.5 border-t border-white/20 flex items-center justify-between text-[9.5px] opacity-90 font-medium">
                               <span>Confianza RAG IA:</span>
                               <span>{Math.round(msg.ragConfidence * 100)}%</span>
@@ -1815,7 +1815,7 @@ export function AtencionAsesorView() {
                   <p className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed">
                     {formatTicketSummary(selectedChat.ticket?.chatbotSummary, selectedChat.reason)}
                   </p>
-                  {selectedChat.ticket.ragConfidence !== undefined && selectedChat.ticket.ragConfidence > 0 && (
+                  {typeof selectedChat.ticket.ragConfidence === 'number' && selectedChat.ticket.ragConfidence > 0 && (
                     <div className="pt-2 border-t border-amber-500/20 space-y-1">
                       <div className="flex items-center justify-between text-[11px] text-amber-800 dark:text-amber-300 font-semibold">
                         <span>Confianza del Bot:</span>
@@ -1940,7 +1940,7 @@ export function AtencionAsesorView() {
                   <p className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed">
                     {formatTicketSummary(selectedChat.ticket?.chatbotSummary, selectedChat.reason)}
                   </p>
-                  {selectedChat.ticket.ragConfidence !== undefined && selectedChat.ticket.ragConfidence > 0 && (
+                  {typeof selectedChat.ticket.ragConfidence === 'number' && selectedChat.ticket.ragConfidence > 0 && (
                     <div className="pt-2 border-t border-amber-500/20 space-y-1">
                       <div className="flex items-center justify-between text-[11px] text-amber-800 dark:text-amber-300 font-semibold">
                         <span>Confianza del Bot:</span>
