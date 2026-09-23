@@ -573,15 +573,29 @@ export function AtencionAsesorView() {
           } else {
             const existing = groupedByPhone.get(key)!;
             existing.allConversationIds = [...(existing.allConversationIds || [existing.id]), item.id];
-            // Priorizar la información de la sesión más reciente
+            const isHumanActive = existing.status === "ATENDIDA_HUMANO" || item.status === "ATENDIDA_HUMANO";
+            const isEscalated = existing.status === "ESCALADA" || item.status === "ESCALADA";
+
+            // Priorizar la información de la sesión más reciente para el último mensaje
             if (parseTimestamp(item.rawTimestamp) > parseTimestamp(existing.rawTimestamp)) {
               existing.id = item.id;
               existing.chatIdentifier = item.chatIdentifier;
               existing.lastMessage = item.lastMessage;
               existing.lastMessageTime = item.lastMessageTime;
               existing.rawTimestamp = item.rawTimestamp;
-              existing.status = item.status;
               existing.ticket = item.ticket || existing.ticket;
+            }
+
+            // Preservar la jerarquía de estado para no perder el control manual ni las alertas:
+            // ATENDIDA_HUMANO (Uso Manual) > ESCALADA (Alerta) > ACTIVA (Bot) > CERRADA
+            if (isHumanActive) {
+              existing.status = "ATENDIDA_HUMANO";
+            } else if (isEscalated) {
+              existing.status = "ESCALADA";
+            } else if (existing.status === "ACTIVA" || item.status === "ACTIVA") {
+              existing.status = "ACTIVA";
+            } else {
+              existing.status = "CERRADA";
             }
             existing.unreadCount = (existing.unreadCount || 0) + (item.unreadCount || 0);
             existing.unread = existing.unreadCount > 0;
