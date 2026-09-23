@@ -4,7 +4,6 @@ import { PacientesTable } from "./components/PacientesTable";
 import { PacientesGrid } from "./components/PacientesGrid";
 import { PacienteDetailModal } from "./components/PacienteDetailModal";
 import {
-  PACIENTES_STORAGE_KEY,
   type Paciente,
   isPatientActive,
 } from "../../types/pacientes";
@@ -121,59 +120,7 @@ export function PacientesView() {
         });
       }
 
-      // 2. Inspeccionar fuentes de almacenamiento local descartando staff / admin
-      const storageKeys = [
-        PACIENTES_STORAGE_KEY,
-        "pacientes",
-        "nexus_pacientes",
-        "nexus_pacientes_v1",
-      ];
-
-      storageKeys.forEach((k) => {
-        const raw = localStorage.getItem(k);
-        if (raw) {
-          try {
-            const parsed = JSON.parse(raw);
-            const list = Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
-            list.forEach((item: any, itemIdx: number) => {
-              const fullName = item.nombre || (item.nombres ? `${item.nombres} ${item.apellidos || ""}`.trim() : (item.name || (item.firstName ? `${item.firstName} ${item.lastName || ""}`.trim() : "")));
-              const doc = item.documento || item.documentNumber || item.cedula || "";
-              const tel = item.telefono || item.phone || item.mobile || "";
-              const email = item.correo || item.email || "";
-
-              if (isSystemOrAdminAccount({ nombre: fullName, email, rol: item.rol, role: item.role, documento: doc })) {
-                return;
-              }
-
-              const localPersonId = (item.personId || "").toLowerCase();
-              const localPatientId = (item.patientId || item.id || "").toString().toLowerCase();
-              const hasActiveSession = (localPersonId && activePersonIds.has(localPersonId)) || (localPatientId && activeUserIds.has(localPatientId));
-              const resolvedEstado = hasActiveSession ? "Activo" : "Inactivo";
-
-              const key = (doc || email || fullName).toLowerCase();
-
-              if (fullName && !seenIdentifiers.has(key)) {
-                seenIdentifiers.add(key);
-                combinedPacientes.unshift({
-                  id: item.patientId || item.id || `local-pt-${itemIdx}-${Date.now()}`,
-                  patientId: item.patientId || (typeof item.id === "string" && item.id.length > 8 ? item.id : undefined),
-                  personId: item.personId,
-                  nombre: fullName,
-                  documento: doc,
-                  telefono: tel,
-                  estado: resolvedEstado,
-                  correo: email,
-                  fechaNacimiento: item.fechaNacimiento || item.dateOfBirth,
-                });
-              }
-            });
-          } catch {
-            // Ignore
-          }
-        }
-      });
-
-      // 3. Establecer pacientes combinados reales sin inventar mocks ficticios (Sección 3.9)
+      // 2. Establecer pacientes combinados reales desde la API exclusivamente sin contaminar con mocks locales
       setPacientes(combinedPacientes);
     } catch (err) {
       console.warn("API Patients unavailable, using unified records:", err);

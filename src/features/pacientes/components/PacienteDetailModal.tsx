@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Paciente } from "../../../types/pacientes";
 import { isPatientActive, isPatientOnline } from "../../../types/pacientes";
 import {
@@ -75,10 +76,16 @@ export function PacienteDetailModal({ paciente, onClose }: PacienteDetailModalPr
     alergiasRemotas || paciente.alergias || alergiasLocales || "";
   const tieneAlergias = alergiasTexto.length > 0;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-md animate-fadeIn">
+  return createPortal(
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-900/35 dark:bg-slate-950/65 backdrop-blur-md animate-fadeIn"
+    >
       {/* Contenedor Integrado y Adaptable a Modo Claro y Oscuro */}
-      <div className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-slate-200/90 dark:border-white/10 bg-white/95 dark:bg-slate-900/90 backdrop-blur-2xl p-8 sm:p-10 shadow-2xl text-slate-900 dark:text-slate-100 space-y-6">
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-slate-200/90 dark:border-white/15 bg-white/95 dark:bg-slate-900/90 backdrop-blur-2xl p-8 sm:p-10 shadow-2xl text-slate-900 dark:text-slate-100 space-y-6 animate-scaleIn"
+      >
         {/* Botón cerrar discreto en esquina superior derecha */}
         <button
           type="button"
@@ -297,6 +304,7 @@ export function PacienteDetailModal({ paciente, onClose }: PacienteDetailModalPr
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

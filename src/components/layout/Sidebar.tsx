@@ -112,10 +112,10 @@ export function Sidebar({
 
   return (
     <>
-      {/* 1. BACKDROP / OVERLAY MÓVIL (z-40) */}
+      {/* 1. BACKDROP / OVERLAY MÓVIL (z-40) con blur suave y sin oscurecimiento excesivo */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-slate-900/35 dark:bg-slate-950/60 backdrop-blur-sm lg:hidden transition-opacity duration-300"
+          className="fixed inset-0 z-40 bg-black/10 dark:bg-black/35 backdrop-blur-[2px] lg:hidden transition-all duration-300 animate-fadeIn"
           onClick={onMobileClose}
           aria-hidden="true"
         />
@@ -123,7 +123,7 @@ export function Sidebar({
 
       {/* 2. PANEL LATERAL / DRAWER MÓVIL & DESKTOP (z-50 en móvil, lg:z-30) */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 h-screen bg-white/40 border-slate-200/50 backdrop-blur-md dark:bg-[#06141d]/50 dark:border-teal-500/10 dark:backdrop-blur-md border-r flex flex-col shadow-2xl transition-[width,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] lg:shadow-none lg:sticky lg:top-0 lg:z-30 will-change-[width,transform] ${
+        className={`fixed inset-y-0 left-0 z-50 h-screen bg-white/90 border-slate-200/60 backdrop-blur-xl dark:bg-[#06141d]/90 dark:border-teal-500/15 dark:backdrop-blur-xl border-r flex flex-col shadow-2xl transition-[width,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] lg:bg-white/40 lg:dark:bg-[#06141d]/50 lg:backdrop-blur-md lg:shadow-none lg:sticky lg:top-0 lg:z-30 will-change-[width,transform] ${
           isCollapsed ? "w-72 lg:w-[76px]" : "w-72 lg:w-64"
         } ${
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"

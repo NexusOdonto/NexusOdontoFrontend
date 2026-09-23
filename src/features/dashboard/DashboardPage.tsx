@@ -754,17 +754,19 @@ export default function DashboardPage() {
           )}
 
           {/* RECORDATORIO / ESTADO DEL SISTEMA SEGÚN ROL */}
-          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-start gap-3 text-xs">
-            <AlertCircle size={17} className="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-            <div className="space-y-0.5">
-              <p className="font-bold text-amber-800 dark:text-amber-300">
+          <div className="p-4.5 rounded-2xl bg-amber-100/80 dark:bg-[#1a1405]/90 border border-amber-400/60 dark:border-amber-500/40 shadow-md dark:shadow-[0_4px_20px_rgba(245,158,11,0.08)] backdrop-blur-2xl flex items-start gap-3.5 text-xs">
+            <div className="p-2 rounded-full bg-amber-500/20 dark:bg-amber-500/25 border border-amber-500/40 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
+              <AlertCircle size={18} strokeWidth={2.2} />
+            </div>
+            <div className="space-y-1 min-w-0">
+              <p className="font-bold text-sm text-amber-950 dark:text-amber-400 tracking-tight">
                 {role === "ODONTOLOGO"
                   ? "Aviso Clínico de Turno"
                   : role === "ADMINISTRADOR"
                   ? "Estado Operativo de la Clínica"
                   : "Aviso Operativo de Recepción"}
               </p>
-              <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+              <p className="text-amber-900/90 dark:text-amber-100/90 font-medium leading-relaxed">
                 {role === "ODONTOLOGO"
                   ? "Recuerda registrar la evolución clínica y actualizar el odontograma interactivo al finalizar cada atención de paciente."
                   : role === "ADMINISTRADOR"

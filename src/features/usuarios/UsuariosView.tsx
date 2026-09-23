@@ -258,21 +258,10 @@ export function UsuariosView() {
 
       // Inspección de usuarios cargados
       console.log("Usuarios cargados en frontend:", mappedUsuarios);
-
-      try {
-        localStorage.setItem("nexus_usuarios_cache", JSON.stringify(mappedUsuarios));
-      } catch {}
-
       setUsuarios(mappedUsuarios);
     } catch (error) {
       console.error('Error fetching users from API:', error);
-      try {
-        const rawCached = localStorage.getItem("nexus_usuarios_cache");
-        if (rawCached) setUsuarios(JSON.parse(rawCached));
-        else setUsuarios([]);
-      } catch {
-        setUsuarios([]);
-      }
+      setUsuarios([]);
     } finally {
       setTimeout(() => setLoading(false), 450);
     }
