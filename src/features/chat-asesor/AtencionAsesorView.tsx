@@ -964,6 +964,52 @@ export function AtencionAsesorView() {
         await chatbotService.resumeConversation(selectedChat.chatIdentifier, false).catch(() => null);
       }
 
+      // Aviso al paciente al pasar de bot → asesor (Uso Manual)
+      if (newStatus === "ATENDIDA_HUMANO" && previousStatus !== "ATENDIDA_HUMANO") {
+        const handoffMsg =
+          "👤 *Nexus Odonto — Atención humana*\n\n" +
+          "Un asesor de recepción está atendiendo tu conversación ahora. " +
+          "En breve te responderá por este chat. 🦷✨";
+        try {
+          await chatbotService.sendConversationWhatsApp(
+            targetConvId,
+            handoffMsg,
+            MESSAGE_ROLE_IDS.AGENTE_HUMANO
+          );
+          const nowIso = new Date().toISOString();
+          setMessages((prev) =>
+            deduplicateMessages([
+              ...prev,
+              {
+                id: `local-handoff-${Date.now()}`,
+                chatbotConversationId: targetConvId,
+                messageRoleId: MESSAGE_ROLE_IDS.AGENTE_HUMANO,
+                content: handoffMsg,
+                createdAt: nowIso,
+              },
+            ])
+          );
+          setChats((prev) =>
+            prev
+              .map((c) =>
+                c.id === targetConvId
+                  ? {
+                      ...c,
+                      lastMessage: handoffMsg,
+                      lastMessageTime: formatTime(nowIso),
+                      rawTimestamp: nowIso,
+                    }
+                  : c
+              )
+              .sort(compareChatsByActivity)
+          );
+          setTimeout(() => scrollToBottom(true), 50);
+        } catch (handoffErr) {
+          console.warn("No se pudo notificar al paciente el paso a asesor:", handoffErr);
+          showErrorToast("Tomaste el caso, pero no se pudo avisar por WhatsApp al paciente.");
+        }
+      }
+
       showToast(
         newStatus === "ATENDIDA_HUMANO"
           ? "Has tomado el control del caso como Asesor Humano (Uso Manual)."
