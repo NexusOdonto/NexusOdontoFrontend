@@ -1717,7 +1717,7 @@ export function CitasView() {
       </div>
 
       {/* TABLA PRINCIPAL DE CITAS ESTILO GLASSMORPHISM */}
-      <div className="rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl shadow-md overflow-hidden animate-slideUp animate-stagger-2">
+      <div className="rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl shadow-md overflow-x-clip animate-slideUp animate-stagger-2">
         <CitasTable
           citas={citasFiltradas}
           loading={loading}
