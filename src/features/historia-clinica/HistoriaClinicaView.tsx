@@ -649,6 +649,7 @@ export function HistoriaClinicaView() {
         fracture: 0,
         mobility: 0,
         bridge: 0,
+        healthy: 0,
       };
 
       const teethWithFindings: ToothFindingDetail[] = [];
@@ -669,16 +670,31 @@ export function HistoriaClinicaView() {
           return;
         }
 
+        const faces = t.faces || {};
+        const uniqueDiags = new Set<Diagnosis>();
         const facesWithDiag: { surface: string; diagnosis: Diagnosis }[] = [];
-        (Object.keys(t.faces || {}) as Surface[]).forEach((surf) => {
-          const d = t.faces?.[surf]?.diagnosis;
+
+        (Object.keys(faces) as Surface[]).forEach((surf) => {
+          const d = faces[surf]?.diagnosis;
           if (d && d !== "none") {
+            uniqueDiags.add(d);
             facesWithDiag.push({ surface: surf, diagnosis: d });
+          }
+        });
+
+        if (t.condition === "implanted") {
+          uniqueDiags.add("implant");
+        }
+
+        if (uniqueDiags.size === 0) {
+          countsByType.healthy = (countsByType.healthy || 0) + 1;
+        } else {
+          uniqueDiags.forEach((d) => {
             if (countsByType[d] !== undefined) {
               countsByType[d]++;
             }
-          }
-        });
+          });
+        }
 
         if (facesWithDiag.length > 0) {
           const primaryDiag = facesWithDiag[0].diagnosis;
@@ -689,6 +705,14 @@ export function HistoriaClinicaView() {
             diagnosis: primaryDiag,
             condition: primaryDiag.toUpperCase(),
             description: `Pieza #${toothNum} con presencia de ${primaryDiag} en cara(s): ${surfNames}.`,
+          });
+        } else if (t.condition === "implanted") {
+          teethWithFindings.push({
+            toothNumber: toothNum,
+            surfaces: ["General"],
+            diagnosis: "implant",
+            condition: "IMPLANTE DENTAL",
+            description: `Pieza #${toothNum} rehabilitada con implante dental.`,
           });
         }
       });
@@ -1790,28 +1814,30 @@ export function HistoriaClinicaView() {
 
                           return (
                             <div className="space-y-4">
-                              {/* PANEL DESTACADO DE ODONTOGRAMA FDI INTEGRADO EN DIAGNÓSTICOS */}
+                              {/* RESUMEN EJECUTIVO DE ODONTOGRAMA FDI */}
                               {(folderCategory === "diagnosticos" || folderCategory === "odontograma") && odontogramSummary && (
-                                <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-cyan-500/10 via-teal-500/5 to-slate-50 dark:to-slate-900/60 border border-cyan-500/30 space-y-4 animate-fadeIn">
-                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-cyan-500/20 pb-3">
-                                    <div>
-                                      <div className="flex items-center gap-2">
-                                        <Smile size={18} className="text-cyan-500" />
-                                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">
-                                          Expediente Dental y Mapeo FDI
-                                        </h4>
-                                        <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-800 dark:text-cyan-300 font-bold text-[10px] border border-cyan-500/30">
-                                          {odontogramSummary?.dentitionType === "temporary" ? "Dentición Temporal" : "Dentición Permanente"}
-                                        </span>
+                                <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50/90 dark:bg-slate-900/70 border border-cyan-500/25 space-y-3 animate-fadeIn">
+                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                    <div className="flex items-center gap-2.5">
+                                      <div className="p-2 rounded-xl bg-cyan-500/15 text-cyan-600 dark:text-cyan-400">
+                                        <Smile size={18} />
                                       </div>
-                                      <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1">
-                                        {odontogramSummary
-                                          ? `Último registro: ${odontogramSummary.recordedAt || "Reciente"} • ${odontogramSummary.professionalName || formProfesional}`
-                                          : "Aún no se ha completado el mapeo odontológico para este paciente."}
-                                      </p>
+                                      <div>
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                                            Expediente Dental FDI
+                                          </h4>
+                                          <span className="px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-800 dark:text-cyan-300 font-bold text-[10px] border border-cyan-500/25">
+                                            {odontogramSummary?.dentitionType === "temporary" ? "Dentición Temporal" : "Dentición Permanente"}
+                                          </span>
+                                        </div>
+                                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                          Último registro: {odontogramSummary.recordedAt || "Reciente"} • Tratante: {odontogramSummary.professionalName || formProfesional}
+                                        </p>
+                                      </div>
                                     </div>
 
-                                    <div className="flex items-center gap-2 flex-wrap">
+                                    <div className="flex items-center gap-2 shrink-0">
                                       <button
                                         type="button"
                                         onClick={() => {
@@ -1824,64 +1850,88 @@ export function HistoriaClinicaView() {
                                             },
                                           });
                                         }}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs shadow transition-all cursor-pointer active:scale-95"
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs shadow-sm transition-all cursor-pointer active:scale-95"
                                       >
-                                        <Smile size={14} />
+                                        <Smile size={13} />
                                         <span>Abrir Odontograma 3D →</span>
                                       </button>
 
-                                      {odontogramSummary && (
-                                        <button
-                                          type="button"
-                                          disabled={isGeneratingPdf}
-                                          onClick={handleDownloadOdontogramPdf}
-                                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow transition-all cursor-pointer active:scale-95 disabled:opacity-50"
-                                        >
-                                          <Download size={14} />
-                                          <span>{isGeneratingPdf ? "Generando..." : "Descargar Odontograma PDF"}</span>
-                                        </button>
-                                      )}
+                                      <button
+                                        type="button"
+                                        disabled={isGeneratingPdf}
+                                        onClick={handleDownloadOdontogramPdf}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-xs transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+                                        title="Descargar reporte oficial FDI en PDF"
+                                      >
+                                        <Download size={13} />
+                                        <span>{isGeneratingPdf ? "Generando..." : "PDF Odontograma"}</span>
+                                      </button>
                                     </div>
                                   </div>
 
-                                  {/* Chips de conteo cuantitativo */}
-                                  {odontogramSummary && (
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2 pt-1 text-[11px]">
-                                      <div className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-700 dark:text-rose-300 font-bold flex flex-col items-center">
-                                        <span className="text-base">{odontogramSummary.countsByType.caries || 0}</span>
-                                        <span className="text-[10px] uppercase font-semibold">Caries</span>
-                                      </div>
-                                      <div className="p-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-300 font-bold flex flex-col items-center">
-                                        <span className="text-base">{odontogramSummary.countsByType.restoration || 0}</span>
-                                        <span className="text-[10px] uppercase font-semibold">Obturaciones</span>
-                                      </div>
-                                      <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-bold flex flex-col items-center">
-                                        <span className="text-base">{odontogramSummary.countsByType.crown || 0}</span>
-                                        <span className="text-[10px] uppercase font-semibold">Coronas</span>
-                                      </div>
-                                      <div className="p-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-700 dark:text-purple-300 font-bold flex flex-col items-center">
-                                        <span className="text-base">{odontogramSummary.countsByType.endodontic || 0}</span>
-                                        <span className="text-[10px] uppercase font-semibold">Endodoncias</span>
-                                      </div>
-                                      <div className="p-2 rounded-xl bg-slate-500/10 border border-slate-500/20 text-slate-700 dark:text-slate-300 font-bold flex flex-col items-center">
-                                        <span className="text-base">{odontogramSummary.countsByType.extraction || 0}</span>
-                                        <span className="text-[10px] uppercase font-semibold">Ausentes/Extr.</span>
-                                      </div>
-                                      <div className="p-2 rounded-xl bg-teal-500/10 border border-teal-500/20 text-teal-700 dark:text-teal-300 font-bold flex flex-col items-center">
-                                        <span className="text-base">{odontogramSummary.findingsCount}</span>
-                                        <span className="text-[10px] uppercase font-semibold">Total Hallazgos</span>
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {/* Caja de notas clínicas guardadas en el odontograma */}
-                                  {odontogramSummary?.notasClinicas && (
-                                    <div className="p-3.5 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-white/10 text-xs">
-                                      <span className="font-bold text-slate-700 dark:text-slate-300 uppercase text-[10px] tracking-wider block mb-1">
-                                        📝 Notas Clínicas Registradas en Odontograma:
+                                  {/* Badges dinámicos compactos: Solo condiciones existentes (> 0) para evitar saturación */}
+                                  <div className="flex items-center gap-1.5 flex-wrap pt-1 text-[11px]">
+                                    {odontogramSummary.countsByType.caries > 0 && (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-700 dark:text-rose-300 font-semibold">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                                        Caries: <strong>{odontogramSummary.countsByType.caries}</strong>
                                       </span>
-                                      <p className="text-slate-900 dark:text-white font-medium whitespace-pre-line">
-                                        {odontogramSummary.notasClinicas}
+                                    )}
+                                    {odontogramSummary.countsByType.restoration > 0 && (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-blue-500/15 border border-blue-500/30 text-blue-700 dark:text-blue-300 font-semibold">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                        Obturaciones: <strong>{odontogramSummary.countsByType.restoration}</strong>
+                                      </span>
+                                    )}
+                                    {odontogramSummary.countsByType.implant > 0 && (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-cyan-500/15 border border-cyan-500/30 text-cyan-700 dark:text-cyan-300 font-semibold">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
+                                        Implantes: <strong>{odontogramSummary.countsByType.implant}</strong>
+                                      </span>
+                                    )}
+                                    {odontogramSummary.countsByType.sealant > 0 && (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-300 font-semibold">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                        Sellantes: <strong>{odontogramSummary.countsByType.sealant}</strong>
+                                      </span>
+                                    )}
+                                    {odontogramSummary.countsByType.crown > 0 && (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-semibold">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                        Coronas: <strong>{odontogramSummary.countsByType.crown}</strong>
+                                      </span>
+                                    )}
+                                    {odontogramSummary.countsByType.endodontic > 0 && (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-purple-500/15 border border-purple-500/30 text-purple-700 dark:text-purple-300 font-semibold">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                                        Endodoncias: <strong>{odontogramSummary.countsByType.endodontic}</strong>
+                                      </span>
+                                    )}
+                                    {odontogramSummary.countsByType.extraction > 0 && (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-slate-500/15 border border-slate-500/30 text-slate-700 dark:text-slate-300 font-semibold">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
+                                        Ausentes/Extr.: <strong>{odontogramSummary.countsByType.extraction}</strong>
+                                      </span>
+                                    )}
+                                    {odontogramSummary.countsByType.healthy > 0 && (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-teal-500/15 border border-teal-500/30 text-teal-700 dark:text-teal-300 font-semibold">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-teal-500" />
+                                        Sanos: <strong>{odontogramSummary.countsByType.healthy}</strong>
+                                      </span>
+                                    )}
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-slate-200/80 dark:bg-white/10 text-slate-700 dark:text-slate-300 font-bold">
+                                      Total Hallazgos: <strong>{odontogramSummary.findingsCount}</strong>
+                                    </span>
+                                  </div>
+
+                                  {/* Nota clínica compacta */}
+                                  {odontogramSummary?.notasClinicas && (
+                                    <div className="p-2.5 rounded-xl bg-white/70 dark:bg-slate-950/50 border border-slate-200/80 dark:border-white/10 text-xs flex items-baseline gap-1.5">
+                                      <span className="font-bold text-slate-600 dark:text-slate-400 shrink-0 text-[11px] uppercase tracking-wide">
+                                        📝 Nota Odontograma:
+                                      </span>
+                                      <p className="text-slate-800 dark:text-slate-200 italic line-clamp-2">
+                                        "{odontogramSummary.notasClinicas}"
                                       </p>
                                     </div>
                                   )}
