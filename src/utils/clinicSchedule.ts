@@ -4,11 +4,11 @@ const CLINIC_TIME_ZONE = "America/Bogota";
 const PAST_MSG = "No se pueden programar citas en fechas u horas pasadas.";
 const SUNDAY_MSG = "Los domingos la clínica permanece cerrada (día no laboral). Por favor selecciona de lunes a sábado.";
 const SATURDAY_MSG =
-  "Los sábados se atiende únicamente de 08:00 a 12:00 (última cita 11:30). La clínica no atiende los sábados en la tarde.";
+  "Los sábados se atiende únicamente de 08:00 a 12:00. El horario no cabe en la jornada de la mañana según la duración del tratamiento.";
 const LUNCH_MSG =
   "El horario de 12:00 a 14:00 corresponde al descanso clínico del equipo. La jornada es 08:00 a 12:00 | 14:00 a 17:00.";
 const OUTSIDE_HOURS_MSG =
-  "La cita está fuera de la jornada de atención (Lunes a Viernes: 08:00-12:00 | 14:00-17:00, última cita 16:30; Sábados: 08:00-12:00, última cita 11:30).";
+  "La cita no cabe en la jornada de atención según la duración del tratamiento (Lunes a Viernes: 08:00-12:00 | 14:00-17:00; Sábados: 08:00-12:00).";
 
 /** Current clinic wall-clock as a comparable local Date (date/time parts from America/Bogota). */
 export function getColombiaNow(): Date {
@@ -38,11 +38,14 @@ export function getColombiaNow(): Date {
 
 /**
  * Validates past datetime (Colombia) and clinic jornada separately.
+ * An start is accepted only when start + durationMinutes fits before lunch or clinic close
+ * (weekdays 17:00 / Saturdays 12:00). Ending exactly at close is allowed.
  * Returns an error message or null when valid.
  */
 export function validateClinicAppointmentSchedule(
   dateStr: string,
-  timeStr: string
+  timeStr: string,
+  durationMinutes: number = 30
 ): string | null {
   if (!dateStr || !timeStr) return null;
 
@@ -60,26 +63,42 @@ export function validateClinicAppointmentSchedule(
   }
 
   const dayOfWeek = selected.getDay(); // 0 = Domingo, 6 = Sábado
-  const timeInMinutes = h * 60 + m;
+  const startMinutes = h * 60 + m;
+  const duration = Math.max(15, durationMinutes || 30);
+  const endMinutes = startMinutes + duration;
+
+  const morningOpen = 8 * 60;
+  const lunchStart = 12 * 60;
+  const afternoonOpen = 14 * 60;
+  const weekdayClose = 17 * 60;
+  const saturdayClose = 12 * 60;
 
   // 1. Domingos cerrado
   if (dayOfWeek === 0) {
     return SUNDAY_MSG;
   }
 
-  // 2. Sábados: 08:00 a 12:00 (última cita 11:30)
+  // 2. Sábados: 08:00 a 12:00 (inicio + duración ≤ 12:00)
   if (dayOfWeek === 6) {
-    if (timeInMinutes < 8 * 60 || timeInMinutes > 11 * 60 + 30) {
+    if (startMinutes < morningOpen || startMinutes >= saturdayClose || endMinutes > saturdayClose) {
       return SATURDAY_MSG;
     }
     return null;
   }
 
-  // 3. Lunes a Viernes: 08:00 a 12:00 (descanso 12:00 a 14:00) y 14:00 a 17:00 (última cita 16:30)
-  if (timeInMinutes >= 12 * 60 && timeInMinutes < 14 * 60) {
+  // 3. Lunes a Viernes: no empezar en almuerzo; el bloque no cruza almuerzo ni cierra después de 17:00
+  if (startMinutes >= lunchStart && startMinutes < afternoonOpen) {
     return LUNCH_MSG;
   }
-  if (timeInMinutes < 8 * 60 || (timeInMinutes > 11 * 60 + 30 && timeInMinutes < 14 * 60) || timeInMinutes > 16 * 60 + 30) {
+
+  if (startMinutes < lunchStart) {
+    if (startMinutes < morningOpen || endMinutes > lunchStart) {
+      return OUTSIDE_HOURS_MSG;
+    }
+    return null;
+  }
+
+  if (startMinutes < afternoonOpen || startMinutes >= weekdayClose || endMinutes > weekdayClose) {
     return OUTSIDE_HOURS_MSG;
   }
 

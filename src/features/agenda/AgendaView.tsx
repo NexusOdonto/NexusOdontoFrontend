@@ -789,23 +789,26 @@ export function AgendaView() {
       return;
     }
 
-    const scheduleError = validateClinicAppointmentSchedule(
-      fechaSeleccionada,
-      nuevaCita.horaInicio || "09:00"
-    );
-    if (scheduleError) {
-      setFormError(scheduleError);
-      setErrorMessage(scheduleError);
-      setTimeout(() => setErrorMessage(null), 6000);
-      return;
-    }
-
     try {
       setIsSubmitting(true);
       setFormError(null);
 
       const matchedService = serviciosEntities.find((s) => s.name === nuevaCita.servicio || areGuidsEqual(s.id, nuevaCita.servicio));
       const serviceIdToUse = matchedService?.id || (serviciosEntities.length > 0 ? serviciosEntities[0].id : "30000000-0000-0000-0000-000000000001");
+      const durationMinutes = Math.max(15, matchedService?.durationMinutes || 30);
+
+      const scheduleError = validateClinicAppointmentSchedule(
+        fechaSeleccionada,
+        nuevaCita.horaInicio || "09:00",
+        durationMinutes
+      );
+      if (scheduleError) {
+        setFormError(scheduleError);
+        setErrorMessage(scheduleError);
+        setTimeout(() => setErrorMessage(null), 6000);
+        setIsSubmitting(false);
+        return;
+      }
 
       const matchedProf = profesionalesEntities.find((p) => {
         const pFullName = `Dr(a). ${p.firstName || ""} ${p.lastName || ""}`.trim();
@@ -853,9 +856,10 @@ export function AgendaView() {
       const safeH = String(isNaN(h) ? 9 : h).padStart(2, "0");
       const safeM = String(isNaN(m) ? 0 : m).padStart(2, "0");
 
-      const [eh, em] = (nuevaCita.horaFin || "10:00").split(":").map(Number);
-      const safeEH = String(isNaN(eh) ? 10 : eh).padStart(2, "0");
-      const safeEM = String(isNaN(em) ? 0 : em).padStart(2, "0");
+      const startTotalMins = (isNaN(h) ? 9 : h) * 60 + (isNaN(m) ? 0 : m);
+      const endTotalMins = startTotalMins + durationMinutes;
+      const safeEH = String(Math.floor(endTotalMins / 60) % 24).padStart(2, "0");
+      const safeEM = String(endTotalMins % 60).padStart(2, "0");
 
       const startsAtLocal = `${fechaSeleccionada}T${safeH}:${safeM}:00`;
       const endsAtLocal = `${fechaSeleccionada}T${safeEH}:${safeEM}:00`;
@@ -1013,7 +1017,7 @@ export function AgendaView() {
       } else if (serverMsg.includes("no hay odontólogos disponibles") || serverMsg.includes("no hay odontólogos activos")) {
         errorMsg = error?.response?.data?.message || "No hay odontólogos disponibles en ese horario. Por favor selecciona otra hora.";
       } else if (serverMsg.includes("outside the professional's active availability") || serverMsg.includes("availability")) {
-        errorMsg = "El horario seleccionado está fuera de la jornada de atención (08:00 a 12:00 y 14:00 a 17:00). Por favor selecciona una hora de inicio válida (ej. 08:00 a 11:30 o 14:00 a 16:30).";
+        errorMsg = "El horario seleccionado está fuera de la jornada de atención (08:00 a 12:00 y 14:00 a 17:00). Elige un inicio donde el tratamiento termine antes del almuerzo o del cierre.";
       } else if (error?.response?.status === 409 || serverMsg.includes("conflict") || serverMsg.includes("overlap") || serverMsg.includes("already has an appointment")) {
         errorMsg = isPaciente
           ? "No hay odontólogos disponibles en ese horario. Por favor selecciona otra hora."

@@ -864,14 +864,6 @@ export function CitasView() {
       const fechaValida = formFecha || todayDateString;
       const horaValida = normalizeTimeTo24h(formHora || getNextValidHour(fechaValida));
 
-      // Past + jornada checks use Colombia wall-clock (clinic TZ), not UTC.
-      const scheduleError = validateClinicAppointmentSchedule(fechaValida, horaValida);
-      if (scheduleError) {
-        setFormError(scheduleError);
-        setIsSubmitting(false);
-        return;
-      }
-
       // 1. Resolver Patient ID con soporte para nombres nuevos y creación al vuelo
       const resolvedPatient = await resolveOrCreatePatient({
         identifierOrName: pacienteNombre,
@@ -941,7 +933,21 @@ export function CitasView() {
         targetServiceId = fallbackServiceId;
       }
 
-      const { startsAt, endsAt } = calculateEndDateTime(fechaValida, horaValida, 30);
+      const matchedDurationService =
+        servicesRaw.find((s) => areGuidsEqual(s.id, targetServiceId)) ||
+        servicesEntities.find((s) => areGuidsEqual(s.id, targetServiceId)) ||
+        servicesRaw.find((s) => s.name?.toLowerCase() === (formServicio || "").toLowerCase());
+      const durationMinutes = Math.max(15, matchedDurationService?.durationMinutes || 30);
+
+      // Past + jornada checks use Colombia wall-clock (clinic TZ), not UTC.
+      const scheduleError = validateClinicAppointmentSchedule(fechaValida, horaValida, durationMinutes);
+      if (scheduleError) {
+        setFormError(scheduleError);
+        setIsSubmitting(false);
+        return;
+      }
+
+      const { startsAt, endsAt } = calculateEndDateTime(fechaValida, horaValida, durationMinutes);
 
       // Validar que el paciente no tenga ya una cita activa en esa misma fecha y hora
       const targetPName = finalPatientName.toLowerCase().trim();
@@ -1042,7 +1048,7 @@ export function CitasView() {
           setIsSubmitting(false);
           return;
         } else if (serverMsg.includes("outside the professional's active availability") || serverMsg.includes("availability")) {
-          const availabilityMsg = "El horario seleccionado está fuera de la jornada de atención del odontólogo (08:00 a 12:00 y 14:00 a 17:00). Por favor selecciona una hora entre 08:00 a 11:30 o 14:00 a 16:30.";
+          const availabilityMsg = "El horario seleccionado está fuera de la jornada de atención del odontólogo (08:00 a 12:00 y 14:00 a 17:00). Elige un inicio donde el tratamiento termine antes del almuerzo o del cierre.";
           setFormError(availabilityMsg);
           setIsSubmitting(false);
           return;
@@ -1288,7 +1294,13 @@ export function CitasView() {
         : todayDateString);
     const effectiveHora = formHora || selectedCitaToAssign.hora || "09:00";
 
-    const { startsAt, endsAt } = calculateEndDateTime(effectiveDate, effectiveHora, 30);
+    const assignDurationService =
+      servicesRaw.find((s) => areGuidsEqual(s.id, resolvedServiceId)) ||
+      matchedServ ||
+      servicesEntities.find((s) => areGuidsEqual(s.id, resolvedServiceId));
+    const assignDurationMinutes = Math.max(15, assignDurationService?.durationMinutes || 30);
+
+    const { startsAt, endsAt } = calculateEndDateTime(effectiveDate, effectiveHora, assignDurationMinutes);
 
     if (selectedCitaToAssign.appointmentId) {
       try {
@@ -1408,16 +1420,6 @@ export function CitasView() {
       selectedCitaToEdit.fecha !== editFecha ||
       normalizeTimeTo24h(selectedCitaToEdit.hora) !== horaEditValida;
 
-    if (isDateTimeChanged && editFecha) {
-      const scheduleError = validateClinicAppointmentSchedule(editFecha, horaEditValida);
-      if (scheduleError) {
-        setEditFormError(scheduleError);
-        setErrorMessage(scheduleError);
-        setTimeout(() => setErrorMessage(null), 5000);
-        return;
-      }
-    }
-
     const matchedEditProfOption = professionalsOptions.find(
       (d) => d.label.toLowerCase() === editProfesional.toLowerCase() || areGuidsEqual(d.id, editProfesional)
     );
@@ -1431,6 +1433,21 @@ export function CitasView() {
       servicesRaw.find((s) => s.name.toLowerCase() === editServicio.toLowerCase() || areGuidsEqual(s.id, editServicio))?.id ||
       selectedCitaToEdit.serviceId;
 
+    const editDurationService =
+      servicesRaw.find((s) => s.name.toLowerCase() === editServicio.toLowerCase() || areGuidsEqual(s.id, editServicio) || areGuidsEqual(s.id, matchedServiceId || "")) ||
+      servicesEntities.find((s) => areGuidsEqual(s.id, matchedServiceId || "") || s.name?.toLowerCase() === editServicio.toLowerCase());
+    const editDurationMinutes = Math.max(15, editDurationService?.durationMinutes || 30);
+
+    if (isDateTimeChanged && editFecha) {
+      const scheduleError = validateClinicAppointmentSchedule(editFecha, horaEditValida, editDurationMinutes);
+      if (scheduleError) {
+        setEditFormError(scheduleError);
+        setErrorMessage(scheduleError);
+        setTimeout(() => setErrorMessage(null), 5000);
+        return;
+      }
+    }
+
     const statusMap: Record<EstadoCita, string> = {
       "Pendiente": "10000000-0000-0000-0000-000000000001",
       "Confirmada": "10000000-0000-0000-0000-000000000002",
@@ -1440,7 +1457,7 @@ export function CitasView() {
       "No Asistió": "10000000-0000-0000-0000-000000000006",
     };
 
-    const { startsAt, endsAt } = calculateEndDateTime(editFecha, horaEditValida, 30);
+    const { startsAt, endsAt } = calculateEndDateTime(editFecha, horaEditValida, editDurationMinutes);
 
     let resolvedPatientId = selectedCitaToEdit.patientId;
     let finalEditPacienteName = editPaciente;
@@ -1882,7 +1899,7 @@ export function CitasView() {
                     variant="teal"
                   />
                   <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 block leading-tight">
-                    Jornada: 08:00 - 12:00 | 14:00 - 17:00 (última cita 16:30)
+                    Jornada: 08:00 - 12:00 | 14:00 - 17:00 (inicio + duración debe caber antes del cierre)
                   </span>
                 </div>
               </div>
