@@ -46,6 +46,8 @@ export interface UpdateProfessionalDto {
   bio?: string;
 }
 
+import { userService } from './userService';
+
 export interface RegisterProfessionalRequest {
   firstName: string;
   lastName: string;
@@ -57,6 +59,7 @@ export interface RegisterProfessionalRequest {
   specialtyIds?: string[];
   professionalLicense: string;
   bio?: string;
+  password?: string;
 }
 
 const mapProfessional = (item: any): ProfessionalResponseDto => {
@@ -207,6 +210,19 @@ export const professionalService = {
       professionalLicense: req.professionalLicense.trim() || `COL-${timestamp.toString().slice(-5)}`,
       specialtyIds,
     });
+
+    // 6. Si se suministró contraseña, crear usuario con rol ODONTOLOGO para inicio de sesión
+    if (req.password) {
+      try {
+        await userService.create({
+          personId: person.id,
+          password: req.password,
+          roleId: '13000000-0000-0000-0000-000000000002', // Role ODONTOLOGO
+        });
+      } catch (userErr) {
+        console.warn('No se pudo registrar cuenta de usuario en /v1/Users:', userErr);
+      }
+    }
 
     return {
       ...createdProf,

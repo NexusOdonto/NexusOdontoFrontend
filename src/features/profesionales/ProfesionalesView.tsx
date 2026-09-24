@@ -32,6 +32,9 @@ import {
   RotateCcw,
   AlertCircle,
   Utensils,
+  Eye,
+  EyeOff,
+  KeyRound,
 } from "lucide-react";
 
 import {
@@ -308,6 +311,8 @@ export function ProfesionalesView() {
   const [formEspecialidad, setFormEspecialidad] = useState("Ortodoncia & Brackets Invisibles");
   const [formRegistro, setFormRegistro] = useState("");
   const [formEmail, setFormEmail] = useState("");
+  const [formPassword, setFormPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [formTelefono, setFormTelefono] = useState("");
   const [formBio, setFormBio] = useState("");
   const [formSillon, setFormSillon] = useState("Sillón 1 - Principal");
@@ -517,8 +522,13 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
   // Alta de nuevo odontólogo
   const handleCreateProfessional = async (e: FormEvent) => {
     e.preventDefault();
-    if (!formNombre.trim() || !formRegistro.trim()) {
-      showToast("Por favor completa los campos obligatorios (*)");
+    if (!formNombre.trim() || !formRegistro.trim() || !formEmail.trim() || !formPassword.trim()) {
+      showToast("Por favor completa todos los campos obligatorios (*) incluyendo correo y contraseña de acceso.");
+      return;
+    }
+
+    if (formPassword.trim().length < 4) {
+      showToast("La contraseña debe tener al menos 4 caracteres.");
       return;
     }
 
@@ -527,26 +537,69 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
       const parts = formNombre.trim().split(" ");
       const firstName = parts[0] || "Dr.";
       const lastName = parts.slice(1).join(" ") || "Especialista";
-      const email = formEmail.trim() || `${firstName.toLowerCase()}.${lastName.toLowerCase()}@nexusodonto.com`;
+      const email = formEmail.trim();
       const phone = formTelefono.trim() || "+57 300 123 4567";
+      const docNum = formRegistro.trim();
+      const rawPassword = formPassword.trim();
 
       const created = await professionalService.registerComplete({
         firstName,
         lastName,
-        documentNumber: formRegistro.trim(),
+        documentNumber: docNum,
         email: email,
         phone: phone,
-        professionalLicense: formRegistro.trim(),
+        professionalLicense: docNum,
         specialtyIds: [SPECIALTY_ID_MAP[formEspecialidad] || "18000000-0000-0000-0000-000000000001"],
         bio: formBio.trim() || `Especialista en ${formEspecialidad} con dedicación al cuidado integral del paciente.`,
+        password: rawPassword,
       });
+
+      // Crear y sincronizar cuenta de usuario local con rol ODONTÓLOGO
+      const customDoctorUser = {
+        id: created.personId || `user-doc-${Date.now()}`,
+        personId: created.personId || `person-doc-${Date.now()}`,
+        name: `Dr(a). ${firstName} ${lastName}`.trim(),
+        nombre: firstName,
+        apellido: lastName,
+        email: email,
+        cedula: docNum,
+        password: rawPassword,
+        roleIds: ["13000000-0000-0000-0000-000000000002"],
+        permissions: [
+          "Pacientes.View",
+          "Pacientes.Create",
+          "Pacientes.Edit",
+          "Odontograma.View",
+          "Odontograma.Edit",
+          "Odontograma.Create",
+          "Appointments.View",
+          "Appointments.Edit",
+          "Services.View",
+          "Professionals.View",
+        ],
+        rol: "ODONTOLOGO",
+        mustChangePassword: false,
+      };
+
+      try {
+        const existingUsers = JSON.parse(localStorage.getItem("nexus_custom_users") || "[]");
+        const filtered = Array.isArray(existingUsers)
+          ? existingUsers.filter(
+              (u: any) => u.email?.toLowerCase() !== email.toLowerCase() && u.cedula !== docNum
+            )
+          : [];
+        filtered.push(customDoctorUser);
+        localStorage.setItem("nexus_custom_users", JSON.stringify(filtered));
+      } catch (saveErr) {
+        console.warn("No se pudo guardar en nexus_custom_users:", saveErr);
+      }
 
       const theme = SPECIALTY_STYLES[formEspecialidad] || SPECIALTY_STYLES["Odontología General"];
       const newFullProf: ProfessionalFull = {
         ...created,
         nombreCompleto: `Dr(a). ${firstName} ${lastName}`.trim(),
         especialidad: formEspecialidad,
-        licenseNumber: formRegistro.trim(),
+        licenseNumber: docNum,
         email: email,
         phone: phone,
         bio: formBio.trim() || `Especialista en ${formEspecialidad} de NexusOdonto.`,
@@ -562,23 +615,66 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
       setFormNombre("");
       setFormRegistro("");
       setFormEmail("");
+      setFormPassword("");
+      setShowPassword(false);
       setFormTelefono("");
       setFormBio("");
-      showToast("¡Odontólogo registrado con éxito en el staff clínico!");
+      showToast("¡Odontólogo registrado y credenciales de acceso creadas con éxito!");
     } catch (err: any) {
       console.warn("No se pudo crear en API REST, guardando localmente:", err);
       const parts = formNombre.trim().split(" ");
       const firstName = parts[0] || "Dr.";
       const lastName = parts.slice(1).join(" ") || "Especialista";
-      const email = formEmail.trim() || `${firstName.toLowerCase()}@nexusodonto.com`;
+      const email = formEmail.trim();
       const phone = formTelefono.trim() || "+57 300 000 0000";
+      const docNum = formRegistro.trim();
+      const rawPassword = formPassword.trim();
+
+      const customDoctorUser = {
+        id: `user-doc-local-${Date.now()}`,
+        personId: `person-doc-local-${Date.now()}`,
+        name: `Dr(a). ${firstName} ${lastName}`.trim(),
+        nombre: firstName,
+        apellido: lastName,
+        email: email,
+        cedula: docNum,
+        password: rawPassword,
+        roleIds: ["13000000-0000-0000-0000-000000000002"],
+        permissions: [
+          "Pacientes.View",
+          "Pacientes.Create",
+          "Pacientes.Edit",
+          "Odontograma.View",
+          "Odontograma.Edit",
+          "Odontograma.Create",
+          "Appointments.View",
+          "Appointments.Edit",
+          "Services.View",
+          "Professionals.View",
+        ],
+        rol: "ODONTOLOGO",
+        mustChangePassword: false,
+      };
+
+      try {
+        const existingUsers = JSON.parse(localStorage.getItem("nexus_custom_users") || "[]");
+        const filtered = Array.isArray(existingUsers)
+          ? existingUsers.filter(
+              (u: any) => u.email?.toLowerCase() !== email.toLowerCase() && u.cedula !== docNum
+            )
+          : [];
+        filtered.push(customDoctorUser);
+        localStorage.setItem("nexus_custom_users", JSON.stringify(filtered));
+      } catch (saveErr) {
+        console.warn("No se pudo guardar en nexus_custom_users:", saveErr);
+      }
 
       const theme = SPECIALTY_STYLES[formEspecialidad] || SPECIALTY_STYLES["Odontología General"];
       const newFullProf: ProfessionalFull = {
         id: `prof-local-${Date.now()}`,
         employeeId: `emp-local-${Date.now()}`,
-        professionalLicense: formRegistro.trim(),
-        licenseNumber: formRegistro.trim(),
+        professionalLicense: docNum,
+        licenseNumber: docNum,
         isActive: true,
         createdAt: new Date().toISOString(),
         nombreCompleto: /^dr|^dra/i.test(formNombre) ? formNombre : `Dr(a). ${firstName} ${lastName}`,
@@ -598,9 +694,11 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
       setFormNombre("");
       setFormRegistro("");
       setFormEmail("");
+      setFormPassword("");
+      setShowPassword(false);
       setFormTelefono("");
       setFormBio("");
-      showToast("¡Odontólogo guardado en el directorio clínico!");
+      showToast("¡Odontólogo guardado y credenciales configuradas correctamente!");
     } finally {
       setCreating(false);
     }
@@ -1580,8 +1678,8 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
       {showCreateModal &&
         canCreateProfessional &&
         createPortal(
-          <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center overflow-y-auto p-3 sm:p-4 bg-slate-900/60 dark:bg-slate-950/75 backdrop-blur-md animate-fadeIn">
-            <div className="w-full max-w-lg my-auto rounded-3xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/20 p-6 shadow-2xl space-y-4 max-h-[min(92dvh,100%)] overflow-y-auto">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto p-3 sm:p-4 bg-slate-900/60 dark:bg-slate-950/75 backdrop-blur-md animate-fadeIn">
+            <div className="w-full max-w-xl my-auto rounded-3xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/20 p-5 sm:p-6 shadow-2xl space-y-4 max-h-[min(92dvh,100%)] overflow-y-auto">
               <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
                 <div className="flex items-center gap-2.5">
                   <div className="p-2 rounded-xl bg-cyan-500/15 text-cyan-700 dark:text-cyan-300">
@@ -1592,55 +1690,57 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                       Alta de Odontólogo Especialista
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Registro de credenciales y asignación de consultorio
+                      Registro clínico, asignación de sillón y credenciales de acceso
                     </p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="p-1 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
                 >
                   <X size={18} />
                 </button>
               </div>
 
               <form onSubmit={handleCreateProfessional} className="space-y-3.5 text-xs">
+                {/* Nombre Completo */}
                 <div>
                   <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Nombre Completo del Doctor(a) *
+                    Nombre Completo del Doctor(a) <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="Ej. Dr. Andrés Felipe Morales"
+                    placeholder="Ej. Dra. Mariana Restrepo Gómez"
                     value={formNombre}
                     onChange={(e) => setFormNombre(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 font-medium"
                   />
                 </div>
 
+                {/* Especialidad & Cédula */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
+                  <div className="min-w-0">
                     <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Especialidad Médica *
+                      Especialidad Médica <span className="text-rose-500">*</span>
                     </label>
                     <GlassSelect
                       value={formEspecialidad}
                       onChange={(val) => setFormEspecialidad(val)}
                       options={ESPECIALIDADES_SELECT_OPTIONS}
-                      className="w-full py-2.5 text-xs rounded-xl"
+                      className="w-full"
                     />
                   </div>
 
-                  <div>
+                  <div className="min-w-0">
                     <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Registro Médico / Cédula *
+                      Registro Médico / Cédula <span className="text-rose-500">*</span>
                     </label>
                     <input
                       type="text"
                       required
-                      placeholder="Ej. COL-89214"
+                      placeholder="Ej. COL-89214 o 1098765432"
                       value={formRegistro}
                       onChange={(e) => setFormRegistro(e.target.value)}
                       className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500"
@@ -1648,22 +1748,56 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                   </div>
                 </div>
 
+                {/* Correo de Acceso & Contraseña */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Correo Electrónico
+                  <div className="min-w-0">
+                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+                      <Mail size={13} className="text-cyan-600 dark:text-cyan-400" />
+                      <span>Correo de Acceso <span className="text-rose-500">*</span></span>
                     </label>
                     <input
                       type="email"
+                      required
                       placeholder="doctor@nexusodonto.com"
                       value={formEmail}
                       onChange={(e) => setFormEmail(e.target.value)}
                       className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500"
                     />
                   </div>
-                  <div>
-                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Teléfono Móvil
+
+                  <div className="min-w-0">
+                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+                      <KeyRound size={13} className="text-teal-600 dark:text-teal-400" />
+                      <span>Contraseña de Acceso <span className="text-rose-500">*</span></span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        required
+                        minLength={4}
+                        placeholder="Contraseña para iniciar sesión"
+                        value={formPassword}
+                        onChange={(e) => setFormPassword(e.target.value)}
+                        className="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                        tabIndex={-1}
+                      >
+                        {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Teléfono & Sillón */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="min-w-0">
+                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+                      <Phone size={13} className="text-slate-400" />
+                      <span>Teléfono Móvil</span>
                     </label>
                     <input
                       type="text"
@@ -1673,20 +1807,21 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                       className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500"
                     />
                   </div>
+
+                  <div className="min-w-0">
+                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Sillón / Consultorio Habitual
+                    </label>
+                    <GlassSelect
+                      value={formSillon}
+                      onChange={(val) => setFormSillon(val)}
+                      options={SILLON_CREATE_OPTIONS}
+                      className="w-full"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Sillón / Consultorio Habitual
-                  </label>
-                  <GlassSelect
-                    value={formSillon}
-                    onChange={(val) => setFormSillon(val)}
-                    options={SILLON_CREATE_OPTIONS}
-                    className="w-full py-2.5 text-xs rounded-xl"
-                  />
-                </div>
-
+                {/* Biografía */}
                 <div>
                   <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Perfil y Biografía Profesional
@@ -1700,6 +1835,13 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                   />
                 </div>
 
+                {/* Info Note */}
+                <div className="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-[11px] text-cyan-800 dark:text-cyan-300 flex items-center gap-2">
+                  <ShieldCheck size={16} className="shrink-0 text-cyan-500" />
+                  <span>El nuevo odontólogo podrá iniciar sesión inmediatamente en <strong>/login</strong> con su correo/cédula y contraseña asignada con rol <strong>ODONTÓLOGO</strong>.</span>
+                </div>
+
+                {/* Footer Buttons */}
                 <div className="pt-3 border-t border-slate-200 dark:border-white/10 flex items-center justify-end gap-2.5">
                   <button
                     type="button"

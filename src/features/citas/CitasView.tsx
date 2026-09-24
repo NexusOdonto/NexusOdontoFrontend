@@ -22,7 +22,7 @@ import { employeeService } from "../../api/employeeService";
 import { specialtyService } from "../../api/specialtyService";
 import { useNotifications } from "../../context/NotificationContext";
 import { SelectOrWriteInput, type SelectOption } from "../../components/common/SelectOrWriteInput";
-import { ModernServiceSelect } from "../../components/common/ModernServiceSelect";
+import { ModernServiceSelect, type ServiceItem } from "../../components/common/ModernServiceSelect";
 import { ModernDoctorSelect } from "../../components/common/ModernDoctorSelect";
 import { GlassSelect } from "../../components/common/GlassSelect";
 import { areGuidsEqual } from "../../utils/roleUtils";
@@ -47,14 +47,14 @@ const defaultSeedDoctors: SelectOption[] = [
   { label: "Dra. Patricia Silva", subLabel: "Especialidad: Endodoncia Microscópica", specialty: "Endodoncia Microscópica" },
 ];
 
-const defaultSeedServices: { id: string; name: string }[] = [
-  { id: "30000000-0000-0000-0000-000000000001", name: "Valoración General Odontológica" },
-  { id: "30000000-0000-0000-0000-000000000002", name: "Profilaxis y Limpieza Dental" },
-  { id: "30000000-0000-0000-0000-000000000003", name: "Blanqueamiento Dental Clínico" },
-  { id: "30000000-0000-0000-0000-000000000004", name: "Restauración en Resina Compuesta" },
-  { id: "30000000-0000-0000-0000-000000000005", name: "Control de Ortodoncia" },
-  { id: "30000000-0000-0000-0000-000000000006", name: "Extracción Dental Simple" },
-  { id: "30000000-0000-0000-0000-000000000007", name: "Endodoncia / Tratamiento de Conductos" },
+const defaultSeedServices: ServiceItem[] = [
+  { id: "14000000-0000-0000-0000-000000000001", name: "Valoración General Odontológica", durationMinutes: 30, price: 50000, category: "Higiene y Prevención", description: "Evaluación clínica integral y diagnóstico odontológico." },
+  { id: "14000000-0000-0000-0000-000000000002", name: "Profilaxis y Limpieza Dental con Ultrasonido", durationMinutes: 45, price: 80000, category: "Higiene y Prevención", description: "Eliminación de cálculo supragingival con ultrasonido y pulido coronario." },
+  { id: "14000000-0000-0000-0000-000000000003", name: "Restauración en Resina Fotocurable", durationMinutes: 45, price: 75000, category: "Operatoria / Resinas", description: "Reconstrucción estética y funcional con resina nanohíbrida." },
+  { id: "14000000-0000-0000-0000-000000000004", name: "Blanqueamiento Dental Clínico LED", durationMinutes: 60, price: 280000, category: "Estética Dental", description: "Aclaramiento dental profesional en consultorio con fotoactivación." },
+  { id: "14000000-0000-0000-0000-000000000005", name: "Extracción Dental Simple y Quirúrgica", durationMinutes: 45, price: 95000, category: "Cirugía Oral", description: "Extracción mínimamente invasiva con anestesia local controlada." },
+  { id: "14000000-0000-0000-0000-000000000006", name: "Tratamiento de Conducto (Endodoncia)", durationMinutes: 60, price: 260000, category: "Endodoncia", description: "Desinfección biomecánica y obturación tridimensional de conductos." },
+  { id: "14000000-0000-0000-0000-000000000007", name: "Control y Ajuste de Ortodoncia", durationMinutes: 45, price: 120000, category: "Ortodoncia", description: "Revisión mensual de aparatología fija o alineadores invisibles." },
 ];
 
 const citasFallback: Cita[] = [];
@@ -84,7 +84,7 @@ export function CitasView() {
   const [citas, setCitas] = useState<Cita[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [servicesList, setServicesList] = useState<string[]>(defaultSeedServices.map((s) => s.name));
-  const [servicesRaw, setServicesRaw] = useState<{ id: string; name: string }[]>(defaultSeedServices);
+  const [servicesRaw, setServicesRaw] = useState<ServiceItem[]>(defaultSeedServices);
   const [professionalsList, setProfessionalsList] = useState<string[]>([
     "Dra. Laura Gómez",
     "Dr. Roberto Martínez",
@@ -393,21 +393,54 @@ export function CitasView() {
         return map[name.trim().toLowerCase()] || name;
       };
 
-      // Catálogo de servicios
+      // Catálogo de servicios sincronizado con API y Catálogo Local
+      let mergedServices: ServiceItem[] = [];
       if (services.length > 0) {
-        const translatedServices = services.map((s: any) => ({ id: s.id, name: translateServiceName(s.name) }));
-        setServicesRaw(translatedServices);
-        const names = translatedServices.map((s: any) => s.name);
-        setServicesList(names);
-        setSelectedServiceId((prev) => (prev && translatedServices.some((t: any) => t.id === prev) ? prev : translatedServices[0].id));
-        setFormServicio((prev) => (prev && names.includes(prev) ? prev : names[0]));
-      } else {
-        setServicesRaw(defaultSeedServices);
-        const names = defaultSeedServices.map((s) => s.name);
-        setServicesList(names);
-        setSelectedServiceId((prev) => (prev && defaultSeedServices.some((s) => s.id === prev) ? prev : defaultSeedServices[0].id));
-        setFormServicio((prev) => (prev && names.includes(prev) ? prev : names[0]));
+        mergedServices = services.map((s: any) => ({
+          id: s.id,
+          name: translateServiceName(s.name),
+          durationMinutes: s.durationMinutes || s.duracion || 45,
+          price: s.price || s.precio || 0,
+          category: s.category || s.categoria || "Odontología General",
+          description: s.description || s.descripcion || "",
+        }));
       }
+
+      try {
+        const localCatalogRaw = localStorage.getItem("nexus_servicios_catalog");
+        if (localCatalogRaw) {
+          const localList: any[] = JSON.parse(localCatalogRaw);
+          if (Array.isArray(localList)) {
+            localList.forEach((ls) => {
+              if (ls.activo !== false && !mergedServices.some((ms) => areGuidsEqual(ms.id, ls.id) || ms.name.toLowerCase().trim() === (ls.nombre || ls.name || "").toLowerCase().trim())) {
+                mergedServices.push({
+                  id: ls.id,
+                  name: ls.nombre || ls.name,
+                  durationMinutes: ls.duracion || ls.durationMinutes || 45,
+                  price: ls.precio || ls.price || 0,
+                  category: ls.categoria || ls.category || "Odontología General",
+                  description: ls.descripcion || ls.description || "",
+                });
+              }
+            });
+          }
+        }
+      } catch (err) {
+        console.warn("Error reading nexus_servicios_catalog:", err);
+      }
+
+      // Asegurar que los servicios base estén presentes
+      defaultSeedServices.forEach((seedSrv) => {
+        if (!mergedServices.some((ms) => areGuidsEqual(ms.id, seedSrv.id) || ms.name.toLowerCase().trim() === seedSrv.name.toLowerCase().trim())) {
+          mergedServices.push(seedSrv);
+        }
+      });
+
+      setServicesRaw(mergedServices);
+      const names = mergedServices.map((s) => s.name);
+      setServicesList(names);
+      setSelectedServiceId((prev) => (prev && mergedServices.some((t) => areGuidsEqual(t.id, prev)) ? prev : mergedServices[0].id));
+      setFormServicio((prev) => (prev && names.includes(prev) ? prev : names[0]));
 
       // Catálogo y opciones de pacientes para búsqueda / filtrado
       const loadedPatientOpts: SelectOption[] = [];

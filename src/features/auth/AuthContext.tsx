@@ -453,6 +453,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         };
       }
 
+      // Comprobar si corresponde a un profesional registrado localmente
+      try {
+        const customUsers = JSON.parse(localStorage.getItem('nexus_custom_users') || '[]');
+        if (Array.isArray(customUsers)) {
+          const matched = customUsers.find(
+            (u: any) =>
+              (u.email?.toLowerCase() === cleanIdentifier.toLowerCase() ||
+                u.cedula?.toLowerCase() === cleanIdentifier.toLowerCase() ||
+                u.name?.toLowerCase() === cleanIdentifier.toLowerCase()) &&
+              u.password === cleanPassword
+          );
+
+          if (matched) {
+            const userData = parseProfileToUser({ user: matched, permissions: matched.permissions || [] });
+            userData.rol = matched.rol || 'ODONTOLOGO';
+            setUser(userData);
+            localStorage.setItem('auth_user', JSON.stringify(userData));
+            localStorage.setItem('auth_token', 'custom_jwt_' + (matched.id || Date.now()));
+            markUserOnline(userData);
+            navigate('/dashboard', { replace: true });
+            return { success: true };
+          }
+        }
+      } catch (customErr) {
+        console.warn('Error verificando usuarios locales:', customErr);
+      }
+
       if (respMsg && !respMsgLower.includes('invalid login id or password') && !respMsgLower.includes('invalid email or password') && !respMsgLower.includes('unauthorized') && !respMsgLower.includes('request failed')) {
         return { success: false, error: respMsg };
       }

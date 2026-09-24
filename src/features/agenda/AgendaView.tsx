@@ -300,24 +300,63 @@ export function AgendaView() {
         }
       }
 
-      // 2. Servicios
+      // 2. Catálogo de Servicios sincronizado con API y Catálogo de Servicios
+      let mergedAgendaServices: any[] = [];
       if (srvs.status === "fulfilled" && Array.isArray(srvs.value) && srvs.value.length > 0) {
-        const translatedServices = srvs.value.map((s: any) => ({ ...s, name: translateServiceName(s.name) }));
-        setServiciosEntities(translatedServices);
-        setNuevaCita((prev) => ({ ...prev, servicio: translatedServices[0].name }));
-      } else {
-        const fallbackOracleServices: any[] = [
-          { id: "30000000-0000-0000-0000-000000000001", name: "Valoración General Odontológica", durationMinutes: 45 },
-          { id: "30000000-0000-0000-0000-000000000002", name: "Profilaxis y Limpieza Dental", durationMinutes: 45 },
-          { id: "30000000-0000-0000-0000-000000000003", name: "Blanqueamiento Dental Clínico", durationMinutes: 60 },
-          { id: "30000000-0000-0000-0000-000000000004", name: "Restauración en Resina Compuesta", durationMinutes: 45 },
-          { id: "30000000-0000-0000-0000-000000000005", name: "Control de Ortodoncia", durationMinutes: 30 },
-          { id: "30000000-0000-0000-0000-000000000006", name: "Extracción Dental Simple", durationMinutes: 45 },
-          { id: "30000000-0000-0000-0000-000000000007", name: "Endodoncia / Tratamiento de Conductos", durationMinutes: 60 },
-        ];
-        setServiciosEntities(fallbackOracleServices);
-        setNuevaCita((prev) => ({ ...prev, servicio: fallbackOracleServices[0].name }));
+        mergedAgendaServices = srvs.value.map((s: any) => ({
+          ...s,
+          name: translateServiceName(s.name),
+          durationMinutes: s.durationMinutes || s.duracion || 45,
+          price: s.price || s.precio || 0,
+          category: s.category || s.categoria || "Odontología General",
+          description: s.description || s.descripcion || "",
+        }));
       }
+
+      try {
+        const localCatalogRaw = localStorage.getItem("nexus_servicios_catalog");
+        if (localCatalogRaw) {
+          const localList: any[] = JSON.parse(localCatalogRaw);
+          if (Array.isArray(localList)) {
+            localList.forEach((ls) => {
+              if (ls.activo !== false && !mergedAgendaServices.some((ms) => areGuidsEqual(ms.id, ls.id) || ms.name.toLowerCase().trim() === (ls.nombre || ls.name || "").toLowerCase().trim())) {
+                mergedAgendaServices.push({
+                  id: ls.id,
+                  name: ls.nombre || ls.name,
+                  durationMinutes: ls.duracion || ls.durationMinutes || 45,
+                  price: ls.precio || ls.price || 0,
+                  category: ls.categoria || ls.category || "Odontología General",
+                  description: ls.descripcion || ls.description || "",
+                });
+              }
+            });
+          }
+        }
+      } catch (err) {
+        console.warn("Error reading local catalog in AgendaView:", err);
+      }
+
+      const defaultBaseServices = [
+        { id: "14000000-0000-0000-0000-000000000001", name: "Valoración General Odontológica", durationMinutes: 30, price: 50000, category: "Higiene y Prevención" },
+        { id: "14000000-0000-0000-0000-000000000002", name: "Profilaxis y Limpieza Dental con Ultrasonido", durationMinutes: 45, price: 80000, category: "Higiene y Prevención" },
+        { id: "14000000-0000-0000-0000-000000000003", name: "Restauración en Resina Fotocurable", durationMinutes: 45, price: 75000, category: "Operatoria / Resinas" },
+        { id: "14000000-0000-0000-0000-000000000004", name: "Blanqueamiento Dental Clínico LED", durationMinutes: 60, price: 280000, category: "Estética Dental" },
+        { id: "14000000-0000-0000-0000-000000000005", name: "Extracción Dental Simple y Quirúrgica", durationMinutes: 45, price: 95000, category: "Cirugía Oral" },
+        { id: "14000000-0000-0000-0000-000000000006", name: "Tratamiento de Conducto (Endodoncia)", durationMinutes: 60, price: 260000, category: "Endodoncia" },
+        { id: "14000000-0000-0000-0000-000000000007", name: "Control y Ajuste de Ortodoncia", durationMinutes: 45, price: 120000, category: "Ortodoncia" },
+      ];
+
+      defaultBaseServices.forEach((baseSrv) => {
+        if (!mergedAgendaServices.some((ms) => areGuidsEqual(ms.id, baseSrv.id) || ms.name.toLowerCase().trim() === baseSrv.name.toLowerCase().trim())) {
+          mergedAgendaServices.push(baseSrv);
+        }
+      });
+
+      setServiciosEntities(mergedAgendaServices);
+      setNuevaCita((prev) => ({
+        ...prev,
+        servicio: prev.servicio && mergedAgendaServices.some((s) => s.name === prev.servicio) ? prev.servicio : mergedAgendaServices[0].name,
+      }));
 
       // 3. Pacientes y Personas (Autocomplete interactivo)
       const ptsList = pts.status === "fulfilled" && Array.isArray(pts.value) ? pts.value : [];
