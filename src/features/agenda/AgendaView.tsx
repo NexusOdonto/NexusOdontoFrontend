@@ -45,12 +45,15 @@ import {
 
 import { useAuth } from "../auth/AuthContext";
 import { getUserRole } from "../../utils/routePermissions";
+import { useNotifications } from "../../context/NotificationContext";
 import { appointmentService, type AppointmentResponseDto } from "../../api/appointmentService";
 import { professionalService } from "../../api/professionalService";
 import { serviceCatalogService, type ServiceResponseDto } from "../../api/serviceCatalogService";
 import { patientService } from "../../api/patientService";
 import { personService } from "../../api/personService";
 import { SelectOrWriteInput, type SelectOption } from "../../components/common/SelectOrWriteInput";
+import { ModernServiceSelect } from "../../components/common/ModernServiceSelect";
+import { ModernDoctorSelect } from "../../components/common/ModernDoctorSelect";
 import { areGuidsEqual } from "../../utils/roleUtils";
 import { resolveOrCreatePatient } from "../../utils/patientResolution";
 import { validateClinicAppointmentSchedule } from "../../utils/clinicSchedule";
@@ -145,6 +148,7 @@ export const translateServiceName = (name?: string): string => {
 
 export function AgendaView() {
   const { user } = useAuth();
+  const { refreshNotifications, addNotification } = useNotifications();
   const role = getUserRole(user);
   const isPaciente = role === "PACIENTE";
   const isOdontologo = role === "ODONTOLOGO";
@@ -167,6 +171,35 @@ export function AgendaView() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  const doctorSelectOptions = useMemo<SelectOption[]>(() => {
+    if (profesionalesEntities && profesionalesEntities.length > 0) {
+      return profesionalesEntities.map((p: any) => {
+        const nombre =
+          p.fullName ||
+          (p.firstName || p.lastName
+            ? `Dr(a). ${p.firstName || ""} ${p.lastName || ""}`.trim()
+            : p.name || "Dr. Odontólogo");
+        const specName = p.specialtyName || p.specialty || "Odontología General";
+        return {
+          id: p.id,
+          label: nombre,
+          subLabel: `Especialidad: ${specName}`,
+          specialty: specName,
+          avatar: p.avatar || null,
+          data: p,
+        };
+      });
+    }
+    return [
+      { label: "Dra. Laura Gómez", subLabel: "Especialidad: Ortodoncia y Estética", specialty: "Ortodoncia y Estética", id: "1d000000-0000-0000-0000-000000000001" },
+      { label: "Dr. Roberto Martínez", subLabel: "Especialidad: Cirugía Oral e Implantología", specialty: "Cirugía Oral e Implantología", id: "1d000000-0000-0000-0000-000000000002" },
+      { label: "Dra. Ana Sofía Silva", subLabel: "Especialidad: Endodoncia y Periodoncia", specialty: "Endodoncia y Periodoncia", id: "1d000000-0000-0000-0000-000000000003" },
+      { label: "Dr. Carlos Santana", subLabel: "Especialidad: Odontología Integral", specialty: "Odontología Integral", id: "8e7c7aa0-f574-41a8-8995-55faef58cdfb" },
+      { label: "Dr. Juan Martínez", subLabel: "Especialidad: Odontología General", specialty: "Odontología General" },
+      { label: "Dra. Patricia Silva", subLabel: "Especialidad: Endodoncia Microscópica", specialty: "Endodoncia Microscópica" },
+    ];
+  }, [profesionalesEntities]);
 
   const [odontologosSeleccionados, setOdontologosSeleccionados] = useState<string[]>([
     "Todos los odontólogos",
@@ -871,6 +904,16 @@ export function AgendaView() {
 
       setSuccessToast("¡Cita agendada exitosamente en el servidor!");
       setTimeout(() => setSuccessToast(null), 3500);
+
+      // Actualizar notificaciones del sistema en tiempo real
+      refreshNotifications();
+      window.dispatchEvent(new CustomEvent("nexus_appointment_changed"));
+      addNotification({
+        title: nuevaCita.estado === "Pendiente" ? "Nueva Cita Pendiente" : "Cita Agendada",
+        message: `${nuevaCita.servicio} para ${patientNameToUse} con ${nuevaCita.odontologo}.`,
+        link: "/agenda",
+        type: nuevaCita.estado === "Pendiente" ? "appointment_pending" : "appointment_confirmed",
+      });
 
       // Cierre del modal y refresco de agenda
       setMostrarModal(false);
@@ -2186,63 +2229,42 @@ export function AgendaView() {
                 type="paciente"
               />
 
-              <div>
-                <label className="mb-1.5 block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Tratamiento / Servicio *
-                </label>
-                {serviciosEntities.length > 0 ? (
-                  <select
-                    value={nuevaCita.servicio}
-                    onChange={(event) =>
-                      setNuevaCita((actual) => ({
-                        ...actual,
-                        servicio: event.target.value,
-                      }))
-                    }
-                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2.5 text-sm text-slate-900 dark:text-white outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-cyan-500 cursor-pointer transition-all"
-                  >
-                    {serviciosEntities.map((s) => (
-                      <option key={s.id} value={s.name}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    value={nuevaCita.servicio}
-                    onChange={(event) =>
-                      setNuevaCita((actual) => ({
-                        ...actual,
-                        servicio: event.target.value,
-                      }))
-                    }
-                    placeholder="Ej: Limpieza dental y valoración"
-                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2.5 text-sm text-slate-900 dark:text-white outline-none transition placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-800 focus:border-cyan-500"
-                  />
-                )}
-              </div>
+              <ModernServiceSelect
+                label="Tratamiento / Servicio"
+                value={nuevaCita.servicio}
+                onChange={(_id, name) =>
+                  setNuevaCita((actual) => ({
+                    ...actual,
+                    servicio: name,
+                  }))
+                }
+                services={serviciosEntities.length > 0 ? serviciosEntities : [
+                  { id: "30000000-0000-0000-0000-000000000001", name: "Valoración General", durationMinutes: 30 },
+                  { id: "30000000-0000-0000-0000-000000000002", name: "Profilaxis Dental", durationMinutes: 45 },
+                  { id: "30000000-0000-0000-0000-000000000003", name: "Blanqueamiento Dental", durationMinutes: 60 },
+                  { id: "30000000-0000-0000-0000-000000000004", name: "Restauración en Resina", durationMinutes: 45 },
+                  { id: "30000000-0000-0000-0000-000000000005", name: "Control de Ortodoncia", durationMinutes: 30 },
+                  { id: "30000000-0000-0000-0000-000000000006", name: "Extracción Dental", durationMinutes: 45 },
+                  { id: "30000000-0000-0000-0000-000000000007", name: "Endodoncia", durationMinutes: 60 },
+                ]}
+                required
+              />
 
-              <div>
-                <label className="mb-1.5 block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Odontólogo *
-                </label>
-                <GlassSelect
-                  value={nuevaCita.odontologo}
-                  onChange={(val) =>
-                    setNuevaCita((actual) => ({
-                      ...actual,
-                      odontologo: val,
-                    }))
-                  }
-                  options={listaOdontologos
-                    .filter((o) => o.nombre !== "Todos los odontólogos")
-                    .map((o) => ({
-                      value: o.nombre,
-                      label: o.nombre,
-                    }))}
-                  className="w-full py-2.5 text-xs rounded-xl"
-                />
-              </div>
+              <ModernDoctorSelect
+                label="Odontólogo"
+                value={nuevaCita.odontologo}
+                onChange={(val) =>
+                  setNuevaCita((actual) => ({
+                    ...actual,
+                    odontologo: val,
+                  }))
+                }
+                doctors={doctorSelectOptions}
+                selectedServiceName={nuevaCita.servicio}
+                allowNoPreference={false}
+                required
+                placeholder="Seleccionar odontólogo..."
+              />
 
               <div className="grid grid-cols-2 gap-3">
                 <div>

@@ -22,6 +22,9 @@ import { employeeService } from "../../api/employeeService";
 import { specialtyService } from "../../api/specialtyService";
 import { useNotifications } from "../../context/NotificationContext";
 import { SelectOrWriteInput, type SelectOption } from "../../components/common/SelectOrWriteInput";
+import { ModernServiceSelect } from "../../components/common/ModernServiceSelect";
+import { ModernDoctorSelect } from "../../components/common/ModernDoctorSelect";
+import { GlassSelect } from "../../components/common/GlassSelect";
 import { areGuidsEqual } from "../../utils/roleUtils";
 import { resolveOrCreatePatient } from "../../utils/patientResolution";
 import { validateClinicAppointmentSchedule } from "../../utils/clinicSchedule";
@@ -36,12 +39,12 @@ const defaultSeedPatients: SelectOption[] = [
 ];
 
 const defaultSeedDoctors: SelectOption[] = [
-  { label: "Dra. Laura Gómez", subLabel: "Especialidad: Ortodoncia y Estética", id: "1d000000-0000-0000-0000-000000000001" },
-  { label: "Dr. Roberto Martínez", subLabel: "Especialidad: Cirugía Oral e Implantología", id: "1d000000-0000-0000-0000-000000000002" },
-  { label: "Dra. Ana Sofía Silva", subLabel: "Especialidad: Endodoncia y Periodoncia", id: "1d000000-0000-0000-0000-000000000003" },
-  { label: "Dr. Carlos Santana", subLabel: "Especialidad: Odontología Integral", id: "8e7c7aa0-f574-41a8-8995-55faef58cdfb" },
-  { label: "Dr. Juan Martínez", subLabel: "Especialidad: Odontología General" },
-  { label: "Dra. Patricia Silva", subLabel: "Especialidad: Endodoncia Microscópica" },
+  { label: "Dra. Laura Gómez", subLabel: "Especialidad: Ortodoncia y Estética", specialty: "Ortodoncia y Estética", id: "1d000000-0000-0000-0000-000000000001" },
+  { label: "Dr. Roberto Martínez", subLabel: "Especialidad: Cirugía Oral e Implantología", specialty: "Cirugía Oral e Implantología", id: "1d000000-0000-0000-0000-000000000002" },
+  { label: "Dra. Ana Sofía Silva", subLabel: "Especialidad: Endodoncia y Periodoncia", specialty: "Endodoncia y Periodoncia", id: "1d000000-0000-0000-0000-000000000003" },
+  { label: "Dr. Carlos Santana", subLabel: "Especialidad: Odontología Integral", specialty: "Odontología Integral", id: "8e7c7aa0-f574-41a8-8995-55faef58cdfb" },
+  { label: "Dr. Juan Martínez", subLabel: "Especialidad: Odontología General", specialty: "Odontología General" },
+  { label: "Dra. Patricia Silva", subLabel: "Especialidad: Endodoncia Microscópica", specialty: "Endodoncia Microscópica" },
 ];
 
 const defaultSeedServices: { id: string; name: string }[] = [
@@ -58,7 +61,7 @@ const citasFallback: Cita[] = [];
 
 export function CitasView() {
   const { user } = useAuth();
-  const { refreshNotifications } = useNotifications();
+  const { refreshNotifications, addNotification } = useNotifications();
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const navState = location.state as {
@@ -341,11 +344,14 @@ export function CitasView() {
 
         if (p.id) {
           profsMap[String(p.id).toLowerCase()] = profName;
+          const profAvatar = person?.avatar || person?.avatarUrl || p.avatar || (person?.id ? localStorage.getItem(`user_avatar_${person.id}`) : null) || (p.id ? localStorage.getItem(`user_avatar_${p.id}`) : null) || null;
           enrichedProfs.push({
             id: p.id,
             label: profName,
             subLabel: `Especialidad: ${specName}`,
-            data: { professionalId: p.id, id: p.id, specialty: specName, personId: empPersonId }
+            specialty: specName,
+            avatar: profAvatar,
+            data: { professionalId: p.id, id: p.id, specialty: specName, personId: empPersonId, avatar: profAvatar }
           });
         }
       });
@@ -1035,8 +1041,14 @@ export function CitasView() {
 
       setShowRequestModal(false);
       setFormMotivo("");
-      setFormError(null);
       refreshNotifications();
+      window.dispatchEvent(new CustomEvent("nexus_appointment_changed"));
+      addNotification({
+        title: isPaciente ? "Nueva Solicitud de Cita" : "Nueva Cita Registrada",
+        message: `Cita para ${nuevaCita.paciente} (${nuevaCita.servicio}) el ${nuevaCita.fecha} a las ${nuevaCita.hora}.`,
+        link: "/agenda",
+        type: isPaciente ? "appointment_pending" : "appointment_confirmed",
+      });
       fetchAppointmentsAndCatalogs().catch(() => {});
       setSuccessToast(
         isPaciente
@@ -1771,78 +1783,33 @@ export function CitasView() {
                 />
               )}
 
-              <div>
-                <label htmlFor="serviceSelect" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Servicio o Tratamiento <span className="text-rose-500">*</span>
-                </label>
-                <select
-                  id="serviceSelect"
-                  value={selectedServiceId}
-                  onChange={(e) => {
-                    const chosenId = e.target.value;
-                    setSelectedServiceId(chosenId);
-                    const found = servicesRaw.find((s) => areGuidsEqual(s.id, chosenId)) ||
-                                  servicesEntities.find((s) => areGuidsEqual(s.id, chosenId));
-                    if (found) {
-                      setFormServicio(found.name);
-                    }
-                    setFormError(null);
-                  }}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all shadow-sm cursor-pointer"
-                >
-                  <option value="" disabled>
-                    Selecciona un servicio...
-                  </option>
-                  {servicesRaw.length > 0
-                    ? servicesRaw.map((service) => (
-                        <option key={service.id} value={service.id}>
-                          {service.name}
-                        </option>
-                      ))
-                    : servicesList.map((s, idx) => (
-                        <option key={s} value={`fallback-srv-${idx}`}>
-                          {s}
-                        </option>
-                      ))}
-                </select>
-              </div>
+              <ModernServiceSelect
+                id="serviceSelect"
+                value={selectedServiceId || formServicio}
+                onChange={(chosenId, chosenName) => {
+                  setSelectedServiceId(chosenId);
+                  setFormServicio(chosenName);
+                  setFormError(null);
+                }}
+                services={servicesRaw}
+                required
+              />
 
-              {isPaciente ? (
-                <div>
-                  <label htmlFor="patientDoctorSelect" className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
-                    <span>Odontólogo de Preferencia</span>
-                    <span className="text-[11px] font-normal text-teal-600 dark:text-teal-400">Opcional</span>
-                  </label>
-                  <select
-                    id="patientDoctorSelect"
-                    value={formProfesional}
-                    onChange={(e) => {
-                      setFormProfesional(e.target.value);
-                      setFormError(null);
-                    }}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all shadow-sm cursor-pointer"
-                  >
-                    <option value="">
-                      ✨ Sin preferencia (Cualquier odontólogo disponible)
-                    </option>
-                    {professionalsOptions.map((opt) => (
-                      <option key={opt.id || opt.label} value={opt.label}>
-                        {opt.label} {opt.subLabel ? `— ${opt.subLabel}` : ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : (
-                <SelectOrWriteInput
-                  label="Odontólogo Asignado"
-                  value={formProfesional}
-                  onChange={(val) => setFormProfesional(val)}
-                  options={professionalsOptions}
-                  placeholder="Seleccionar doctor..."
-                  required
-                  type="doctor"
-                />
-              )}
+              <ModernDoctorSelect
+                id="patientDoctorSelect"
+                value={formProfesional}
+                onChange={(chosenDoctor) => {
+                  setFormProfesional(chosenDoctor);
+                  setFormError(null);
+                }}
+                doctors={professionalsOptions}
+                selectedServiceName={formServicio}
+                allowNoPreference={isPaciente}
+                label={isPaciente ? "Odontólogo de Preferencia" : "Odontólogo Asignado"}
+                optionalLabel={isPaciente ? "Opcional" : undefined}
+                required={!isPaciente}
+                placeholder={isPaciente ? "✨ Sin preferencia (Cualquier odontólogo)" : "Seleccionar odontólogo..."}
+              />
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -1977,14 +1944,15 @@ export function CitasView() {
                 )}
               </div>
 
-              <SelectOrWriteInput
+              <ModernDoctorSelect
                 label="Odontólogo Tratante"
                 value={formProfesional}
                 onChange={(val) => setFormProfesional(val)}
-                options={professionalsOptions}
-                placeholder="Seleccionar odontólogo..."
+                doctors={professionalsOptions}
+                selectedServiceName={selectedCitaToAssign.servicio}
+                allowNoPreference={false}
                 required
-                type="doctor"
+                placeholder="Seleccionar odontólogo..."
               />
 
               <div className="grid grid-cols-2 gap-3">
@@ -2106,34 +2074,26 @@ export function CitasView() {
                     type="paciente"
                   />
 
-                  <SelectOrWriteInput
+                  <ModernDoctorSelect
                     label="Odontólogo Asignado"
                     value={editProfesional}
                     onChange={(val) => setEditProfesional(val)}
-                    options={professionalsOptions}
-                    placeholder="Seleccionar doctor..."
+                    doctors={professionalsOptions}
+                    selectedServiceName={editServicio}
+                    allowNoPreference={false}
                     required
-                    type="doctor"
+                    placeholder="Seleccionar doctor..."
                   />
                 </>
               )}
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Servicio o Tratamiento <span className="text-rose-500">*</span>
-                </label>
-                <select
-                  value={editServicio}
-                  onChange={(e) => setEditServicio(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all shadow-sm cursor-pointer"
-                >
-                  {servicesList.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <ModernServiceSelect
+                label="Servicio o Tratamiento"
+                value={editServicio}
+                onChange={(_id, name) => setEditServicio(name)}
+                services={servicesRaw}
+                required
+              />
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -2177,18 +2137,19 @@ export function CitasView() {
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                     Estado de la Cita
                   </label>
-                  <select
+                  <GlassSelect
                     value={editEstado}
-                    onChange={(e) => setEditEstado(e.target.value as EstadoCita)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all shadow-sm cursor-pointer"
-                  >
-                    <option value="Pendiente">Pendiente</option>
-                    <option value="Confirmada">Confirmada</option>
-                    <option value="En Atención">En Atención</option>
-                    <option value="Completada">Completada</option>
-                    <option value="Cancelada">Cancelada</option>
-                    <option value="No Asistió">No Asistió</option>
-                  </select>
+                    onChange={(val) => setEditEstado(val as EstadoCita)}
+                    options={[
+                      { value: "Pendiente", label: "Pendiente" },
+                      { value: "Confirmada", label: "Confirmada" },
+                      { value: "En Atención", label: "En Atención" },
+                      { value: "Completada", label: "Completada" },
+                      { value: "Cancelada", label: "Cancelada" },
+                      { value: "No Asistió", label: "No Asistió" },
+                    ]}
+                    className="w-full py-2.5 text-xs rounded-xl"
+                  />
                 </div>
               )}
 

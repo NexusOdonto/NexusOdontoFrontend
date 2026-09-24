@@ -6,6 +6,7 @@ import { appointmentService, type AppointmentResponseDto } from '../api/appointm
 import { professionalService } from '../api/professionalService';
 import { patientService } from '../api/patientService';
 import { personService } from '../api/personService';
+import { serviceCatalogService } from '../api/serviceCatalogService';
 import { areGuidsEqual } from '../utils/roleUtils';
 import { signalRService } from '../api/signalrService';
 
@@ -86,30 +87,84 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const isDoctor = role === 'ODONTOLOGO';
       const readIds = getReadNotifIds();
 
-      // 1. Consultar citas desde backend API o local storage
-      const appointments: AppointmentResponseDto[] = await appointmentService.getAll().catch(() => []);
-      
-      let pendingList: AppointmentResponseDto[] = [];
-      if (appointments && appointments.length > 0) {
-        pendingList = appointments.filter(
-          (a) => !a.cancelledAt && (!a.professionalId || a.professionalId === '00000000-0000-0000-0000-000000000000')
-        );
-      } else {
-        // Fallback local
-        const local = localStorage.getItem('nexus_citas');
-        if (local) {
-          try {
-            const parsed = JSON.parse(local);
-            if (Array.isArray(parsed)) {
-              pendingList = parsed.filter((c: any) => c.estado === 'Pendiente');
-            }
-          } catch {
-            pendingList = [];
-          }
+      // 1. Consultar catálogos y citas desde backend API y local storage
+      const [apiAppsRes, profsRes, personsRes, srvsRes] = await Promise.allSettled([
+        appointmentService.getAll(),
+        professionalService.getAll(),
+        personService.getAll(),
+        serviceCatalogService.getAll(),
+      ]);
+
+      const appointments: AppointmentResponseDto[] =
+        apiAppsRes.status === 'fulfilled' && Array.isArray(apiAppsRes.value) ? apiAppsRes.value : [];
+      const profsList =
+        profsRes.status === 'fulfilled' && Array.isArray(profsRes.value) ? profsRes.value : [];
+      const personsList =
+        personsRes.status === 'fulfilled' && Array.isArray(personsRes.value) ? personsRes.value : [];
+      const srvsList =
+        srvsRes.status === 'fulfilled' && Array.isArray(srvsRes.value) ? srvsRes.value : [];
+
+      const personsMap = new Map<string, any>();
+      personsList.forEach((p) => {
+        if (p.id) personsMap.set(String(p.id).toLowerCase(), p);
+      });
+
+      const profsMap = new Map<string, string>();
+      profsList.forEach((pr: any) => {
+        if (pr.id) {
+          const person = pr.personId ? personsMap.get(String(pr.personId).toLowerCase()) : null;
+          const name = person
+            ? `Dr(a). ${person.firstName || ''} ${person.lastName || ''}`.trim()
+            : (pr.fullName || (pr.firstName ? `Dr(a). ${pr.firstName} ${pr.lastName || ''}`.trim() : 'Odontólogo'));
+          profsMap.set(String(pr.id).toLowerCase(), name);
+        }
+      });
+
+      const srvMap = new Map<string, string>();
+      srvsList.forEach((s) => {
+        if (s.id) srvMap.set(String(s.id).toLowerCase(), s.name);
+      });
+
+      // Cargar citas locales de respaldo
+      let localCitas: any[] = [];
+      const local = localStorage.getItem('nexus_citas');
+      if (local) {
+        try {
+          const parsed = JSON.parse(local);
+          if (Array.isArray(parsed)) localCitas = parsed;
+        } catch {
+          localCitas = [];
         }
       }
 
-      setPendingAppointmentsCount(isStaff ? pendingList.length : 0);
+      // Identificar citas pendientes (estado "Pendiente" / "AGENDADA" / statusId 10000000-0000-0000-0000-000000000001 o sin odontólogo)
+      const isAppointmentPending = (a: any) => {
+        if (a.cancelledAt || a.estado === 'Cancelada' || a.estado === 'Completada') return false;
+        const statusId = String(a.appointmentStatusId || '').toLowerCase();
+        const statusName = String(a.statusName || a.estado || '').toLowerCase();
+        return (
+          statusId === '10000000-0000-0000-0000-000000000001' ||
+          statusName.includes('pend') ||
+          statusName.includes('agend') ||
+          statusName.includes('sched') ||
+          !a.professionalId ||
+          a.professionalId === '00000000-0000-0000-0000-000000000000' ||
+          a.estado === 'Pendiente'
+        );
+      };
+
+      const pendingApiApps = appointments.filter(isAppointmentPending);
+      const pendingLocalApps = localCitas.filter(isAppointmentPending);
+
+      // Combinar citas pendientes sin duplicar
+      const combinedPending = [...pendingApiApps];
+      pendingLocalApps.forEach((lc) => {
+        if (!combinedPending.some((ca) => ca.id === lc.id || ca.id === lc.appointmentId)) {
+          combinedPending.push(lc);
+        }
+      });
+
+      setPendingAppointmentsCount(isStaff ? combinedPending.length : 0);
 
       // Fetch Escalated WhatsApp conversations
       let waNotifs: SystemNotification[] = [];
@@ -145,56 +200,65 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       }
 
       // 2. Generar lista de notificaciones para recepción / admin
-      if (isStaff && pendingList.length > 0) {
-        const notifId = `pending-appointments-alert-${pendingList.length}`;
-        const notif: SystemNotification = {
-          id: notifId,
-          title: 'Solicitudes de Citas Pendientes',
-          message: `Tienes ${pendingList.length} ${
-            pendingList.length === 1 ? 'nueva solicitud de cita' : 'nuevas solicitudes de citas'
-          } por revisar y asignar odontólogo.`,
-          time: 'Ahora',
-          read: readIds.has(notifId) || readIds.has('pending-appointments-alert'),
-          type: 'appointment_pending',
-          link: '/citas?filtro=Pendiente',
-        };
+      if (isStaff) {
+        const staffNotifs: SystemNotification[] = [];
+
+        if (combinedPending.length > 0) {
+          // Notificación global resumida
+          const summaryNotifId = `pending-appointments-summary-${combinedPending.length}`;
+          staffNotifs.push({
+            id: summaryNotifId,
+            title: 'Solicitudes de Citas Pendientes',
+            message: `Tienes ${combinedPending.length} ${
+              combinedPending.length === 1 ? 'nueva cita pendiente' : 'nuevas citas pendientes'
+            } por revisar y gestionar en la agenda.`,
+            time: 'Ahora',
+            read: readIds.has(summaryNotifId) || readIds.has('pending-appointments-summary'),
+            type: 'appointment_pending',
+            link: '/agenda',
+          });
+
+          // Notificaciones individuales de las citas pendientes más recientes (hasta 6)
+          combinedPending.slice(0, 6).forEach((app: any, idx: number) => {
+            const notifId = `pending-appt-${app.id || app.appointmentId || idx}`;
+            const pName = app.paciente || app.patientName || 'Paciente';
+            const sName = app.servicio || (app.serviceId ? srvMap.get(String(app.serviceId).toLowerCase()) : '') || app.serviceName || 'Consulta Odontológica';
+            const dName = app.odontologo || app.profesional || (app.professionalId ? profsMap.get(String(app.professionalId).toLowerCase()) : '') || 'Odontólogo asignado';
+            const starts = app.startsAt ? new Date(app.startsAt) : null;
+            const fechaStr = app.fecha || (starts ? starts.toLocaleDateString('es-CO') : 'Hoy');
+            const horaStr = app.hora || app.horaInicio || (starts ? starts.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) : '');
+
+            staffNotifs.push({
+              id: notifId,
+              title: `Cita Pendiente • ${pName}`,
+              message: `${sName} para el ${fechaStr}${horaStr ? ` a las ${horaStr}` : ''} con ${dName}.`,
+              time: horaStr || 'Reciente',
+              read: readIds.has(notifId),
+              type: 'appointment_pending',
+              link: '/agenda',
+            });
+          });
+        }
+
         setNotifications((prev) => {
           const liveNotifs = prev.filter((n) => n.id.startsWith('notif-'));
-          return [...liveNotifs, notif, ...waNotifs];
+          const merged = [...liveNotifs, ...staffNotifs, ...waNotifs];
+          return merged.filter((v, i, a) => a.findIndex((t) => t.id === v.id) === i).slice(0, 20);
         });
       } else if (isDoctor) {
         // 3. Notificaciones específicas para Odontólogos
         const docName = (user.name || user.nombre || '').toLowerCase().trim();
         const userPersonId = (user.personId || '').toLowerCase().trim();
 
-        // Obtener lista de profesionales para mapear al doctor logueado
         let myProfId = '';
-        try {
-          const profs = await professionalService.getAll().catch(() => []);
-          const profsList = Array.isArray(profs) ? profs : (profs as any)?.data || [];
-          const matchedProf = profsList.find((p: any) => {
-            const pPersonId = String(p.personId || '').toLowerCase().trim();
-            if (userPersonId && pPersonId && pPersonId === userPersonId) return true;
-            const pName = `${p.firstName || ''} ${p.lastName || ''}`.toLowerCase().trim();
-            return docName && pName && (pName.includes(docName) || docName.includes(pName));
-          });
-          if (matchedProf?.id) {
-            myProfId = String(matchedProf.id);
-          }
-        } catch {
-          // ignore
-        }
-
-        // Obtener nombres de personas / pacientes
-        const personMap = new Map<string, string>();
-        try {
-          const persons = await personService.getAll().catch(() => []);
-          const personsList = Array.isArray(persons) ? persons : (persons as any)?.data || [];
-          personsList.forEach((p: any) => {
-            if (p.id) personMap.set(String(p.id).toLowerCase(), `${p.firstName || ''} ${p.lastName || ''}`.trim());
-          });
-        } catch {
-          // ignore
+        const matchedProf = profsList.find((p: any) => {
+          const pPersonId = String(p.personId || '').toLowerCase().trim();
+          if (userPersonId && pPersonId && pPersonId === userPersonId) return true;
+          const pName = `${p.firstName || ''} ${p.lastName || ''}`.toLowerCase().trim();
+          return docName && pName && (pName.includes(docName) || docName.includes(pName));
+        });
+        if (matchedProf?.id) {
+          myProfId = String(matchedProf.id);
         }
 
         const patientMap = new Map<string, string>();
@@ -203,15 +267,15 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           const patientsList = Array.isArray(patients) ? patients : (patients as any)?.data || [];
           patientsList.forEach((pt: any) => {
             if (pt.id) {
-              const name = pt.personId ? personMap.get(String(pt.personId).toLowerCase()) : `${pt.firstName || ''} ${pt.lastName || ''}`.trim();
-              if (name) patientMap.set(String(pt.id).toLowerCase(), name);
+              const person = pt.personId ? personsMap.get(String(pt.personId).toLowerCase()) : null;
+              const name = person ? `${person.firstName || ''} ${person.lastName || ''}`.trim() : (pt.name || 'Paciente');
+              patientMap.set(String(pt.id).toLowerCase(), name);
             }
           });
         } catch {
           // ignore
         }
 
-        // Filtrar citas del doctor
         const docAppointments = appointments.filter((a) => {
           if (a.cancelledAt) return false;
           if (myProfId && a.professionalId && areGuidsEqual(a.professionalId, myProfId)) return true;
@@ -219,26 +283,12 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           return false;
         });
 
-        // Citas locales
-        let localDocCitas: any[] = [];
-        const local = localStorage.getItem('nexus_citas');
-        if (local) {
-          try {
-            const parsed = JSON.parse(local);
-            if (Array.isArray(parsed)) {
-              localDocCitas = parsed.filter((c: any) => {
-                const cProf = (c.profesional || c.odontologo || '').toLowerCase().trim();
-                return docName && cProf && (cProf.includes(docName) || docName.includes(cProf));
-              });
-            }
-          } catch {
-            localDocCitas = [];
-          }
-        }
+        const localDocCitas = localCitas.filter((c: any) => {
+          const cProf = (c.profesional || c.odontologo || '').toLowerCase().trim();
+          return docName && cProf && (cProf.includes(docName) || docName.includes(cProf));
+        });
 
         const docNotifs: SystemNotification[] = [];
-
-        // Notificación resumen de citas de hoy
         const todayStr = new Date().toISOString().split('T')[0];
         const todayDocAppts = docAppointments.filter((a) => a.startsAt && a.startsAt.startsWith(todayStr));
         const todayLocalCitas = localDocCitas.filter((c) => c.fecha === todayStr);
@@ -257,13 +307,12 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           });
         }
 
-        // Notificaciones individuales de citas asignadas al odontólogo
         docAppointments.slice(0, 8).forEach((a) => {
           const notifId = `doc-appt-${a.id}`;
           const starts = a.startsAt ? new Date(a.startsAt) : null;
           const fechaStr = starts ? starts.toLocaleDateString('es-CO') : 'próximamente';
           const horaStr = starts ? starts.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) : '';
-          const pName = (a.patientId && patientMap.get(String(a.patientId).toLowerCase())) || 'Paciente';
+          const pName = (a.patientId && patientMap.get(String(a.patientId).toLowerCase())) || a.patientName || 'Paciente';
 
           docNotifs.push({
             id: notifId,
@@ -277,12 +326,12 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         });
 
         localDocCitas.slice(0, 5).forEach((c: any) => {
-          const notifId = `doc-local-${c.id}`;
+          const notifId = `doc-local-${c.id || c.appointmentId}`;
           if (!docNotifs.some((n) => n.id === notifId)) {
             docNotifs.push({
               id: notifId,
               title: 'Cita en Agenda',
-              message: `Cita con ${c.paciente || 'Paciente'} el ${c.fecha || ''} a las ${c.hora || ''}.`,
+              message: `Cita con ${c.paciente || 'Paciente'} el ${c.fecha || ''} a las ${c.hora || c.horaInicio || ''}.`,
               time: c.fecha || 'Agenda',
               read: readIds.has(notifId),
               type: 'appointment_confirmed',
@@ -297,17 +346,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           return combined.filter((v, i, a) => a.findIndex((t) => t.id === v.id) === i).slice(0, 15);
         });
       } else if (role === 'PACIENTE') {
-        const local = localStorage.getItem('nexus_citas');
         let ownPending = 0;
-        if (local) {
-          try {
-            const parsed = JSON.parse(local);
-            const pName = (user.name || user.nombre || '').toLowerCase();
-            ownPending = parsed.filter((c: any) => c.estado === 'Pendiente' && c.paciente.toLowerCase().includes(pName)).length;
-          } catch {
-            ownPending = 0;
-          }
-        }
+        const pName = (user.name || user.nombre || '').toLowerCase();
+        ownPending = localCitas.filter((c: any) => c.estado === 'Pendiente' && String(c.paciente || '').toLowerCase().includes(pName)).length;
+
         if (ownPending > 0) {
           const notifId = `patient-pending-alert-${ownPending}`;
           setNotifications((prev) => {
@@ -317,7 +359,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
               {
                 id: notifId,
                 title: 'Cita en Proceso de Aprobación',
-                message: `Tu solicitud de cita está siendo evaluada por recepción.`,
+                message: `Tu solicitud de cita está siendo evaluada por el equipo de recepción.`,
                 time: 'Reciente',
                 read: readIds.has(notifId) || readIds.has('patient-pending-alert'),
                 type: 'appointment_pending',
@@ -338,8 +380,25 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   useEffect(() => {
     refreshNotifications();
-    const interval = setInterval(refreshNotifications, 20000);
+    const interval = setInterval(refreshNotifications, 12000);
     return () => clearInterval(interval);
+  }, [refreshNotifications]);
+
+  // Escuchar eventos globales de creación de citas para refrescar en tiempo real
+  useEffect(() => {
+    const handleEvent = () => {
+      refreshNotifications();
+    };
+
+    window.addEventListener('nexus_appointment_changed', handleEvent);
+    window.addEventListener('nexus_refresh_notifications', handleEvent);
+    window.addEventListener('storage', handleEvent);
+
+    return () => {
+      window.removeEventListener('nexus_appointment_changed', handleEvent);
+      window.removeEventListener('nexus_refresh_notifications', handleEvent);
+      window.removeEventListener('storage', handleEvent);
+    };
   }, [refreshNotifications]);
 
   const userId = user?.id;
