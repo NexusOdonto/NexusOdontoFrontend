@@ -59,6 +59,10 @@ import { ModernDoctorSelect } from "../../components/common/ModernDoctorSelect";
 import { areGuidsEqual } from "../../utils/roleUtils";
 import { resolveOrCreatePatient } from "../../utils/patientResolution";
 import { validateClinicAppointmentSchedule } from "../../utils/clinicSchedule";
+import {
+  PROFESSIONAL_FALLBACK_LABEL,
+  resolveProfessionalDisplayName,
+} from "../../utils/professionalDisplayName";
 import { GlassSelect } from "../../components/common/GlassSelect";
 import { GlassTimePicker } from "../../components/common/GlassTimePicker";
 
@@ -271,7 +275,7 @@ export function AgendaView() {
     paciente: isPaciente ? (user?.name || "Paciente") : "",
     patientId: isPaciente ? (user?.id || "") : "",
     servicio: "Valoración General",
-    odontologo: "Dra. Laura Gómez",
+    odontologo: PROFESSIONAL_FALLBACK_LABEL,
     horaInicio: "09:00",
     horaFin: "10:00",
     estado: "Confirmada" as EstadoCita,
@@ -475,14 +479,11 @@ export function AgendaView() {
               }
             }
 
-            let resolvedProfName = a.professionalName;
-            if (!resolvedProfName || resolvedProfName.includes("Especialista")) {
-              const profsList = profs.status === "fulfilled" && Array.isArray(profs.value) ? profs.value : [];
-              const profEntity = profsList.find((pr: any) => areGuidsEqual(pr.id, a.professionalId));
-              if (profEntity) {
-                resolvedProfName = `Dr(a). ${profEntity.firstName || ""} ${profEntity.lastName || ""}`.trim();
-              }
-            }
+            let resolvedProfName = resolveProfessionalDisplayName({
+              professionalId: a.professionalId,
+              professionalName: a.professionalName,
+              professionals: profs.status === "fulfilled" && Array.isArray(profs.value) ? profs.value : [],
+            });
 
             let resolvedServiceName = a.serviceName;
             if (!resolvedServiceName || resolvedServiceName === "Consulta Odontológica") {
@@ -527,10 +528,7 @@ export function AgendaView() {
               }
             }
 
-            const profsList = profs.status === "fulfilled" && Array.isArray(profs.value) ? profs.value : [];
-            const fallbackDoc = profsList.length > 0 && profsList[0]?.firstName 
-              ? `Dr(a). ${profsList[0].firstName} ${profsList[0].lastName || ""}`.trim()
-              : "Dra. Laura Gómez";
+            const fallbackDoc = PROFESSIONAL_FALLBACK_LABEL;
 
             const resolvedPatientAvatar =
               (ptEntity as any)?.avatar ||
@@ -746,8 +744,10 @@ export function AgendaView() {
         docToSelect = odontologosSeleccionados[0];
       } else if (listaOdontologos.length > 1) {
         docToSelect = listaOdontologos[1].nombre;
+      } else if (listaOdontologos.length === 1) {
+        docToSelect = listaOdontologos[0].nombre;
       } else {
-        docToSelect = "Dra. Laura Gómez";
+        docToSelect = PROFESSIONAL_FALLBACK_LABEL;
       }
     }
 
@@ -755,7 +755,7 @@ export function AgendaView() {
       paciente: isPaciente ? (user?.name || "Paciente") : "",
       patientId: isPaciente ? (user?.id || "") : "",
       servicio: serviciosEntities.length > 0 ? serviciosEntities[0].name : "Valoración General",
-      odontologo: docToSelect || "Dra. Laura Gómez",
+      odontologo: docToSelect || PROFESSIONAL_FALLBACK_LABEL,
       horaInicio: hora,
       horaFin,
       estado: isPaciente ? "Pendiente" : "Confirmada",

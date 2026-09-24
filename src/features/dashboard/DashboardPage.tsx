@@ -28,6 +28,10 @@ import { personService } from "../../api/personService";
 import { professionalService } from "../../api/professionalService";
 import { serviceCatalogService } from "../../api/serviceCatalogService";
 import { areGuidsEqual } from "../../utils/roleUtils";
+import {
+  PROFESSIONAL_FALLBACK_LABEL,
+  resolveProfessionalDisplayName,
+} from "../../utils/professionalDisplayName";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
 import PatientDashboardView from "./PatientDashboardView";
 import { AnimatedCounter } from "../../components/ui/animated-counter";
@@ -155,14 +159,12 @@ export default function DashboardPage() {
             }
           }
 
-          // Resolver nombre del profesional
-          let resolvedDoctorName = dto.professionalName;
-          if (!resolvedDoctorName || resolvedDoctorName === "Dr(a). Especialista" || resolvedDoctorName === "Dr. Especialista") {
-            const prof = profesionalesList.find((pr: any) => areGuidsEqual(pr.id, dto.professionalId));
-            if (prof) {
-              resolvedDoctorName = `Dr(a). ${prof.firstName || ""} ${prof.lastName || ""}`.trim();
-            }
-          }
+          // Resolver nombre del profesional por id (nunca inventar Laura)
+          const resolvedDoctorName = resolveProfessionalDisplayName({
+            professionalId: dto.professionalId,
+            professionalName: dto.professionalName,
+            professionals: profesionalesList,
+          });
 
           // Resolver nombre del servicio
           let servName = dto.serviceName || dto.servicio;
@@ -178,7 +180,7 @@ export default function DashboardPage() {
             id: dto.id || `c-${idx}`,
             hora: dto.hora || (dto.startsAt && dto.startsAt.includes("T") ? dto.startsAt.split("T")[1].substring(0, 5) : "09:00 AM"),
             paciente: resolvedPatientName || "Paciente Registrado",
-            doctor: resolvedDoctorName || "Dra. Laura Gómez",
+            doctor: resolvedDoctorName || PROFESSIONAL_FALLBACK_LABEL,
             servicio: servName,
             sillon: `Sillón ${(idx % 3) + 1}`,
             estado: (dto.status || dto.estado || "Confirmada") as any,

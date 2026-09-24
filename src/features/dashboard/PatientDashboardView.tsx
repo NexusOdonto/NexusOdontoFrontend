@@ -26,6 +26,9 @@ import { professionalService } from "../../api/professionalService";
 import { personService } from "../../api/personService";
 import { employeeService } from "../../api/employeeService";
 import { areGuidsEqual } from "../../utils/roleUtils";
+import {
+  resolveProfessionalDisplayName,
+} from "../../utils/professionalDisplayName";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
 import { AnimatedCounter } from "../../components/ui/animated-counter";
 
@@ -113,19 +116,25 @@ export function PatientDashboardView({ user }: PatientDashboardViewProps) {
       });
 
       const resolveProfName = (professionalId?: string, fallback?: string): string => {
-        if (fallback && String(fallback).trim()) return String(fallback).trim();
-        if (!professionalId) return "Especialista";
-        const prof = profsList.find((p: any) => areGuidsEqual(p.id, professionalId));
-        if (!prof) return "Especialista";
-        if (prof.fullName) return prof.fullName;
-        if (prof.firstName || prof.lastName) {
-          return `Dra. ${`${prof.firstName || ""} ${prof.lastName || ""}`.trim()}`.replace(/\s+/g, " ").trim();
-        }
-        const personId =
-          (prof.personId && String(prof.personId).toLowerCase()) ||
-          (prof.employeeId && empToPerson[String(prof.employeeId).toLowerCase()]);
-        const fromPerson = personId ? personNameById[personId] : "";
-        return fromPerson ? `Dra. ${fromPerson}` : "Especialista";
+        return resolveProfessionalDisplayName({
+          professionalId,
+          professionalName: fallback,
+          professionals: profsList.map((p: any) => {
+            const personId =
+              (p.personId && String(p.personId).toLowerCase()) ||
+              (p.employeeId && empToPerson[String(p.employeeId).toLowerCase()]);
+            const fromPerson = personId ? personNameById[personId] : "";
+            return {
+              id: p.id,
+              fullName: p.fullName,
+              firstName: p.firstName || (fromPerson ? fromPerson.split(" ")[0] : undefined),
+              lastName:
+                p.lastName ||
+                (fromPerson ? fromPerson.split(" ").slice(1).join(" ") : undefined),
+              name: fromPerson ? `Dra. ${fromPerson}` : p.name,
+            };
+          }),
+        });
       };
 
       const statusLabel = (dto: any): PatientAppointmentItem["estado"] => {

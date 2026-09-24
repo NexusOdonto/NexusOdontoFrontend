@@ -28,6 +28,10 @@ import { GlassSelect } from "../../components/common/GlassSelect";
 import { areGuidsEqual } from "../../utils/roleUtils";
 import { resolveOrCreatePatient } from "../../utils/patientResolution";
 import { validateClinicAppointmentSchedule } from "../../utils/clinicSchedule";
+import {
+  PROFESSIONAL_FALLBACK_LABEL,
+  resolveProfessionalDisplayName,
+} from "../../utils/professionalDisplayName";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
 import { GlassDatePicker } from "../../components/common/GlassDatePicker";
 import { GlassTimePicker } from "../../components/common/GlassTimePicker";
@@ -328,12 +332,14 @@ export function CitasView() {
         let profName = "";
         if (person) {
           profName = `Dr(a). ${person.firstName || ""} ${person.lastName || ""}`.trim();
+        } else if (p.fullName) {
+          profName = String(p.fullName).trim();
         } else if (p.firstName || p.lastName) {
           profName = `Dr(a). ${p.firstName || ""} ${p.lastName || ""}`.trim();
         } else if (p.name) {
           profName = p.name;
         } else {
-          profName = "Dra. Laura Gómez";
+          profName = resolveProfessionalDisplayName({ professionalId: p.id });
         }
 
         let specName = "Odontología Integral";
@@ -358,9 +364,27 @@ export function CitasView() {
         }
       });
 
-      // Asegurar doctores base si faltan
+      // Asegurar doctores base si faltan; always register seed names by id (patient role may lack Persons)
       defaultSeedDoctors.forEach((seedDoc) => {
-        if (!enrichedProfs.some((ep) => ep.label.toLowerCase() === seedDoc.label.toLowerCase() || (seedDoc.id && areGuidsEqual(ep.id, seedDoc.id)))) {
+        if (seedDoc.id) {
+          const key = String(seedDoc.id).toLowerCase();
+          const current = profsMap[key];
+          if (!current || current === PROFESSIONAL_FALLBACK_LABEL) {
+            profsMap[key] = seedDoc.label;
+          }
+          const existing = enrichedProfs.find((ep) => areGuidsEqual(ep.id, seedDoc.id));
+          if (existing) {
+            if (
+              existing.label === PROFESSIONAL_FALLBACK_LABEL ||
+              (/laura\s+g[oó]mez/i.test(existing.label) && !/laura\s+g[oó]mez/i.test(seedDoc.label))
+            ) {
+              existing.label = seedDoc.label;
+              profsMap[key] = seedDoc.label;
+            }
+          } else {
+            enrichedProfs.push(seedDoc);
+          }
+        } else if (!enrichedProfs.some((ep) => ep.label.toLowerCase() === seedDoc.label.toLowerCase())) {
           enrichedProfs.push(seedDoc);
         }
       });
@@ -535,10 +559,12 @@ export function CitasView() {
             ? servicesMap[sId] || a.serviceName || "Consulta Odontológica"
             : a.serviceName || "Consulta Odontológica";
 
-          const prId = a.professionalId ? String(a.professionalId).toLowerCase() : "";
-          const profName = prId
-            ? profsMap[prId] || a.professionalName || "Dra. Laura Gómez"
-            : a.professionalName || "";
+          const profName = resolveProfessionalDisplayName({
+            professionalId: a.professionalId,
+            professionalName: a.professionalName,
+            catalogById: profsMap,
+            professionals: profs,
+          });
 
                     const stId = a.appointmentStatusId ? String(a.appointmentStatusId).toLowerCase() : "";
           let estadoName: EstadoCita = "Pendiente";
@@ -978,7 +1004,7 @@ export function CitasView() {
 
       const resolvedProfDisplayName = cleanSelectedProf
         ? (professionalsOptions.find(d => areGuidsEqual(d.id, targetProfId) || d.label.toLowerCase() === cleanSelectedProf.toLowerCase())?.label || cleanSelectedProf)
-        : (isPaciente ? "Por Asignar (Asignación automática)" : (professionalsOptions[0]?.label || "Dra. Laura Gómez"));
+        : (isPaciente ? "Por Asignar (Asignación automática)" : (professionalsOptions[0]?.label || PROFESSIONAL_FALLBACK_LABEL));
 
       const nuevaCita: Cita = {
         id: newId,
