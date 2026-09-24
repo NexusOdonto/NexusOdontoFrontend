@@ -2,6 +2,10 @@ import axiosClient from './axiosClient';
 import { personService } from './personService';
 import { employeeService } from './employeeService';
 import { specialtyService } from './specialtyService';
+import {
+  PROFESSIONAL_FALLBACK_LABEL,
+  resolveProfessionalDisplayName,
+} from '../utils/professionalDisplayName';
 
 export interface ProfessionalResponseDto {
   id: string;
@@ -96,9 +100,13 @@ export const professionalService = {
 
         const firstName = person?.firstName || '';
         const lastName = person?.lastName || '';
+        // Patient role often cannot read Persons — never leave names blank (UI used to invent Laura).
+        const seededName = resolveProfessionalDisplayName({ professionalId: p.id });
         const fullName = (firstName || lastName)
           ? `Dr(a). ${firstName} ${lastName}`.trim()
-          : undefined;
+          : seededName !== PROFESSIONAL_FALLBACK_LABEL
+            ? seededName
+            : undefined;
 
         return mapProfessional({
           ...p,
@@ -106,8 +114,8 @@ export const professionalService = {
           personId: emp?.personId,
           licenseNumber: p.professionalLicense || p.licenseNumber,
           professionalLicense: p.professionalLicense || p.licenseNumber,
-          firstName,
-          lastName,
+          firstName: firstName || undefined,
+          lastName: lastName || undefined,
           fullName,
           email: person?.email || '',
           phone: person?.phone || '',
@@ -118,7 +126,13 @@ export const professionalService = {
         });
       });
     } catch {
-      return rawProfs.map(mapProfessional);
+      return rawProfs.map((p) => {
+        const seededName = resolveProfessionalDisplayName({ professionalId: p.id });
+        return mapProfessional({
+          ...p,
+          fullName: seededName !== PROFESSIONAL_FALLBACK_LABEL ? seededName : undefined,
+        });
+      });
     }
   },
 

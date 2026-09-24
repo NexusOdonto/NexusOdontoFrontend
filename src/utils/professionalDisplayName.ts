@@ -52,6 +52,9 @@ export function resolveProfessionalDisplayName(options: {
   const { professionalId, professionalName, catalogById, professionals } = options;
   const fromSeed = knownNameById(professionalId);
 
+  // Known seeded IDs always win — prevents patient-role catalogs that invent Laura for every id.
+  if (fromSeed) return fromSeed;
+
   if (professionalId && catalogById) {
     const fromMap = catalogById[String(professionalId).toLowerCase()];
     if (
@@ -76,8 +79,6 @@ export function resolveProfessionalDisplayName(options: {
       }
     }
   }
-
-  if (fromSeed) return fromSeed;
 
   const raw = professionalName ? String(professionalName).trim() : "";
   if (raw && !/^especialista$/i.test(raw)) {

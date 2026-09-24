@@ -369,7 +369,11 @@ export function CitasView() {
         if (seedDoc.id) {
           const key = String(seedDoc.id).toLowerCase();
           const current = profsMap[key];
-          if (!current || current === PROFESSIONAL_FALLBACK_LABEL) {
+          const currentIsWrongLaura =
+            !!current &&
+            /laura\s+g[oó]mez/i.test(current) &&
+            !/laura\s+g[oó]mez/i.test(seedDoc.label);
+          if (!current || current === PROFESSIONAL_FALLBACK_LABEL || currentIsWrongLaura) {
             profsMap[key] = seedDoc.label;
           }
           const existing = enrichedProfs.find((ep) => areGuidsEqual(ep.id, seedDoc.id));
