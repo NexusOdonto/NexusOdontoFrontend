@@ -11,6 +11,7 @@ export interface Cita {
   rawGuid?: string;
   patientId?: string;
   paciente: string;
+  avatar?: string | null;
   servicio: string;
   odontologo: string;
   fecha: string;

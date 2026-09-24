@@ -25,6 +25,8 @@ import {
   Utensils,
   Ban,
   Moon,
+  PlayCircle,
+  FileText,
 } from "lucide-react";
 import { CarruselAlmuerzoVertical } from "./CarruselAlmuerzoVertical";
 import { useNavigate } from "react-router-dom";
@@ -219,6 +221,40 @@ export function AgendaView() {
   const [fechaSeleccionada, setFechaSeleccionada] = useState("");
   const [horaActual, setHoraActual] = useState(new Date());
   const [loading, setLoading] = useState(false);
+
+  const pacienteDetalleAvatar = useMemo(() => {
+    if (!citaDetalle) return null;
+    if (citaDetalle.avatar) return citaDetalle.avatar;
+    if (isPaciente && user) {
+      const userAv = (user as any).avatar || (user as any).fotoUrl;
+      if (userAv) return userAv;
+    }
+
+    const ptEntity = pacientesEntities.find((p: any) =>
+      areGuidsEqual(p.id, citaDetalle.patientId) ||
+      (p.name && citaDetalle.paciente && p.name.trim().toLowerCase() === citaDetalle.paciente.trim().toLowerCase())
+    );
+    const perEntity = personsEntities.find((per: any) =>
+      (ptEntity && areGuidsEqual(per.id, ptEntity.personId)) ||
+      areGuidsEqual(per.id, citaDetalle.patientId) ||
+      (`${per.firstName || ""} ${per.lastName || ""}`.trim().toLowerCase() === (citaDetalle.paciente || "").trim().toLowerCase())
+    );
+
+    const found =
+      ptEntity?.avatar ||
+      ptEntity?.fotoUrl ||
+      ptEntity?.profilePicture ||
+      perEntity?.avatar ||
+      perEntity?.fotoUrl ||
+      perEntity?.profilePicture;
+    if (found) return found;
+
+    if (citaDetalle.patientId) {
+      const lsAv = localStorage.getItem(`user_avatar_${citaDetalle.patientId}`);
+      if (lsAv) return lsAv;
+    }
+    return null;
+  }, [citaDetalle, isPaciente, user, pacientesEntities, personsEntities]);
 
   useEffect(() => {
     const actualizarHora = () => {
@@ -424,13 +460,14 @@ export function AgendaView() {
             }
 
             // Enriquecimiento de nombres reales a partir de los catálogos y entidades
+            const ptEntity = ptsList.find((p: any) => areGuidsEqual(p.id, a.patientId));
+            const perEntity = persList.find((per: any) => 
+              (ptEntity && areGuidsEqual(per.id, ptEntity.personId)) ||
+              areGuidsEqual(per.id, a.patientId)
+            );
+
             let resolvedPatientName = a.patientName;
             if (!resolvedPatientName || resolvedPatientName === "Paciente Agendado") {
-              const ptEntity = ptsList.find((p: any) => areGuidsEqual(p.id, a.patientId));
-              const perEntity = persList.find((per: any) => 
-                (ptEntity && areGuidsEqual(per.id, ptEntity.personId)) ||
-                areGuidsEqual(per.id, a.patientId)
-              );
               if (perEntity) {
                 resolvedPatientName = `${perEntity.firstName || ""} ${perEntity.lastName || ""}`.trim();
               } else if (ptEntity?.firstName || ptEntity?.lastName) {
@@ -495,11 +532,22 @@ export function AgendaView() {
               ? `Dr(a). ${profsList[0].firstName} ${profsList[0].lastName || ""}`.trim()
               : "Dra. Laura Gómez";
 
+            const resolvedPatientAvatar =
+              (ptEntity as any)?.avatar ||
+              (ptEntity as any)?.fotoUrl ||
+              (ptEntity as any)?.profilePicture ||
+              (perEntity as any)?.avatar ||
+              (perEntity as any)?.fotoUrl ||
+              (perEntity as any)?.profilePicture ||
+              (a.patientId ? localStorage.getItem(`user_avatar_${a.patientId}`) : null) ||
+              null;
+
             return {
               id: idx + 1000,
               rawGuid: a.id,
               patientId: a.patientId,
               paciente: resolvedPatientName || "Paciente Registrado",
+              avatar: resolvedPatientAvatar,
               servicio: resolvedServiceName || "Valoración General",
               odontologo: resolvedProfName || fallbackDoc,
               fecha: fechaStr,
@@ -1006,6 +1054,82 @@ export function AgendaView() {
       const errorMsg = error?.response?.data?.message || "No se pudo eliminar la cita en el servidor";
       setErrorMessage(errorMsg);
       setTimeout(() => setErrorMessage(null), 5000);
+    }
+  };
+
+  const statusGuidMap: Record<EstadoCita, string> = {
+    "Pendiente": "10000000-0000-0000-0000-000000000001",
+    "Confirmada": "10000000-0000-0000-0000-000000000002",
+    "En Atención": "10000000-0000-0000-0000-000000000003",
+    "Completada": "10000000-0000-0000-0000-000000000004",
+    "No disponible": "10000000-0000-0000-0000-000000000005",
+    "Disponible": "10000000-0000-0000-0000-000000000002",
+  };
+
+  const actualizarEstadoCita = async (targetCita: Cita, nuevoEstado: EstadoCita) => {
+    try {
+      if (targetCita.rawGuid && targetCita.rawGuid.length > 10) {
+        let resolvedProfId: string | undefined;
+        const cleanProf = (targetCita.odontologo || "").replace(/^dr\(a\)\.?\s*/i, "").trim().toLowerCase();
+        const foundProf = profesionalesEntities.find((p) => {
+          const fn = `${p.firstName || ""} ${p.lastName || ""}`.trim().toLowerCase();
+          return cleanProf && (fn.includes(cleanProf) || cleanProf.includes(fn));
+        });
+        resolvedProfId = foundProf?.id || profesionalesEntities[0]?.id || "00000000-0000-0000-0000-000000000000";
+
+        const cleanServ = (targetCita.servicio || "").trim().toLowerCase();
+        const foundServ = serviciosEntities.find((s) => (s.name || "").trim().toLowerCase() === cleanServ);
+        const resolvedServId = foundServ?.id || serviciosEntities[0]?.id || "30000000-0000-0000-0000-000000000001";
+
+        const startsAt = `${targetCita.fecha}T${targetCita.horaInicio}:00`;
+        const endsAt = `${targetCita.fecha}T${targetCita.horaFin}:00`;
+
+        await appointmentService.update(targetCita.rawGuid, {
+          patientId: targetCita.patientId,
+          professionalId: resolvedProfId || "00000000-0000-0000-0000-000000000000",
+          serviceId: resolvedServId,
+          startsAt,
+          endsAt,
+          appointmentStatusId: statusGuidMap[nuevoEstado] || "10000000-0000-0000-0000-000000000002",
+          appointmentOriginId: "20000000-0000-0000-0000-000000000003",
+          reasonForVisit: `Servicio: ${targetCita.servicio}`,
+          notes: `Estado actualizado a ${nuevoEstado}`,
+          cancelledAt: nuevoEstado === "No disponible" ? new Date().toISOString() : undefined,
+          cancellationReason: nuevoEstado === "No disponible" ? "Cancelada desde la agenda" : undefined,
+        });
+      }
+
+      setCitas((prev) =>
+        prev.map((c) => (c.id === targetCita.id || (targetCita.rawGuid && c.rawGuid === targetCita.rawGuid) ? { ...c, estado: nuevoEstado } : c))
+      );
+
+      if (citaDetalle && (citaDetalle.id === targetCita.id || (targetCita.rawGuid && citaDetalle.rawGuid === targetCita.rawGuid))) {
+        setCitaDetalle((prev) => (prev ? { ...prev, estado: nuevoEstado } : null));
+      }
+
+      refreshNotifications();
+      window.dispatchEvent(new CustomEvent("nexus_appointment_changed"));
+
+      const msg =
+        nuevoEstado === "Completada"
+          ? "¡Cita marcada como Terminada / Completada con éxito!"
+          : nuevoEstado === "En Atención"
+          ? "Cita iniciada: Paciente En Atención"
+          : `Estado actualizado a: ${nuevoEstado}`;
+
+      setSuccessToast(msg);
+      setTimeout(() => setSuccessToast(null), 3500);
+      await fetchAgendaData();
+    } catch (err: any) {
+      console.error("Error al actualizar estado en agenda:", err);
+      setCitas((prev) =>
+        prev.map((c) => (c.id === targetCita.id || (targetCita.rawGuid && c.rawGuid === targetCita.rawGuid) ? { ...c, estado: nuevoEstado } : c))
+      );
+      if (citaDetalle && (citaDetalle.id === targetCita.id || (targetCita.rawGuid && citaDetalle.rawGuid === targetCita.rawGuid))) {
+        setCitaDetalle((prev) => (prev ? { ...prev, estado: nuevoEstado } : null));
+      }
+      setSuccessToast(`Estado actualizado localmente a: ${nuevoEstado}`);
+      setTimeout(() => setSuccessToast(null), 3500);
     }
   };
 
@@ -1906,8 +2030,14 @@ export function AgendaView() {
                 {/* Tarjeta Destacada del Paciente */}
                 <div className="flex items-center justify-between gap-3 p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 shadow-xs">
                   <div className="flex items-center gap-3.5 min-w-0">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-600 text-white font-black text-lg shadow-md shadow-cyan-500/20">
-                      {citaDetalle.paciente.charAt(0).toUpperCase()}
+                    <div className="relative h-12 w-12 shrink-0 rounded-2xl overflow-hidden border border-cyan-500/40 dark:border-cyan-400/40 bg-slate-100 dark:bg-slate-900 shadow-md ring-2 ring-cyan-500/20 flex items-center justify-center">
+                      <UserAvatar
+                        avatar={pacienteDetalleAvatar}
+                        name={citaDetalle.paciente}
+                        className="h-full w-full object-cover"
+                        fallbackClassName="h-full w-full flex items-center justify-center font-bold text-lg"
+                        animate="hover"
+                      />
                     </div>
                     <div className="min-w-0">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400 bg-cyan-500/10 dark:bg-cyan-500/20 px-2 py-0.5 rounded-md">
@@ -1979,12 +2109,122 @@ export function AgendaView() {
                       <span>Estado Clínico</span>
                     </div>
                     <div className="pt-0.5">
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-cyan-500/15 text-cyan-800 dark:text-cyan-300 border border-cyan-500/30">
-                        <span className="h-2 w-2 rounded-full bg-cyan-500 animate-pulse" />
-                        {citaDetalle.estado}
-                      </span>
+                      {citaDetalle.estado === "Completada" ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30">
+                          <CheckCircle2 size={13} className="text-emerald-500" />
+                          Completada / Finalizada
+                        </span>
+                      ) : citaDetalle.estado === "En Atención" ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-500/15 text-blue-800 dark:text-blue-300 border border-blue-500/30 animate-pulse">
+                          <PlayCircle size={13} className="text-blue-500" />
+                          En Atención Clínica
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-cyan-500/15 text-cyan-800 dark:text-cyan-300 border border-cyan-500/30">
+                          <span className="h-2 w-2 rounded-full bg-cyan-500 animate-pulse" />
+                          {citaDetalle.estado}
+                        </span>
+                      )}
                     </div>
                   </div>
+                </div>
+
+                {/* Panel de Gestión del Estado y Cierre de Consulta */}
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-teal-500/10 via-cyan-500/10 to-blue-500/10 border border-teal-500/20 dark:border-teal-500/30 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                      <Sparkles size={14} className="text-teal-500" />
+                      <span>Control y Cierre de Consulta</span>
+                    </span>
+                    <span className="text-[10px] uppercase font-bold text-teal-700 dark:text-teal-300 tracking-wider bg-teal-500/15 px-2 py-0.5 rounded-md">
+                      Acción Inmediata
+                    </span>
+                  </div>
+
+                  {citaDetalle.estado === "Completada" ? (
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 shadow-xs">
+                      <div className="flex items-center gap-2.5">
+                        <CheckCircle2 size={20} className="text-emerald-500 shrink-0" />
+                        <div>
+                          <p className="text-xs font-extrabold">Esta cita ya fue finalizada y completada</p>
+                          <p className="text-[11px] opacity-80">La sesión odontológica se encuentra registrada como completada.</p>
+                        </div>
+                      </div>
+                      {!isPaciente && (
+                        <button
+                          type="button"
+                          onClick={() => actualizarEstadoCita(citaDetalle, "En Atención")}
+                          className="px-3 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-900 dark:text-emerald-200 text-xs font-bold transition cursor-pointer active:scale-95 shrink-0"
+                          title="Volver a abrir cita para modificaciones"
+                        >
+                          Reabrir Atención
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {/* Botón Principal: Finalizar Cita */}
+                      <button
+                        type="button"
+                        onClick={() => actualizarEstadoCita(citaDetalle, "Completada")}
+                        className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-600 hover:to-teal-600 text-slate-950 font-black text-xs transition-all shadow-md shadow-emerald-500/20 active:scale-98 cursor-pointer"
+                      >
+                        <CheckCircle2 size={16} className="text-slate-950" />
+                        <span>Marcar Cita como Terminada / Completada</span>
+                      </button>
+
+                      {/* Botones secundarios de acción clínica para Profesionales / Administradores */}
+                      {!isPaciente && (
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                          {citaDetalle.estado !== "En Atención" && (
+                            <button
+                              type="button"
+                              onClick={() => actualizarEstadoCita(citaDetalle, "En Atención")}
+                              className="flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl border border-blue-500/40 bg-blue-50/70 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold text-xs hover:bg-blue-100 dark:hover:bg-blue-900/50 transition cursor-pointer shadow-xs active:scale-95"
+                            >
+                              <PlayCircle size={14} />
+                              <span>En Atención</span>
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCitaDetalle(null);
+                              navigate("/odontograma", {
+                                state: {
+                                  appointmentId: citaDetalle.rawGuid,
+                                  patientId: citaDetalle.patientId,
+                                  patientName: citaDetalle.paciente,
+                                },
+                              });
+                            }}
+                            className="flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl border border-cyan-500/40 bg-cyan-50/70 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 font-bold text-xs hover:bg-cyan-100 dark:hover:bg-cyan-900/50 transition cursor-pointer shadow-xs active:scale-95"
+                          >
+                            <Smile size={14} />
+                            <span>Odontograma</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCitaDetalle(null);
+                              navigate("/historia-clinica", {
+                                state: {
+                                  patientId: citaDetalle.patientId,
+                                  patientName: citaDetalle.paciente,
+                                },
+                              });
+                            }}
+                            className="flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl border border-indigo-500/40 bg-indigo-50/70 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-bold text-xs hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition cursor-pointer shadow-xs active:scale-95"
+                          >
+                            <FileText size={14} />
+                            <span>Historia</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -2077,6 +2317,7 @@ export function AgendaView() {
                         <div className="h-10 w-10 shrink-0 rounded-xl overflow-hidden border border-cyan-500/40 dark:border-cyan-400/50 shadow-sm flex items-center justify-center bg-slate-100 dark:bg-slate-900">
                           <UserAvatar
                             name={cita.paciente}
+                            avatar={cita.avatar}
                             className="h-full w-full object-cover"
                             fallbackClassName="h-full w-full flex items-center justify-center font-bold text-xs"
                           />
