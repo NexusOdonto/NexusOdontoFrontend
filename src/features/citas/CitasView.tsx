@@ -29,6 +29,8 @@ import { areGuidsEqual } from "../../utils/roleUtils";
 import { resolveOrCreatePatient } from "../../utils/patientResolution";
 import { validateClinicAppointmentSchedule } from "../../utils/clinicSchedule";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
+import { GlassDatePicker } from "../../components/common/GlassDatePicker";
+import { GlassTimePicker } from "../../components/common/GlassTimePicker";
 import { AlertCircle } from "lucide-react";
 
 const defaultSeedPatients: SelectOption[] = [
@@ -1737,12 +1739,12 @@ export function CitasView() {
         </div>
 
         {/* Filtro por fecha */}
-        <div className="flex items-center gap-2 self-end md:self-auto">
-          <input
-            type="date"
+        <div className="flex items-center gap-2 self-end md:self-auto min-w-[200px]">
+          <GlassDatePicker
             value={fecha || ""}
-            onChange={(e) => setFecha(e.target.value)}
-            className="px-3.5 py-2 bg-white/90 dark:bg-slate-950/65 border border-slate-200 dark:border-white/20 rounded-2xl text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all backdrop-blur-xl shadow-md scheme-dark"
+            onChange={(val) => setFecha(val)}
+            placeholder="Filtrar por fecha..."
+            variant="cyan"
           />
 
           {(search || fecha || estadoFiltro !== "Todos") && (
@@ -1845,19 +1847,14 @@ export function CitasView() {
                 placeholder={isPaciente ? "✨ Sin preferencia (Cualquier odontólogo)" : "Seleccionar odontólogo..."}
               />
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                    Fecha <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="date"
+                  <GlassDatePicker
+                    label="Fecha"
                     required
-                    name="fecha"
-                    min={todayDateString}
+                    minDate={todayDateString}
                     value={formFecha}
-                    onChange={(e) => {
-                      const newDate = e.target.value;
+                    onChange={(newDate) => {
                       setFormFecha(newDate);
                       if (newDate === todayDateString) {
                         const [currH] = (formHora || "00:00").split(":").map(Number);
@@ -1867,27 +1864,22 @@ export function CitasView() {
                         }
                       }
                     }}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all shadow-sm"
+                    variant="teal"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                    {isPaciente ? "Horario preferido *" : "Hora *"}
-                  </label>
-                  <input
-                    type="time"
-                    required
-                    name="hora"
-                    min="08:00"
-                    max="16:30"
-                    step="1800"
-                    value={formHora}
-                    onChange={(e) => {
-                      setFormHora(e.target.value);
+                  <GlassTimePicker
+                    label={isPaciente ? "Horario preferido" : "Hora"}
+                    value={formHora || "08:00"}
+                    minHour={8}
+                    maxHour={17}
+                    minuteStep={30}
+                    onChange={(newTime) => {
+                      setFormHora(newTime);
                       setFormError(null);
                     }}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all shadow-sm"
+                    variant="teal"
                   />
                   <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 block leading-tight">
                     Jornada: 08:00 - 12:00 | 14:00 - 17:00 (última cita 16:30)
@@ -1989,31 +1981,27 @@ export function CitasView() {
                 placeholder="Seleccionar odontólogo..."
               />
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                    Fecha de Consulta <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="date"
+                  <GlassDatePicker
+                    label="Fecha de Consulta"
                     required
-                    min={todayDateString}
+                    minDate={todayDateString}
                     value={formFecha}
-                    onChange={(e) => setFormFecha(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all shadow-sm"
+                    onChange={(val) => setFormFecha(val)}
+                    variant="teal"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                    Hora de Consulta <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="time"
-                    required
-                    value={formHora}
-                    onChange={(e) => setFormHora(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all shadow-sm"
+                  <GlassTimePicker
+                    label="Hora de Consulta"
+                    value={formHora || "08:00"}
+                    minHour={8}
+                    maxHour={17}
+                    minuteStep={30}
+                    onChange={(val) => setFormHora(val)}
+                    variant="teal"
                   />
                 </div>
               </div>
@@ -2129,39 +2117,27 @@ export function CitasView() {
                 required
               />
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                    Fecha <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="date"
+                  <GlassDatePicker
+                    label="Fecha"
                     required
-                    name="editFecha"
-                    min={todayDateString}
+                    minDate={todayDateString}
                     value={editFecha}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setEditFecha(val);
-                    }}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all shadow-sm"
+                    onChange={(val) => setEditFecha(val)}
+                    variant="teal"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                    Hora <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="time"
-                    required
-                    name="editHora"
-                    value={editHora}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setEditHora(val);
-                    }}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700 text-sm text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all shadow-sm"
+                  <GlassTimePicker
+                    label="Hora"
+                    value={editHora || "08:00"}
+                    minHour={8}
+                    maxHour={17}
+                    minuteStep={30}
+                    onChange={(val) => setEditHora(val)}
+                    variant="teal"
                   />
                 </div>
               </div>

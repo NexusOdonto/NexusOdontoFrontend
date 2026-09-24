@@ -31,7 +31,6 @@ import { areGuidsEqual } from "../../utils/roleUtils";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
 import PatientDashboardView from "./PatientDashboardView";
 import { AnimatedCounter } from "../../components/ui/animated-counter";
-import { FolderComponent } from "../../components/ui/folder-component";
 
 interface CitaItem {
   id: string;
@@ -716,42 +715,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* EXPEDIENTE RÁPIDO 3D RARE UI — recepción no tiene permiso de historia clínica */}
-          {role !== "RECEPCIONISTA" && (
-          <div className="p-5 rounded-2xl border border-slate-200/90 dark:border-white/15 bg-white/95 dark:bg-slate-950/65 backdrop-blur-xl shadow-sm space-y-3 flex flex-col items-center justify-center text-center">
-            <div className="w-full text-left pb-2 border-b border-slate-100 dark:border-white/10 flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                <FileText size={14} className="text-teal-500" />
-                <span>Archivador Clínico 3D</span>
-              </span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-500/15 text-teal-700 dark:text-teal-300">
-                NexusOdonto
-              </span>
-            </div>
-            
-            <FolderComponent
-              color="teal"
-              size="sm"
-              title="Dossier Global"
-              subtitle="Acceso directo a expedientes clínicos"
-              items={[
-                { title: "Historias Clínicas", tag: "Evoluciones" },
-                { title: "Odontograma FDI", tag: "3D Dental" },
-                { title: "Recetas y Fórmulas", tag: "Prescripción" },
-              ]}
-              onCardClick={() => navigate("/historia-clinica")}
-            />
 
-            <button
-              type="button"
-              onClick={() => navigate("/historia-clinica")}
-              className="text-xs font-bold text-teal-600 dark:text-teal-400 hover:underline cursor-pointer flex items-center gap-1 pt-1"
-            >
-              <span>Abrir Gestor de Historias Clínicas</span>
-              <ArrowRight size={13} />
-            </button>
-          </div>
-          )}
 
           {/* RECORDATORIO / ESTADO DEL SISTEMA SEGÚN ROL */}
           <div className="p-4.5 rounded-2xl bg-amber-100/80 dark:bg-[#1a1405]/90 border border-amber-400/60 dark:border-amber-500/40 shadow-md dark:shadow-[0_4px_20px_rgba(245,158,11,0.08)] backdrop-blur-2xl flex items-start gap-3.5 text-xs">

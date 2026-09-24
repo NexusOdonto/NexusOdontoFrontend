@@ -352,7 +352,11 @@ export function HistoriaClinicaView() {
       );
       if (found && String(found.id) !== String(selectedPatientId)) {
         setSelectedPatientId(String(found.id));
+      } else if (!selectedPatientId && patients.length > 0) {
+        setSelectedPatientId(String(patients[0].id));
       }
+    } else if (!selectedPatientId && patients.length > 0) {
+      setSelectedPatientId(String(patients[0].id));
     }
   }, [location.key, targetPatientId, targetPatientDoc, targetPatientName, patients, isPaciente, selectedPatientId]);
 
@@ -1220,7 +1224,7 @@ export function HistoriaClinicaView() {
           </h1>
           <p className="text-sm sm:text-base text-slate-600 dark:text-slate-200 mt-1 font-medium">
             {isPaciente
-              ? "Consulta tu expediente personal, evoluciones médicas, diagnósticos CIE-10, fórmulas y archivador digital 3D."
+              ? "Consulta tu expediente personal, evoluciones médicas, diagnósticos CIE-10, fórmulas y archivos clínicos."
               : "Expediente digital, seguimiento cronológico de evoluciones y diagnósticos de pacientes."}
           </p>
         </div>
@@ -1481,47 +1485,6 @@ export function HistoriaClinicaView() {
                   <Smile size={13} /> Odontograma
                 </button>
               </div>
-
-              {/* Mini Widget 3D Folder Permanente: Dossier Activo */}
-              <div className="pt-3 border-t border-slate-200/80 dark:border-white/10 flex flex-col items-center justify-center space-y-2">
-                <FolderComponent
-                  color="teal"
-                  size="sm"
-                  title="Dossier Activo"
-                  subtitle={`${selectedPatient.firstName} ${selectedPatient.lastName}`}
-                  items={[
-                    { title: "Odontograma FDI", tag: odontogramSummary ? `${odontogramSummary.findingsCount} Hallazgos` : "0 Hallazgos" },
-                    { title: "Evoluciones", tag: `${attentions.length} Reg.` },
-                    { title: "Diagnósticos", tag: `${diagnoses.length} CIE-10` },
-                  ]}
-                  onCardClick={() => {
-                    const fullName = `${selectedPatient.firstName} ${selectedPatient.lastName}`.trim();
-                    navigate(`/odontograma?pacienteId=${encodeURIComponent(selectedPatient.id)}&documento=${encodeURIComponent(selectedPatient.documentNumber || "")}&paciente=${encodeURIComponent(fullName)}`, {
-                      state: {
-                        patientId: selectedPatient.id,
-                        patientName: fullName,
-                        patientDocument: selectedPatient.documentNumber,
-                      },
-                    });
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    const fullName = `${selectedPatient.firstName} ${selectedPatient.lastName}`.trim();
-                    navigate(`/odontograma?pacienteId=${encodeURIComponent(selectedPatient.id)}&documento=${encodeURIComponent(selectedPatient.documentNumber || "")}&paciente=${encodeURIComponent(fullName)}`, {
-                      state: {
-                        patientId: selectedPatient.id,
-                        patientName: fullName,
-                        patientDocument: selectedPatient.documentNumber,
-                      },
-                    });
-                  }}
-                  className="text-[11px] font-bold text-teal-600 dark:text-teal-400 hover:underline cursor-pointer"
-                >
-                  Ver Odontograma Interactivo →
-                </button>
-              </div>
             </div>
           )}
         </div>
@@ -1591,7 +1554,7 @@ export function HistoriaClinicaView() {
                 </div>
               </div>
 
-              {/* ARCHIVADOR CLÍNICO DIGITAL 3D (VISTA PRINCIPAL EXCLUSIVA) */}
+              {/* ARCHIVADOR CLÍNICO DIGITAL (VISTA PRINCIPAL EXCLUSIVA) */}
               <div className="space-y-6 animate-fadeIn">
                 <div className="rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl p-6 shadow-md">
                   {/* CABECERA CON IDENTIDAD COMPLETA DEL PACIENTE */}
@@ -1599,7 +1562,7 @@ export function HistoriaClinicaView() {
                       <div>
                         <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                           <FolderOpen size={18} className="text-cyan-500" />
-                          <span>Archivador Clínico Digital 3D</span>
+                          <span>Archivos Clínicos Digitales</span>
                         </h3>
                         <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
                           Expediente de <strong>{selectedPatient.firstName} {selectedPatient.lastName}</strong> • Documento: <strong className="font-mono text-cyan-600 dark:text-cyan-400">{selectedPatient.documentNumber}</strong>
@@ -1650,7 +1613,7 @@ export function HistoriaClinicaView() {
                             }}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-200/80 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs transition-all cursor-pointer active:scale-95"
                           >
-                            <span>← Volver a Carpetas 3D</span>
+                            <span>← Volver a Carpetas</span>
                           </button>
                         </div>
 
@@ -1853,7 +1816,7 @@ export function HistoriaClinicaView() {
                                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs shadow-sm transition-all cursor-pointer active:scale-95"
                                       >
                                         <Smile size={13} />
-                                        <span>Abrir Odontograma 3D →</span>
+                                        <span>Abrir Odontograma Clínico →</span>
                                       </button>
 
                                       <button
@@ -2374,28 +2337,22 @@ export function HistoriaClinicaView() {
               )}
             </>
           ) : (
-            <div className="py-12 px-6 text-center rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl p-8 shadow-md space-y-6 animate-fadeIn">
-              <FolderComponent
-                color="teal"
-                size="md"
-                title="Expediente Clínico Digital"
-                subtitle="Selecciona un paciente del directorio para explorar sus evoluciones, diagnósticos y consentimientos."
-                items={[
-                  { title: "Evoluciones Clínicas", tag: "CIE-10" },
-                  { title: "Diagnósticos y Odontograma", tag: "FDI" },
-                  { title: "Consentimientos y Antecedentes", tag: "Legal" },
-                ]}
-                onCardClick={() => {
-                  if (patients.length > 0) {
-                    setSelectedPatientId(patients[0].id);
-                  }
-                }}
-              />
-              <div className="max-w-md mx-auto text-xs text-slate-500 dark:text-slate-400 bg-slate-100/80 dark:bg-white/5 p-3.5 rounded-xl border border-slate-200/80 dark:border-white/10">
-                <p className="font-semibold text-slate-700 dark:text-slate-300">
-                  💡 Pasa el cursor sobre la carpeta para desplegar las fichas o haz clic para abrir el archivador interactivo.
-                </p>
-              </div>
+            <div className="py-20 px-6 flex flex-col items-center justify-center text-center rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/90 dark:bg-slate-950/65 backdrop-blur-xl p-8 shadow-md space-y-4 animate-fadeIn min-h-[380px]">
+              {loading ? (
+                <div className="flex flex-col items-center justify-center space-y-3">
+                  <DentistryReloadIcon size={40} loading={true} className="text-cyan-500" />
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Cargando expediente clínico...</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Sincronizando evoluciones, odontograma y diagnósticos</p>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center space-y-3">
+                  <User className="h-12 w-12 text-slate-400 dark:text-slate-500 stroke-1" />
+                  <h4 className="text-base font-bold text-slate-800 dark:text-white">Sin expediente seleccionado</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm">
+                    Selecciona un paciente del directorio lateral para explorar su expediente clínico completo.
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>

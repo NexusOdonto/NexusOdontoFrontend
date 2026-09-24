@@ -28,7 +28,7 @@ import {
   PlayCircle,
   FileText,
 } from "lucide-react";
-import { CarruselAlmuerzoVertical } from "./CarruselAlmuerzoVertical";
+import { CarruselAlmuerzoUnificado } from "./CarruselAlmuerzoUnificado";
 import { useNavigate } from "react-router-dom";
 import { UserAvatar } from "../../components/common/UserAvatar";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
@@ -1589,6 +1589,37 @@ export function AgendaView() {
                         })}
                       </div>
 
+                      {/* Franja Unificada Horizontal de Descanso Clínico LED (Lunes a Sábado 12:00 a 14:00) */}
+                      {modoVista === "semana" ? (
+                        <CarruselAlmuerzoUnificado
+                          topPx={(12 - 7) * HORA_ALTURA_PX + 2}
+                          heightPx={2 * HORA_ALTURA_PX - 4}
+                          leftPx="calc(50px + ((100% - 50px) * (1 / 7)))"
+                          width="calc((100% - 50px) * (6 / 7))"
+                          horaInicioDescanso="12:00"
+                          horaFinDescanso="14:00"
+                          onIntentarAgendar={() => {
+                            setErrorMessage("☕ Horario de descanso clínico (12:00 a 14:00). Durante este periodo el personal médico se encuentra en descanso/almuerzo.");
+                            setTimeout(() => setErrorMessage(null), 4500);
+                          }}
+                        />
+                      ) : (
+                        fechaActual.getDay() >= 1 && fechaActual.getDay() <= 6 && (
+                          <CarruselAlmuerzoUnificado
+                            topPx={(12 - 7) * HORA_ALTURA_PX + 2}
+                            heightPx={2 * HORA_ALTURA_PX - 4}
+                            leftPx="50px"
+                            width="calc(100% - 50px)"
+                            horaInicioDescanso="12:00"
+                            horaFinDescanso="14:00"
+                            onIntentarAgendar={() => {
+                              setErrorMessage("☕ Horario de descanso clínico (12:00 a 14:00). El personal médico se encuentra en descanso.");
+                              setTimeout(() => setErrorMessage(null), 4500);
+                            }}
+                          />
+                        )
+                      )}
+
                       {modoVista === "semana" ? (
                         // 7 Columnas de Días (Semana Completa)
                         diasSemana.map((dia, idx) => {
@@ -1629,94 +1660,82 @@ export function AgendaView() {
                                 <div
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setErrorMessage("🚫 Los domingos la clínica permanece cerrada. No es posible agendar citas este día.");
+                                    setErrorMessage("Los domingos la clínica permanece cerrada. No es posible agendar citas este día.");
                                     setTimeout(() => setErrorMessage(null), 5000);
                                   }}
-                                  className="absolute inset-x-0.5 z-20 flex flex-col items-center justify-center p-2 rounded-xl border border-rose-500/40 bg-rose-500/[0.08] dark:bg-rose-950/40 backdrop-blur-[1.5px] cursor-not-allowed select-none transition-all hover:bg-rose-500/[0.12] dark:hover:bg-rose-950/50"
+                                  className="absolute inset-x-0.5 z-20 flex flex-col items-center justify-center p-2 rounded-xl border border-indigo-400/30 dark:border-indigo-500/30 bg-indigo-500/[0.06] dark:bg-indigo-950/40 backdrop-blur-[1.5px] cursor-not-allowed select-none transition-all hover:bg-indigo-500/[0.09] dark:hover:bg-indigo-950/55"
                                   style={{
                                     top: "2px",
                                     height: `${12 * HORA_ALTURA_PX - 4}px`,
-                                    backgroundImage: "repeating-linear-gradient(135deg, rgba(244,63,94,0.06) 0px, rgba(244,63,94,0.06) 10px, transparent 10px, transparent 20px)",
+                                    backgroundImage: "repeating-linear-gradient(135deg, rgba(99,102,241,0.07) 0px, rgba(99,102,241,0.07) 10px, transparent 10px, transparent 20px)",
                                   }}
                                   title="Día no laboral • Clínica cerrada los Domingos"
                                 >
-                                  <div className="flex flex-col items-center gap-1.5 text-center px-2 py-3 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-rose-500/30 shadow-md">
-                                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-500/20 text-rose-600 dark:text-rose-400">
+                                  <div className="flex flex-col items-center gap-1.5 text-center px-2 py-3 rounded-xl bg-white/95 dark:bg-slate-900/95 border border-indigo-200/90 dark:border-indigo-500/30 shadow-md">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
                                       <Ban size={18} />
                                     </div>
-                                    <span className="text-xs font-bold text-rose-700 dark:text-rose-300">
+                                    <span className="text-xs font-bold text-indigo-950 dark:text-indigo-200">
                                       Día No Laboral
                                     </span>
-                                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-tight">
+                                    <span className="text-[10px] text-indigo-600/80 dark:text-indigo-300/80 font-medium leading-tight">
                                       Clínica cerrada
                                     </span>
                                   </div>
                                 </div>
                               )}
 
-                              {/* Sábado: Tarde cerrada (12:00 a 19:00 bloqueado) */}
+                              {/* Sábado: Tarde cerrada (14:00 a 19:00 bloqueado) */}
                               {dayOfWeek === 6 && (
                                 <div
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setErrorMessage("🚫 Los sábados la clínica atiende únicamente en la mañana (08:00 a 12:00). En la tarde permanece cerrada.");
+                                    setErrorMessage("Los sábados la clínica atiende en la mañana (08:00 a 12:00) con descanso de 12:00 a 14:00. En la tarde permanece cerrada.");
                                     setTimeout(() => setErrorMessage(null), 5000);
                                   }}
-                                  className="absolute inset-x-0.5 z-20 flex flex-col items-center justify-center p-2 rounded-xl border border-rose-500/40 bg-rose-500/[0.08] dark:bg-rose-950/40 backdrop-blur-[1.5px] cursor-not-allowed select-none transition-all hover:bg-rose-500/[0.12] dark:hover:bg-rose-950/50"
+                                  className="absolute inset-x-0.5 z-20 flex flex-col items-center justify-center p-2 rounded-xl border border-indigo-400/30 dark:border-indigo-500/30 bg-indigo-500/[0.06] dark:bg-indigo-950/40 backdrop-blur-[1.5px] cursor-not-allowed select-none transition-all hover:bg-indigo-500/[0.09] dark:hover:bg-indigo-950/55"
                                   style={{
-                                    top: `${5 * HORA_ALTURA_PX + 2}px`,
-                                    height: `${7 * HORA_ALTURA_PX - 4}px`,
-                                    backgroundImage: "repeating-linear-gradient(135deg, rgba(244,63,94,0.06) 0px, rgba(244,63,94,0.06) 10px, transparent 10px, transparent 20px)",
+                                    top: `${7 * HORA_ALTURA_PX + 2}px`,
+                                    height: `${5 * HORA_ALTURA_PX - 4}px`,
+                                    backgroundImage: "repeating-linear-gradient(135deg, rgba(99,102,241,0.07) 0px, rgba(99,102,241,0.07) 10px, transparent 10px, transparent 20px)",
                                   }}
-                                  title="No se labora • Sábado tarde cerrado (12:00 a 19:00)"
+                                  title="No se labora • Sábado tarde cerrado (14:00 a 19:00)"
                                 >
-                                  <div className="flex flex-col items-center gap-1 text-center px-2 py-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-rose-500/30 shadow-md">
-                                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-500/20 text-rose-600 dark:text-rose-400">
+                                  <div className="flex flex-col items-center gap-1 text-center px-2 py-2.5 rounded-xl bg-white/95 dark:bg-slate-900/95 border border-indigo-200/90 dark:border-indigo-500/30 shadow-md">
+                                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
                                       <Moon size={15} />
                                     </div>
-                                    <span className="text-[11px] font-bold text-rose-700 dark:text-rose-300">
+                                    <span className="text-[11px] font-bold text-indigo-950 dark:text-indigo-200">
                                       No se labora
                                     </span>
-                                    <span className="text-[9.5px] text-slate-500 dark:text-slate-400 font-medium leading-tight">
+                                    <span className="text-[9.5px] text-indigo-600/80 dark:text-indigo-300/80 font-medium leading-tight">
                                       Sábado tarde cerrado
                                     </span>
                                   </div>
                                 </div>
                               )}
 
-                              {/* Lunes a Viernes: Descanso Clínico (12:00 a 14:00) y Cierre (17:00 a 19:00) */}
+                              {/* Lunes a Viernes: Cierre (17:00 a 19:00) */}
                               {dayOfWeek >= 1 && dayOfWeek <= 5 && (
-                                <>
-                                  <CarruselAlmuerzoVertical
-                                    horaAlturaPx={HORA_ALTURA_PX}
-                                    horaInicioDescanso="12:00"
-                                    horaFinDescanso="14:00"
-                                    horaInicioCalendario={7}
-                                    onIntentarAgendar={() => {
-                                      setErrorMessage("☕ Horario de descanso clínico (12:00 a 14:00). Durante este periodo el personal médico se encuentra en descanso/almuerzo.");
-                                      setTimeout(() => setErrorMessage(null), 4500);
-                                    }}
-                                  />
-                                  <div
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setErrorMessage("🌙 La jornada de atención finaliza a las 17:00 (5:00 PM).");
-                                      setTimeout(() => setErrorMessage(null), 5000);
-                                    }}
-                                    className="absolute inset-x-0.5 z-20 flex items-center justify-center p-2 rounded-xl border border-slate-300/70 dark:border-slate-800 bg-slate-200/40 dark:bg-slate-950/50 backdrop-blur-[1px] cursor-not-allowed select-none transition-all hover:bg-slate-200/60"
-                                    style={{
-                                      top: `${10 * HORA_ALTURA_PX + 2}px`,
-                                      height: `${2 * HORA_ALTURA_PX - 4}px`,
-                                      backgroundImage: "repeating-linear-gradient(135deg, rgba(148,163,184,0.1) 0px, rgba(148,163,184,0.1) 10px, transparent 10px, transparent 20px)",
-                                    }}
-                                    title="Cierre de Clínica • Atención hasta las 17:00"
-                                  >
-                                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-[10px] font-semibold shadow-xs">
-                                      <Moon size={12} className="text-slate-500" />
-                                      <span>Cierre 17:00</span>
-                                    </div>
+                                <div
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setErrorMessage("🌙 La jornada de atención finaliza a las 17:00 (5:00 PM).");
+                                    setTimeout(() => setErrorMessage(null), 5000);
+                                  }}
+                                  className="absolute inset-x-0.5 z-20 flex items-center justify-center p-2 rounded-xl border border-slate-300/70 dark:border-slate-700/60 bg-slate-200/40 dark:bg-slate-800/40 backdrop-blur-[1px] cursor-not-allowed select-none transition-all hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
+                                  style={{
+                                    top: `${10 * HORA_ALTURA_PX + 2}px`,
+                                    height: `${2 * HORA_ALTURA_PX - 4}px`,
+                                    backgroundImage: "repeating-linear-gradient(135deg, rgba(148,163,184,0.1) 0px, rgba(148,163,184,0.1) 10px, transparent 10px, transparent 20px)",
+                                  }}
+                                  title="Cierre de Clínica • Atención hasta las 17:00"
+                                >
+                                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/90 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-200 text-[10px] font-normal shadow-xs">
+                                    <Moon size={12} className="text-slate-500 dark:text-slate-300" />
+                                    <span>Cierre 17:00</span>
                                   </div>
-                                </>
+                                </div>
                               )}
 
                               {/* Citas / Eventos */}
@@ -1765,95 +1784,82 @@ export function AgendaView() {
                                 <div
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setErrorMessage("🚫 Los domingos la clínica permanece cerrada. No es posible agendar citas este día.");
+                                    setErrorMessage("Los domingos la clínica permanece cerrada. No es posible agendar citas este día.");
                                     setTimeout(() => setErrorMessage(null), 5000);
                                   }}
-                                  className="absolute inset-x-0.5 z-20 flex flex-col items-center justify-center p-2 rounded-xl border border-rose-500/40 bg-rose-500/[0.08] dark:bg-rose-950/40 backdrop-blur-[1.5px] cursor-not-allowed select-none transition-all hover:bg-rose-500/[0.12] dark:hover:bg-rose-950/50"
+                                  className="absolute inset-x-0.5 z-20 flex flex-col items-center justify-center p-2 rounded-xl border border-indigo-400/30 dark:border-indigo-500/30 bg-indigo-500/[0.06] dark:bg-indigo-950/40 backdrop-blur-[1.5px] cursor-not-allowed select-none transition-all hover:bg-indigo-500/[0.09] dark:hover:bg-indigo-950/55"
                                   style={{
                                     top: "2px",
                                     height: `${12 * HORA_ALTURA_PX - 4}px`,
-                                    backgroundImage: "repeating-linear-gradient(135deg, rgba(244,63,94,0.06) 0px, rgba(244,63,94,0.06) 10px, transparent 10px, transparent 20px)",
+                                    backgroundImage: "repeating-linear-gradient(135deg, rgba(99,102,241,0.07) 0px, rgba(99,102,241,0.07) 10px, transparent 10px, transparent 20px)",
                                   }}
                                   title="Día no laboral • Clínica cerrada los Domingos"
                                 >
-                                  <div className="flex flex-col items-center gap-1.5 text-center px-2 py-3 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-rose-500/30 shadow-md">
-                                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-500/20 text-rose-600 dark:text-rose-400">
+                                  <div className="flex flex-col items-center gap-1.5 text-center px-2 py-3 rounded-xl bg-white/95 dark:bg-slate-900/95 border border-indigo-200/90 dark:border-indigo-500/30 shadow-md">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
                                       <Ban size={18} />
                                     </div>
-                                    <span className="text-xs font-bold text-rose-700 dark:text-rose-300">
+                                    <span className="text-xs font-bold text-indigo-950 dark:text-indigo-200">
                                       Día No Laboral
                                     </span>
-                                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-tight">
+                                    <span className="text-[10px] text-indigo-600/80 dark:text-indigo-300/80 font-medium leading-tight">
                                       Clínica cerrada
                                     </span>
                                   </div>
                                 </div>
                               )}
 
-                              {/* Sábado: Tarde cerrada (12:00 a 19:00 bloqueado) */}
+                              {/* Sábado: Tarde cerrada (14:00 a 19:00 bloqueado) */}
                               {dayOfWeek === 6 && (
                                 <div
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setErrorMessage("🚫 Los sábados la clínica atiende únicamente en la mañana (08:00 a 12:00). En la tarde permanece cerrada.");
+                                    setErrorMessage("Los sábados la clínica atiende en la mañana (08:00 a 12:00) con descanso de 12:00 a 14:00. En la tarde permanece cerrada.");
                                     setTimeout(() => setErrorMessage(null), 5000);
                                   }}
-                                  className="absolute inset-x-0.5 z-20 flex flex-col items-center justify-center p-2 rounded-xl border border-rose-500/40 bg-rose-500/[0.08] dark:bg-rose-950/40 backdrop-blur-[1.5px] cursor-not-allowed select-none transition-all hover:bg-rose-500/[0.12] dark:hover:bg-rose-950/50"
+                                  className="absolute inset-x-0.5 z-20 flex flex-col items-center justify-center p-2 rounded-xl border border-indigo-400/30 dark:border-indigo-500/30 bg-indigo-500/[0.06] dark:bg-indigo-950/40 backdrop-blur-[1.5px] cursor-not-allowed select-none transition-all hover:bg-indigo-500/[0.09] dark:hover:bg-indigo-950/55"
                                   style={{
-                                    top: `${5 * HORA_ALTURA_PX + 2}px`,
-                                    height: `${7 * HORA_ALTURA_PX - 4}px`,
-                                    backgroundImage: "repeating-linear-gradient(135deg, rgba(244,63,94,0.06) 0px, rgba(244,63,94,0.06) 10px, transparent 10px, transparent 20px)",
+                                    top: `${7 * HORA_ALTURA_PX + 2}px`,
+                                    height: `${5 * HORA_ALTURA_PX - 4}px`,
+                                    backgroundImage: "repeating-linear-gradient(135deg, rgba(99,102,241,0.07) 0px, rgba(99,102,241,0.07) 10px, transparent 10px, transparent 20px)",
                                   }}
-                                  title="No se labora • Sábado tarde cerrado (12:00 a 19:00)"
+                                  title="No se labora • Sábado tarde cerrado (14:00 a 19:00)"
                                 >
-                                  <div className="flex flex-col items-center gap-1 text-center px-2 py-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-rose-500/30 shadow-md">
-                                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-500/20 text-rose-600 dark:text-rose-400">
+                                  <div className="flex flex-col items-center gap-1 text-center px-2 py-2.5 rounded-xl bg-white/95 dark:bg-slate-900/95 border border-indigo-200/90 dark:border-indigo-500/30 shadow-md">
+                                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
                                       <Moon size={15} />
                                     </div>
-                                    <span className="text-[11px] font-bold text-rose-700 dark:text-rose-300">
+                                    <span className="text-[11px] font-bold text-indigo-950 dark:text-indigo-200">
                                       No se labora
                                     </span>
-                                    <span className="text-[9.5px] text-slate-500 dark:text-slate-400 font-medium leading-tight">
+                                    <span className="text-[9.5px] text-indigo-600/80 dark:text-indigo-300/80 font-medium leading-tight">
                                       Sábado tarde cerrado
                                     </span>
                                   </div>
                                 </div>
                               )}
 
-                              {/* Lunes a Viernes: Descanso Clínico (12:00 a 14:00) y Cierre (17:00 a 19:00) */}
+                              {/* Lunes a Viernes: Cierre (17:00 a 19:00) */}
                               {dayOfWeek >= 1 && dayOfWeek <= 5 && (
-                                <>
-                                  <CarruselAlmuerzoVertical
-                                    horaAlturaPx={HORA_ALTURA_PX}
-                                    doctorNombre={doc.nombre}
-                                    horaInicioDescanso="12:00"
-                                    horaFinDescanso="14:00"
-                                    horaInicioCalendario={7}
-                                    onIntentarAgendar={() => {
-                                      setErrorMessage(`☕ Horario de descanso de ${doc.nombre} (12:00 a 14:00). El profesional se encuentra en su receso.`);
-                                      setTimeout(() => setErrorMessage(null), 4500);
-                                    }}
-                                  />
-                                  <div
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setErrorMessage("🌙 La jornada de atención finaliza a las 17:00 (5:00 PM).");
-                                      setTimeout(() => setErrorMessage(null), 5000);
-                                    }}
-                                    className="absolute inset-x-0.5 z-20 flex items-center justify-center p-2 rounded-xl border border-slate-300/70 dark:border-slate-800 bg-slate-200/40 dark:bg-slate-950/50 backdrop-blur-[1px] cursor-not-allowed select-none transition-all hover:bg-slate-200/60"
-                                    style={{
-                                      top: `${10 * HORA_ALTURA_PX + 2}px`,
-                                      height: `${2 * HORA_ALTURA_PX - 4}px`,
-                                      backgroundImage: "repeating-linear-gradient(135deg, rgba(148,163,184,0.1) 0px, rgba(148,163,184,0.1) 10px, transparent 10px, transparent 20px)",
-                                    }}
-                                    title="Cierre de Clínica • Atención hasta las 17:00"
-                                  >
-                                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-[10px] font-semibold shadow-xs">
-                                      <Moon size={12} className="text-slate-500" />
-                                      <span>Cierre 17:00</span>
-                                    </div>
+                                <div
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setErrorMessage("🌙 La jornada de atención finaliza a las 17:00 (5:00 PM).");
+                                    setTimeout(() => setErrorMessage(null), 5000);
+                                  }}
+                                  className="absolute inset-x-0.5 z-20 flex items-center justify-center p-2 rounded-xl border border-slate-300/70 dark:border-slate-700/60 bg-slate-200/40 dark:bg-slate-800/40 backdrop-blur-[1px] cursor-not-allowed select-none transition-all hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
+                                  style={{
+                                    top: `${10 * HORA_ALTURA_PX + 2}px`,
+                                    height: `${2 * HORA_ALTURA_PX - 4}px`,
+                                    backgroundImage: "repeating-linear-gradient(135deg, rgba(148,163,184,0.1) 0px, rgba(148,163,184,0.1) 10px, transparent 10px, transparent 20px)",
+                                  }}
+                                  title="Cierre de Clínica • Atención hasta las 17:00"
+                                >
+                                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/90 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-200 text-[10px] font-normal shadow-xs">
+                                    <Moon size={12} className="text-slate-500 dark:text-slate-300" />
+                                    <span>Cierre 17:00</span>
                                   </div>
-                                </>
+                                </div>
                               )}
 
                               {/* Citas del Odontólogo */}
