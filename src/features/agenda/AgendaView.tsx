@@ -1243,40 +1243,33 @@ export function AgendaView() {
           left: cita.leftStyle,
           width: cita.widthStyle,
         }}
-        className="group absolute z-20 rounded-xl sm:rounded-2xl border-2 border-teal-500/70 dark:border-teal-400/80 bg-gradient-to-br from-teal-500/20 via-cyan-500/15 to-blue-500/20 dark:from-teal-950/90 dark:via-cyan-950/80 dark:to-blue-950/90 backdrop-blur-xl shadow-md hover:shadow-2xl hover:border-teal-400 hover:-translate-y-1.5 hover:scale-[1.02] active:scale-95 transition-all duration-300 cursor-pointer p-1.5 sm:p-2.5 flex flex-col justify-between overflow-hidden text-center"
+        className="group absolute z-20 rounded-2xl border-2 border-sky-500/60 dark:border-sky-400/70 bg-gradient-to-br from-sky-500/15 via-cyan-500/10 to-blue-500/15 dark:from-sky-950/85 dark:via-cyan-950/75 dark:to-blue-950/85 backdrop-blur-xl shadow-md hover:shadow-xl hover:border-sky-400 hover:-translate-y-1 hover:scale-[1.01] active:scale-98 transition-all duration-300 cursor-pointer p-3 sm:p-3.5 flex flex-col justify-between overflow-hidden"
         title={`Ver ${totalCitas} ${totalCitas === 1 ? "cita agendada" : "citas agendadas"} a las ${cita.horaInicio}`}
       >
-        {/* Cabecera: Icono Carpeta + Horario */}
-        <div className="flex items-center justify-between gap-1 min-w-0">
+        {/* Cabecera: Hora Inicio/Fin a la Izquierda, Badge de Citas a la Derecha */}
+        <div className="flex items-center justify-between gap-2 min-w-0">
           <div className="flex items-center gap-1.5 min-w-0">
-            <div className="flex h-5 w-5 sm:h-6 sm:w-6 shrink-0 items-center justify-center rounded-lg bg-teal-500/30 text-teal-700 dark:text-teal-300 border border-teal-500/50 group-hover:rotate-6 transition-transform shadow-xs">
-              <Folder size={13} className="text-teal-600 dark:text-teal-300" />
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-sky-500/25 text-sky-700 dark:text-sky-300 border border-sky-500/40 group-hover:rotate-6 transition-transform shadow-xs">
+              <Clock3 size={13} className="text-sky-600 dark:text-sky-300" />
             </div>
-            <span className="font-mono text-[10.5px] sm:text-[11px] font-extrabold text-teal-950 dark:text-teal-200 truncate">
-              {cita.horaInicio}
+            <span className="font-sans text-xs font-extrabold text-sky-950 dark:text-sky-100 truncate tracking-tight">
+              {cita.horaInicio} - {cita.horaFin}
             </span>
           </div>
 
-          <span className="text-[9px] font-mono font-medium text-slate-500 dark:text-slate-400">
-            {cita.horaFin}
-          </span>
-        </div>
-
-        {/* Centro: Badge Notificación grande y limpio con número de citas (Sin nombres) */}
-        <div className="my-auto py-1 flex items-center justify-center">
-          <span className="inline-flex items-center gap-1.5 px-2 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-black bg-gradient-to-r from-teal-500 to-cyan-400 text-slate-950 shadow-md animate-pulse">
-            <span className="h-2 w-2 rounded-full bg-slate-950" />
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold font-sans bg-sky-500/20 text-sky-900 dark:text-sky-200 border border-sky-500/35 shrink-0 shadow-xs">
+            <span className="h-1.5 w-1.5 rounded-full bg-sky-500 animate-pulse" />
             <span>{totalCitas} {totalCitas === 1 ? "Cita" : "Citas"}</span>
           </span>
         </div>
 
-        {/* Pie: Clic para desplegar dossier */}
-        <div className="flex items-center justify-between text-[9px] sm:text-[10px] text-teal-700 dark:text-teal-300 font-bold pt-1 border-t border-teal-500/20">
-          <span className="group-hover:underline flex items-center gap-1">
-            <span className="hidden sm:inline">Ver citas</span>
-            <span aria-hidden="true">→</span>
+        {/* Pie: Botón / Enlace de Acción a Ancho Completo */}
+        <div className="w-full mt-auto pt-2 flex items-center justify-between text-xs font-bold font-sans text-sky-700 dark:text-sky-300 border-t border-sky-500/20 group-hover:text-sky-950 dark:group-hover:text-sky-100 transition-colors">
+          <span className="flex items-center gap-1.5">
+            <Folder size={13} className="text-sky-600 dark:text-sky-400" />
+            <span>Ver citas agendadas</span>
           </span>
-          <span className="hidden sm:inline text-[9px] font-mono opacity-80">📁 Desplegar</span>
+          <span className="text-sm transition-transform group-hover:translate-x-1 font-bold">→</span>
         </div>
       </div>
     );
@@ -1558,11 +1551,18 @@ export function AgendaView() {
                       {/* Línea Hora Actual */}
                       {posicionHoraActual !== null && (
                         <div
-                          className="pointer-events-none absolute left-0 right-0 z-10 flex items-center"
+                          className="pointer-events-none absolute left-0 right-0 z-30 flex items-center opacity-80"
                           style={{ top: `${posicionHoraActual}px` }}
                         >
-                          <div className="h-2 w-2 rounded-full bg-rose-500 -ml-1" />
-                          <div className="h-0.5 w-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]" />
+                          {/* Punto indicador de 8px sólido sobre la columna de horas */}
+                          <div className="absolute left-[44px] -translate-x-1/2 flex items-center justify-center">
+                            <span className="relative flex h-2.5 w-2.5">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+                              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 shadow-sm" />
+                            </span>
+                          </div>
+                          {/* Línea horizontal suave con degradado hacia los bordes */}
+                          <div className="h-[1.5px] w-full ml-[50px] bg-gradient-to-r from-rose-500/90 via-rose-500/75 to-rose-500/20 shadow-[0_0_6px_rgba(244,63,94,0.35)]" />
                         </div>
                       )}
 
@@ -1574,15 +1574,15 @@ export function AgendaView() {
                           return (
                             <div
                               key={hora}
-                              className={`absolute right-2 text-[11px] font-mono font-semibold flex items-center justify-end gap-1 ${
+                              className={`absolute right-2 text-[11px] font-sans font-semibold flex items-center justify-end gap-1 ${
                                 esDescanso
-                                  ? "text-amber-600 dark:text-amber-400 font-bold"
+                                  ? "text-sky-600 dark:text-sky-400 font-bold"
                                   : "text-slate-500 dark:text-slate-400"
                               }`}
                               style={{ top: `${i * HORA_ALTURA_PX - 7}px` }}
                               title={esDescanso ? "Horario de descanso clínico (12:00 - 14:00)" : undefined}
                             >
-                              {esDescanso && <Utensils size={10} className="text-amber-500 shrink-0" />}
+                              {esDescanso && <Utensils size={10} className="text-sky-500 shrink-0" />}
                               <span>{`${String(hora).padStart(2, "0")}:00`}</span>
                             </div>
                           );
@@ -1663,11 +1663,11 @@ export function AgendaView() {
                                     setErrorMessage("Los domingos la clínica permanece cerrada. No es posible agendar citas este día.");
                                     setTimeout(() => setErrorMessage(null), 5000);
                                   }}
-                                  className="absolute inset-x-0.5 z-20 flex flex-col items-center justify-center p-2 rounded-xl border border-indigo-400/30 dark:border-indigo-500/30 bg-indigo-500/[0.06] dark:bg-indigo-950/40 backdrop-blur-[1.5px] cursor-not-allowed select-none transition-all hover:bg-indigo-500/[0.09] dark:hover:bg-indigo-950/55"
+                                  className="absolute left-1.5 right-1.5 z-20 flex flex-col items-center justify-center p-2 rounded-xl border border-indigo-400/30 dark:border-indigo-500/30 bg-indigo-500/[0.06] dark:bg-indigo-950/40 backdrop-blur-[1.5px] cursor-not-allowed select-none transition-all hover:bg-indigo-500/[0.09] dark:hover:bg-indigo-950/55"
                                   style={{
                                     top: "2px",
                                     height: `${12 * HORA_ALTURA_PX - 4}px`,
-                                    backgroundImage: "repeating-linear-gradient(135deg, rgba(99,102,241,0.07) 0px, rgba(99,102,241,0.07) 10px, transparent 10px, transparent 20px)",
+                                    backgroundImage: "repeating-linear-gradient(135deg, rgba(99,102,241,0.06) 0px, rgba(99,102,241,0.06) 10px, transparent 10px, transparent 20px)",
                                   }}
                                   title="Día no laboral • Clínica cerrada los Domingos"
                                 >
@@ -1675,10 +1675,10 @@ export function AgendaView() {
                                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
                                       <Ban size={18} />
                                     </div>
-                                    <span className="text-xs font-bold text-indigo-950 dark:text-indigo-200">
+                                    <span className="text-xs font-bold font-sans text-indigo-950 dark:text-indigo-200">
                                       Día No Laboral
                                     </span>
-                                    <span className="text-[10px] text-indigo-600/80 dark:text-indigo-300/80 font-medium leading-tight">
+                                    <span className="text-[10px] text-indigo-600/80 dark:text-indigo-300/80 font-medium font-sans leading-tight">
                                       Clínica cerrada
                                     </span>
                                   </div>
@@ -1693,11 +1693,11 @@ export function AgendaView() {
                                     setErrorMessage("Los sábados la clínica atiende en la mañana (08:00 a 12:00) con descanso de 12:00 a 14:00. En la tarde permanece cerrada.");
                                     setTimeout(() => setErrorMessage(null), 5000);
                                   }}
-                                  className="absolute inset-x-0.5 z-20 flex flex-col items-center justify-center p-2 rounded-xl border border-indigo-400/30 dark:border-indigo-500/30 bg-indigo-500/[0.06] dark:bg-indigo-950/40 backdrop-blur-[1.5px] cursor-not-allowed select-none transition-all hover:bg-indigo-500/[0.09] dark:hover:bg-indigo-950/55"
+                                  className="absolute left-1.5 right-1.5 z-20 flex flex-col items-center justify-center p-2 rounded-xl border border-indigo-400/30 dark:border-indigo-500/30 bg-indigo-500/[0.06] dark:bg-indigo-950/40 backdrop-blur-[1.5px] cursor-not-allowed select-none transition-all hover:bg-indigo-500/[0.09] dark:hover:bg-indigo-950/55"
                                   style={{
                                     top: `${7 * HORA_ALTURA_PX + 2}px`,
                                     height: `${5 * HORA_ALTURA_PX - 4}px`,
-                                    backgroundImage: "repeating-linear-gradient(135deg, rgba(99,102,241,0.07) 0px, rgba(99,102,241,0.07) 10px, transparent 10px, transparent 20px)",
+                                    backgroundImage: "repeating-linear-gradient(135deg, rgba(99,102,241,0.06) 0px, rgba(99,102,241,0.06) 10px, transparent 10px, transparent 20px)",
                                   }}
                                   title="No se labora • Sábado tarde cerrado (14:00 a 19:00)"
                                 >
@@ -1705,10 +1705,10 @@ export function AgendaView() {
                                     <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
                                       <Moon size={15} />
                                     </div>
-                                    <span className="text-[11px] font-bold text-indigo-950 dark:text-indigo-200">
+                                    <span className="text-[11px] font-bold font-sans text-indigo-950 dark:text-indigo-200">
                                       No se labora
                                     </span>
-                                    <span className="text-[9.5px] text-indigo-600/80 dark:text-indigo-300/80 font-medium leading-tight">
+                                    <span className="text-[9.5px] text-indigo-600/80 dark:text-indigo-300/80 font-medium font-sans leading-tight">
                                       Sábado tarde cerrado
                                     </span>
                                   </div>
@@ -1723,15 +1723,15 @@ export function AgendaView() {
                                     setErrorMessage("🌙 La jornada de atención finaliza a las 17:00 (5:00 PM).");
                                     setTimeout(() => setErrorMessage(null), 5000);
                                   }}
-                                  className="absolute inset-x-0.5 z-20 flex items-center justify-center p-2 rounded-xl border border-slate-300/70 dark:border-slate-700/60 bg-slate-200/40 dark:bg-slate-800/40 backdrop-blur-[1px] cursor-not-allowed select-none transition-all hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
+                                  className="absolute left-1.5 right-1.5 z-20 flex items-center justify-center p-2 rounded-xl border border-slate-300/70 dark:border-slate-700/60 bg-slate-200/40 dark:bg-slate-800/40 backdrop-blur-[1px] cursor-not-allowed select-none transition-all hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
                                   style={{
                                     top: `${10 * HORA_ALTURA_PX + 2}px`,
                                     height: `${2 * HORA_ALTURA_PX - 4}px`,
-                                    backgroundImage: "repeating-linear-gradient(135deg, rgba(148,163,184,0.1) 0px, rgba(148,163,184,0.1) 10px, transparent 10px, transparent 20px)",
+                                    backgroundImage: "repeating-linear-gradient(135deg, rgba(148,163,184,0.06) 0px, rgba(148,163,184,0.06) 10px, transparent 10px, transparent 20px)",
                                   }}
                                   title="Cierre de Clínica • Atención hasta las 17:00"
                                 >
-                                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/90 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-200 text-[10px] font-normal shadow-xs">
+                                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/90 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-200 text-[10px] font-normal font-sans shadow-xs">
                                     <Moon size={12} className="text-slate-500 dark:text-slate-300" />
                                     <span>Cierre 17:00</span>
                                   </div>
@@ -1787,11 +1787,11 @@ export function AgendaView() {
                                     setErrorMessage("Los domingos la clínica permanece cerrada. No es posible agendar citas este día.");
                                     setTimeout(() => setErrorMessage(null), 5000);
                                   }}
-                                  className="absolute inset-x-0.5 z-20 flex flex-col items-center justify-center p-2 rounded-xl border border-indigo-400/30 dark:border-indigo-500/30 bg-indigo-500/[0.06] dark:bg-indigo-950/40 backdrop-blur-[1.5px] cursor-not-allowed select-none transition-all hover:bg-indigo-500/[0.09] dark:hover:bg-indigo-950/55"
+                                  className="absolute left-1.5 right-1.5 z-20 flex flex-col items-center justify-center p-2 rounded-xl border border-indigo-400/30 dark:border-indigo-500/30 bg-indigo-500/[0.06] dark:bg-indigo-950/40 backdrop-blur-[1.5px] cursor-not-allowed select-none transition-all hover:bg-indigo-500/[0.09] dark:hover:bg-indigo-950/55"
                                   style={{
                                     top: "2px",
                                     height: `${12 * HORA_ALTURA_PX - 4}px`,
-                                    backgroundImage: "repeating-linear-gradient(135deg, rgba(99,102,241,0.07) 0px, rgba(99,102,241,0.07) 10px, transparent 10px, transparent 20px)",
+                                    backgroundImage: "repeating-linear-gradient(135deg, rgba(99,102,241,0.06) 0px, rgba(99,102,241,0.06) 10px, transparent 10px, transparent 20px)",
                                   }}
                                   title="Día no laboral • Clínica cerrada los Domingos"
                                 >
@@ -1799,10 +1799,10 @@ export function AgendaView() {
                                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
                                       <Ban size={18} />
                                     </div>
-                                    <span className="text-xs font-bold text-indigo-950 dark:text-indigo-200">
+                                    <span className="text-xs font-bold font-sans text-indigo-950 dark:text-indigo-200">
                                       Día No Laboral
                                     </span>
-                                    <span className="text-[10px] text-indigo-600/80 dark:text-indigo-300/80 font-medium leading-tight">
+                                    <span className="text-[10px] text-indigo-600/80 dark:text-indigo-300/80 font-medium font-sans leading-tight">
                                       Clínica cerrada
                                     </span>
                                   </div>
@@ -1817,11 +1817,11 @@ export function AgendaView() {
                                     setErrorMessage("Los sábados la clínica atiende en la mañana (08:00 a 12:00) con descanso de 12:00 a 14:00. En la tarde permanece cerrada.");
                                     setTimeout(() => setErrorMessage(null), 5000);
                                   }}
-                                  className="absolute inset-x-0.5 z-20 flex flex-col items-center justify-center p-2 rounded-xl border border-indigo-400/30 dark:border-indigo-500/30 bg-indigo-500/[0.06] dark:bg-indigo-950/40 backdrop-blur-[1.5px] cursor-not-allowed select-none transition-all hover:bg-indigo-500/[0.09] dark:hover:bg-indigo-950/55"
+                                  className="absolute left-1.5 right-1.5 z-20 flex flex-col items-center justify-center p-2 rounded-xl border border-indigo-400/30 dark:border-indigo-500/30 bg-indigo-500/[0.06] dark:bg-indigo-950/40 backdrop-blur-[1.5px] cursor-not-allowed select-none transition-all hover:bg-indigo-500/[0.09] dark:hover:bg-indigo-950/55"
                                   style={{
                                     top: `${7 * HORA_ALTURA_PX + 2}px`,
                                     height: `${5 * HORA_ALTURA_PX - 4}px`,
-                                    backgroundImage: "repeating-linear-gradient(135deg, rgba(99,102,241,0.07) 0px, rgba(99,102,241,0.07) 10px, transparent 10px, transparent 20px)",
+                                    backgroundImage: "repeating-linear-gradient(135deg, rgba(99,102,241,0.06) 0px, rgba(99,102,241,0.06) 10px, transparent 10px, transparent 20px)",
                                   }}
                                   title="No se labora • Sábado tarde cerrado (14:00 a 19:00)"
                                 >
@@ -1829,10 +1829,10 @@ export function AgendaView() {
                                     <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
                                       <Moon size={15} />
                                     </div>
-                                    <span className="text-[11px] font-bold text-indigo-950 dark:text-indigo-200">
+                                    <span className="text-[11px] font-bold font-sans text-indigo-950 dark:text-indigo-200">
                                       No se labora
                                     </span>
-                                    <span className="text-[9.5px] text-indigo-600/80 dark:text-indigo-300/80 font-medium leading-tight">
+                                    <span className="text-[9.5px] text-indigo-600/80 dark:text-indigo-300/80 font-medium font-sans leading-tight">
                                       Sábado tarde cerrado
                                     </span>
                                   </div>
@@ -1847,15 +1847,15 @@ export function AgendaView() {
                                     setErrorMessage("🌙 La jornada de atención finaliza a las 17:00 (5:00 PM).");
                                     setTimeout(() => setErrorMessage(null), 5000);
                                   }}
-                                  className="absolute inset-x-0.5 z-20 flex items-center justify-center p-2 rounded-xl border border-slate-300/70 dark:border-slate-700/60 bg-slate-200/40 dark:bg-slate-800/40 backdrop-blur-[1px] cursor-not-allowed select-none transition-all hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
+                                  className="absolute left-1.5 right-1.5 z-20 flex items-center justify-center p-2 rounded-xl border border-slate-300/70 dark:border-slate-700/60 bg-slate-200/40 dark:bg-slate-800/40 backdrop-blur-[1px] cursor-not-allowed select-none transition-all hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
                                   style={{
                                     top: `${10 * HORA_ALTURA_PX + 2}px`,
                                     height: `${2 * HORA_ALTURA_PX - 4}px`,
-                                    backgroundImage: "repeating-linear-gradient(135deg, rgba(148,163,184,0.1) 0px, rgba(148,163,184,0.1) 10px, transparent 10px, transparent 20px)",
+                                    backgroundImage: "repeating-linear-gradient(135deg, rgba(148,163,184,0.06) 0px, rgba(148,163,184,0.06) 10px, transparent 10px, transparent 20px)",
                                   }}
                                   title="Cierre de Clínica • Atención hasta las 17:00"
                                 >
-                                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/90 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-200 text-[10px] font-normal shadow-xs">
+                                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/90 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-200 text-[10px] font-normal font-sans shadow-xs">
                                     <Moon size={12} className="text-slate-500 dark:text-slate-300" />
                                     <span>Cierre 17:00</span>
                                   </div>
