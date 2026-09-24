@@ -21,6 +21,10 @@ import {
 } from "lucide-react";
 import { appointmentService } from "../../api/appointmentService";
 import { serviceCatalogService } from "../../api/serviceCatalogService";
+import { patientService } from "../../api/patientService";
+import { professionalService } from "../../api/professionalService";
+import { personService } from "../../api/personService";
+import { employeeService } from "../../api/employeeService";
 import { areGuidsEqual } from "../../utils/roleUtils";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
 import { AnimatedCounter } from "../../components/ui/animated-counter";
@@ -43,6 +47,7 @@ export function PatientDashboardView({ user }: PatientDashboardViewProps) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [myAppointments, setMyAppointments] = useState<PatientAppointmentItem[]>([]);
+  const [cabeceraName, setCabeceraName] = useState<string>("");
   const [showAccountModal, setShowAccountModal] = useState(false);
 
   const currentDateFormatted = useMemo(() => {
@@ -60,29 +65,108 @@ export function PatientDashboardView({ user }: PatientDashboardViewProps) {
   const loadPatientData = useCallback(async () => {
     setLoading(true);
     try {
-      const [citasRes, serviciosRes] = await Promise.allSettled([
+      // Resolve clinical Patients.id (NOT auth user.id / personId) — chatbot books by patientId.
+      let myPatientId = String(user?.patientId || "").trim();
+      if (!myPatientId && user?.personId) {
+        const byPerson = await patientService.getByPersonId(user.personId);
+        if (byPerson?.id) myPatientId = byPerson.id;
+      }
+      if (!myPatientId && user?.cedula) {
+        const byDoc = await patientService.getByDocument(user.cedula);
+        if (byDoc?.id) myPatientId = byDoc.id;
+      }
+
+      const [citasRes, serviciosRes, profsRes, empsRes, personsRes] = await Promise.allSettled([
         appointmentService.getAll(),
         serviceCatalogService.getAll(),
+        professionalService.getAll(),
+        employeeService.getAll(),
+        personService.getAll(),
       ]);
 
-      const servicesList = serviciosRes.status === "fulfilled" && Array.isArray(serviciosRes.value) ? serviciosRes.value : [];
+      const servicesList =
+        serviciosRes.status === "fulfilled" && Array.isArray(serviciosRes.value) ? serviciosRes.value : [];
       const servicePriceMap: Record<string, number> = {};
-      servicesList.forEach((s) => {
+      const serviceNameMap: Record<string, string> = {};
+      servicesList.forEach((s: any) => {
         if (s.id && s.price) servicePriceMap[String(s.id).toLowerCase()] = s.price;
         if (s.name && s.price) servicePriceMap[s.name.toLowerCase().trim()] = s.price;
+        if (s.id && s.name) serviceNameMap[String(s.id).toLowerCase()] = s.name;
       });
+
+      const profsList =
+        profsRes.status === "fulfilled" && Array.isArray(profsRes.value) ? profsRes.value : [];
+      const empsList =
+        empsRes.status === "fulfilled" && Array.isArray(empsRes.value) ? empsRes.value : [];
+      const personsList =
+        personsRes.status === "fulfilled" && Array.isArray(personsRes.value) ? personsRes.value : [];
+
+      const empToPerson: Record<string, string> = {};
+      empsList.forEach((e: any) => {
+        if (e?.id && e?.personId) empToPerson[String(e.id).toLowerCase()] = String(e.personId).toLowerCase();
+      });
+      const personNameById: Record<string, string> = {};
+      personsList.forEach((p: any) => {
+        if (!p?.id) return;
+        const nm = `${p.firstName || ""} ${p.lastName || ""}`.trim();
+        if (nm) personNameById[String(p.id).toLowerCase()] = nm;
+      });
+
+      const resolveProfName = (professionalId?: string, fallback?: string): string => {
+        if (fallback && String(fallback).trim()) return String(fallback).trim();
+        if (!professionalId) return "Especialista";
+        const prof = profsList.find((p: any) => areGuidsEqual(p.id, professionalId));
+        if (!prof) return "Especialista";
+        if (prof.fullName) return prof.fullName;
+        if (prof.firstName || prof.lastName) {
+          return `Dra. ${`${prof.firstName || ""} ${prof.lastName || ""}`.trim()}`.replace(/\s+/g, " ").trim();
+        }
+        const personId =
+          (prof.personId && String(prof.personId).toLowerCase()) ||
+          (prof.employeeId && empToPerson[String(prof.employeeId).toLowerCase()]);
+        const fromPerson = personId ? personNameById[personId] : "";
+        return fromPerson ? `Dra. ${fromPerson}` : "Especialista";
+      };
+
+      const statusLabel = (dto: any): PatientAppointmentItem["estado"] => {
+        const sn = String(dto.statusName || dto.estado || "").toUpperCase();
+        if (dto.cancelledAt || sn.includes("CANCEL")) return "Cancelada";
+        if (sn.includes("COMPLET") || sn.includes("ATENDID")) return "Completada";
+        if (sn.includes("EN ATENCI") || sn.includes("SALA")) return "En Atención";
+        if (sn.includes("CONFIRM")) return "Confirmada";
+        if (sn.includes("PEND") || sn.includes("AGEN") || sn.includes("SCHED")) return "Pendiente";
+        const stId = String(dto.appointmentStatusId || "").toLowerCase();
+        if (stId === "10000000-0000-0000-0000-000000000002") return "Confirmada";
+        if (stId === "10000000-0000-0000-0000-000000000001") return "Pendiente";
+        if (stId === "10000000-0000-0000-0000-000000000005") return "Cancelada";
+        return "Confirmada";
+      };
 
       if (citasRes.status === "fulfilled" && Array.isArray(citasRes.value)) {
         const allCitas = citasRes.value;
         const filtered = allCitas.filter((c: any) => {
           if (!user) return false;
-          if (c.patientId && (areGuidsEqual(c.patientId, user.id) || areGuidsEqual(c.patientId, user.personId))) return true;
-          if (c.patientName && user.name && c.patientName.toLowerCase().includes(user.name.toLowerCase())) return true;
+          if (c.cancelledAt) return false;
+          const st = statusLabel(c);
+          if (st === "Cancelada") return false;
+          // Canonical: appointment.patientId === Patients.id
+          if (myPatientId && c.patientId && areGuidsEqual(c.patientId, myPatientId)) return true;
+          // Legacy fallbacks (wrong IDs historically mixed in the UI)
+          if (c.patientId && (areGuidsEqual(c.patientId, user.id) || areGuidsEqual(c.patientId, user.personId))) {
+            return true;
+          }
+          if (c.patientName && user.name && c.patientName.toLowerCase().includes(user.name.toLowerCase())) {
+            return true;
+          }
           return false;
         });
 
         const mapped: PatientAppointmentItem[] = filtered.map((dto: any, idx: number) => {
-          const servName = dto.serviceName || dto.servicio || "Consulta Odontológica";
+          const servName =
+            dto.serviceName ||
+            dto.servicio ||
+            (dto.serviceId && serviceNameMap[String(dto.serviceId).toLowerCase()]) ||
+            "Consulta Odontológica";
           let servPrice = 80000;
           if (dto.serviceId && servicePriceMap[String(dto.serviceId).toLowerCase()]) {
             servPrice = servicePriceMap[String(dto.serviceId).toLowerCase()];
@@ -95,16 +179,23 @@ export function PatientDashboardView({ user }: PatientDashboardViewProps) {
           }
 
           return {
-            id: dto.id || ("pac-c-" + idx),
+            id: dto.id || "pac-c-" + idx,
             fecha: dto.fecha || formattedDate,
-            hora: dto.hora || (dto.startsAt && dto.startsAt.includes("T") ? dto.startsAt.split("T")[1].substring(0, 5) : "10:00 AM"),
-            doctor: dto.professionalName || "Dra. Laura Gómez",
+            hora:
+              dto.hora ||
+              (dto.startsAt && dto.startsAt.includes("T")
+                ? dto.startsAt.split("T")[1].substring(0, 5)
+                : "10:00 AM"),
+            doctor: resolveProfName(dto.professionalId, dto.professionalName),
             servicio: servName,
-            estado: (dto.status || dto.estado || "Confirmada") as any,
+            estado: statusLabel(dto),
             valor: servPrice,
           };
         });
 
+        // Prefer upcoming Confirmada/Pendiente for cabecera widget (not a hardcoded Laura)
+        const upcoming = mapped.find((c) => c.estado === "Confirmada" || c.estado === "Pendiente");
+        setCabeceraName(upcoming?.doctor || mapped[0]?.doctor || "");
         setMyAppointments(mapped);
       }
     } catch (err) {
@@ -446,9 +537,13 @@ export function PatientDashboardView({ user }: PatientDashboardViewProps) {
 
             <div className="p-4 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/70 dark:border-white/10 space-y-3 font-instrument">
               <div>
-                <h4 className="text-sm font-bold text-slate-900 dark:text-white">Dra. Laura Gómez</h4>
-                <p className="text-xs text-cyan-700 dark:text-cyan-400 font-semibold">Ortodoncia y Estética Dental</p>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Consultorio Principal • Sillón 1</p>
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                  {cabeceraName || "Sin odontólogo asignado aún"}
+                </h4>
+                <p className="text-xs text-cyan-700 dark:text-cyan-400 font-semibold">
+                  {cabeceraName ? "Según tu próxima cita" : "Agenda para asignar especialista"}
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Consultorio Principal</p>
               </div>
 
               <div className="pt-2 border-t border-slate-200/60 dark:border-white/5 flex items-center justify-between">

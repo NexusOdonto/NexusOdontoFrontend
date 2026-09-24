@@ -13,6 +13,8 @@ import { usePresenceSync } from './usePresenceSync';
 export interface User {
   id: string;
   personId: string;
+  /** Clinical Patients.id — distinct from auth user id and personId */
+  patientId?: string;
   name: string;
   email: string;
   roleIds: string[];
@@ -201,6 +203,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return {
       id: userObj.id || fallbackPrev?.id || '',
       personId: userObj.personId || fallbackPrev?.personId || '',
+      patientId: userObj.patientId || userObj.PatientId || fallbackPrev?.patientId || '',
       name: fullName,
       nombre: firstName,
       apellido: lastName,

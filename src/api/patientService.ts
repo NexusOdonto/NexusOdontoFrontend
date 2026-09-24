@@ -94,6 +94,26 @@ export const patientService = {
     return mapPatientResponse(response.data);
   },
 
+  getByPersonId: async (personId: string): Promise<PatientResponseDto | null> => {
+    try {
+      const response = await axiosClient.get(`/v1/Patients/by-person/${personId}`);
+      return mapPatientResponse(response.data);
+    } catch {
+      return null;
+    }
+  },
+
+  getByDocument: async (documentNumber: string): Promise<PatientResponseDto | null> => {
+    try {
+      const response = await axiosClient.get(
+        `/v1/Patients/by-document/${encodeURIComponent(documentNumber)}`
+      );
+      return mapPatientResponse(response.data);
+    } catch {
+      return null;
+    }
+  },
+
   create: async (data: CreatePatientDto): Promise<PatientResponseDto> => {
     const payload = {
       personId: data.personId,

@@ -745,6 +745,7 @@ export function CitasView() {
         const citaPatientId = (cita.patientId || "").toLowerCase().trim();
 
         const isOwn =
+          (user?.patientId && citaPatientId && areGuidsEqual(user.patientId, citaPatientId)) ||
           (userPersonId && citaPersonId && citaPersonId === userPersonId) ||
           (user?.id && citaPatientId && areGuidsEqual(user.id, citaPatientId)) ||
           (patientCedula && cita.pacienteCedula && cita.pacienteCedula === patientCedula) ||
