@@ -52,7 +52,7 @@ export function resolveProfessionalDisplayName(options: {
   const { professionalId, professionalName, catalogById, professionals } = options;
   const fromSeed = knownNameById(professionalId);
 
-  // Known seeded IDs always win — prevents patient-role catalogs that invent Laura for every id.
+  // Known seeded IDs always win — patient-role catalogs often invent Laura for every id.
   if (fromSeed) return fromSeed;
 
   if (professionalId && catalogById) {
