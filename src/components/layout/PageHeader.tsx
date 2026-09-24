@@ -11,6 +11,8 @@ import { useNavigate } from "react-router-dom";
 
 import { useTheme } from "../../context/ThemeContext";
 import { useNotifications } from "../../context/NotificationContext";
+import { useAuth } from "../../features/auth/AuthContext";
+import { getUserRole } from "../../utils/routePermissions";
 import UserProfileDropdown from "./UserProfileDropdown";
 import { NotificationBell } from "../ui/notification-bell";
 
@@ -27,6 +29,8 @@ export function PageHeader({
   mobileOpen = false,
 }: PageHeaderProps) {
   const { theme, toggleTheme } = useTheme();
+  const { user } = useAuth();
+  const role = getUserRole(user);
   const { notifications, unreadCount, pendingAppointmentsCount, markAsRead, markAllAsRead } = useNotifications();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
@@ -52,7 +56,11 @@ export function PageHeader({
     if (id) markAsRead(id);
     setShowNotifications(false);
     if (link) {
-      navigate(link);
+      if (role === "PACIENTE" && link.startsWith("/agenda")) {
+        navigate("/citas");
+      } else {
+        navigate(link);
+      }
     }
   };
 
@@ -238,7 +246,7 @@ export function PageHeader({
                         </p>
                         {n.link && (
                           <span className="inline-block mt-1.5 text-[11px] font-semibold text-teal-600 dark:text-teal-400 hover:underline">
-                            Ver solicitudes pendientes →
+                            {role === "PACIENTE" ? "Ver mis citas →" : n.type === "whatsapp_escalated" ? "Atender chat →" : "Ver en agenda →"}
                           </span>
                         )}
                       </div>

@@ -59,6 +59,13 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const addNotification = useCallback(
     (notif: { title: string; message: string; link?: string; type?: 'system' | 'whatsapp_escalated' | 'appointment_confirmed' | 'appointment_pending' }) => {
+      // Si el usuario es paciente, nunca admitir notificaciones de staff ni enlaces a /agenda
+      if (role === 'PACIENTE') {
+        if (notif.type === 'whatsapp_escalated') return;
+      }
+
+      const safeLink = role === 'PACIENTE' ? '/citas' : (notif.link || '/agenda');
+
       const newNotif: SystemNotification = {
         id: `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
         title: notif.title,
@@ -66,7 +73,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         time: 'Ahora',
         read: false,
         type: notif.type || 'system',
-        link: notif.link || '/agenda',
+        link: safeLink,
       };
 
       setNotifications((prev) => {
@@ -76,7 +83,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         return [newNotif, ...prev];
       });
     },
-    []
+    [role]
   );
 
   const refreshNotifications = useCallback(async () => {
@@ -346,30 +353,102 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           return combined.filter((v, i, a) => a.findIndex((t) => t.id === v.id) === i).slice(0, 15);
         });
       } else if (role === 'PACIENTE') {
-        let ownPending = 0;
-        const pName = (user.name || user.nombre || '').toLowerCase();
-        ownPending = localCitas.filter((c: any) => c.estado === 'Pendiente' && String(c.paciente || '').toLowerCase().includes(pName)).length;
+        const patientName = (user.name || user.nombre || '').toLowerCase().trim();
+        const patientDoc = (user.cedula || '').trim();
+        const patientEmail = (user.email || '').toLowerCase().trim();
+        const patientPersonId = (user.personId || '').toLowerCase().trim();
+        const patientUserId = (user.id || '').toLowerCase().trim();
 
-        if (ownPending > 0) {
-          const notifId = `patient-pending-alert-${ownPending}`;
-          setNotifications((prev) => {
-            const liveNotifs = prev.filter((n) => n.id.startsWith('notif-'));
-            return [
-              ...liveNotifs,
-              {
-                id: notifId,
-                title: 'Cita en Proceso de Aprobación',
-                message: `Tu solicitud de cita está siendo evaluada por el equipo de recepción.`,
-                time: 'Reciente',
-                read: readIds.has(notifId) || readIds.has('patient-pending-alert'),
-                type: 'appointment_pending',
-                link: '/citas',
-              },
-            ];
-          });
-        } else {
-          setNotifications((prev) => prev.filter((n) => n.id.startsWith('notif-')));
-        }
+        const isMyAppointment = (a: any) => {
+          const aPatientId = String(a.patientId || '').toLowerCase().trim();
+          const aPersonId = String(a.personId || '').toLowerCase().trim();
+          const aName = String(a.paciente || a.patientName || '').toLowerCase().trim();
+          const aDoc = String(a.documentNumber || a.patientDocument || a.documento || '').trim();
+          const aEmail = String(a.email || a.patientEmail || '').toLowerCase().trim();
+
+          if (patientUserId && aPatientId === patientUserId) return true;
+          if (patientPersonId && aPersonId === patientPersonId) return true;
+          if (patientDoc && aDoc && aDoc === patientDoc) return true;
+          if (patientEmail && aEmail && aEmail === patientEmail) return true;
+          if (patientName && aName && (aName.includes(patientName) || patientName.includes(aName))) return true;
+          return false;
+        };
+
+        const myApiAppointments = appointments.filter(isMyAppointment);
+        const myLocalCitas = localCitas.filter(isMyAppointment);
+
+        // Combinar citas del paciente sin duplicar
+        const allMyAppointments: any[] = [...myApiAppointments];
+        myLocalCitas.forEach((lc) => {
+          if (!allMyAppointments.some((ma) => ma.id === lc.id || ma.id === lc.appointmentId)) {
+            allMyAppointments.push(lc);
+          }
+        });
+
+        const patientNotifs: SystemNotification[] = [];
+
+        allMyAppointments.slice(0, 10).forEach((app: any, idx: number) => {
+          const notifId = `patient-appt-${app.id || app.appointmentId || idx}`;
+          const sName = app.servicio || (app.serviceId ? srvMap.get(String(app.serviceId).toLowerCase()) : '') || app.serviceName || 'Consulta Odontológica';
+          const dName = app.odontologo || app.profesional || (app.professionalId ? profsMap.get(String(app.professionalId).toLowerCase()) : '') || 'Odontólogo especialista';
+          const starts = app.startsAt ? new Date(app.startsAt) : null;
+          const fechaStr = app.fecha || (starts ? starts.toLocaleDateString('es-CO') : 'próximamente');
+          const horaStr = app.hora || app.horaInicio || (starts ? starts.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) : '');
+
+          const isPending = isAppointmentPending(app);
+          const isCancelled = Boolean(app.cancelledAt || app.estado === 'Cancelada');
+          const isCompleted = app.estado === 'Completada';
+
+          if (isPending) {
+            patientNotifs.push({
+              id: notifId,
+              title: 'Cita en Proceso de Aprobación',
+              message: `Tu solicitud para ${sName} el ${fechaStr}${horaStr ? ` a las ${horaStr}` : ''} está siendo evaluada por recepción.`,
+              time: horaStr || 'Reciente',
+              read: readIds.has(notifId),
+              type: 'appointment_pending',
+              link: '/citas',
+            });
+          } else if (isCancelled) {
+            patientNotifs.push({
+              id: notifId,
+              title: 'Cita Cancelada',
+              message: `Tu cita para ${sName} el ${fechaStr} ha sido cancelada.`,
+              time: fechaStr,
+              read: readIds.has(notifId),
+              type: 'appointment_confirmed',
+              link: '/citas',
+            });
+          } else if (isCompleted) {
+            patientNotifs.push({
+              id: notifId,
+              title: 'Atención Odontológica Completada',
+              message: `Tu cita para ${sName} del ${fechaStr} fue atendida con éxito.`,
+              time: fechaStr,
+              read: readIds.has(notifId),
+              type: 'appointment_confirmed',
+              link: '/citas',
+            });
+          } else {
+            patientNotifs.push({
+              id: notifId,
+              title: 'Cita Confirmada en Clínica',
+              message: `Tu cita para ${sName} está programada para el ${fechaStr}${horaStr ? ` a las ${horaStr}` : ''} con ${dName}.`,
+              time: fechaStr,
+              read: readIds.has(notifId),
+              type: 'appointment_confirmed',
+              link: '/citas',
+            });
+          }
+        });
+
+        setNotifications((prev) => {
+          const liveNotifs = prev
+            .filter((n) => n.id.startsWith('notif-'))
+            .map((n) => ({ ...n, link: '/citas' }));
+          const combined = [...liveNotifs, ...patientNotifs];
+          return combined.filter((v, i, a) => a.findIndex((t) => t.id === v.id) === i).slice(0, 15);
+        });
       } else {
         setNotifications((prev) => prev.filter((n) => n.id.startsWith('notif-')));
       }

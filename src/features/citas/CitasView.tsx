@@ -393,54 +393,53 @@ export function CitasView() {
         return map[name.trim().toLowerCase()] || name;
       };
 
-      // Catálogo de servicios sincronizado con API y Catálogo Local
+      // Catálogo de servicios sincronizado estrictamente con API y Catálogo de Servicios
       let mergedServices: ServiceItem[] = [];
       if (services.length > 0) {
-        mergedServices = services.map((s: any) => ({
-          id: s.id,
-          name: translateServiceName(s.name),
-          durationMinutes: s.durationMinutes || s.duracion || 45,
-          price: s.price || s.precio || 0,
-          category: s.category || s.categoria || "Odontología General",
-          description: s.description || s.descripcion || "",
-        }));
-      }
-
-      try {
-        const localCatalogRaw = localStorage.getItem("nexus_servicios_catalog");
-        if (localCatalogRaw) {
-          const localList: any[] = JSON.parse(localCatalogRaw);
-          if (Array.isArray(localList)) {
-            localList.forEach((ls) => {
-              if (ls.activo !== false && !mergedServices.some((ms) => areGuidsEqual(ms.id, ls.id) || ms.name.toLowerCase().trim() === (ls.nombre || ls.name || "").toLowerCase().trim())) {
-                mergedServices.push({
+        mergedServices = services
+          .filter((s: any) => s.isActive !== false && s.activo !== false)
+          .map((s: any) => ({
+            id: s.id,
+            name: translateServiceName(s.name),
+            durationMinutes: s.durationMinutes || s.duracion || 45,
+            price: s.price || s.precio || 0,
+            category: s.category || s.categoria || "Odontología General",
+            description: s.description || s.descripcion || "",
+          }));
+      } else {
+        try {
+          const localCatalogRaw = localStorage.getItem("nexus_servicios_catalog");
+          if (localCatalogRaw) {
+            const localList: any[] = JSON.parse(localCatalogRaw);
+            if (Array.isArray(localList) && localList.length > 0) {
+              mergedServices = localList
+                .filter((ls) => ls.activo !== false)
+                .map((ls) => ({
                   id: ls.id,
                   name: ls.nombre || ls.name,
                   durationMinutes: ls.duracion || ls.durationMinutes || 45,
                   price: ls.precio || ls.price || 0,
                   category: ls.categoria || ls.category || "Odontología General",
                   description: ls.descripcion || ls.description || "",
-                });
-              }
-            });
+                }));
+            }
           }
+        } catch (err) {
+          console.warn("Error reading nexus_servicios_catalog:", err);
         }
-      } catch (err) {
-        console.warn("Error reading nexus_servicios_catalog:", err);
-      }
 
-      // Asegurar que los servicios base estén presentes
-      defaultSeedServices.forEach((seedSrv) => {
-        if (!mergedServices.some((ms) => areGuidsEqual(ms.id, seedSrv.id) || ms.name.toLowerCase().trim() === seedSrv.name.toLowerCase().trim())) {
-          mergedServices.push(seedSrv);
+        if (mergedServices.length === 0) {
+          mergedServices = defaultSeedServices;
         }
-      });
+      }
 
       setServicesRaw(mergedServices);
       const names = mergedServices.map((s) => s.name);
       setServicesList(names);
-      setSelectedServiceId((prev) => (prev && mergedServices.some((t) => areGuidsEqual(t.id, prev)) ? prev : mergedServices[0].id));
-      setFormServicio((prev) => (prev && names.includes(prev) ? prev : names[0]));
+      if (mergedServices.length > 0) {
+        setSelectedServiceId((prev) => (prev && mergedServices.some((t) => areGuidsEqual(t.id, prev)) ? prev : mergedServices[0].id));
+        setFormServicio((prev) => (prev && names.includes(prev) ? prev : names[0]));
+      }
 
       // Catálogo y opciones de pacientes para búsqueda / filtrado
       const loadedPatientOpts: SelectOption[] = [];
@@ -1077,9 +1076,11 @@ export function CitasView() {
       refreshNotifications();
       window.dispatchEvent(new CustomEvent("nexus_appointment_changed"));
       addNotification({
-        title: isPaciente ? "Nueva Solicitud de Cita" : "Nueva Cita Registrada",
-        message: `Cita para ${nuevaCita.paciente} (${nuevaCita.servicio}) el ${nuevaCita.fecha} a las ${nuevaCita.hora}.`,
-        link: "/agenda",
+        title: isPaciente ? "Solicitud de Cita Enviada" : "Nueva Cita Registrada",
+        message: isPaciente
+          ? `Tu cita para ${nuevaCita.servicio} el ${nuevaCita.fecha} a las ${nuevaCita.hora} ha sido enviada y está en revisión.`
+          : `Cita para ${nuevaCita.paciente} (${nuevaCita.servicio}) el ${nuevaCita.fecha} a las ${nuevaCita.hora}.`,
+        link: isPaciente ? "/citas" : "/agenda",
         type: isPaciente ? "appointment_pending" : "appointment_confirmed",
       });
       fetchAppointmentsAndCatalogs().catch(() => {});
