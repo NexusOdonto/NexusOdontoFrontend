@@ -32,6 +32,7 @@ import {
   Move,
   ChevronDown,
   RefreshCw,
+  Search,
 } from "lucide-react";
 import type {
   ToothState,
@@ -272,9 +273,32 @@ function OdontogramaUI() {
   const [errorToast, setErrorToast] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isPatientDropdownOpen, setIsPatientDropdownOpen] = useState(false);
+  const [patientSearchQuery, setPatientSearchQuery] = useState("");
   const [isDoctorDropdownOpen, setIsDoctorDropdownOpen] = useState(false);
+  const [doctorSearchQuery, setDoctorSearchQuery] = useState("");
   const patientDropdownRef = useRef<HTMLDivElement>(null);
   const doctorDropdownRef = useRef<HTMLDivElement>(null);
+
+  const filteredPacientesList = useMemo(() => {
+    const q = patientSearchQuery.trim().toLowerCase();
+    if (!q) return pacientesList;
+    return pacientesList.filter((pac) => {
+      const name = (pac.nombre || "").toLowerCase();
+      const doc = (pac.cedula || "").toLowerCase();
+      return name.includes(q) || doc.includes(q);
+    });
+  }, [pacientesList, patientSearchQuery]);
+
+  const filteredProfesionalesList = useMemo(() => {
+    const q = doctorSearchQuery.trim().toLowerCase();
+    if (!q) return profesionalesList;
+    return profesionalesList.filter((pr) => {
+      const name = (pr.nombre || "").toLowerCase();
+      const doc = (pr.documentNumber || "").toLowerCase();
+      const specialty = (pr.specialty || "").toLowerCase();
+      return name.includes(q) || doc.includes(q) || specialty.includes(q);
+    });
+  }, [profesionalesList, doctorSearchQuery]);
 
   // Cargar lista dinámica de pacientes y profesionales desde API
   const fetchPacientes = useCallback(async () => {
@@ -501,12 +525,14 @@ function OdontogramaUI() {
         !patientDropdownRef.current.contains(event.target as Node)
       ) {
         setIsPatientDropdownOpen(false);
+        setPatientSearchQuery("");
       }
       if (
         doctorDropdownRef.current &&
         !doctorDropdownRef.current.contains(event.target as Node)
       ) {
         setIsDoctorDropdownOpen(false);
+        setDoctorSearchQuery("");
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -1102,7 +1128,11 @@ function OdontogramaUI() {
           <div ref={patientDropdownRef} className="relative z-40">
             <button
               type="button"
-              onClick={!isPaciente ? () => setIsPatientDropdownOpen((prev) => !prev) : undefined}
+              onClick={!isPaciente ? () => setIsPatientDropdownOpen((prev) => {
+                const next = !prev;
+                if (!next) setPatientSearchQuery("");
+                return next;
+              }) : undefined}
               className={`flex items-center gap-3 px-4 py-2.5 bg-white/80 dark:bg-slate-900/70 border border-slate-200/80 dark:border-white/10 rounded-2xl backdrop-blur-2xl shadow-lg shadow-slate-900/5 dark:shadow-[0_12px_36px_rgba(0,0,0,0.5)] text-xs font-bold transition-all h-[46px] ${
                 isPaciente
                   ? "cursor-default"
@@ -1150,13 +1180,34 @@ function OdontogramaUI() {
                 <div className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-white/5">
                   Seleccionar Paciente
                 </div>
+                <div className="px-1 pt-1 pb-0.5">
+                  <div className="relative">
+                    <Search
+                      size={13}
+                      className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none"
+                    />
+                    <input
+                      type="search"
+                      value={patientSearchQuery}
+                      onChange={(e) => setPatientSearchQuery(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      placeholder="Buscar por nombre o cédula…"
+                      autoFocus
+                      className="w-full pl-8 pr-3 py-2 rounded-xl text-xs font-medium bg-slate-100/80 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-cyan-500/50 dark:focus:border-cyan-400/40 focus:ring-1 focus:ring-cyan-500/20 transition-all"
+                    />
+                  </div>
+                </div>
                 <div className="max-h-[200px] overflow-y-auto space-y-1 pr-1 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700">
                   {pacientesList.length === 0 ? (
                     <div className="px-3 py-4 text-center text-xs text-slate-400">
                       No hay pacientes registrados
                     </div>
+                  ) : filteredPacientesList.length === 0 ? (
+                    <div className="px-3 py-4 text-center text-xs text-slate-400">
+                      Sin coincidencias para “{patientSearchQuery.trim()}”
+                    </div>
                   ) : (
-                    pacientesList.map((pac) => {
+                    filteredPacientesList.map((pac) => {
                       const isSelected = selectedPaciente ? pac.id === selectedPaciente.id : false;
                       return (
                         <button
@@ -1165,6 +1216,7 @@ function OdontogramaUI() {
                           onClick={() => {
                             setSelectedPaciente(pac);
                             setIsPatientDropdownOpen(false);
+                            setPatientSearchQuery("");
                           }}
                           className={`w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer text-left ${
                             isSelected
@@ -1222,7 +1274,11 @@ function OdontogramaUI() {
                 <div ref={doctorDropdownRef} className="relative z-40">
                   <button
                     type="button"
-                    onClick={!isOdontologo ? () => setIsDoctorDropdownOpen((prev) => !prev) : undefined}
+                    onClick={!isOdontologo ? () => setIsDoctorDropdownOpen((prev) => {
+                      const next = !prev;
+                      if (!next) setDoctorSearchQuery("");
+                      return next;
+                    }) : undefined}
                     className={`flex items-center gap-3 px-4 py-2.5 bg-white/80 dark:bg-slate-900/70 border border-slate-200/80 dark:border-white/10 rounded-2xl backdrop-blur-2xl shadow-lg shadow-slate-900/5 dark:shadow-[0_12px_36px_rgba(0,0,0,0.5)] text-xs font-bold transition-all h-[46px] w-full ${
                       isOdontologo
                         ? "cursor-default"
@@ -1273,13 +1329,34 @@ function OdontogramaUI() {
                       <div className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-white/5">
                         Seleccionar Odontólogo
                       </div>
+                      <div className="px-1 pt-1 pb-0.5">
+                        <div className="relative">
+                          <Search
+                            size={13}
+                            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none"
+                          />
+                          <input
+                            type="search"
+                            value={doctorSearchQuery}
+                            onChange={(e) => setDoctorSearchQuery(e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            placeholder="Buscar por nombre o documento…"
+                            autoFocus
+                            className="w-full pl-8 pr-3 py-2 rounded-xl text-xs font-medium bg-slate-100/80 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-teal-500/50 dark:focus:border-teal-400/40 focus:ring-1 focus:ring-teal-500/20 transition-all"
+                          />
+                        </div>
+                      </div>
                       <div className="max-h-[200px] overflow-y-auto space-y-1 pr-1 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700">
                         {profesionalesList.length === 0 ? (
                           <div className="px-3 py-4 text-center text-xs text-slate-400">
                             No hay odontólogos disponibles
                           </div>
+                        ) : filteredProfesionalesList.length === 0 ? (
+                          <div className="px-3 py-4 text-center text-xs text-slate-400">
+                            Sin coincidencias para “{doctorSearchQuery.trim()}”
+                          </div>
                         ) : (
-                          profesionalesList.map((pr) => {
+                          filteredProfesionalesList.map((pr) => {
                             const isSelected = selectedProfessionalId === pr.id;
                             return (
                               <button
@@ -1288,6 +1365,7 @@ function OdontogramaUI() {
                                 onClick={() => {
                                   setSelectedProfessionalId(pr.id);
                                   setIsDoctorDropdownOpen(false);
+                                  setDoctorSearchQuery("");
                                 }}
                                 className={`w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer text-left ${
                                   isSelected
