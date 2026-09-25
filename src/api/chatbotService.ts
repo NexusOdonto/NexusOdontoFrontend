@@ -174,10 +174,39 @@ export const chatbotService = {
 
   updateConversation: async (
     id: string,
-    data: { conversationStatusId: string; patientId?: string; closedAt?: string }
+    data: {
+      conversationStatusId: string;
+      patientId?: string;
+      closedAt?: string | null;
+      chatIdentifier?: string;
+    }
   ): Promise<ChatbotConversation> => {
     const response = await axiosClient.put(`/v1/ChatbotConversations/${id}`, data);
     return response.data;
+  },
+
+  /** Resuelve LID WhatsApp → E.164 vía chatbot/Evolution. No inventa +233. */
+  resolveWhatsAppIdentity: async (
+    identifier: string,
+    conversationId?: string
+  ): Promise<{ status: string; phone?: string | null; via?: string }> => {
+    try {
+      const res = await chatbotClient.post(
+        '/api/v1/whatsapp/resolve-identity',
+        {
+          identifier,
+          conversation_id: conversationId || null,
+        },
+        {
+          headers: {
+            'X-Internal-Secret': 'TOKEN_SECRETO_INTERNO_NET_2026',
+          },
+        }
+      );
+      return res.data || { status: 'unresolved', phone: null };
+    } catch {
+      return { status: 'unresolved', phone: null };
+    }
   },
 
   // Mensajes

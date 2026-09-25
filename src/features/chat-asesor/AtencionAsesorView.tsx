@@ -133,6 +133,14 @@ function deduplicateMessages(msgs: ChatbotMessage[]): ChatbotMessage[] {
  * Identidad visible = teléfono WhatsApp E.164 real.
  * LID / placeholders → cadena vacía (la lista los filtra; nunca "Sin número" ni "WA · …").
  */
+function looksLikeLid(identifier: string): boolean {
+  const raw = (identifier || "").trim();
+  if (!raw) return false;
+  if (raw.toLowerCase().includes("@lid")) return true;
+  const digits = raw.replace(/@.*$/, "").replace(/\D/g, "");
+  return digits.length >= 14;
+}
+
 function formatPhone(identifier: string): string {
   const raw = (identifier || "").trim();
   if (!raw) return "";
@@ -484,6 +492,33 @@ export function AtencionAsesorView() {
       ]);
 
       if (convs && convs.length > 0) {
+        // Intentar resolver LID→E.164 antes de pintar; si falla, se filtra (nunca "WA · …")
+        await Promise.all(
+          convs
+            .filter((c) => looksLikeLid(c.chatIdentifier) && !formatPhone(c.chatIdentifier))
+            .map(async (c) => {
+              try {
+                const resolved = await chatbotService.resolveWhatsAppIdentity(
+                  c.chatIdentifier,
+                  c.id
+                );
+                if (resolved?.phone) {
+                  c.chatIdentifier = resolved.phone;
+                  await chatbotService
+                    .updateConversation(c.id, {
+                      conversationStatusId: c.conversationStatusId,
+                      patientId: c.patientId,
+                      closedAt: c.closedAt ?? null,
+                      chatIdentifier: resolved.phone,
+                    })
+                    .catch(() => null);
+                }
+              } catch {
+                // Siguiente mensaje / poll reintentará
+              }
+            })
+        );
+
         const mapped: ChatItemDisplay[] = convs
           .filter((c) => Boolean(formatPhone(c.chatIdentifier)))
           .map((c): ChatItemDisplay => {
