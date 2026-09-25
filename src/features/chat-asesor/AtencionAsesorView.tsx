@@ -131,21 +131,20 @@ function deduplicateMessages(msgs: ChatbotMessage[]): ChatbotMessage[] {
 
 /**
  * Identidad visible del chat = teléfono WhatsApp de origen (chatIdentifier).
- * Rechaza LIDs (@lid / ≥14 dígitos opacos) y placeholders — nunca mostrar +233… basura.
+ * Nunca muestra "Sin número" ni inventa E.164 falso (+233…) a partir de un LID.
  */
 function formatPhone(identifier: string): string {
   const raw = (identifier || "").trim();
-  if (!raw) return "Sin número";
+  if (!raw) return "WhatsApp";
 
   const lower = raw.toLowerCase();
-  if (lower.includes("@lid")) return "Sin número";
-
+  const isLid = lower.includes("@lid");
   const cleanedDomain = raw.replace(/@.*$/, "").trim();
   const digitsOnly = cleanedDomain.replace(/\D/g, "");
 
-  if (!digitsOnly) return "Sin número";
+  if (!digitsOnly) return "WhatsApp";
 
-  // Placeholders inventados (nunca mostrar como teléfono real)
+  // Placeholders inventados
   const local10 =
     digitsOnly.startsWith("57") && digitsOnly.length === 12 ? digitsOnly.slice(2) : digitsOnly;
   if (
@@ -155,12 +154,13 @@ function formatPhone(identifier: string): string {
     local10 === "1234567890" ||
     digitsOnly === "573000000000"
   ) {
-    return "Sin número";
+    return "WhatsApp";
   }
 
-  // LID / ID opaco de WhatsApp (14+ dígitos sin ser E.164 CO válido)
-  if (digitsOnly.length >= 14) {
-    return "Sin número";
+  // LID opaco: no prefijo + (evita falso +233…). Últimos dígitos como huella hasta resolver E.164.
+  if (isLid || digitsOnly.length >= 14) {
+    const tail = digitsOnly.slice(-8);
+    return `WA · ${tail.slice(0, 4)} ${tail.slice(4)}`;
   }
 
   // Celulares colombianos de 10 dígitos (ej. 3238891073)
@@ -183,7 +183,7 @@ function formatPhone(identifier: string): string {
     return `+57 (${digitsOnly.slice(0, 3)}) ${digitsOnly.slice(3, 6)} ${digitsOnly.slice(6)}`;
   }
 
-  // Internacional razonable (10–13 dígitos). ≥14 ya se rechazó como LID.
+  // Internacional razonable (10–13 dígitos)
   if (digitsOnly.length >= 10 && digitsOnly.length <= 13) {
     if (digitsOnly.startsWith("57") && digitsOnly.length === 12) {
       return `+57 ${digitsOnly.slice(2, 5)} ${digitsOnly.slice(5, 8)} ${digitsOnly.slice(8)}`;
@@ -191,7 +191,7 @@ function formatPhone(identifier: string): string {
     return `+${digitsOnly}`;
   }
 
-  return "Sin número";
+  return "WhatsApp";
 }
 
 // Función utilitaria para corregir el desfase de zona horaria (UTC a Hora Local)
