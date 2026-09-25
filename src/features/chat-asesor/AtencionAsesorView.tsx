@@ -129,33 +129,39 @@ function deduplicateMessages(msgs: ChatbotMessage[]): ChatbotMessage[] {
   return Array.from(map.values()).sort((a, b) => parseTimestamp(a.createdAt) - parseTimestamp(b.createdAt));
 }
 
-/** Agrupa dígitos para lectura (ej. 997968123456 → 9979 6812 3456). */
-function formatDigitGroups(digits: string): string {
-  if (digits.length <= 4) return digits;
-  const parts: string[] = [];
-  let i = 0;
-  const first = digits.length % 4 || 4;
-  parts.push(digits.slice(0, first));
-  i = first;
-  while (i < digits.length) {
-    parts.push(digits.slice(i, i + 4));
-    i += 4;
-  }
-  return parts.join(" ");
-}
-
 /**
  * Identidad visible del chat = teléfono WhatsApp de origen (chatIdentifier).
- * No usa nombres de paciente ni números inventados / mapeados desde LID.
+ * Rechaza LIDs (@lid / ≥14 dígitos opacos) y placeholders — nunca mostrar +233… basura.
  */
 function formatPhone(identifier: string): string {
   const raw = (identifier || "").trim();
   if (!raw) return "Sin número";
 
+  const lower = raw.toLowerCase();
+  if (lower.includes("@lid")) return "Sin número";
+
   const cleanedDomain = raw.replace(/@.*$/, "").trim();
   const digitsOnly = cleanedDomain.replace(/\D/g, "");
 
-  if (!digitsOnly) return cleanedDomain || "Sin número";
+  if (!digitsOnly) return "Sin número";
+
+  // Placeholders inventados (nunca mostrar como teléfono real)
+  const local10 =
+    digitsOnly.startsWith("57") && digitsOnly.length === 12 ? digitsOnly.slice(2) : digitsOnly;
+  if (
+    local10 === "3000000000" ||
+    local10 === "0000000000" ||
+    local10 === "1111111111" ||
+    local10 === "1234567890" ||
+    digitsOnly === "573000000000"
+  ) {
+    return "Sin número";
+  }
+
+  // LID / ID opaco de WhatsApp (14+ dígitos sin ser E.164 CO válido)
+  if (digitsOnly.length >= 14) {
+    return "Sin número";
+  }
 
   // Celulares colombianos de 10 dígitos (ej. 3238891073)
   if (digitsOnly.length === 10 && digitsOnly.startsWith("3")) {
@@ -177,20 +183,15 @@ function formatPhone(identifier: string): string {
     return `+57 (${digitsOnly.slice(0, 3)}) ${digitsOnly.slice(3, 6)} ${digitsOnly.slice(6)}`;
   }
 
-  // Teléfonos internacionales estándar (10 a 15 dígitos E.164)
-  if (digitsOnly.length >= 10 && digitsOnly.length <= 15) {
+  // Internacional razonable (10–13 dígitos). ≥14 ya se rechazó como LID.
+  if (digitsOnly.length >= 10 && digitsOnly.length <= 13) {
     if (digitsOnly.startsWith("57") && digitsOnly.length === 12) {
       return `+57 ${digitsOnly.slice(2, 5)} ${digitsOnly.slice(5, 8)} ${digitsOnly.slice(8)}`;
     }
     return `+${digitsOnly}`;
   }
 
-  // LID / identificador largo: mostrar dígitos del chatIdentifier tal cual, sin inventar número
-  if (digitsOnly.length > 15 || raw.includes("@lid")) {
-    return formatDigitGroups(digitsOnly);
-  }
-
-  return `+${digitsOnly}`;
+  return "Sin número";
 }
 
 // Función utilitaria para corregir el desfase de zona horaria (UTC a Hora Local)
@@ -555,9 +556,16 @@ export function AtencionAsesorView() {
         const groupedByPhone = new Map<string, ChatItemDisplay>();
 
         for (const item of mapped) {
-          const cleanDigits = (str?: string) => (str || '').replace(/\D/g, '');
-          const keyDigits = cleanDigits(item.phone || item.chatIdentifier);
-          const key = keyDigits.length >= 10 ? keyDigits.slice(-10) : (item.phone || item.chatIdentifier);
+          const cleanDigits = (str?: string) => (str || "").replace(/\D/g, "");
+          const rawId = item.chatIdentifier || "";
+          const isLid =
+            rawId.toLowerCase().includes("@lid") || cleanDigits(rawId).length >= 14;
+          // Agrupar solo por teléfono real; LIDs quedan con clave propia (no mash last-10)
+          const keyDigits = cleanDigits(item.phone || (!isLid ? item.chatIdentifier : ""));
+          const key =
+            !isLid && keyDigits.length >= 10
+              ? keyDigits.slice(-10)
+              : `id:${item.chatIdentifier || item.id}`;
 
           if (!groupedByPhone.has(key)) {
             groupedByPhone.set(key, { ...item, allConversationIds: [item.id] });
