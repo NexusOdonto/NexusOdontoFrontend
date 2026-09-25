@@ -32,18 +32,26 @@ interface NotificationContextType {
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
-const getReadNotifIds = (): Set<string> => {
+/** Legacy global key — never reuse; read/write is always per authenticated user. */
+const LEGACY_READ_NOTIF_KEY = 'nexus_read_notif_ids';
+
+const readNotifStorageKey = (userId: string) => `nexus_read_notif_ids:${userId}`;
+
+const getReadNotifIds = (userId: string | null | undefined): Set<string> => {
+  if (!userId) return new Set();
   try {
-    const raw = sessionStorage.getItem('nexus_read_notif_ids') || localStorage.getItem('nexus_read_notif_ids');
+    const key = readNotifStorageKey(userId);
+    const raw = sessionStorage.getItem(key) || localStorage.getItem(key);
     return raw ? new Set(JSON.parse(raw)) : new Set();
   } catch {
     return new Set();
   }
 };
 
-const saveReadNotifId = (id: string) => {
+const saveReadNotifId = (userId: string | null | undefined, id: string) => {
+  if (!userId) return;
   try {
-    const current = getReadNotifIds();
+    const current = getReadNotifIds(userId);
     current.add(id);
     // Stable aliases so summary IDs that embed a count stay marked after refresh.
     if (id.startsWith('pending-appointments-summary')) {
@@ -53,8 +61,12 @@ const saveReadNotifId = (id: string) => {
       current.add(`doc-today-summary-${new Date().toISOString().split('T')[0]}`);
     }
     const serialized = JSON.stringify(Array.from(current));
-    sessionStorage.setItem('nexus_read_notif_ids', serialized);
-    localStorage.setItem('nexus_read_notif_ids', serialized);
+    const key = readNotifStorageKey(userId);
+    sessionStorage.setItem(key, serialized);
+    localStorage.setItem(key, serialized);
+    // Drop legacy shared key so other accounts cannot inherit read state.
+    sessionStorage.removeItem(LEGACY_READ_NOTIF_KEY);
+    localStorage.removeItem(LEGACY_READ_NOTIF_KEY);
   } catch {
     // Ignore
   }
@@ -87,20 +99,38 @@ const applyReadFlags = (
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   const role = getUserRole(user);
+  const userId = user?.id ? String(user.id) : null;
+  const userIdRef = React.useRef(userId);
+  userIdRef.current = userId;
   const [notifications, setNotifications] = useState<SystemNotification[]>([]);
   const [pendingAppointmentsCount, setPendingAppointmentsCount] = useState<number>(0);
 
+  // New / switched accounts must never inherit another user's in-memory list or global read flags.
+  useEffect(() => {
+    setNotifications([]);
+    setPendingAppointmentsCount(0);
+    try {
+      sessionStorage.removeItem(LEGACY_READ_NOTIF_KEY);
+      localStorage.removeItem(LEGACY_READ_NOTIF_KEY);
+    } catch {
+      // Ignore
+    }
+  }, [userId]);
+
   const addNotification = useCallback(
     (notif: { title: string; message: string; link?: string; type?: 'system' | 'whatsapp_escalated' | 'appointment_confirmed' | 'appointment_pending' }) => {
+      if (!userId) return;
+
       // Si el usuario es paciente, nunca admitir notificaciones de staff ni enlaces a /agenda
       if (role === 'PACIENTE') {
         if (notif.type === 'whatsapp_escalated') return;
+        if (notif.type === 'appointment_pending' && notif.link === '/agenda') return;
       }
 
       const safeLink = role === 'PACIENTE' ? '/citas' : (notif.link || '/agenda');
 
       const newNotif: SystemNotification = {
-        id: `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        id: `notif-${userId}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
         title: notif.title,
         message: notif.message,
         time: 'Ahora',
@@ -116,15 +146,17 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         return [newNotif, ...prev];
       });
     },
-    [role]
+    [role, userId]
   );
 
   const refreshNotifications = useCallback(async () => {
-    if (!user || !localStorage.getItem('auth_token')) return;
+    if (!user || !userId || !localStorage.getItem('auth_token')) return;
+    const refreshForUserId = userId;
 
     try {
       const isStaff = role === 'RECEPCIONISTA' || role === 'ADMINISTRADOR';
       const isDoctor = role === 'ODONTOLOGO';
+      const isPatient = role === 'PACIENTE';
 
       // 1. Consultar catálogos y citas desde backend API y local storage
       const [apiAppsRes, profsRes, personsRes, srvsRes] = await Promise.allSettled([
@@ -203,6 +235,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         }
       });
 
+      // Stale poll after logout / account switch — discard.
+      if (refreshForUserId !== userIdRef.current) return;
+
       setPendingAppointmentsCount(isStaff ? combinedPending.length : 0);
 
       // Fetch Escalated WhatsApp conversations
@@ -211,6 +246,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         try {
           const convs = await chatbotService.getConversations().catch(() => []);
           const tickets = await chatbotService.getSupportTickets().catch(() => []);
+          if (refreshForUserId !== userIdRef.current) return;
           const escalatedConvs = convs.filter(
             (c) =>
               c.conversationStatusId === CONVERSATION_STATUS_IDS.ESCALADA ||
@@ -237,6 +273,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           waNotifs = [];
         }
       }
+
+      if (refreshForUserId !== userIdRef.current) return;
 
       // 2. Generar lista de notificaciones para recepción / admin
       if (isStaff) {
@@ -281,14 +319,14 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
         setNotifications((prev) => {
           // Re-read after awaits so mark-as-read during refresh is not lost.
-          const freshReadIds = getReadNotifIds();
-          const liveNotifs = applyReadFlags(
-            prev.filter((n) => n.id.startsWith('notif-')),
+          const freshReadIds = getReadNotifIds(userId);
+          const scopedLive = applyReadFlags(
+            prev.filter((n) => n.id.startsWith(`notif-${userId}-`)),
             freshReadIds,
             prev,
           );
           const merged = applyReadFlags(
-            [...liveNotifs, ...staffNotifs, ...waNotifs],
+            [...scopedLive, ...staffNotifs, ...waNotifs],
             freshReadIds,
             prev,
           );
@@ -313,6 +351,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const patientMap = new Map<string, string>();
         try {
           const patients = await patientService.getAll().catch(() => []);
+          if (refreshForUserId !== userIdRef.current) return;
           const patientsList = Array.isArray(patients) ? patients : (patients as any)?.data || [];
           patientsList.forEach((pt: any) => {
             if (pt.id) {
@@ -390,34 +429,35 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         });
 
         setNotifications((prev) => {
-          const freshReadIds = getReadNotifIds();
-          const liveNotifs = applyReadFlags(
-            prev.filter((n) => n.id.startsWith('notif-')),
+          const freshReadIds = getReadNotifIds(userId);
+          const scopedLive = applyReadFlags(
+            prev.filter((n) => n.id.startsWith(`notif-${userId}-`)),
             freshReadIds,
             prev,
           );
-          const combined = applyReadFlags([...liveNotifs, ...docNotifs], freshReadIds, prev);
+          const combined = applyReadFlags([...scopedLive, ...docNotifs], freshReadIds, prev);
           return combined.filter((v, i, a) => a.findIndex((t) => t.id === v.id) === i).slice(0, 15);
         });
-      } else if (role === 'PACIENTE') {
-        const patientName = (user.name || user.nombre || '').toLowerCase().trim();
-        const patientDoc = (user.cedula || '').trim();
-        const patientEmail = (user.email || '').toLowerCase().trim();
-        const patientPersonId = (user.personId || '').toLowerCase().trim();
-        const patientUserId = (user.id || '').toLowerCase().trim();
+      } else if (isPatient) {
+        const patientClinicalId = String(user.patientId || '').toLowerCase().trim();
+        const patientPersonId = String(user.personId || '').toLowerCase().trim();
+        const patientUserId = String(user.id || '').toLowerCase().trim();
+        const patientDoc = String(user.cedula || '').trim();
+        const patientEmail = String(user.email || '').toLowerCase().trim();
 
+        // Strict ownership only — never fuzzy name match (that leaked other users' citas).
         const isMyAppointment = (a: any) => {
           const aPatientId = String(a.patientId || '').toLowerCase().trim();
           const aPersonId = String(a.personId || '').toLowerCase().trim();
-          const aName = String(a.paciente || a.patientName || '').toLowerCase().trim();
           const aDoc = String(a.documentNumber || a.patientDocument || a.documento || '').trim();
           const aEmail = String(a.email || a.patientEmail || '').toLowerCase().trim();
 
-          if (patientUserId && aPatientId === patientUserId) return true;
-          if (patientPersonId && aPersonId === patientPersonId) return true;
+          if (patientClinicalId && aPatientId && areGuidsEqual(aPatientId, patientClinicalId)) return true;
+          if (patientPersonId && aPersonId && areGuidsEqual(aPersonId, patientPersonId)) return true;
+          if (patientPersonId && aPatientId && areGuidsEqual(aPatientId, patientPersonId)) return true;
+          if (patientUserId && aPatientId && areGuidsEqual(aPatientId, patientUserId)) return true;
           if (patientDoc && aDoc && aDoc === patientDoc) return true;
           if (patientEmail && aEmail && aEmail === patientEmail) return true;
-          if (patientName && aName && (aName.includes(patientName) || patientName.includes(aName))) return true;
           return false;
         };
 
@@ -490,22 +530,22 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         });
 
         setNotifications((prev) => {
-          const freshReadIds = getReadNotifIds();
-          const liveNotifs = applyReadFlags(
+          const freshReadIds = getReadNotifIds(userId);
+          const scopedLive = applyReadFlags(
             prev
-              .filter((n) => n.id.startsWith('notif-'))
+              .filter((n) => n.id.startsWith(`notif-${userId}-`))
               .map((n) => ({ ...n, link: '/citas' })),
             freshReadIds,
             prev,
           );
-          const combined = applyReadFlags([...liveNotifs, ...patientNotifs], freshReadIds, prev);
+          const combined = applyReadFlags([...scopedLive, ...patientNotifs], freshReadIds, prev);
           return combined.filter((v, i, a) => a.findIndex((t) => t.id === v.id) === i).slice(0, 15);
         });
       } else {
         setNotifications((prev) => {
-          const freshReadIds = getReadNotifIds();
+          const freshReadIds = getReadNotifIds(userId);
           return applyReadFlags(
-            prev.filter((n) => n.id.startsWith('notif-')),
+            prev.filter((n) => n.id.startsWith(`notif-${userId}-`)),
             freshReadIds,
             prev,
           );
@@ -514,7 +554,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     } catch (err) {
       console.warn('Could not refresh notifications from API:', err);
     }
-  }, [user, role]);
+  }, [user, userId, role]);
 
   useEffect(() => {
     refreshNotifications();
@@ -539,7 +579,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     };
   }, [refreshNotifications]);
 
-  const userId = user?.id;
   useEffect(() => {
     if (!userId) return;
 
@@ -548,11 +587,35 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const conn = await signalRService.startConnection();
       if (conn && isSubscribed) {
         const handlePushEvent = (payload?: any) => {
-          if (payload && payload.title) {
+          if (!payload) {
+            refreshNotifications();
+            return;
+          }
+
+          // Hub DTOs use PascalCase; ignore pushes meant for another user/role.
+          const recipientUserId = String(
+            payload.recipientUserId || payload.RecipientUserId || '',
+          ).toLowerCase();
+          if (recipientUserId && userId && !areGuidsEqual(recipientUserId, userId)) {
+            return;
+          }
+          const recipientRoleId = String(
+            payload.recipientRoleId || payload.RecipientRoleId || '',
+          ).toLowerCase();
+          if (recipientRoleId && user?.roleIds?.length) {
+            const myRoles = user.roleIds.map((r) => String(r).toLowerCase());
+            if (!myRoles.some((r) => areGuidsEqual(r, recipientRoleId))) {
+              return;
+            }
+          }
+
+          const title = payload.title || payload.Title;
+          const message = payload.message || payload.Content || payload.content;
+          if (title) {
             addNotification({
-              title: payload.title,
-              message: payload.message || 'Nueva actualización en tu agenda clínica.',
-              link: payload.link || '/agenda',
+              title,
+              message: message || 'Nueva actualización en tu agenda clínica.',
+              link: payload.link || (role === 'PACIENTE' ? '/citas' : '/agenda'),
               type: payload.type || 'appointment_confirmed',
             });
           }
@@ -571,21 +634,21 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return () => {
       isSubscribed = false;
     };
-  }, [userId, refreshNotifications, addNotification]);
+  }, [userId, user?.roleIds, role, refreshNotifications, addNotification]);
 
   const markAsRead = useCallback((id: string) => {
-    saveReadNotifId(id);
+    saveReadNotifId(userId, id);
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
-  }, []);
+  }, [userId]);
 
   const markAllAsRead = useCallback(() => {
     setNotifications((prev) => {
-      prev.forEach((n) => saveReadNotifId(n.id));
-      saveReadNotifId('pending-appointments-summary');
-      saveReadNotifId(`pending-appointments-summary-${pendingAppointmentsCount}`);
+      prev.forEach((n) => saveReadNotifId(userId, n.id));
+      saveReadNotifId(userId, 'pending-appointments-summary');
+      saveReadNotifId(userId, `pending-appointments-summary-${pendingAppointmentsCount}`);
       return prev.map((n) => ({ ...n, read: true }));
     });
-  }, [pendingAppointmentsCount]);
+  }, [pendingAppointmentsCount, userId]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
