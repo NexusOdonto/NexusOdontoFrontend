@@ -31,7 +31,7 @@ export function PageHeader({
   const { theme, toggleTheme } = useTheme();
   const { user } = useAuth();
   const role = getUserRole(user);
-  const { notifications, unreadCount, pendingAppointmentsCount, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -183,7 +183,7 @@ export function PageHeader({
         {/* NOTIFICACIONES CON INDICADOR Y PANEL DESPLEGABLE */}
         <div className="relative" ref={notifRef}>
           <NotificationBell
-            count={pendingAppointmentsCount || unreadCount}
+            count={unreadCount}
             onClick={() => setShowNotifications(!showNotifications)}
             size={36}
             color="teal"
