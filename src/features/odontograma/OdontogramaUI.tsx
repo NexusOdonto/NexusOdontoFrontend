@@ -1,10 +1,9 @@
 import { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
-import { pdf } from "@react-pdf/renderer";
 import { useTheme } from "../../context/ThemeContext";
 import { OdontogramaGrid } from "./components/OdontogramaGrid";
 import { ConvencionesToolbar } from "./components/ConvencionesToolbar";
-import { OdontogramaPdfDocument } from "./components/OdontogramaPdfDocument";
+import { renderPdfBlob } from "../../utils/renderPdfBlob";
 import { patientService } from "../../api/patientService";
 import { personService } from "../../api/personService";
 import { odontogramService } from "../../api/odontogramService";
@@ -779,17 +778,16 @@ function OdontogramaUI() {
         ? `${user.nombre} ${user.apellido || ""}`.trim()
         : "Dr. Odontólogo Especialista";
 
-      const doc = (
+      const { OdontogramaPdfDocument } = await import("./components/OdontogramaPdfDocument");
+      const blob = await renderPdfBlob(
         <OdontogramaPdfDocument
           patient={selectedPaciente}
           doctorName={doctorDisplayName}
           dentitionType={state.dentitionType}
           teeth={state.teeth}
           notasClinicas={notasClinicas}
-        />
+        />,
       );
-
-      const blob = await pdf(doc).toBlob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;

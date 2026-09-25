@@ -16,9 +16,8 @@ import { sessionService, isSessionActive } from "../../api/sessionService";
 import { areGuidsEqual } from "../../utils/roleUtils";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
 import { Plus, LayoutGrid, List, Download, FileText, Table as TableIcon } from "lucide-react";
-import { pdf } from "@react-pdf/renderer";
-import { PacientesPdfDocument } from "./components/PacientesPdfDocument";
 import { generateBlobatarPng } from "../../utils/blobatarHelper";
+import { renderPdfBlob } from "../../utils/renderPdfBlob";
 
 const ITEMS_PER_PAGE = 6;
 
@@ -214,14 +213,14 @@ export function PacientesView() {
         })
       );
 
-      const doc = (
+      const { PacientesPdfDocument } = await import("./components/PacientesPdfDocument");
+      const blob = await renderPdfBlob(
         <PacientesPdfDocument
           pacientes={pacientesFiltrados}
           avatarMap={avatarMap}
           generatedBy={user?.name || "Administración"}
-        />
+        />,
       );
-      const blob = await pdf(doc).toBlob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;

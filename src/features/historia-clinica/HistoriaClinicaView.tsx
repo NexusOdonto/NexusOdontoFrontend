@@ -1,6 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { pdf } from "@react-pdf/renderer";
 import {
   Search,
   Plus,
@@ -41,11 +40,9 @@ import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon
 import { areGuidsEqual } from "../../utils/roleUtils";
 import { UserAvatar } from "../../components/common/UserAvatar";
 import { FolderComponent } from "../../components/ui/folder-component";
-import { PrescriptionPdfDocument } from "./components/PrescriptionPdfDocument";
-import { ExpedienteClinicoPdfDocument } from "./components/ExpedienteClinicoPdfDocument";
-import { RegistroIndividualPdfDocument, type ClinicalRecordItem } from "./components/RegistroIndividualPdfDocument";
+import type { ClinicalRecordItem } from "./components/RegistroIndividualPdfDocument";
 import { odontogramService, type FullOdontogramResponseDto } from "../../api/odontogramService";
-import { OdontogramaPdfDocument } from "../odontograma/components/OdontogramaPdfDocument";
+import { renderPdfBlob } from "../../utils/renderPdfBlob";
 import {
   type ToothState,
   type Diagnosis,
@@ -1059,7 +1056,8 @@ export function HistoriaClinicaView() {
     if (!selectedPatient) return;
     try {
       setIsGeneratingPdf(true);
-      const blob = await pdf(
+      const { PrescriptionPdfDocument } = await import("./components/PrescriptionPdfDocument");
+      const blob = await renderPdfBlob(
         <PrescriptionPdfDocument
           patient={{
             firstName: selectedPatient.firstName || "Paciente",
@@ -1070,8 +1068,8 @@ export function HistoriaClinicaView() {
           doctorName={formProfesional}
           items={prescriptionItems}
           generalInstructions={prescIndicacionesGrales}
-        />
-      ).toBlob();
+        />,
+      );
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -1095,7 +1093,8 @@ export function HistoriaClinicaView() {
     if (!selectedPatient) return;
     try {
       setIsGeneratingPdf(true);
-      const blob = await pdf(
+      const { ExpedienteClinicoPdfDocument } = await import("./components/ExpedienteClinicoPdfDocument");
+      const blob = await renderPdfBlob(
         <ExpedienteClinicoPdfDocument
           patient={{
             firstName: selectedPatient.firstName || "Paciente",
@@ -1122,8 +1121,8 @@ export function HistoriaClinicaView() {
               ? `Dentición: ${odontogramSummary.dentitionType === "permanent" ? "Permanente" : "Temporal"} • ${odontogramSummary.findingsCount} hallazgos registrados. ${odontogramSummary.notasClinicas ? "Notas clínicas: " + odontogramSummary.notasClinicas : ""}`
               : undefined
           }
-        />
-      ).toBlob();
+        />,
+      );
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -1147,7 +1146,8 @@ export function HistoriaClinicaView() {
     if (!selectedPatient || !odontogramSummary) return;
     try {
       setIsGeneratingPdf(true);
-      const blob = await pdf(
+      const { OdontogramaPdfDocument } = await import("../odontograma/components/OdontogramaPdfDocument");
+      const blob = await renderPdfBlob(
         <OdontogramaPdfDocument
           patient={{
             nombre: selectedPatient.firstName,
@@ -1163,8 +1163,8 @@ export function HistoriaClinicaView() {
           teeth={odontogramSummary.teeth}
           notasClinicas={odontogramSummary.notasClinicas}
           issuedDate={new Date().toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" })}
-        />
-      ).toBlob();
+        />,
+      );
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -1188,7 +1188,8 @@ export function HistoriaClinicaView() {
     if (!selectedPatient || recordsToPrint.length === 0) return;
     try {
       setIsGeneratingPdf(true);
-      const blob = await pdf(
+      const { RegistroIndividualPdfDocument } = await import("./components/RegistroIndividualPdfDocument");
+      const blob = await renderPdfBlob(
         <RegistroIndividualPdfDocument
           patient={{
             firstName: selectedPatient.firstName || "Paciente",
@@ -1200,8 +1201,8 @@ export function HistoriaClinicaView() {
             allergies: selectedPatient.allergies,
           }}
           records={recordsToPrint}
-        />
-      ).toBlob();
+        />,
+      );
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;

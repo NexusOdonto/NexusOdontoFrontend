@@ -2,6 +2,29 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
+/** Resolve the real npm package name (pnpm / nested node_modules safe). */
+function getPackageName(id: string): string | null {
+  const normalized = id.replace(/\\/g, '/');
+  const matches = [
+    ...normalized.matchAll(/\/node_modules\/((?:@[^/]+\/)?[^/]+)/g),
+  ];
+  const pkgs = matches
+    .map((m) => m[1])
+    .filter((p) => p !== '.pnpm' && p !== '.ignored');
+  return pkgs.length ? pkgs[pkgs.length - 1] : null;
+}
+
+function isReactFamily(id: string): boolean {
+  const n = id.replace(/\\/g, '/');
+  if (n.endsWith('/blobatar/dist/react.js')) return true;
+  if (/\/\.ignored\/react(?:-dom)?\//.test(n)) return true;
+  if (/\/node_modules\/react\//.test(n) && !n.includes('/@blobatar/react/')) return true;
+  if (/\/node_modules\/react-dom\//.test(n)) return true;
+  if (/\/node_modules\/scheduler\//.test(n)) return true;
+  if (/\/node_modules\/react-router(?:-dom)?\//.test(n)) return true;
+  return false;
+}
+
 export default defineConfig({
   base: '/',
   plugins: [react(), tailwindcss()],
@@ -28,35 +51,35 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('@react-pdf') || id.includes('pdfkit') || id.includes('fontkit') || id.includes('restructure') || id.includes('yoga-layout')) {
-              return 'vendor-pdf';
-            }
-            if (id.includes('motion') || id.includes('framer-motion')) {
-              return 'vendor-motion';
-            }
-            if (id.includes('@blobatar') || id.includes('blobatar')) {
-              return 'vendor-blobatar';
-            }
-            if (id.includes('@microsoft/signalr')) {
-              return 'vendor-signalr';
-            }
-            if (id.includes('date-fns')) {
-              return 'vendor-date';
-            }
-            if (id.includes('react-hook-form') || id.includes('@hookform') || id.includes('zod')) {
-              return 'vendor-forms';
-            }
-            if (id.includes('lucide-react')) {
-              return 'vendor-icons';
-            }
-            if (id.includes('axios')) {
-              return 'vendor-axios';
-            }
-            if (id.includes('react-dom') || id.includes('react-router-dom') || id.includes('react/')) {
-              return 'vendor-react';
-            }
+          if (isReactFamily(id)) return 'vendor-react';
+
+          const pkg = getPackageName(id);
+          if (!pkg) return;
+
+          // Leave these to natural route-based splitting. Forcing named chunks
+          // previously absorbed React/JSX copies into the landing entry graph.
+          if (
+            pkg === 'blobatar' ||
+            pkg === '@blobatar/react' ||
+            pkg === 'motion' ||
+            pkg === 'framer-motion' ||
+            pkg === 'react-hook-form' ||
+            pkg === '@hookform/resolvers' ||
+            pkg === 'zod' ||
+            pkg === '@react-pdf/renderer' ||
+            pkg.startsWith('@react-pdf/') ||
+            pkg === 'pdfkit' ||
+            pkg === 'fontkit' ||
+            pkg === 'restructure' ||
+            pkg === 'yoga-layout'
+          ) {
+            return;
           }
+
+          if (pkg === '@microsoft/signalr') return 'vendor-signalr';
+          if (pkg === 'date-fns') return 'vendor-date';
+          if (pkg === 'lucide-react') return 'vendor-icons';
+          if (pkg === 'axios') return 'vendor-axios';
         },
       },
     },
