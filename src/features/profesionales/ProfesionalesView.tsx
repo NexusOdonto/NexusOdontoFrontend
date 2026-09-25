@@ -107,9 +107,9 @@ const ESPECIALIDADES_SELECT_OPTIONS: GlassSelectOption[] = ESPECIALIDADES_CATALO
 }));
 
 const SILLON_CREATE_OPTIONS: GlassSelectOption[] = [
-  { value: "Sillón 1 - Principal", label: "Sillón 1 - Principal (Odontología General & Ortodoncia)" },
-  { value: "Sillón 2 - Quirúrgico", label: "Sillón 2 - Quirúrgico (Implantes & Cirugía Oral)" },
-  { value: "Sillón 3 - Estética Dental", label: "Sillón 3 - Estética Dental (Diseño de Sonrisa)" },
+  { value: "Sillón 1 - Principal", label: "Sillón 1 - Principal" },
+  { value: "Sillón 2 - Quirúrgico", label: "Sillón 2 - Quirúrgico" },
+  { value: "Sillón 3 - Estética Dental", label: "Sillón 3 - Estética Dental" },
   { value: "Sillón 4 - Infantil & Preventivo", label: "Sillón 4 - Infantil & Preventivo" },
 ];
 
@@ -1659,8 +1659,8 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
       {showCreateModal &&
         canCreateProfessional &&
         createPortal(
-          <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto p-3 sm:p-4 bg-slate-900/60 dark:bg-slate-950/75 backdrop-blur-md animate-fadeIn">
-            <div className="w-full max-w-xl my-auto rounded-3xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/20 p-5 sm:p-6 shadow-2xl space-y-4 max-h-[min(92dvh,100%)] overflow-y-auto">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 dark:bg-slate-950/75 backdrop-blur-md animate-fadeIn">
+            <div className="w-full max-w-3xl my-auto rounded-3xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/20 p-5 sm:p-6 shadow-2xl space-y-3.5 max-h-[95vh] overflow-y-auto sm:overflow-visible">
               <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
                 <div className="flex items-center gap-2.5">
                   <div className="p-2 rounded-xl bg-cyan-500/15 text-cyan-700 dark:text-cyan-300">
@@ -1671,7 +1671,7 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                       Alta de Odontólogo Especialista
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Registro clínico, asignación de sillón y credenciales de acceso
+                      Registro clínico, asignación de consultorio y credenciales de acceso
                     </p>
                   </div>
                 </div>
@@ -1684,38 +1684,25 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                 </button>
               </div>
 
-              <form onSubmit={handleCreateProfessional} className="space-y-3.5 text-xs">
-                {/* Nombre Completo */}
-                <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Nombre Completo del Doctor(a) <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ej. Dra. Mariana Restrepo Gómez"
-                    value={formNombre}
-                    onChange={(e) => setFormNombre(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 font-medium"
-                  />
-                </div>
-
-                {/* Especialidad & Cédula */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="min-w-0">
-                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Especialidad Médica <span className="text-rose-500">*</span>
+              <form onSubmit={handleCreateProfessional} className="space-y-3 text-xs">
+                {/* FILA 1: Nombre Completo (8 cols) & Registro Médico / Cédula (4 cols) */}
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                  <div className="sm:col-span-8 min-w-0">
+                    <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Nombre Completo del Doctor(a) <span className="text-rose-500">*</span>
                     </label>
-                    <GlassSelect
-                      value={formEspecialidad}
-                      onChange={(val) => setFormEspecialidad(val)}
-                      options={ESPECIALIDADES_SELECT_OPTIONS}
-                      className="w-full"
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ej. Dra. Mariana Restrepo Gómez"
+                      value={formNombre}
+                      onChange={(e) => setFormNombre(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 font-medium placeholder:text-slate-400 dark:placeholder:text-slate-500"
                     />
                   </div>
 
-                  <div className="min-w-0">
-                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <div className="sm:col-span-4 min-w-0">
+                    <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       Registro Médico / Cédula <span className="text-rose-500">*</span>
                     </label>
                     <input
@@ -1724,16 +1711,61 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                       placeholder="Ej. COL-89214 o 1098765432"
                       value={formRegistro}
                       onChange={(e) => setFormRegistro(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 font-mono placeholder:text-slate-400 dark:placeholder:text-slate-500"
                     />
                   </div>
                 </div>
 
-                {/* Correo de Acceso & Contraseña */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="min-w-0">
-                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
-                      <Mail size={13} className="text-cyan-600 dark:text-cyan-400" />
+                {/* FILA 2: Especialidad Médica (4 cols), Sillón / Consultorio (4 cols), Teléfono Móvil (4 cols) */}
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                  <div className="sm:col-span-4 min-w-0">
+                    <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Especialidad Médica <span className="text-rose-500">*</span>
+                    </label>
+                    <GlassSelect
+                      value={formEspecialidad}
+                      onChange={(val) => setFormEspecialidad(val)}
+                      options={ESPECIALIDADES_SELECT_OPTIONS}
+                      variant="form"
+                      fullWidth
+                      className="!py-2 !px-3 !text-xs !rounded-xl !bg-slate-50 dark:!bg-slate-900/90 !border-slate-200 dark:!border-white/20"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-4 min-w-0">
+                    <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Sillón / Consultorio Habitual
+                    </label>
+                    <GlassSelect
+                      value={formSillon}
+                      onChange={(val) => setFormSillon(val)}
+                      options={SILLON_CREATE_OPTIONS}
+                      variant="form"
+                      fullWidth
+                      className="!py-2 !px-3 !text-xs !rounded-xl !bg-slate-50 dark:!bg-slate-900/90 !border-slate-200 dark:!border-white/20"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-4 min-w-0">
+                    <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+                      <Phone size={12} className="text-slate-400" />
+                      <span>Teléfono Móvil</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="+57 300 000 0000"
+                      value={formTelefono}
+                      onChange={(e) => setFormTelefono(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                    />
+                  </div>
+                </div>
+
+                {/* FILA 3: Credenciales de Acceso (Correo 6 cols + Contraseña 6 cols) */}
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                  <div className="sm:col-span-6 min-w-0">
+                    <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+                      <Mail size={12} className="text-cyan-600 dark:text-cyan-400" />
                       <span>Correo de Acceso <span className="text-rose-500">*</span></span>
                     </label>
                     <input
@@ -1742,13 +1774,13 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                       placeholder="doctor@nexusodonto.com"
                       value={formEmail}
                       onChange={(e) => setFormEmail(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                     />
                   </div>
 
-                  <div className="min-w-0">
-                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
-                      <KeyRound size={13} className="text-teal-600 dark:text-teal-400" />
+                  <div className="sm:col-span-6 min-w-0">
+                    <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+                      <KeyRound size={12} className="text-teal-600 dark:text-teal-400" />
                       <span>Contraseña de Acceso <span className="text-rose-500">*</span></span>
                     </label>
                     <div className="relative">
@@ -1759,82 +1791,53 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                         placeholder="Contraseña para iniciar sesión"
                         value={formPassword}
                         onChange={(e) => setFormPassword(e.target.value)}
-                        className="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500"
+                        className="w-full pl-3 pr-9 py-2 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
                         tabIndex={-1}
                       >
-                        {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                        {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
                       </button>
                     </div>
                   </div>
                 </div>
 
-                {/* Teléfono & Sillón */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="min-w-0">
-                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
-                      <Phone size={13} className="text-slate-400" />
-                      <span>Teléfono Móvil</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="+57 300 000 0000"
-                      value={formTelefono}
-                      onChange={(e) => setFormTelefono(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500"
-                    />
-                  </div>
-
-                  <div className="min-w-0">
-                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Sillón / Consultorio Habitual
-                    </label>
-                    <GlassSelect
-                      value={formSillon}
-                      onChange={(val) => setFormSillon(val)}
-                      options={SILLON_CREATE_OPTIONS}
-                      className="w-full"
-                    />
-                  </div>
-                </div>
-
-                {/* Biografía */}
+                {/* FILA 4: Perfil y Biografía Profesional */}
                 <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Perfil y Biografía Profesional
                   </label>
-                  <textarea
-                    rows={2}
+                  <input
+                    type="text"
                     placeholder="Trayectoria clínica, posgrados y enfoque de atención..."
                     value={formBio}
                     onChange={(e) => setFormBio(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 resize-none"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                   />
                 </div>
 
-                {/* Info Note */}
-                <div className="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-[11px] text-cyan-800 dark:text-cyan-300 flex items-center gap-2">
-                  <ShieldCheck size={16} className="shrink-0 text-cyan-500" />
-                  <span>El nuevo odontólogo podrá iniciar sesión inmediatamente en <strong>/login</strong> con su correo/cédula y contraseña asignada con rol <strong>ODONTÓLOGO</strong>.</span>
+                {/* FILA 5: Nota Informativa Compacta */}
+                <div className="py-2 px-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-[11px] text-cyan-800 dark:text-cyan-300 flex items-center gap-2">
+                  <ShieldCheck size={15} className="shrink-0 text-cyan-500" />
+                  <span>El nuevo odontólogo podrá iniciar sesión en <strong>/login</strong> con su correo/cédula y contraseña asignada con rol <strong>ODONTÓLOGO</strong>.</span>
                 </div>
 
-                {/* Footer Buttons */}
-                <div className="pt-3 border-t border-slate-200 dark:border-white/10 flex items-center justify-end gap-2.5">
+                {/* FILA 6: Footer Buttons */}
+                <div className="pt-2.5 border-t border-slate-200 dark:border-white/10 flex items-center justify-end gap-2.5">
                   <button
                     type="button"
                     onClick={() => setShowCreateModal(false)}
-                    className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-white/20 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                    className="px-4 py-2 rounded-xl border border-slate-300 dark:border-white/20 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
                     disabled={creating}
-                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 text-slate-950 font-bold text-xs shadow-md active:scale-95 cursor-pointer disabled:opacity-50"
+                    className="px-5 py-2 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 text-slate-950 font-bold text-xs shadow-md active:scale-95 cursor-pointer disabled:opacity-50"
                   >
                     {creating ? "Registrando..." : "Guardar Profesional"}
                   </button>
