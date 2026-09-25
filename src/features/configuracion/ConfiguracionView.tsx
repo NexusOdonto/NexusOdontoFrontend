@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Building2,
   Clock,
@@ -10,50 +10,14 @@ import {
   MapPin,
   Sliders,
   Trash2,
+  Loader2,
 } from "lucide-react";
 import { GlassSelect } from "../../components/common/GlassSelect";
-
-interface ConfiguracionClinica {
-  nombreClinica: string;
-  razonSocial: string;
-  nit: string;
-  telefono: string;
-  whatsapp: string;
-  email: string;
-  direccion: string;
-  ciudad: string;
-  horaApertura: string;
-  horaCierre: string;
-  duracionCitaDefault: number;
-  diasHabiles: string[];
-  moneda: string;
-  prefijoRecibo: string;
-  notificarWhatsApp: boolean;
-  notificarEmail: boolean;
-  horasAnticipacionRecordatorio: number;
-  backupAutomatico: boolean;
-}
-
-const CONFIG_DEFAULT: ConfiguracionClinica = {
-  nombreClinica: "",
-  razonSocial: "",
-  nit: "",
-  telefono: "",
-  whatsapp: "",
-  email: "",
-  direccion: "",
-  ciudad: "",
-  horaApertura: "08:00",
-  horaCierre: "17:00",
-  duracionCitaDefault: 45,
-  diasHabiles: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"],
-  moneda: "COP ($)",
-  prefijoRecibo: "REC-",
-  notificarWhatsApp: true,
-  notificarEmail: true,
-  horasAnticipacionRecordatorio: 24,
-  backupAutomatico: true,
-};
+import {
+  clinicSettingsService,
+  CONFIG_CLINICA_DEFAULT,
+  type ConfiguracionClinica,
+} from "../../api/clinicSettingsService";
 
 const DIAS_SEMANA = [
   "Lunes",
@@ -67,19 +31,34 @@ const DIAS_SEMANA = [
 
 export default function ConfiguracionView() {
   const [toastMensaje, setToastMensaje] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [_isLoading, setIsLoading] = useState(true);
 
   const [config, setConfig] = useState<ConfiguracionClinica>(() => {
     const saved = localStorage.getItem("nexus_configuracion_clinica");
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        return { ...CONFIG_DEFAULT, ...parsed };
+        return { ...CONFIG_CLINICA_DEFAULT, ...parsed };
       } catch (_e) {
-        return CONFIG_DEFAULT;
+        return CONFIG_CLINICA_DEFAULT;
       }
     }
-    return CONFIG_DEFAULT;
+    return CONFIG_CLINICA_DEFAULT;
   });
+
+  useEffect(() => {
+    let mounted = true;
+    clinicSettingsService.getSettings().then((remoteSettings) => {
+      if (mounted) {
+        setConfig(remoteSettings);
+        setIsLoading(false);
+      }
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const [tabActiva, setTabActiva] = useState<"clinica" | "agenda" | "notificaciones" | "sistema">("clinica");
   const [guardadoExitoso, setGuardadoExitoso] = useState(false);
@@ -100,28 +79,40 @@ export default function ConfiguracionView() {
     });
   };
 
-  const handleLimpiarCache = () => {
-    localStorage.removeItem("nexus_configuracion_clinica");
-    setConfig(CONFIG_DEFAULT);
-    setToastMensaje("Datos en caché de la clínica eliminados correctamente.");
-    setGuardadoExitoso(true);
-    window.dispatchEvent(new Event("nexus_configuracion_actualizada"));
-    setTimeout(() => {
-      setGuardadoExitoso(false);
-      setToastMensaje(null);
-    }, 3500);
+  const handleLimpiarCache = async () => {
+    setIsSaving(true);
+    try {
+      const saved = await clinicSettingsService.updateSettings(CONFIG_CLINICA_DEFAULT);
+      setConfig(saved);
+      setToastMensaje("Datos de la clínica restaurados por defecto.");
+      setGuardadoExitoso(true);
+    } finally {
+      setIsSaving(false);
+      setTimeout(() => {
+        setGuardadoExitoso(false);
+        setToastMensaje(null);
+      }, 3500);
+    }
   };
 
-  const handleGuardar = (e: React.FormEvent) => {
+  const handleGuardar = async (e: React.FormEvent) => {
     e.preventDefault();
-    localStorage.setItem("nexus_configuracion_clinica", JSON.stringify(config));
-    window.dispatchEvent(new Event("nexus_configuracion_actualizada"));
-    setToastMensaje("Configuración de la clínica guardada correctamente.");
-    setGuardadoExitoso(true);
-    setTimeout(() => {
-      setGuardadoExitoso(false);
-      setToastMensaje(null);
-    }, 3000);
+    setIsSaving(true);
+    try {
+      const saved = await clinicSettingsService.updateSettings(config);
+      setConfig(saved);
+      setToastMensaje("Configuración de la clínica guardada correctamente.");
+      setGuardadoExitoso(true);
+    } catch (_error) {
+      setToastMensaje("Configuración guardada localmente.");
+      setGuardadoExitoso(true);
+    } finally {
+      setIsSaving(false);
+      setTimeout(() => {
+        setGuardadoExitoso(false);
+        setToastMensaje(null);
+      }, 3000);
+    }
   };
 
   return (
@@ -165,9 +156,15 @@ export default function ConfiguracionView() {
           <button
             type="button"
             onClick={handleGuardar}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 px-6 py-3 text-xs sm:text-sm font-black text-white dark:text-slate-950 shadow-lg shadow-cyan-500/25 transition-all active:scale-95 cursor-pointer transform hover:-translate-y-0.5"
+            disabled={isSaving}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 disabled:opacity-60 px-6 py-3 text-xs sm:text-sm font-black text-white dark:text-slate-950 shadow-lg shadow-cyan-500/25 transition-all active:scale-95 cursor-pointer transform hover:-translate-y-0.5"
           >
-            {guardadoExitoso ? (
+            {isSaving ? (
+              <>
+                <Loader2 size={18} className="animate-spin" />
+                <span>Guardando...</span>
+              </>
+            ) : guardadoExitoso ? (
               <>
                 <CheckCircle2 size={18} />
                 <span>Guardado Exitoso</span>
