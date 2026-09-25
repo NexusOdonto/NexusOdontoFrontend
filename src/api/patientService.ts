@@ -66,7 +66,21 @@ export const patientService = {
     try {
       const persons = await personService.getAll().catch(() => []);
       if (Array.isArray(persons) && persons.length > 0) {
-        return rawPatients.map((p) => {
+        return rawPatients
+          .filter((p) => {
+            const patientActive = p?.isActive ?? p?.is_active ?? true;
+            if (patientActive === false || patientActive === 0) return false;
+            const matchedPerson = persons.find(
+              (per) => per.id && p.personId && String(per.id).toLowerCase() === String(p.personId).toLowerCase()
+            );
+            if (matchedPerson && (matchedPerson.isActive === false || (matchedPerson as any).is_active === false)) {
+              return false;
+            }
+            // If persons list is active-only and person is missing, treat as soft-deleted.
+            if (!matchedPerson && p.personId) return false;
+            return true;
+          })
+          .map((p) => {
           const matchedPerson = persons.find(
             (per) => per.id && p.personId && String(per.id).toLowerCase() === String(p.personId).toLowerCase()
           );
@@ -86,7 +100,12 @@ export const patientService = {
       // Fallback
     }
 
-    return rawPatients.map(mapPatientResponse);
+    return rawPatients
+      .filter((p) => {
+        const patientActive = p?.isActive ?? p?.is_active ?? true;
+        return patientActive !== false && patientActive !== 0;
+      })
+      .map(mapPatientResponse);
   },
 
   getById: async (id: string): Promise<PatientResponseDto> => {

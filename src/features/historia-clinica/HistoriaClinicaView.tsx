@@ -216,7 +216,7 @@ export function HistoriaClinicaView() {
       const [patientsRes, personsRes, usersRes] = await Promise.allSettled([
         patientService.getAll(),
         personService.getAll(),
-        userService.getAll({ includeInactive: true }).catch(() => userService.getAll().catch(() => [])),
+        userService.getAll().catch(() => []),
       ]);
 
       const patientList = patientsRes.status === "fulfilled" && Array.isArray(patientsRes.value) ? patientsRes.value : [];
@@ -237,7 +237,14 @@ export function HistoriaClinicaView() {
       let enriched: PatientResponseDto[] = [];
 
       if (patientList && patientList.length > 0) {
-        enriched = patientList.map((p) => {
+        enriched = patientList
+          .filter((p) => {
+            const person = personList.find((per) => areGuidsEqual(per.id, p.personId));
+            const patientActive = p.isActive ?? (p as any).is_active ?? true;
+            const personActive = person?.isActive ?? (person as any)?.is_active ?? true;
+            return patientActive !== false && patientActive !== 0 && personActive !== false && personActive !== 0;
+          })
+          .map((p) => {
           const person = personList.find((per) => areGuidsEqual(per.id, p.personId));
           const userMatch = usersList.find((u: any) => areGuidsEqual(u.personId, p.personId) || areGuidsEqual(u.id, p.id));
           const localMatch = localPatients.find((lp: any) =>

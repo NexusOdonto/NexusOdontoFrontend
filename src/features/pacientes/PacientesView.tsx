@@ -59,7 +59,7 @@ export function PacientesView() {
       const [patientsRes, personsRes, usersRes, sessionsRes] = await Promise.allSettled([
         patientService.getAll(),
         personService.getAll(),
-        userService.getAll({ includeInactive: true }).catch(() => userService.getAll().catch(() => [])),
+        userService.getAll().catch(() => []),
         sessionService.getAll().catch(() => [])
       ]);
 
@@ -85,7 +85,17 @@ export function PacientesView() {
       // 1. Mapear Patients de la API (entidades clínicas reales)
       if (patientsData && patientsData.length > 0) {
         patientsData.forEach((p, idx) => {
+          // Soft-deleted / inactive patients must never appear in the directory.
+          if (p.isActive === false || (p as any).is_active === false) {
+            return;
+          }
+
           const person = personsData.find((per) => areGuidsEqual(per.id, p.personId));
+          // Persons GetAll is active-only: missing person ⇒ soft-deleted identity, hide row.
+          if (!person || person.isActive === false || (person as any).is_active === false) {
+            return;
+          }
+
           const fullName = person ? `${person.firstName || ""} ${person.lastName || ""}`.trim() : (p.firstName ? `${p.firstName} ${p.lastName}`.trim() : `Paciente #${idx + 1}`);
           const doc = person?.documentNumber || p.documentNumber || "";
           const tel = person?.phone || p.phone || p.emergencyContactPhone || "";
@@ -98,7 +108,8 @@ export function PacientesView() {
           const patientPersonId = (p.personId || "").toLowerCase();
           const patientId = (p.id || "").toString().toLowerCase();
           const hasActiveSession = (patientPersonId && activePersonIds.has(patientPersonId)) || (patientId && activeUserIds.has(patientId));
-          const resolvedEstado = hasActiveSession ? "Activo" : "Inactivo";
+          const accountActive = p.isActive !== false && (person?.isActive !== false);
+          const resolvedEstado = !accountActive ? "Inactivo" : hasActiveSession ? "Activo" : "Inactivo";
 
           const key = (doc || email || fullName).toLowerCase();
 
@@ -114,6 +125,7 @@ export function PacientesView() {
               estado: resolvedEstado,
               correo: email,
               fechaNacimiento: person?.dateOfBirth || p.dateOfBirth,
+              ...( { isActive: accountActive } as any ),
             });
           }
         });

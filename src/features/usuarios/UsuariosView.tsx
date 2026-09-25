@@ -179,7 +179,7 @@ export function UsuariosView() {
     try {
       setLoading(true);
       const [data, personsData, rolesData, sessionsData] = await Promise.all([
-        userService.getAll({ includeInactive: true }).catch(() => userService.getAll().catch(() => [])),
+        userService.getAll().catch(() => []),
         personService.getAll().catch(() => []),
         roleService.getAll().catch(() => []),
         sessionService.getAll().catch(() => []),
@@ -195,7 +195,23 @@ export function UsuariosView() {
         return email.includes("bot") || email.includes("chatbot") || name.includes("bot service") || name.includes("chatbot") || code.includes("BOT");
       };
 
-      const filteredApiData = (data || []).filter((u: any) => !isBotUser(u));
+      const isAccountActive = (u: any, person?: any) => {
+        const userActive = u?.isActive ?? u?.is_active ?? u?.activo;
+        if (userActive === false || userActive === 0 || userActive === "0" || userActive === "false") return false;
+        // Persons GetAll is active-only: missing person ⇒ soft-deleted identity.
+        if (!person) return false;
+        const personActive = person?.isActive ?? person?.is_active;
+        if (personActive === false || personActive === 0 || personActive === "0" || personActive === "false") return false;
+        return true;
+      };
+
+      const filteredApiData = (data || []).filter((u: any) => {
+        if (isBotUser(u)) return false;
+        const matchedPerson = personsData.find((p: any) =>
+          p.id && u.personId && String(p.id).toLowerCase() === String(u.personId).toLowerCase()
+        );
+        return isAccountActive(u, matchedPerson);
+      });
 
       const mappedUsuarios: Usuario[] = filteredApiData.map((u: any, idx: number) => {
         const matchedPerson = personsData.find((p: any) => p.id === u.personId);
@@ -237,17 +253,18 @@ export function UsuariosView() {
           permissions: {},
         };
 
-        // Determine active status: default to Inactivo, and pass to Activo only if session is active
-        const isUserActive = activeUserIds.has(String(u.id || "").toLowerCase());
+        // Account IsActive from API; session presence is only for online indicator, not soft-delete.
+        const accountActive = isAccountActive(u, matchedPerson);
+        const isOnline = activeUserIds.has(String(u.id || "").toLowerCase());
 
         return {
           id: u.id,
           personId: u.personId || u.id,
           name: fullName,
           email: userEmail,
-          isActive: isUserActive,
-          status: isUserActive ? "Activo" : "Inactivo",
-          state: isUserActive ? "Activo" : "Inactivo",
+          isActive: accountActive,
+          status: accountActive ? (isOnline ? "Activo" : "Inactivo") : "Inactivo",
+          state: accountActive ? (isOnline ? "Activo" : "Inactivo") : "Inactivo",
           roleIds: [primaryRoleId],
           roleName: matchedRole?.name || preset.name,
           roleCode: matchedRole?.code || preset.code,
