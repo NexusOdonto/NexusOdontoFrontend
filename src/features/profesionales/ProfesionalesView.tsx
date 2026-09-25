@@ -47,17 +47,13 @@ import { UserAvatar } from "../../components/common/UserAvatar";
 import { GlassSelect, type GlassSelectOption } from "../../components/common/GlassSelect";
 import { GlassTimePicker } from "../../components/common/GlassTimePicker";
 import { getSpecialtyDisplayLabel } from "../../utils/specialtyLabels";
-
-interface TurnoDisponibilidad {
-  dia: string;
-  horaInicio: string;
-  horaFin: string;
-  sillon: string;
-  activo: boolean;
-  almuerzoActivo?: boolean;
-  horaAlmuerzoInicio?: string;
-  horaAlmuerzoFin?: string;
-}
+import {
+  type TurnoDisponibilidad,
+  SILLONES_DISPONIBLES,
+  loadSavedDoctorSchedules as loadSavedSchedules,
+  saveDoctorSchedule,
+  getDefaultTurnosForDoctor as getTurnosForDoctor,
+} from "../../utils/doctorSchedules";
 
 interface ProfessionalFull extends ProfessionalResponseDto {
   nombreCompleto: string;
@@ -73,63 +69,6 @@ interface ProfessionalFull extends ProfessionalResponseDto {
     glow: string;
   };
 }
-
-const SILLONES_DISPONIBLES = [
-  "Sillón 1 - Principal",
-  "Sillón 2 - Quirúrgico",
-  "Sillón 3 - Estética Dental",
-  "Sillón 4 - Infantil & Preventivo",
-];
-
-const SCHEDULES_STORAGE_KEY = "nexus_doctor_schedules";
-
-const loadSavedSchedules = (): Record<string, TurnoDisponibilidad[]> => {
-  try {
-    const raw = localStorage.getItem(SCHEDULES_STORAGE_KEY);
-    if (!raw) return {};
-    const parsed: Record<string, TurnoDisponibilidad[]> = JSON.parse(raw);
-    Object.keys(parsed).forEach((key) => {
-      if (Array.isArray(parsed[key])) {
-        parsed[key] = parsed[key].map((t) => ({
-          ...t,
-          almuerzoActivo:
-            t.almuerzoActivo !== undefined
-              ? t.almuerzoActivo
-              : t.dia !== "Sábado" && t.horaFin > "13:00",
-          horaAlmuerzoInicio: t.horaAlmuerzoInicio || "12:00",
-          horaAlmuerzoFin: t.horaAlmuerzoFin || "14:00",
-        }));
-      }
-    });
-    return parsed;
-  } catch {
-    return {};
-  }
-};
-
-const saveDoctorSchedule = (profIdOrName: string, turnos: TurnoDisponibilidad[]) => {
-  try {
-    const schedules = loadSavedSchedules();
-    schedules[profIdOrName.toLowerCase().trim()] = turnos;
-    localStorage.setItem(SCHEDULES_STORAGE_KEY, JSON.stringify(schedules));
-  } catch (err) {
-    console.error("Error saving doctor schedule:", err);
-  }
-};
-
-const getTurnosForDoctor = (idx: number, customSillon?: string): TurnoDisponibilidad[] => {
-  const mainSillon = customSillon || SILLONES_DISPONIBLES[idx % SILLONES_DISPONIBLES.length];
-  const secondarySillon = SILLONES_DISPONIBLES[(idx + 1) % SILLONES_DISPONIBLES.length];
-
-  return [
-    { dia: "Lunes", horaInicio: "08:00", horaFin: "17:00", sillon: mainSillon, activo: true, almuerzoActivo: true, horaAlmuerzoInicio: "12:00", horaAlmuerzoFin: "14:00" },
-    { dia: "Martes", horaInicio: "08:00", horaFin: "17:00", sillon: mainSillon, activo: true, almuerzoActivo: true, horaAlmuerzoInicio: "12:00", horaAlmuerzoFin: "14:00" },
-    { dia: "Miércoles", horaInicio: "08:00", horaFin: "17:00", sillon: secondarySillon, activo: true, almuerzoActivo: true, horaAlmuerzoInicio: "12:00", horaAlmuerzoFin: "14:00" },
-    { dia: "Jueves", horaInicio: "08:00", horaFin: "17:00", sillon: mainSillon, activo: true, almuerzoActivo: true, horaAlmuerzoInicio: "12:00", horaAlmuerzoFin: "14:00" },
-    { dia: "Viernes", horaInicio: "08:00", horaFin: "17:00", sillon: mainSillon, activo: true, almuerzoActivo: true, horaAlmuerzoInicio: "12:00", horaAlmuerzoFin: "14:00" },
-    { dia: "Sábado", horaInicio: "08:00", horaFin: "12:00", sillon: mainSillon, activo: idx % 2 === 0, almuerzoActivo: false, horaAlmuerzoInicio: "12:00", horaAlmuerzoFin: "14:00" },
-  ];
-};
 
 const DIAS_SEMANA_DEFAULT = getTurnosForDoctor(0);
 

@@ -66,6 +66,13 @@ import {
 } from "../../utils/professionalDisplayName";
 import { GlassSelect } from "../../components/common/GlassSelect";
 import { GlassTimePicker } from "../../components/common/GlassTimePicker";
+import {
+  type TurnoDisponibilidad,
+  type DoctorScheduleBlocks,
+  loadSavedDoctorSchedules,
+  getDoctorScheduleBlocks,
+  validateDoctorScheduleAppointment,
+} from "../../utils/doctorSchedules";
 
 const getDoctorColorClass = (docName: string, lista: { nombre: string; color: string }[]) => {
   const found = lista.find(
@@ -213,6 +220,30 @@ export function AgendaView() {
   const [odontologosSeleccionados, setOdontologosSeleccionados] = useState<string[]>([
     "Todos los odontólogos",
   ]);
+
+  const [doctorSchedulesMap, setDoctorSchedulesMap] = useState<Record<string, TurnoDisponibilidad[]>>(loadSavedDoctorSchedules);
+
+  useEffect(() => {
+    const handleSchedulesChanged = () => {
+      setDoctorSchedulesMap(loadSavedDoctorSchedules());
+    };
+    window.addEventListener("nexus_schedules_updated", handleSchedulesChanged);
+    window.addEventListener("storage", handleSchedulesChanged);
+    return () => {
+      window.removeEventListener("nexus_schedules_updated", handleSchedulesChanged);
+      window.removeEventListener("storage", handleSchedulesChanged);
+    };
+  }, []);
+
+  const selectedSingleDoctor = useMemo(() => {
+    if (
+      odontologosSeleccionados.length === 1 &&
+      odontologosSeleccionados[0] !== "Todos los odontólogos"
+    ) {
+      return odontologosSeleccionados[0];
+    }
+    return null;
+  }, [odontologosSeleccionados]);
 
   const navigate = useNavigate();
   const [selectedClusterModal, setSelectedClusterModal] = useState<{
@@ -754,6 +785,21 @@ export function AgendaView() {
       }
     }
 
+    if (docToSelect && docToSelect !== "Todos los odontólogos") {
+      const docScheduleError = validateDoctorScheduleAppointment(
+        docToSelect,
+        fechaStr,
+        hora,
+        30,
+        doctorSchedulesMap
+      );
+      if (docScheduleError) {
+        setErrorMessage(docScheduleError);
+        setTimeout(() => setErrorMessage(null), 5000);
+        return;
+      }
+    }
+
     setNuevaCita({
       paciente: isPaciente ? (user?.name || "Paciente") : "",
       patientId: isPaciente ? (user?.id || "") : "",
@@ -1282,6 +1328,129 @@ export function AgendaView() {
     );
   };
 
+  const renderDoctorScheduleBlock = (
+    b: DoctorScheduleBlocks["blocks"][number],
+    docName?: string
+  ) => {
+    if (b.type === "day_off") {
+      return (
+        <div
+          key={`dayoff-${b.topPx}-${b.startHour}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            setErrorMessage(`El/La profesional ${docName || ""} no atiende este día (día no programado en su turno).`);
+            setTimeout(() => setErrorMessage(null), 5000);
+          }}
+          className="absolute left-1.5 right-1.5 z-20 flex flex-col items-center justify-center p-2 rounded-xl border border-indigo-400/30 dark:border-indigo-500/30 bg-indigo-500/[0.06] dark:bg-indigo-950/40 backdrop-blur-[1.5px] cursor-not-allowed select-none transition-all hover:bg-indigo-500/[0.09] dark:hover:bg-indigo-950/55"
+          style={{
+            top: `${b.topPx}px`,
+            height: `${b.heightPx}px`,
+            backgroundImage:
+              "repeating-linear-gradient(135deg, rgba(99,102,241,0.06) 0px, rgba(99,102,241,0.06) 10px, transparent 10px, transparent 20px)",
+          }}
+          title={`${b.title} • ${b.subTitle}`}
+        >
+          <div className="flex flex-col items-center gap-1.5 text-center px-2 py-3 rounded-xl bg-white/95 dark:bg-slate-900/95 border border-indigo-200/90 dark:border-indigo-500/30 shadow-md">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
+              <Ban size={18} />
+            </div>
+            <span className="text-xs font-bold font-sans text-indigo-950 dark:text-indigo-200">
+              {b.title}
+            </span>
+            <span className="text-[10px] text-indigo-600/80 dark:text-indigo-300/80 font-medium font-sans leading-tight">
+              {b.subTitle}
+            </span>
+          </div>
+        </div>
+      );
+    }
+
+    if (b.type === "early") {
+      return (
+        <div
+          key={`early-${b.topPx}-${b.startHour}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            setErrorMessage(`El/La profesional ${docName || ""} ${b.title.toLowerCase()}. No es posible agendar antes de esa hora.`);
+            setTimeout(() => setErrorMessage(null), 5000);
+          }}
+          className="absolute left-1.5 right-1.5 z-20 flex items-center justify-center p-2 rounded-xl border border-slate-300/70 dark:border-slate-700/60 bg-slate-200/35 dark:bg-slate-800/35 backdrop-blur-[1px] cursor-not-allowed select-none transition-all hover:bg-slate-200/50 dark:hover:bg-slate-800/50"
+          style={{
+            top: `${b.topPx}px`,
+            height: `${b.heightPx}px`,
+            backgroundImage:
+              "repeating-linear-gradient(135deg, rgba(148,163,184,0.06) 0px, rgba(148,163,184,0.06) 10px, transparent 10px, transparent 20px)",
+          }}
+          title={`${b.title} • ${b.subTitle}`}
+        >
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/90 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-200 text-[10px] font-medium font-sans shadow-xs">
+            <Clock3 size={12} className="text-slate-500 dark:text-slate-300" />
+            <span>{b.title}</span>
+          </div>
+        </div>
+      );
+    }
+
+    if (b.type === "lunch") {
+      return (
+        <div
+          key={`lunch-${b.topPx}-${b.startHour}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            setErrorMessage(`☕ Horario de descanso/almuerzo de ${docName || "personal médico"} (${b.subTitle}).`);
+            setTimeout(() => setErrorMessage(null), 4500);
+          }}
+          className="absolute left-1.5 right-1.5 z-20 flex flex-col items-center justify-center p-2 rounded-xl border border-sky-400/40 dark:border-sky-500/40 bg-sky-500/[0.08] dark:bg-sky-950/45 backdrop-blur-[1.5px] cursor-not-allowed select-none transition-all hover:bg-sky-500/[0.12] dark:hover:bg-sky-950/60 shadow-sm"
+          style={{
+            top: `${b.topPx}px`,
+            height: `${b.heightPx}px`,
+            backgroundImage:
+              "repeating-linear-gradient(135deg, rgba(56,189,248,0.08) 0px, rgba(56,189,248,0.08) 10px, transparent 10px, transparent 20px)",
+          }}
+          title={`Receso de Almuerzo • ${b.subTitle}`}
+        >
+          <div className="flex flex-col items-center gap-1 text-center px-2 py-1.5 rounded-lg bg-white/95 dark:bg-slate-900/95 border border-sky-200/90 dark:border-sky-500/40 shadow-xs">
+            <div className="flex items-center gap-1 text-sky-600 dark:text-sky-400">
+              <Utensils size={13} />
+              <span className="text-[11px] font-bold font-sans">Receso Almuerzo</span>
+            </div>
+            <span className="text-[9.5px] font-mono text-sky-700/80 dark:text-sky-300/80 font-semibold">
+              {b.subTitle}
+            </span>
+          </div>
+        </div>
+      );
+    }
+
+    if (b.type === "closed") {
+      return (
+        <div
+          key={`closed-${b.topPx}-${b.startHour}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            setErrorMessage(`🌙 ${docName ? `${docName} finaliza su jornada` : "La jornada finaliza"} a las ${b.title.match(/\((.*?)\)/)?.[1] || "17:00"}.`);
+            setTimeout(() => setErrorMessage(null), 5000);
+          }}
+          className="absolute left-1.5 right-1.5 z-20 flex items-center justify-center p-2 rounded-xl border border-slate-300/70 dark:border-slate-700/60 bg-slate-200/40 dark:bg-slate-800/40 backdrop-blur-[1px] cursor-not-allowed select-none transition-all hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
+          style={{
+            top: `${b.topPx}px`,
+            height: `${b.heightPx}px`,
+            backgroundImage:
+              "repeating-linear-gradient(135deg, rgba(148,163,184,0.06) 0px, rgba(148,163,184,0.06) 10px, transparent 10px, transparent 20px)",
+          }}
+          title={`${b.title} • ${b.subTitle}`}
+        >
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/90 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-200 text-[10px] font-normal font-sans shadow-xs">
+            <Moon size={12} className="text-slate-500 dark:text-slate-300" />
+            <span>{b.title}</span>
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
   return (
     <>
       {/* Toast Notificación (CAPA SUPERIOR ABSOLUTA z-[99999] EN ESQUINA INFERIOR DERECHA) */}
@@ -1596,8 +1765,8 @@ export function AgendaView() {
                         })}
                       </div>
 
-                      {/* Franja Unificada Horizontal de Descanso Clínico LED (Lunes a Sábado 12:00 a 14:00) */}
-                      {modoVista === "semana" ? (
+                      {/* Franja Unificada Horizontal de Descanso Clínico LED (Lunes a Sábado 12:00 a 14:00) SOLO cuando NO hay un doctor individual seleccionado */}
+                      {modoVista === "semana" && !selectedSingleDoctor ? (
                         <CarruselAlmuerzoUnificado
                           topPx={(12 - 7) * HORA_ALTURA_PX + 2}
                           heightPx={2 * HORA_ALTURA_PX - 4}
@@ -1610,22 +1779,7 @@ export function AgendaView() {
                             setTimeout(() => setErrorMessage(null), 4500);
                           }}
                         />
-                      ) : (
-                        fechaActual.getDay() >= 1 && fechaActual.getDay() <= 6 && (
-                          <CarruselAlmuerzoUnificado
-                            topPx={(12 - 7) * HORA_ALTURA_PX + 2}
-                            heightPx={2 * HORA_ALTURA_PX - 4}
-                            leftPx="50px"
-                            width="calc(100% - 50px)"
-                            horaInicioDescanso="12:00"
-                            horaFinDescanso="14:00"
-                            onIntentarAgendar={() => {
-                              setErrorMessage("☕ Horario de descanso clínico (12:00 a 14:00). El personal médico se encuentra en descanso.");
-                              setTimeout(() => setErrorMessage(null), 4500);
-                            }}
-                          />
-                        )
-                      )}
+                      ) : null}
 
                       {modoVista === "semana" ? (
                         // 7 Columnas de Días (Semana Completa)
@@ -1635,6 +1789,16 @@ export function AgendaView() {
                           const esHoy =
                             formatoFechaInput(dia) === formatoFechaInput(horaActual);
                           const dayOfWeek = dia.getDay(); // 0 = Domingo, 6 = Sábado, 1-5 = Lunes-Viernes
+                          const singleDocBlocks = selectedSingleDoctor
+                            ? getDoctorScheduleBlocks(
+                                selectedSingleDoctor,
+                                dia,
+                                HORA_ALTURA_PX,
+                                7,
+                                19,
+                                doctorSchedulesMap
+                              )
+                            : null;
 
                           return (
                             <div
@@ -1662,87 +1826,96 @@ export function AgendaView() {
                                 />
                               ))}
 
-                              {/* Domingo: Día no laboral (Todo el día bloqueado) */}
-                              {dayOfWeek === 0 && (
-                                <div
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setErrorMessage("Los domingos la clínica permanece cerrada. No es posible agendar citas este día.");
-                                    setTimeout(() => setErrorMessage(null), 5000);
-                                  }}
-                                  className="absolute left-1.5 right-1.5 z-20 flex flex-col items-center justify-center p-2 rounded-xl border border-indigo-400/30 dark:border-indigo-500/30 bg-indigo-500/[0.06] dark:bg-indigo-950/40 backdrop-blur-[1.5px] cursor-not-allowed select-none transition-all hover:bg-indigo-500/[0.09] dark:hover:bg-indigo-950/55"
-                                  style={{
-                                    top: "2px",
-                                    height: `${12 * HORA_ALTURA_PX - 4}px`,
-                                    backgroundImage: "repeating-linear-gradient(135deg, rgba(99,102,241,0.06) 0px, rgba(99,102,241,0.06) 10px, transparent 10px, transparent 20px)",
-                                  }}
-                                  title="Día no laboral • Clínica cerrada los Domingos"
-                                >
-                                  <div className="flex flex-col items-center gap-1.5 text-center px-2 py-3 rounded-xl bg-white/95 dark:bg-slate-900/95 border border-indigo-200/90 dark:border-indigo-500/30 shadow-md">
-                                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
-                                      <Ban size={18} />
+                              {/* Bloques de Horario y Descanso: Si hay un solo odontólogo seleccionado, se reflejan sus turnos reales */}
+                              {singleDocBlocks ? (
+                                singleDocBlocks.blocks.map((b) =>
+                                  renderDoctorScheduleBlock(b, selectedSingleDoctor || undefined)
+                                )
+                              ) : (
+                                <>
+                                  {/* Domingo: Día no laboral (Todo el día bloqueado) */}
+                                  {dayOfWeek === 0 && (
+                                    <div
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setErrorMessage("Los domingos la clínica permanece cerrada. No es posible agendar citas este día.");
+                                        setTimeout(() => setErrorMessage(null), 5000);
+                                      }}
+                                      className="absolute left-1.5 right-1.5 z-20 flex flex-col items-center justify-center p-2 rounded-xl border border-indigo-400/30 dark:border-indigo-500/30 bg-indigo-500/[0.06] dark:bg-indigo-950/40 backdrop-blur-[1.5px] cursor-not-allowed select-none transition-all hover:bg-indigo-500/[0.09] dark:hover:bg-indigo-950/55"
+                                      style={{
+                                        top: "2px",
+                                        height: `${12 * HORA_ALTURA_PX - 4}px`,
+                                        backgroundImage: "repeating-linear-gradient(135deg, rgba(99,102,241,0.06) 0px, rgba(99,102,241,0.06) 10px, transparent 10px, transparent 20px)",
+                                      }}
+                                      title="Día no laboral • Clínica cerrada los Domingos"
+                                    >
+                                      <div className="flex flex-col items-center gap-1.5 text-center px-2 py-3 rounded-xl bg-white/95 dark:bg-slate-900/95 border border-indigo-200/90 dark:border-indigo-500/30 shadow-md">
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
+                                          <Ban size={18} />
+                                        </div>
+                                        <span className="text-xs font-bold font-sans text-indigo-950 dark:text-indigo-200">
+                                          Día No Laboral
+                                        </span>
+                                        <span className="text-[10px] text-indigo-600/80 dark:text-indigo-300/80 font-medium font-sans leading-tight">
+                                          Clínica cerrada
+                                        </span>
+                                      </div>
                                     </div>
-                                    <span className="text-xs font-bold font-sans text-indigo-950 dark:text-indigo-200">
-                                      Día No Laboral
-                                    </span>
-                                    <span className="text-[10px] text-indigo-600/80 dark:text-indigo-300/80 font-medium font-sans leading-tight">
-                                      Clínica cerrada
-                                    </span>
-                                  </div>
-                                </div>
-                              )}
+                                  )}
 
-                              {/* Sábado: Tarde cerrada (14:00 a 19:00 bloqueado) */}
-                              {dayOfWeek === 6 && (
-                                <div
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setErrorMessage("Los sábados la clínica atiende en la mañana (08:00 a 12:00) con descanso de 12:00 a 14:00. En la tarde permanece cerrada.");
-                                    setTimeout(() => setErrorMessage(null), 5000);
-                                  }}
-                                  className="absolute left-1.5 right-1.5 z-20 flex flex-col items-center justify-center p-2 rounded-xl border border-indigo-400/30 dark:border-indigo-500/30 bg-indigo-500/[0.06] dark:bg-indigo-950/40 backdrop-blur-[1.5px] cursor-not-allowed select-none transition-all hover:bg-indigo-500/[0.09] dark:hover:bg-indigo-950/55"
-                                  style={{
-                                    top: `${7 * HORA_ALTURA_PX + 2}px`,
-                                    height: `${5 * HORA_ALTURA_PX - 4}px`,
-                                    backgroundImage: "repeating-linear-gradient(135deg, rgba(99,102,241,0.06) 0px, rgba(99,102,241,0.06) 10px, transparent 10px, transparent 20px)",
-                                  }}
-                                  title="No se labora • Sábado tarde cerrado (14:00 a 19:00)"
-                                >
-                                  <div className="flex flex-col items-center gap-1 text-center px-2 py-2.5 rounded-xl bg-white/95 dark:bg-slate-900/95 border border-indigo-200/90 dark:border-indigo-500/30 shadow-md">
-                                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
-                                      <Moon size={15} />
+                                  {/* Sábado: Tarde cerrada (14:00 a 19:00 bloqueado) */}
+                                  {dayOfWeek === 6 && (
+                                    <div
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setErrorMessage("Los sábados la clínica atiende en la mañana (08:00 a 12:00) con descanso de 12:00 a 14:00. En la tarde permanece cerrada.");
+                                        setTimeout(() => setErrorMessage(null), 5000);
+                                      }}
+                                      className="absolute left-1.5 right-1.5 z-20 flex flex-col items-center justify-center p-2 rounded-xl border border-indigo-400/30 dark:border-indigo-500/30 bg-indigo-500/[0.06] dark:bg-indigo-950/40 backdrop-blur-[1.5px] cursor-not-allowed select-none transition-all hover:bg-indigo-500/[0.09] dark:hover:bg-indigo-950/55"
+                                      style={{
+                                        top: `${7 * HORA_ALTURA_PX + 2}px`,
+                                        height: `${5 * HORA_ALTURA_PX - 4}px`,
+                                        backgroundImage: "repeating-linear-gradient(135deg, rgba(99,102,241,0.06) 0px, rgba(99,102,241,0.06) 10px, transparent 10px, transparent 20px)",
+                                      }}
+                                      title="No se labora • Sábado tarde cerrado (14:00 a 19:00)"
+                                    >
+                                      <div className="flex flex-col items-center gap-1 text-center px-2 py-2.5 rounded-xl bg-white/95 dark:bg-slate-900/95 border border-indigo-200/90 dark:border-indigo-500/30 shadow-md">
+                                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
+                                          <Moon size={15} />
+                                        </div>
+                                        <span className="text-[11px] font-bold font-sans text-indigo-950 dark:text-indigo-200">
+                                          No se labora
+                                        </span>
+                                        <span className="text-[9.5px] text-indigo-600/80 dark:text-indigo-300/80 font-medium font-sans leading-tight">
+                                          Sábado tarde cerrado
+                                        </span>
+                                      </div>
                                     </div>
-                                    <span className="text-[11px] font-bold font-sans text-indigo-950 dark:text-indigo-200">
-                                      No se labora
-                                    </span>
-                                    <span className="text-[9.5px] text-indigo-600/80 dark:text-indigo-300/80 font-medium font-sans leading-tight">
-                                      Sábado tarde cerrado
-                                    </span>
-                                  </div>
-                                </div>
-                              )}
+                                  )}
 
-                              {/* Lunes a Viernes: Cierre (17:00 a 19:00) */}
-                              {dayOfWeek >= 1 && dayOfWeek <= 5 && (
-                                <div
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setErrorMessage("🌙 La jornada de atención finaliza a las 17:00 (5:00 PM).");
-                                    setTimeout(() => setErrorMessage(null), 5000);
-                                  }}
-                                  className="absolute left-1.5 right-1.5 z-20 flex items-center justify-center p-2 rounded-xl border border-slate-300/70 dark:border-slate-700/60 bg-slate-200/40 dark:bg-slate-800/40 backdrop-blur-[1px] cursor-not-allowed select-none transition-all hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
-                                  style={{
-                                    top: `${10 * HORA_ALTURA_PX + 2}px`,
-                                    height: `${2 * HORA_ALTURA_PX - 4}px`,
-                                    backgroundImage: "repeating-linear-gradient(135deg, rgba(148,163,184,0.06) 0px, rgba(148,163,184,0.06) 10px, transparent 10px, transparent 20px)",
-                                  }}
-                                  title="Cierre de Clínica • Atención hasta las 17:00"
-                                >
-                                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/90 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-200 text-[10px] font-normal font-sans shadow-xs">
-                                    <Moon size={12} className="text-slate-500 dark:text-slate-300" />
-                                    <span>Cierre 17:00</span>
-                                  </div>
-                                </div>
+                                  {/* Lunes a Viernes: Cierre general (17:00 a 19:00) */}
+                                  {dayOfWeek >= 1 && dayOfWeek <= 5 && (
+                                    <div
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setErrorMessage("🌙 La jornada de atención finaliza a las 17:00 (5:00 PM).");
+                                        setTimeout(() => setErrorMessage(null), 5000);
+                                      }}
+                                      className="absolute left-1.5 right-1.5 z-20 flex items-center justify-center p-2 rounded-xl border border-slate-300/70 dark:border-slate-700/60 bg-slate-200/40 dark:bg-slate-800/40 backdrop-blur-[1px] cursor-not-allowed select-none transition-all hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
+                                      style={{
+                                        top: `${10 * HORA_ALTURA_PX + 2}px`,
+                                        height: `${2 * HORA_ALTURA_PX - 4}px`,
+                                        backgroundImage: "repeating-linear-gradient(135deg, rgba(148,163,184,0.06) 0px, rgba(148,163,184,0.06) 10px, transparent 10px, transparent 20px)",
+                                      }}
+                                      title="Cierre de Clínica • Atención hasta las 17:00"
+                                    >
+                                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/90 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-200 text-[10px] font-normal font-sans shadow-xs">
+                                        <Moon size={12} className="text-slate-500 dark:text-slate-300" />
+                                        <span>Cierre 17:00</span>
+                                      </div>
+                                    </div>
+                                  )}
+                                </>
                               )}
 
                               {/* Citas / Eventos */}
@@ -1759,7 +1932,14 @@ export function AgendaView() {
                             return cDoc === dDoc || cDoc.includes(dDoc) || dDoc.includes(cDoc);
                           });
                           const citasPosicionadas = calcularPosicionesDia(citasDoc);
-                          const dayOfWeek = fechaActual.getDay(); // 0 = Domingo, 6 = Sábado, 1-5 = L-V
+                          const docBlocks = getDoctorScheduleBlocks(
+                            doc.nombre,
+                            fechaActual,
+                            HORA_ALTURA_PX,
+                            7,
+                            19,
+                            doctorSchedulesMap
+                          );
 
                           return (
                             <div
@@ -1786,87 +1966,9 @@ export function AgendaView() {
                                 />
                               ))}
 
-                              {/* Domingo: Día no laboral (Todo el día bloqueado) */}
-                              {dayOfWeek === 0 && (
-                                <div
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setErrorMessage("Los domingos la clínica permanece cerrada. No es posible agendar citas este día.");
-                                    setTimeout(() => setErrorMessage(null), 5000);
-                                  }}
-                                  className="absolute left-1.5 right-1.5 z-20 flex flex-col items-center justify-center p-2 rounded-xl border border-indigo-400/30 dark:border-indigo-500/30 bg-indigo-500/[0.06] dark:bg-indigo-950/40 backdrop-blur-[1.5px] cursor-not-allowed select-none transition-all hover:bg-indigo-500/[0.09] dark:hover:bg-indigo-950/55"
-                                  style={{
-                                    top: "2px",
-                                    height: `${12 * HORA_ALTURA_PX - 4}px`,
-                                    backgroundImage: "repeating-linear-gradient(135deg, rgba(99,102,241,0.06) 0px, rgba(99,102,241,0.06) 10px, transparent 10px, transparent 20px)",
-                                  }}
-                                  title="Día no laboral • Clínica cerrada los Domingos"
-                                >
-                                  <div className="flex flex-col items-center gap-1.5 text-center px-2 py-3 rounded-xl bg-white/95 dark:bg-slate-900/95 border border-indigo-200/90 dark:border-indigo-500/30 shadow-md">
-                                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
-                                      <Ban size={18} />
-                                    </div>
-                                    <span className="text-xs font-bold font-sans text-indigo-950 dark:text-indigo-200">
-                                      Día No Laboral
-                                    </span>
-                                    <span className="text-[10px] text-indigo-600/80 dark:text-indigo-300/80 font-medium font-sans leading-tight">
-                                      Clínica cerrada
-                                    </span>
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Sábado: Tarde cerrada (14:00 a 19:00 bloqueado) */}
-                              {dayOfWeek === 6 && (
-                                <div
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setErrorMessage("Los sábados la clínica atiende en la mañana (08:00 a 12:00) con descanso de 12:00 a 14:00. En la tarde permanece cerrada.");
-                                    setTimeout(() => setErrorMessage(null), 5000);
-                                  }}
-                                  className="absolute left-1.5 right-1.5 z-20 flex flex-col items-center justify-center p-2 rounded-xl border border-indigo-400/30 dark:border-indigo-500/30 bg-indigo-500/[0.06] dark:bg-indigo-950/40 backdrop-blur-[1.5px] cursor-not-allowed select-none transition-all hover:bg-indigo-500/[0.09] dark:hover:bg-indigo-950/55"
-                                  style={{
-                                    top: `${7 * HORA_ALTURA_PX + 2}px`,
-                                    height: `${5 * HORA_ALTURA_PX - 4}px`,
-                                    backgroundImage: "repeating-linear-gradient(135deg, rgba(99,102,241,0.06) 0px, rgba(99,102,241,0.06) 10px, transparent 10px, transparent 20px)",
-                                  }}
-                                  title="No se labora • Sábado tarde cerrado (14:00 a 19:00)"
-                                >
-                                  <div className="flex flex-col items-center gap-1 text-center px-2 py-2.5 rounded-xl bg-white/95 dark:bg-slate-900/95 border border-indigo-200/90 dark:border-indigo-500/30 shadow-md">
-                                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
-                                      <Moon size={15} />
-                                    </div>
-                                    <span className="text-[11px] font-bold font-sans text-indigo-950 dark:text-indigo-200">
-                                      No se labora
-                                    </span>
-                                    <span className="text-[9.5px] text-indigo-600/80 dark:text-indigo-300/80 font-medium font-sans leading-tight">
-                                      Sábado tarde cerrado
-                                    </span>
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Lunes a Viernes: Cierre (17:00 a 19:00) */}
-                              {dayOfWeek >= 1 && dayOfWeek <= 5 && (
-                                <div
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setErrorMessage("🌙 La jornada de atención finaliza a las 17:00 (5:00 PM).");
-                                    setTimeout(() => setErrorMessage(null), 5000);
-                                  }}
-                                  className="absolute left-1.5 right-1.5 z-20 flex items-center justify-center p-2 rounded-xl border border-slate-300/70 dark:border-slate-700/60 bg-slate-200/40 dark:bg-slate-800/40 backdrop-blur-[1px] cursor-not-allowed select-none transition-all hover:bg-slate-200/60 dark:hover:bg-slate-800/60"
-                                  style={{
-                                    top: `${10 * HORA_ALTURA_PX + 2}px`,
-                                    height: `${2 * HORA_ALTURA_PX - 4}px`,
-                                    backgroundImage: "repeating-linear-gradient(135deg, rgba(148,163,184,0.06) 0px, rgba(148,163,184,0.06) 10px, transparent 10px, transparent 20px)",
-                                  }}
-                                  title="Cierre de Clínica • Atención hasta las 17:00"
-                                >
-                                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/90 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-200 text-[10px] font-normal font-sans shadow-xs">
-                                    <Moon size={12} className="text-slate-500 dark:text-slate-300" />
-                                    <span>Cierre 17:00</span>
-                                  </div>
-                                </div>
+                              {/* Bloques de descanso, turno y almuerzo personalizados de este odontólogo */}
+                              {docBlocks.blocks.map((b) =>
+                                renderDoctorScheduleBlock(b, doc.nombre)
                               )}
 
                               {/* Citas del Odontólogo */}

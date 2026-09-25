@@ -20,6 +20,8 @@ import {
   PACIENTES_STORAGE_KEY,
   type Paciente,
 } from "../../../types/pacientes";
+import { GlassSelect } from "../../../components/common/GlassSelect";
+import { GlassDatePicker } from "../../../components/common/GlassDatePicker";
 import { personService } from "../../../api/personService";
 import { patientService } from "../../../api/patientService";
 import {
@@ -141,6 +143,7 @@ function ToothCheckbox({
 export function PacienteForm() {
   const navigate = useNavigate();
   const [tutorEnabled, setTutorEnabled] = useState(false);
+  const [vinculoFamiliar, setVinculoFamiliar] = useState("");
   const [alergico, setAlergico] = useState(false);
   const [alergiaDetalle, setAlergiaDetalle] = useState("");
   const [medicacionCronica, setMedicacionCronica] = useState(false);
@@ -150,6 +153,8 @@ export function PacienteForm() {
     register,
     handleSubmit,
     control,
+    setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<PacienteFormData>({
     resolver: zodResolver(pacienteSchema),
@@ -420,15 +425,18 @@ export function PacienteForm() {
                   Documento de Identidad *
                 </label>
                 <div className="flex gap-2">
-                  <select
-                    {...register("tipoDocumento")}
-                    className="w-28 px-3 py-2.5 bg-slate-50/70 dark:bg-slate-900/80 border border-slate-300 dark:border-white/15 rounded-xl text-sm font-semibold text-slate-900 dark:text-white outline-none focus:border-cyan-500 dark:focus:border-cyan-400 shadow-sm"
-                  >
-                    <option value="CC" className="bg-white dark:bg-slate-900">CC</option>
-                    <option value="TI" className="bg-white dark:bg-slate-900">TI</option>
-                    <option value="CE" className="bg-white dark:bg-slate-900">CE</option>
-                    <option value="PAS" className="bg-white dark:bg-slate-900">Pasaporte</option>
-                  </select>
+                  <GlassSelect
+                    value={watch("tipoDocumento") || "CC"}
+                    onChange={(val) => setValue("tipoDocumento", val, { shouldValidate: true })}
+                    options={[
+                      { value: "CC", label: "CC" },
+                      { value: "TI", label: "TI" },
+                      { value: "CE", label: "CE" },
+                      { value: "PAS", label: "Pasaporte" },
+                    ]}
+                    variant="form"
+                    containerClassName="w-28 shrink-0"
+                  />
 
                   <div className="relative flex-1">
                     <CreditCard size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -459,11 +467,14 @@ export function PacienteForm() {
                 <label htmlFor="fechaNacimiento" className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
                   Fecha de nacimiento *
                 </label>
-                <input
-                  id="fechaNacimiento"
-                  type="date"
-                  {...register("fechaNacimiento")}
-                  className="w-full px-4 py-2.5 bg-slate-50/70 dark:bg-slate-900/80 border border-slate-300 dark:border-white/15 rounded-xl text-sm text-slate-900 dark:text-white outline-none focus:border-cyan-500 dark:focus:border-cyan-400 focus:bg-white dark:focus:bg-slate-900 focus:ring-1 focus:ring-cyan-500/30 transition-all shadow-sm"
+                <GlassDatePicker
+                  value={watch("fechaNacimiento") || ""}
+                  onChange={(val) => setValue("fechaNacimiento", val, { shouldValidate: true })}
+                  placeholder="dd/mm/aaaa"
+                  variant="form"
+                  maxDate={new Date().toISOString().split("T")[0]}
+                  yearRange={{ start: 1920, end: new Date().getFullYear() }}
+                  className="w-full"
                 />
                 {errors.fechaNacimiento && (
                   <span className="text-xs font-semibold text-rose-500 dark:text-rose-400 block pt-0.5">
@@ -477,19 +488,18 @@ export function PacienteForm() {
                 <label htmlFor="genero" className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
                   Género *
                 </label>
-                <select
-                  id="genero"
-                  defaultValue=""
-                  {...register("genero")}
-                  className="w-full px-4 py-2.5 bg-slate-50/70 dark:bg-slate-900/80 border border-slate-300 dark:border-white/15 rounded-xl text-sm text-slate-900 dark:text-white outline-none focus:border-cyan-500 dark:focus:border-cyan-400 focus:bg-white dark:focus:bg-slate-900 focus:ring-1 focus:ring-cyan-500/30 transition-all shadow-sm"
-                >
-                  <option value="" disabled className="bg-white dark:bg-slate-900 text-slate-400">
-                    Seleccione opción...
-                  </option>
-                  <option value="femenino" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Femenino</option>
-                  <option value="masculino" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Masculino</option>
-                  <option value="otro" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Otro</option>
-                </select>
+                <GlassSelect
+                  value={watch("genero") || ""}
+                  onChange={(val) => setValue("genero", val, { shouldValidate: true })}
+                  placeholder="Seleccione género..."
+                  variant="form"
+                  fullWidth
+                  options={[
+                    { value: "femenino", label: "Femenino" },
+                    { value: "masculino", label: "Masculino" },
+                    { value: "otro", label: "Otro" },
+                  ]}
+                />
                 {errors.genero && (
                   <span className="text-xs font-semibold text-rose-500 dark:text-rose-400 block pt-0.5">
                     {errors.genero.message}
@@ -585,17 +595,19 @@ export function PacienteForm() {
                 <label htmlFor="vinculo" className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
                   Vínculo familiar
                 </label>
-                <select
-                  id="vinculo"
-                  defaultValue=""
+                <GlassSelect
+                  value={vinculoFamiliar}
+                  onChange={(val) => setVinculoFamiliar(val)}
+                  placeholder="Seleccione vínculo..."
+                  variant="form"
+                  fullWidth
                   disabled={!tutorEnabled}
-                  className="w-full px-3.5 py-2 bg-slate-50/70 dark:bg-slate-900/80 border border-slate-300 dark:border-white/15 rounded-xl text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
-                >
-                  <option value="" disabled className="bg-white dark:bg-slate-900 text-slate-400">Seleccione vínculo...</option>
-                  <option value="madre" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Madre</option>
-                  <option value="padre" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Padre</option>
-                  <option value="acudiente" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Acudiente / Apoderado</option>
-                </select>
+                  options={[
+                    { value: "madre", label: "Madre" },
+                    { value: "padre", label: "Padre" },
+                    { value: "acudiente", label: "Acudiente / Apoderado" },
+                  ]}
+                />
               </div>
             </div>
           </section>

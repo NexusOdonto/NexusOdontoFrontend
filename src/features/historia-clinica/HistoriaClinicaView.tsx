@@ -43,6 +43,7 @@ import { FolderComponent } from "../../components/ui/folder-component";
 import type { ClinicalRecordItem } from "./components/RegistroIndividualPdfDocument";
 import { odontogramService, type FullOdontogramResponseDto } from "../../api/odontogramService";
 import { renderPdfBlob } from "../../utils/renderPdfBlob";
+import { GlassSelect } from "../../components/common/GlassSelect";
 import {
   type ToothState,
   type Diagnosis,
@@ -2432,27 +2433,25 @@ export function HistoriaClinicaView() {
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Cita Médica Vinculada *
                 </label>
-                <select
-                  required
+                <GlassSelect
                   value={formAppointmentId}
-                  onChange={(e) => setFormAppointmentId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 cursor-pointer"
-                >
-                  <option value="">-- Seleccionar cita activa a evolucionar --</option>
-                  {patientAppointmentsList
+                  onChange={(val) => setFormAppointmentId(val)}
+                  placeholder="-- Seleccionar cita activa a evolucionar --"
+                  fullWidth
+                  variant="form"
+                  options={patientAppointmentsList
                     .filter((a: any) => !a.cancelledAt && a.estado !== "Cancelada" && a.estado !== "No disponible")
                     .map((a: any) => {
                       const aptId = a.id || a.appointmentId;
                       const dateText = a.startsAt ? new Date(a.startsAt).toLocaleDateString("es-CO") : (a.fecha || "");
                       const timeText = a.startsAt ? new Date(a.startsAt).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", hour12: false }) : (a.hora || a.horaInicio || "");
                       const srvText = a.serviceName || a.servicio || "Consulta General";
-                      return (
-                        <option key={aptId} value={aptId}>
-                          {dateText} {timeText} — {srvText} ({a.estado || "Vigente"})
-                        </option>
-                      );
+                      return {
+                        value: aptId,
+                        label: `${dateText} ${timeText} — ${srvText} (${a.estado || "Vigente"})`,
+                      };
                     })}
-                </select>
+                />
                 {patientAppointmentsList.filter((a: any) => !a.cancelledAt && a.estado !== "Cancelada" && a.estado !== "No disponible").length === 0 && (
                   <p className="mt-1 text-[11px] text-amber-500 font-medium">
                     ⚠️ No se encontraron citas activas para este paciente. Agende o confirme una cita previa para vincular la atención.
@@ -2465,35 +2464,37 @@ export function HistoriaClinicaView() {
                   <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Odontólogo Tratante Colegiado *
                   </label>
-                  <select
-                    required
+                  <GlassSelect
                     value={formProfesional}
-                    onChange={(e) => setFormProfesional(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 cursor-pointer"
-                  >
-                    {dentistsList.map((doc) => (
-                      <option key={doc} value={doc}>
-                        {doc}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => setFormProfesional(val)}
+                    placeholder="Seleccione odontólogo..."
+                    fullWidth
+                    variant="form"
+                    options={dentistsList.map((doc) => ({
+                      value: doc,
+                      label: doc,
+                    }))}
+                  />
                 </div>
 
                 <div>
                   <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Código CIE-10 *
                   </label>
-                  <select
+                  <GlassSelect
                     value={formCie10}
-                    onChange={(e) => setFormCie10(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500"
-                  >
-                    <option value="K02.1">K02.1 — Caries de la dentina</option>
-                    <option value="K03.6">K03.6 — Depósitos/Acreciones dentales</option>
-                    <option value="K05.3">K05.3 — Periodontitis crónica</option>
-                    <option value="K04.0">K04.0 — Pulpitis irreversible</option>
-                    <option value="K03.7">K03.7 — Pigmentación dental extrínseca</option>
-                  </select>
+                    onChange={(val) => setFormCie10(val)}
+                    placeholder="Seleccione código CIE-10..."
+                    fullWidth
+                    variant="form"
+                    options={[
+                      { value: "K02.1", label: "K02.1 — Caries de la dentina" },
+                      { value: "K03.6", label: "K03.6 — Depósitos/Acreciones dentales" },
+                      { value: "K05.3", label: "K05.3 — Periodontitis crónica" },
+                      { value: "K04.0", label: "K04.0 — Pulpitis irreversible" },
+                      { value: "K03.7", label: "K03.7 — Pigmentación dental extrínseca" },
+                    ]}
+                  />
                 </div>
               </div>
 

@@ -34,7 +34,7 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 
 const getReadNotifIds = (): Set<string> => {
   try {
-    const raw = sessionStorage.getItem('nexus_read_notif_ids');
+    const raw = sessionStorage.getItem('nexus_read_notif_ids') || localStorage.getItem('nexus_read_notif_ids');
     return raw ? new Set(JSON.parse(raw)) : new Set();
   } catch {
     return new Set();
@@ -52,7 +52,9 @@ const saveReadNotifId = (id: string) => {
     if (id.startsWith('doc-today-summary-')) {
       current.add(`doc-today-summary-${new Date().toISOString().split('T')[0]}`);
     }
-    sessionStorage.setItem('nexus_read_notif_ids', JSON.stringify(Array.from(current)));
+    const serialized = JSON.stringify(Array.from(current));
+    sessionStorage.setItem('nexus_read_notif_ids', serialized);
+    localStorage.setItem('nexus_read_notif_ids', serialized);
   } catch {
     // Ignore
   }
@@ -580,9 +582,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     setNotifications((prev) => {
       prev.forEach((n) => saveReadNotifId(n.id));
       saveReadNotifId('pending-appointments-summary');
+      saveReadNotifId(`pending-appointments-summary-${pendingAppointmentsCount}`);
       return prev.map((n) => ({ ...n, read: true }));
     });
-  }, []);
+  }, [pendingAppointmentsCount]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 

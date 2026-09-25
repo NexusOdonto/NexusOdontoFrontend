@@ -10,6 +10,7 @@ import {
   MapPin,
   Sliders,
 } from "lucide-react";
+import { GlassSelect } from "../../components/common/GlassSelect";
 
 interface ConfiguracionClinica {
   nombreClinica: string;
@@ -381,16 +382,18 @@ export default function ConfiguracionView() {
                 <label className="block text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                   Duración Predeterminada de Cita
                 </label>
-                <select
-                  value={config.duracionCitaDefault}
-                  onChange={(e) => handleChange("duracionCitaDefault", Number(e.target.value))}
-                  className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-slate-950/70 border border-slate-200/80 dark:border-white/15 text-slate-900 dark:text-white text-xs sm:text-sm font-semibold outline-none focus:border-cyan-500 dark:focus:border-cyan-400 cursor-pointer"
-                >
-                  <option value={15}>15 minutos</option>
-                  <option value={30}>30 minutos</option>
-                  <option value={45}>45 minutos</option>
-                  <option value={60}>60 minutos (1 hora)</option>
-                </select>
+                <GlassSelect
+                  value={String(config.duracionCitaDefault)}
+                  onChange={(val) => handleChange("duracionCitaDefault", Number(val))}
+                  variant="form"
+                  fullWidth
+                  options={[
+                    { value: "15", label: "15 minutos" },
+                    { value: "30", label: "30 minutos" },
+                    { value: "45", label: "45 minutos" },
+                    { value: "60", label: "60 minutos (1 hora)" },
+                  ]}
+                />
               </div>
             </div>
 
