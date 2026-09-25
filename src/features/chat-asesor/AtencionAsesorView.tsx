@@ -130,19 +130,19 @@ function deduplicateMessages(msgs: ChatbotMessage[]): ChatbotMessage[] {
 }
 
 /**
- * Identidad visible del chat = teléfono WhatsApp de origen (chatIdentifier).
- * Nunca muestra "Sin número" ni inventa E.164 falso (+233…) a partir de un LID.
+ * Identidad visible = teléfono WhatsApp E.164 real.
+ * LID / placeholders → cadena vacía (la lista los oculta; nunca "Sin número" ni "WA · …").
  */
 function formatPhone(identifier: string): string {
   const raw = (identifier || "").trim();
-  if (!raw) return "WhatsApp";
+  if (!raw) return "";
 
   const lower = raw.toLowerCase();
   const isLid = lower.includes("@lid");
   const cleanedDomain = raw.replace(/@.*$/, "").trim();
   const digitsOnly = cleanedDomain.replace(/\D/g, "");
 
-  if (!digitsOnly) return "WhatsApp";
+  if (!digitsOnly) return "";
 
   // Placeholders inventados
   const local10 =
@@ -154,13 +154,12 @@ function formatPhone(identifier: string): string {
     local10 === "1234567890" ||
     digitsOnly === "573000000000"
   ) {
-    return "WhatsApp";
+    return "";
   }
 
-  // LID opaco: no prefijo + (evita falso +233…). Últimos dígitos como huella hasta resolver E.164.
+  // LID opaco: no mostrar (se filtra de la lista)
   if (isLid || digitsOnly.length >= 14) {
-    const tail = digitsOnly.slice(-8);
-    return `WA · ${tail.slice(0, 4)} ${tail.slice(4)}`;
+    return "";
   }
 
   // Celulares colombianos de 10 dígitos (ej. 3238891073)
@@ -191,7 +190,7 @@ function formatPhone(identifier: string): string {
     return `+${digitsOnly}`;
   }
 
-  return "WhatsApp";
+  return "";
 }
 
 // Función utilitaria para corregir el desfase de zona horaria (UTC a Hora Local)
@@ -508,6 +507,9 @@ export function AtencionAsesorView() {
 
           // Identidad = teléfono WhatsApp de origen (chatIdentifier), nunca nombre de paciente
           const formattedPhone = formatPhone(c.chatIdentifier);
+          if (!formattedPhone) {
+            return null; // LID / basura: no mostrar en lista de asesor
+          }
 
           const cleanSummary = formatTicketSummary(matchedTicket?.chatbotSummary, matchedTicket?.title);
 
@@ -550,7 +552,7 @@ export function AtencionAsesorView() {
             priority: matchedTicket ? "ALTA" : "MEDIA",
             reason: cleanSummary,
           };
-        });
+        }).filter((item): item is ChatItemDisplay => item != null);
 
         // Unificar conversaciones que pertenecen al mismo número de teléfono (JID y LID)
         const groupedByPhone = new Map<string, ChatItemDisplay>();
