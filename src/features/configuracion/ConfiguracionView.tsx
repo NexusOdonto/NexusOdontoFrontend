@@ -73,29 +73,6 @@ export default function ConfiguracionView() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        // Depurar automáticamente datos mock residuales si existían en el almacenamiento local
-        const isOldMock =
-          parsed.nombreClinica === "NexusOdonto Dental Clinic" ||
-          parsed.nit === "901.458.729-3" ||
-          parsed.razonSocial === "NexusOdonto Salud Oral S.A.S.";
-
-        if (isOldMock) {
-          const cleaned: ConfiguracionClinica = {
-            ...CONFIG_DEFAULT,
-            ...parsed,
-            nombreClinica: parsed.nombreClinica === "NexusOdonto Dental Clinic" ? "" : (parsed.nombreClinica || ""),
-            razonSocial: parsed.razonSocial === "NexusOdonto Salud Oral S.A.S." ? "" : (parsed.razonSocial || ""),
-            nit: parsed.nit === "901.458.729-3" ? "" : (parsed.nit || ""),
-            telefono: parsed.telefono === "+57 (601) 745-9000" ? "" : (parsed.telefono || ""),
-            whatsapp: parsed.whatsapp === "+57 310 892 4512" ? "" : (parsed.whatsapp || ""),
-            email: parsed.email === "contacto@nexusodonto.com" ? "" : (parsed.email || ""),
-            direccion: parsed.direccion === "Calle 100 # 15-20, Centro Médico Odontológico" ? "" : (parsed.direccion || ""),
-            ciudad: parsed.ciudad === "Bogotá, Colombia" ? "" : (parsed.ciudad || ""),
-          };
-          localStorage.setItem("nexus_configuracion_clinica", JSON.stringify(cleaned));
-          return cleaned;
-        }
-
         return { ...CONFIG_DEFAULT, ...parsed };
       } catch (_e) {
         return CONFIG_DEFAULT;
