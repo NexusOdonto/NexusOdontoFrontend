@@ -42,6 +42,51 @@ export const formatRoleName = (role?: string | null): string => {
 };
 
 /**
+ * Etiqueta de UI en español para un rol (código API / nombre del backend).
+ * No altera el code enviado a la API; solo presentación.
+ */
+export const getRoleDisplayLabel = (code?: string | null, name?: string | null): string => {
+  const c = (code || "").toUpperCase();
+  const n = (name || "").toLowerCase();
+
+  if (c.includes("ADMIN") || n.includes("admin")) return "Administrador";
+  if (
+    c.includes("ODONT") ||
+    c.includes("DOCTOR") ||
+    c.includes("DENTIST") ||
+    n.includes("dentist") ||
+    n.includes("odont")
+  ) {
+    return "Odontólogo";
+  }
+  if (c.includes("RECEPC") || c.includes("RECEPT") || n.includes("reception")) {
+    return "Recepcionista";
+  }
+  if (
+    c.includes("ASIST") ||
+    c.includes("ASSIST") ||
+    n.includes("assistant") ||
+    n.includes("auxil")
+  ) {
+    return "Asistente Dental";
+  }
+  if (
+    c.includes("PACIENT") ||
+    c.includes("PATIENT") ||
+    n.includes("patient") ||
+    n.includes("paciente")
+  ) {
+    return "Paciente";
+  }
+
+  if (name && !/\b(administrator|dentist|receptionist|assistant|patient)\b/i.test(name)) {
+    return name;
+  }
+
+  return name || "Personal";
+};
+
+/**
  * Normaliza un GUID o UUID para comparaciones insensibles a mayúsculas y espacios.
  */
 export const normalizeGuid = (guid?: unknown): string => {

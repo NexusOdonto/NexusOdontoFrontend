@@ -15,7 +15,7 @@ import { UsuariosTable } from "./components/UsuariosTable";
 import { useAuth } from "../auth/AuthContext";
 import { usePresenceTick } from "../auth/usePresenceTick";
 import { isAnyKeyOnline } from "../auth/presenceService";
-import { areGuidsEqual, isSeedAdminUser } from "../../utils/roleUtils";
+import { areGuidsEqual, getRoleDisplayLabel, isSeedAdminUser } from "../../utils/roleUtils";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
 import { GlassSelect } from "../../components/common/GlassSelect";
 
@@ -32,7 +32,7 @@ const ITEMS_PER_PAGE = 5;
 
 const ROLE_PRESETS: Record<string, { name: string; code: string; modules: string[]; description: string; permissions: Record<string, { ver: boolean; crear: boolean; editar: boolean; eliminar: boolean }> }> = {
   "13000000-0000-0000-0000-000000000001": {
-    name: "Administrador del Sistema",
+    name: "Administrador",
     code: "ADMINISTRADOR",
     description: "Acceso total para configurar el sistema, gestionar usuarios, roles, catálogo y finanzas.",
     modules: ["Pacientes", "Citas", "Odontograma", "Historia Clínica", "Servicios", "Profesionales", "Usuarios", "Roles y Permisos"],
@@ -48,7 +48,7 @@ const ROLE_PRESETS: Record<string, { name: string; code: string; modules: string
     },
   },
   "13000000-0000-0000-0000-000000000002": {
-    name: "Odontólogo Especialista",
+    name: "Odontólogo",
     code: "ODONTOLOGO",
     description: "Atención clínica de pacientes, registro de odontograma, evolución clínica y consulta de agenda.",
     modules: ["Pacientes", "Citas", "Odontograma", "Historia Clínica", "Servicios", "Profesionales"],
@@ -64,7 +64,7 @@ const ROLE_PRESETS: Record<string, { name: string; code: string; modules: string
     },
   },
   "13000000-0000-0000-0000-000000000003": {
-    name: "Recepcionista / Admisiones",
+    name: "Recepcionista",
     code: "RECEPCIONISTA",
     description: "Agendamiento, recepción de pacientes, validación de citas y control de pagos.",
     modules: ["Pacientes", "Citas", "Servicios", "Profesionales"],
@@ -96,7 +96,7 @@ const ROLE_PRESETS: Record<string, { name: string; code: string; modules: string
     },
   },
   "13000000-0000-0000-0000-000000000005": {
-    name: "Paciente Registrado",
+    name: "Paciente",
     code: "PACIENTE",
     description: "Acceso al portal del paciente para consultar citas agendadas y perfil clínico.",
     modules: ["Mis Citas", "Mi Perfil Clínico"],
@@ -264,7 +264,7 @@ export function UsuariosView() {
           status: accountActive ? "Activo" : "Inactivo",
           state: accountActive ? "Activo" : "Inactivo",
           roleIds: [primaryRoleId],
-          roleName: matchedRole?.name || preset.name,
+          roleName: getRoleDisplayLabel(matchedRole?.code || preset.code, matchedRole?.name || preset.name),
           roleCode: matchedRole?.code || preset.code,
           permissionsCount: preset.modules.length,
           modulesList: preset.modules,
@@ -313,7 +313,10 @@ export function UsuariosView() {
   const roleOptions = useMemo(() => {
     return [
       { value: "Todos", label: "Todos los roles" },
-      ...roles.map((r) => ({ value: r.id, label: r.name })),
+      ...roles.map((r) => ({
+        value: r.id,
+        label: getRoleDisplayLabel(r.code, r.name) || ROLE_PRESETS[r.id]?.name || r.name,
+      })),
     ];
   }, [roles]);
 
@@ -413,7 +416,10 @@ export function UsuariosView() {
             return {
               ...u,
               roleIds: [selectedRoleIdForUser],
-              roleName: roleFound?.name || preset?.name || u.roleName,
+              roleName: getRoleDisplayLabel(
+                roleFound?.code || preset?.code,
+                roleFound?.name || preset?.name || u.roleName
+              ),
               roleCode: roleFound?.code || preset?.code || u.roleCode,
               permissionsCount: preset?.modules.length || u.permissionsCount,
               modulesList: preset?.modules || u.modulesList,
@@ -539,7 +545,10 @@ export function UsuariosView() {
         name: `${nuevoNombre.trim()} ${nuevoApellido.trim()}`,
         email: nuevoCorreo.trim(),
         roleIds: [nuevoRol],
-        roleName: roleFound?.name || preset?.name || "Personal",
+        roleName: getRoleDisplayLabel(
+          roleFound?.code || preset?.code,
+          roleFound?.name || preset?.name || "Personal"
+        ),
         roleCode: roleFound?.code || preset?.code || "USUARIO",
         permissionsCount: preset?.modules.length || 4,
         modulesList: preset?.modules || [],
@@ -733,7 +742,9 @@ export function UsuariosView() {
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold">{r.name}</span>
+                        <span className="text-xs font-bold">
+                          {getRoleDisplayLabel(r.code, r.name) || preset?.name || r.name}
+                        </span>
                         {isCurrentSelected && (
                           <Check size={16} className="text-cyan-600 dark:text-cyan-400" />
                         )}
@@ -971,7 +982,7 @@ export function UsuariosView() {
                       onChange={(val) => setNuevoRol(val)}
                       options={roles.map((r) => ({
                         value: r.id,
-                        label: r.name,
+                        label: getRoleDisplayLabel(r.code, r.name) || ROLE_PRESETS[r.id]?.name || r.name,
                       }))}
                       variant="form"
                       fullWidth
