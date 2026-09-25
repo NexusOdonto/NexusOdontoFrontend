@@ -11,8 +11,6 @@ import { useAuth } from "../auth/AuthContext";
 import { usePresenceTick } from "../auth/usePresenceTick";
 import { patientService } from "../../api/patientService";
 import { personService } from "../../api/personService";
-import { userService } from "../../api/userService";
-import { sessionService, isSessionActive } from "../../api/sessionService";
 import { areGuidsEqual } from "../../utils/roleUtils";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
 import { Plus, LayoutGrid, List, Download, FileText, Table as TableIcon } from "lucide-react";
@@ -56,28 +54,13 @@ export function PacientesView() {
   const fetchPacientes = useCallback(async () => {
     setLoading(true);
     try {
-      const [patientsRes, personsRes, usersRes, sessionsRes] = await Promise.allSettled([
+      const [patientsRes, personsRes] = await Promise.allSettled([
         patientService.getAll(),
         personService.getAll(),
-        userService.getAll().catch(() => []),
-        sessionService.getAll().catch(() => [])
       ]);
 
       const patientsData = patientsRes.status === "fulfilled" && Array.isArray(patientsRes.value) ? patientsRes.value : [];
       const personsData = personsRes.status === "fulfilled" && Array.isArray(personsRes.value) ? personsRes.value : [];
-      const usersData = usersRes.status === "fulfilled" && Array.isArray(usersRes.value) ? usersRes.value : [];
-      const sessionsData = sessionsRes.status === "fulfilled" && Array.isArray(sessionsRes.value) ? sessionsRes.value : [];
-
-      // Computar sesiones activas según sessionStatusId (15000000-0000-0000-0000-000000000001)
-      const activeSessions = sessionsData.filter(isSessionActive);
-      const activeUserIds = new Set(activeSessions.map((s) => (s.userId || "").toLowerCase()));
-
-      const activePersonIds = new Set<string>();
-      usersData.forEach((u: any) => {
-        if (u.id && activeUserIds.has(String(u.id).toLowerCase()) && u.personId) {
-          activePersonIds.add(String(u.personId).toLowerCase());
-        }
-      });
 
       const combinedPacientes: Paciente[] = [];
       const seenIdentifiers = new Set<string>();
@@ -105,12 +88,7 @@ export function PacientesView() {
             return;
           }
 
-          const patientPersonId = (p.personId || "").toLowerCase();
-          const patientId = (p.id || "").toString().toLowerCase();
-          const hasActiveSession = (patientPersonId && activePersonIds.has(patientPersonId)) || (patientId && activeUserIds.has(patientId));
-          // Soft-deleted rows were already filtered out above; session drives online status label.
-          const resolvedEstado = hasActiveSession ? "Activo" : "Inactivo";
-
+          // Soft-deleted rows filtered above. Account = Activo; Conectado comes from presence UI.
           const key = (doc || email || fullName).toLowerCase();
 
           if (!seenIdentifiers.has(key)) {
@@ -122,7 +100,7 @@ export function PacientesView() {
               nombre: fullName,
               documento: doc,
               telefono: tel,
-              estado: resolvedEstado,
+              estado: "Activo",
               correo: email,
               fechaNacimiento: person?.dateOfBirth || p.dateOfBirth,
               ...( { isActive: true } as any ),

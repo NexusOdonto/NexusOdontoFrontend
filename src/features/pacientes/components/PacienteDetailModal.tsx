@@ -107,13 +107,17 @@ export function PacienteDetailModal({ paciente, onClose }: PacienteDetailModalPr
             />
             <span
               className={`absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full border-2 border-white dark:border-slate-900 shadow-sm ${
-                isOnline || isActivo ? "bg-emerald-500 dark:bg-emerald-400" : "bg-rose-500 dark:bg-rose-400"
+                isOnline
+                  ? "bg-emerald-500 dark:bg-emerald-400"
+                  : isActivo
+                  ? "bg-slate-400 dark:bg-slate-500"
+                  : "bg-rose-500 dark:bg-rose-400"
               }`}
             />
           </div>
 
           <div className="space-y-2 flex-1">
-            {/* Nombre prominente + Estado dinámico */}
+            {/* Nombre prominente + presencia (Conectado ≠ Activo/IsActive) */}
             <div className="flex flex-wrap items-center gap-3">
               <h2 className="font-sans text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
                 {paciente.nombre}
@@ -121,8 +125,10 @@ export function PacienteDetailModal({ paciente, onClose }: PacienteDetailModalPr
               <div className="flex items-center gap-2">
                 <span
                   className={`inline-flex items-center gap-1.5 text-xs font-sans font-semibold tracking-wide px-2.5 py-0.5 rounded-full border ${
-                    isOnline || isActivo
+                    isOnline
                       ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-500/30 dark:border-emerald-400/30"
+                      : isActivo
+                      ? "bg-slate-500/10 text-slate-600 dark:text-slate-300 border-slate-400/25 dark:border-white/15"
                       : "bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30 dark:border-rose-500/30"
                   }`}
                 >
@@ -131,11 +137,11 @@ export function PacienteDetailModal({ paciente, onClose }: PacienteDetailModalPr
                       isOnline
                         ? "bg-emerald-500 dark:bg-emerald-400 animate-pulse"
                         : isActivo
-                        ? "bg-emerald-500 dark:bg-emerald-400"
+                        ? "bg-slate-400 dark:bg-slate-500"
                         : "bg-rose-500 dark:bg-rose-400"
                     }`}
                   />
-                  {isOnline ? "En línea" : isActivo ? "Activo" : "Inactivo"}
+                  {isOnline ? "Conectado" : isActivo ? "Desconectado" : "Inactivo"}
                 </span>
               </div>
             </div>

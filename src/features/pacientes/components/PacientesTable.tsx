@@ -110,21 +110,30 @@ export function PacientesTable({
                     <td className="px-4 py-3.5 text-right">
                       <span
                         className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold backdrop-blur-sm border ${
-                          isOnline || isActivo
+                          isOnline
                             ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-500/30 dark:border-emerald-400/30"
+                            : isActivo
+                            ? "bg-slate-500/10 text-slate-600 dark:text-slate-300 border-slate-400/25 dark:border-white/15"
                             : "bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30 dark:border-rose-400/30"
                         }`}
+                        title={
+                          isOnline
+                            ? "Conectado (presencia en sesión)"
+                            : isActivo
+                            ? "Cuenta activa, sin sesión en línea"
+                            : "Cuenta inactiva"
+                        }
                       >
                         <span
                           className={`h-1.5 w-1.5 rounded-full ${
                             isOnline
                               ? "bg-emerald-500 dark:bg-emerald-400 animate-pulse"
                               : isActivo
-                              ? "bg-emerald-500 dark:bg-emerald-400"
+                              ? "bg-slate-400 dark:bg-slate-500"
                               : "bg-rose-500 dark:bg-rose-400"
                           }`}
                         />
-                        {isOnline ? "En línea" : isActivo ? "Activo" : "Inactivo"}
+                        {isOnline ? "Conectado" : isActivo ? "Desconectado" : "Inactivo"}
                       </span>
                     </td>
                   </tr>

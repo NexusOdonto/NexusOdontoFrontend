@@ -13,6 +13,8 @@ import { createPortal } from "react-dom";
 
 import { UsuariosTable } from "./components/UsuariosTable";
 import { useAuth } from "../auth/AuthContext";
+import { usePresenceTick } from "../auth/usePresenceTick";
+import { isAnyKeyOnline } from "../auth/presenceService";
 import { areGuidsEqual, isSeedAdminUser } from "../../utils/roleUtils";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
 import { GlassSelect } from "../../components/common/GlassSelect";
@@ -25,7 +27,6 @@ import { userService } from "../../api/userService";
 import { roleService } from "../../api/roleService";
 import { documentTypeService } from "../../api/documentTypeService";
 import { personService } from "../../api/personService";
-import { sessionService, isSessionActive, type SessionResponseDto } from "../../api/sessionService";
 
 const ITEMS_PER_PAGE = 5;
 
@@ -114,6 +115,7 @@ const ROLE_PRESETS: Record<string, { name: string; code: string; modules: string
 
 export function UsuariosView() {
   const { user } = useAuth();
+  const presenceTick = usePresenceTick();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [documentTypes, setDocumentTypes] = useState<any[]>([]);
@@ -178,15 +180,11 @@ export function UsuariosView() {
   const fetchUsuarios = async () => {
     try {
       setLoading(true);
-      const [data, personsData, rolesData, sessionsData] = await Promise.all([
+      const [data, personsData, rolesData] = await Promise.all([
         userService.getAll().catch(() => []),
         personService.getAll().catch(() => []),
         roleService.getAll().catch(() => []),
-        sessionService.getAll().catch(() => []),
       ]);
-
-      const activeSessions = (sessionsData || []).filter(isSessionActive);
-      const activeUserIds = new Set(activeSessions.map((s: SessionResponseDto) => (s.userId || "").toLowerCase()));
 
       const isBotUser = (u: any) => {
         const email = (u.email || "").toLowerCase();
@@ -253,9 +251,8 @@ export function UsuariosView() {
           permissions: {},
         };
 
-        // Account IsActive from API; session presence is only for online indicator, not soft-delete.
+        // Activo = account IsActive. Conectado = presence (live via presenceTick in list memo).
         const accountActive = isAccountActive(u, matchedPerson);
-        const isOnline = activeUserIds.has(String(u.id || "").toLowerCase());
 
         return {
           id: u.id,
@@ -263,8 +260,9 @@ export function UsuariosView() {
           name: fullName,
           email: userEmail,
           isActive: accountActive,
-          status: accountActive ? (isOnline ? "Activo" : "Inactivo") : "Inactivo",
-          state: accountActive ? (isOnline ? "Activo" : "Inactivo") : "Inactivo",
+          isOnline: false,
+          status: accountActive ? "Activo" : "Inactivo",
+          state: accountActive ? "Activo" : "Inactivo",
           roleIds: [primaryRoleId],
           roleName: matchedRole?.name || preset.name,
           roleCode: matchedRole?.code || preset.code,
@@ -325,8 +323,16 @@ export function UsuariosView() {
     { value: "inactive", label: "Inactivos" },
   ], []);
 
+  const usuariosConPresencia = useMemo(() => {
+    return usuarios.map((u) => ({
+      ...u,
+      // Conectado = SignalR/local presence only — never IsActive.
+      isOnline: isAnyKeyOnline([u.id, u.personId, u.email]),
+    }));
+  }, [usuarios, presenceTick]);
+
   const usuariosFiltrados = useMemo(() => {
-    return usuarios.filter((usuario) => {
+    return usuariosConPresencia.filter((usuario) => {
       // 1. Mantener la búsqueda por texto existente (nombre, documento, email, rol)
       const searchLower = (search || "").trim().toLowerCase();
       const matchesSearch =
@@ -346,7 +352,7 @@ export function UsuariosView() {
         (usuario.roleName && usuario.roleName.toLowerCase() === rol.toLowerCase()) ||
         (usuario.roleCode && usuario.roleCode.toLowerCase() === rol.toLowerCase());
 
-      // 3. Evaluación estricta de estado (booleano o numérico de Oracle)
+      // 3. Filtro de cuenta Activo/Inactivo (IsActive), no presencia
       const isUserActive = (usuario as any).isActive ?? (usuario as any).is_active ?? (usuario as any).activo ?? true;
 
       const stLower = (estado || "").trim().toLowerCase();
@@ -359,7 +365,7 @@ export function UsuariosView() {
 
       return matchesSearch && matchesRole;
     });
-  }, [usuarios, search, rol, estado]);
+  }, [usuariosConPresencia, search, rol, estado]);
 
   const totalPages = Math.max(1, Math.ceil(usuariosFiltrados.length / ITEMS_PER_PAGE));
   const usuariosPagina = useMemo(() => {
@@ -539,6 +545,7 @@ export function UsuariosView() {
         modulesList: preset?.modules || [],
         permissions: preset?.modules || [],
         isActive: true,
+        isOnline: false,
       };
 
       setUsuarios((prev) => {

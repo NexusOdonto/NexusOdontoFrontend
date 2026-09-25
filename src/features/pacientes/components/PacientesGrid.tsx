@@ -104,10 +104,16 @@ export function PacientesGrid({
                           isOnline
                             ? "bg-emerald-500 dark:bg-emerald-400"
                             : isActivo
-                            ? "bg-emerald-500 dark:bg-emerald-400"
+                            ? "bg-slate-400 dark:bg-slate-500"
                             : "bg-rose-500 dark:bg-rose-400"
                         }`}
-                        title={isOnline ? "En línea (Sesión activa)" : isActivo ? "Activo" : "Inactivo"}
+                        title={
+                          isOnline
+                            ? "Conectado (presencia en sesión)"
+                            : isActivo
+                            ? "Cuenta activa, desconectado"
+                            : "Inactivo"
+                        }
                       />
                     </div>
 
@@ -120,8 +126,10 @@ export function PacientesGrid({
                       </h3>
                       <span
                         className={`inline-flex items-center gap-1.5 text-xs font-semibold ${
-                          isOnline || isActivo
+                          isOnline
                             ? "text-emerald-700 dark:text-emerald-300"
+                            : isActivo
+                            ? "text-slate-500 dark:text-slate-400"
                             : "text-rose-600 dark:text-rose-400"
                         }`}
                       >
@@ -130,12 +138,12 @@ export function PacientesGrid({
                             isOnline
                               ? "bg-emerald-500 dark:bg-emerald-400 animate-pulse"
                               : isActivo
-                              ? "bg-emerald-500 dark:bg-emerald-400"
+                              ? "bg-slate-400 dark:bg-slate-500"
                               : "bg-rose-500 dark:bg-rose-400"
                           }`}
                         />
                         <span className="truncate">
-                          {isOnline ? "En línea" : isActivo ? "Activo" : "Inactivo"}
+                          {isOnline ? "Conectado" : isActivo ? "Desconectado" : "Inactivo"}
                         </span>
                       </span>
                     </div>

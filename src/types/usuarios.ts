@@ -20,7 +20,10 @@ export interface Usuario {
   permissionsCount?: number;
   modulesList?: string[];
   permissions: string[];
+  /** Account IsActive (not soft-deleted). Not the same as online presence. */
   isActive: boolean;
+  /** Real-time session presence (SignalR / local presence hub). */
+  isOnline?: boolean;
   status?: string;
   state?: string;
   avatar?: string | null;

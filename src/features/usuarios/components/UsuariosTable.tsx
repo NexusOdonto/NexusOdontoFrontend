@@ -158,7 +158,7 @@ export function UsuariosTable({
                 Permisos y Accesos
               </th>
               <th className="px-5 py-3.5 text-left text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                Estado
+                Conexión
               </th>
               <th className="px-5 py-3.5 text-right text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
                 Acciones
@@ -178,6 +178,7 @@ export function UsuariosTable({
               );
               const cannotToggle = isProtectedAdmin || isSelf;
               const isUserActive = Boolean(usuario.isActive ?? (usuario as any).is_active ?? false);
+              const isOnline = Boolean(usuario.isOnline);
 
               return (
                 <tr
@@ -241,15 +242,23 @@ export function UsuariosTable({
                     </button>
                   </td>
 
-                  {/* Estado */}
+                  {/* Conexión (presencia) — distinto de Activo/IsActive */}
                   <td className="px-4 py-3 whitespace-nowrap">
-                    {isUserActive ? (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                        ● Activo
+                    {isOnline ? (
+                      <span
+                        className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                        title="Conectado (presencia en sesión)"
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        Conectado
                       </span>
                     ) : (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
-                        ● Inactivo
+                      <span
+                        className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-500/10 text-slate-600 dark:text-slate-300 border border-slate-400/25 dark:border-white/15"
+                        title={isUserActive ? "Cuenta activa, sin sesión en línea" : "Cuenta inactiva"}
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full bg-slate-400 dark:bg-slate-500" />
+                        Desconectado
                       </span>
                     )}
                   </td>
@@ -339,13 +348,15 @@ export function UsuariosTable({
                   </div>
                 </div>
 
-                {((usuario.isActive ?? (usuario as any).is_active ?? true)) ? (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                    ● Activo
+                {usuario.isOnline ? (
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Conectado
                   </span>
                 ) : (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
-                    ● Inactivo
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-500/10 text-slate-600 dark:text-slate-300 border border-slate-400/25 dark:border-white/15">
+                    <span className="h-1.5 w-1.5 rounded-full bg-slate-400 dark:bg-slate-500" />
+                    Desconectado
                   </span>
                 )}
               </div>
