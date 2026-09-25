@@ -37,7 +37,6 @@ import {
   TICKET_STATUS_IDS,
 } from "../../api/chatbotService";
 import type { ChatbotMessage, SupportTicket } from "../../api/chatbotService";
-import { patientService } from "../../api/patientService";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
 import { areGuidsEqual } from "../../utils/roleUtils";
 import { FluidOrb } from "../../components/ui/fluid-orb";
@@ -130,15 +129,6 @@ function deduplicateMessages(msgs: ChatbotMessage[]): ChatbotMessage[] {
   return Array.from(map.values()).sort((a, b) => parseTimestamp(a.createdAt) - parseTimestamp(b.createdAt));
 }
 
-// Mapeo canónico de LIDs (Linked Device IDs de WhatsApp) hacia teléfonos reales y nombres
-const KNOWN_LID_MAP: Record<string, { phone: string; name: string }> = {
-  "233783743803574": { phone: "+57 300 111 2233", name: "Kevin Pico" },
-  "189515549421795": { phone: "+57 322 668 8304", name: "J" },
-  "57213628510462": { phone: "+57 323 889 1073", name: "Pipe" },
-  "144444363939899": { phone: "+57 310 444 4436", name: "Santiago" },
-  "12696040816707": { phone: "+57 316 126 9604", name: "Jerson R" },
-};
-
 /** Agrupa dígitos para lectura (ej. 997968123456 → 9979 6812 3456). */
 function formatDigitGroups(digits: string): string {
   if (digits.length <= 4) return digits;
@@ -154,20 +144,18 @@ function formatDigitGroups(digits: string): string {
   return parts.join(" ");
 }
 
-// Función utilitaria para formatear números de teléfono y JIDs de WhatsApp
-function formatPhone(identifier: string, patientPhone?: string): string {
-  const raw = patientPhone || identifier || "";
+/**
+ * Identidad visible del chat = teléfono WhatsApp de origen (chatIdentifier).
+ * No usa nombres de paciente ni números inventados / mapeados desde LID.
+ */
+function formatPhone(identifier: string): string {
+  const raw = (identifier || "").trim();
   if (!raw) return "Sin número";
 
   const cleanedDomain = raw.replace(/@.*$/, "").trim();
   const digitsOnly = cleanedDomain.replace(/\D/g, "");
 
   if (!digitsOnly) return cleanedDomain || "Sin número";
-
-  // Si es un LID conocido de pruebas en Evolution API
-  if (KNOWN_LID_MAP[digitsOnly]) {
-    return KNOWN_LID_MAP[digitsOnly].phone;
-  }
 
   // Celulares colombianos de 10 dígitos (ej. 3238891073)
   if (digitsOnly.length === 10 && digitsOnly.startsWith("3")) {
@@ -189,16 +177,16 @@ function formatPhone(identifier: string, patientPhone?: string): string {
     return `+57 (${digitsOnly.slice(0, 3)}) ${digitsOnly.slice(3, 6)} ${digitsOnly.slice(6)}`;
   }
 
-  // Teléfonos internacionales estándar (10 a 12 dígitos)
-  if (digitsOnly.length >= 10 && digitsOnly.length <= 12) {
-    if (digitsOnly.startsWith("57")) {
+  // Teléfonos internacionales estándar (10 a 15 dígitos E.164)
+  if (digitsOnly.length >= 10 && digitsOnly.length <= 15) {
+    if (digitsOnly.startsWith("57") && digitsOnly.length === 12) {
       return `+57 ${digitsOnly.slice(2, 5)} ${digitsOnly.slice(5, 8)} ${digitsOnly.slice(8)}`;
     }
-    return `+${digitsOnly.slice(0, 3)} ${digitsOnly.slice(3, 7)} ${digitsOnly.slice(7)}`;
+    return `+${digitsOnly}`;
   }
 
-  // LID / identificador largo: mostrar dígitos del chatIdentifier, nunca "WhatsApp (...)"
-  if (digitsOnly.length > 12 || raw.includes("@lid")) {
+  // LID / identificador largo: mostrar dígitos del chatIdentifier tal cual, sin inventar número
+  if (digitsOnly.length > 15 || raw.includes("@lid")) {
     return formatDigitGroups(digitsOnly);
   }
 
@@ -489,30 +477,14 @@ export function AtencionAsesorView() {
   const loadData = useCallback(async (isSilent = false) => {
     if (!isSilent) setLoadingChats(true);
     try {
-      const [convs, tickets, patients, allMsgs] = await Promise.all([
+      const [convs, tickets, allMsgs] = await Promise.all([
         chatbotService.getConversations().catch(() => []),
         chatbotService.getSupportTickets().catch(() => []),
-        patientService.getAll().catch(() => []),
         chatbotService.getAllMessages().catch(() => []),
       ]);
 
       if (convs && convs.length > 0) {
         const mapped: ChatItemDisplay[] = convs.map((c): ChatItemDisplay => {
-          const cleanDigits = (str?: string) => (str || "").replace(/\D/g, "");
-          const chatDigits = cleanDigits(c.chatIdentifier);
-
-          // Resolver si este chatIdentifier corresponde a un LID conocido
-          const mappedLid = KNOWN_LID_MAP[chatDigits];
-          const effectivePhoneDigits = mappedLid ? cleanDigits(mappedLid.phone) : "";
-
-          const matchedPatient = patients.find(
-            (p) =>
-              (p.id && c.patientId && String(p.id).toLowerCase() === String(c.patientId).toLowerCase()) ||
-              (p.phone && chatDigits && cleanDigits(p.phone).endsWith(chatDigits.slice(-10))) ||
-              (p.emergencyPhone && chatDigits && cleanDigits(p.emergencyPhone).endsWith(chatDigits.slice(-10))) ||
-              (effectivePhoneDigits && p.phone && cleanDigits(p.phone).endsWith(effectivePhoneDigits.slice(-10))) ||
-              (effectivePhoneDigits && p.emergencyPhone && cleanDigits(p.emergencyPhone).endsWith(effectivePhoneDigits.slice(-10)))
-          );
           const matchedTicket = tickets.find(
             (t) => t.chatbotConversationId && String(t.chatbotConversationId).toLowerCase() === String(c.id).toLowerCase()
           );
@@ -533,16 +505,8 @@ export function AtencionAsesorView() {
             stCode = "ACTIVA";
           }
 
-          const formattedPhone = formatPhone(
-            c.chatIdentifier,
-            matchedPatient?.phone || matchedPatient?.emergencyPhone || mappedLid?.phone
-          );
-
-          // Preferir nombre del paciente; si no hay, nombre LID conocido; si no, teléfono legible
-          const patientFullName = matchedPatient
-            ? `${matchedPatient.firstName || ""} ${matchedPatient.lastName || ""}`.trim()
-            : "";
-          const pName = patientFullName || mappedLid?.name || formattedPhone;
+          // Identidad = teléfono WhatsApp de origen (chatIdentifier), nunca nombre de paciente
+          const formattedPhone = formatPhone(c.chatIdentifier);
 
           const cleanSummary = formatTicketSummary(matchedTicket?.chatbotSummary, matchedTicket?.title);
 
@@ -573,7 +537,7 @@ export function AtencionAsesorView() {
             id: c.id,
             patientId: c.patientId,
             chatIdentifier: c.chatIdentifier,
-            patientName: pName,
+            patientName: formattedPhone,
             phone: formattedPhone,
             status: stCode,
             lastMessage: displayLastMessage,
@@ -611,6 +575,8 @@ export function AtencionAsesorView() {
             if (parseTimestamp(item.rawTimestamp) > parseTimestamp(existing.rawTimestamp)) {
               existing.id = item.id;
               existing.chatIdentifier = item.chatIdentifier;
+              existing.patientName = item.phone;
+              existing.phone = item.phone;
               existing.lastMessage = item.lastMessage;
               existing.lastMessageTime = item.lastMessageTime;
               existing.rawTimestamp = item.rawTimestamp;
@@ -1479,8 +1445,8 @@ export function AtencionAsesorView() {
 
                     <div className="flex-1 min-w-0 space-y-1">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
-                          {chat.patientName}
+                        <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate font-mono">
+                          {chat.phone}
                         </h3>
                         
                         <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
@@ -1571,12 +1537,7 @@ export function AtencionAsesorView() {
                     </div>
                     <div className="min-w-0">
                       <h2 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
-                        <span className="truncate">{selectedChat.patientName}</span>
-                        {selectedChat.patientName !== selectedChat.phone && (
-                          <span className="text-[11px] font-mono font-normal text-slate-500 dark:text-slate-400 hidden sm:inline truncate">
-                            ({selectedChat.phone})
-                          </span>
-                        )}
+                        <span className="truncate font-mono">{selectedChat.phone}</span>
                       </h2>
                       <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 truncate">
                         <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium shrink-0">
@@ -1692,7 +1653,7 @@ export function AtencionAsesorView() {
                           {isUser && (
                             <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
                               <User size={10} />
-                              {selectedChat.patientName}
+                              {selectedChat.phone}
                             </span>
                           )}
                           {isBot && (
@@ -1904,18 +1865,12 @@ export function AtencionAsesorView() {
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h3 className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                      {selectedChat.patientName}
+                    <h3 className="text-xs font-bold text-slate-900 dark:text-white truncate font-mono">
+                      {selectedChat.phone}
                     </h3>
-                    {selectedChat.patientName !== selectedChat.phone ? (
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                        {selectedChat.phone}
-                      </p>
-                    ) : (
-                      <p className="text-[11px] text-teal-600 dark:text-teal-400 font-semibold truncate">
-                        Contacto WhatsApp
-                      </p>
-                    )}
+                    <p className="text-[11px] text-teal-600 dark:text-teal-400 font-semibold truncate">
+                      Contacto WhatsApp
+                    </p>
                   </div>
                 </div>
 
@@ -2029,18 +1984,12 @@ export function AtencionAsesorView() {
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h3 className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                      {selectedChat.patientName}
+                    <h3 className="text-xs font-bold text-slate-900 dark:text-white truncate font-mono">
+                      {selectedChat.phone}
                     </h3>
-                    {selectedChat.patientName !== selectedChat.phone ? (
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                        {selectedChat.phone}
-                      </p>
-                    ) : (
-                      <p className="text-[11px] text-teal-600 dark:text-teal-400 font-semibold truncate">
-                        Contacto WhatsApp
-                      </p>
-                    )}
+                    <p className="text-[11px] text-teal-600 dark:text-teal-400 font-semibold truncate">
+                      Contacto WhatsApp
+                    </p>
                   </div>
                 </div>
 
@@ -2440,16 +2389,12 @@ export function AtencionAsesorView() {
                             </span>
                           </div>
 
-                          <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                            {alertChat.patientName}
+                          <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate font-mono">
+                            {alertChat.phone}
                           </h4>
 
                           <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
                             {alertChat.reason || alertChat.lastMessage}
-                          </p>
-
-                          <p className="text-[10px] font-mono text-teal-600 dark:text-teal-400">
-                            {alertChat.phone}
                           </p>
                         </div>
 
@@ -2460,7 +2405,7 @@ export function AtencionAsesorView() {
                             setSelectedChatId(alertChat.id);
                             setFilterTab("TODAS");
                             setShowNotificationsModal(false);
-                            showToast(`Atendiendo caso de ${alertChat.patientName}`);
+                            showToast(`Atendiendo caso de ${alertChat.phone}`);
                           }}
                           className="px-3 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 shrink-0 flex items-center gap-1 cursor-pointer"
                         >
