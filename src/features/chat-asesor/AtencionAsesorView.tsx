@@ -131,7 +131,7 @@ function deduplicateMessages(msgs: ChatbotMessage[]): ChatbotMessage[] {
 
 /**
  * Identidad visible = teléfono WhatsApp E.164 real.
- * LID / placeholders → cadena vacía (la lista los oculta; nunca "Sin número" ni "WA · …").
+ * LID / placeholders → cadena vacía (la lista los filtra; nunca "Sin número" ni "WA · …").
  */
 function formatPhone(identifier: string): string {
   const raw = (identifier || "").trim();
@@ -484,7 +484,9 @@ export function AtencionAsesorView() {
       ]);
 
       if (convs && convs.length > 0) {
-        const mapped: ChatItemDisplay[] = convs.map((c): ChatItemDisplay => {
+        const mapped: ChatItemDisplay[] = convs
+          .filter((c) => Boolean(formatPhone(c.chatIdentifier)))
+          .map((c): ChatItemDisplay => {
           const matchedTicket = tickets.find(
             (t) => t.chatbotConversationId && String(t.chatbotConversationId).toLowerCase() === String(c.id).toLowerCase()
           );
@@ -507,9 +509,6 @@ export function AtencionAsesorView() {
 
           // Identidad = teléfono WhatsApp de origen (chatIdentifier), nunca nombre de paciente
           const formattedPhone = formatPhone(c.chatIdentifier);
-          if (!formattedPhone) {
-            return null; // LID / basura: no mostrar en lista de asesor
-          }
 
           const cleanSummary = formatTicketSummary(matchedTicket?.chatbotSummary, matchedTicket?.title);
 
@@ -552,7 +551,7 @@ export function AtencionAsesorView() {
             priority: matchedTicket ? "ALTA" : "MEDIA",
             reason: cleanSummary,
           };
-        }).filter((item): item is ChatItemDisplay => item != null);
+        });
 
         // Unificar conversaciones que pertenecen al mismo número de teléfono (JID y LID)
         const groupedByPhone = new Map<string, ChatItemDisplay>();
