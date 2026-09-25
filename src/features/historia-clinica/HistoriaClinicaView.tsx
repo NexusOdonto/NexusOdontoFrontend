@@ -34,6 +34,7 @@ import { personService } from "../../api/personService";
 import { professionalService } from "../../api/professionalService";
 import { appointmentService } from "../../api/appointmentService";
 import { serviceCatalogService } from "../../api/serviceCatalogService";
+import { userService } from "../../api/userService";
 import { useAuth } from "../auth/AuthContext";
 import { getUserRole } from "../../utils/routePermissions";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
@@ -215,117 +216,147 @@ export function HistoriaClinicaView() {
   const fetchPatients = useCallback(async () => {
     setLoading(true);
     try {
-      const patientList = await patientService.getAll().catch(() => []);
-      const personList = await personService.getAll().catch(() => []);
+      const [patientsRes, personsRes, usersRes] = await Promise.allSettled([
+        patientService.getAll(),
+        personService.getAll(),
+        userService.getAll({ includeInactive: true }).catch(() => userService.getAll().catch(() => [])),
+      ]);
+
+      const patientList = patientsRes.status === "fulfilled" && Array.isArray(patientsRes.value) ? patientsRes.value : [];
+      const personList = personsRes.status === "fulfilled" && Array.isArray(personsRes.value) ? personsRes.value : [];
+      const usersList = usersRes.status === "fulfilled" && Array.isArray(usersRes.value) ? usersRes.value : [];
+
+      let localPatients: any[] = [];
+      try {
+        const rawLocal = localStorage.getItem("nexusodontopacientes");
+        if (rawLocal) {
+          const parsed = JSON.parse(rawLocal);
+          if (Array.isArray(parsed)) localPatients = parsed;
+        }
+      } catch {
+        // Ignore
+      }
+
+      let enriched: PatientResponseDto[] = [];
 
       if (patientList && patientList.length > 0) {
-        let enriched = patientList.map((p) => {
-          const person = personList.find((per) => per.id === p.personId);
+        enriched = patientList.map((p) => {
+          const person = personList.find((per) => areGuidsEqual(per.id, p.personId));
+          const userMatch = usersList.find((u: any) => areGuidsEqual(u.personId, p.personId) || areGuidsEqual(u.id, p.id));
+          const localMatch = localPatients.find((lp: any) =>
+            areGuidsEqual(lp.personId, p.personId) ||
+            areGuidsEqual(lp.patientId, p.id) ||
+            (lp.documento && person?.documentNumber && String(lp.documento).trim() === String(person.documentNumber).trim())
+          );
+
+          const firstName = person?.firstName || (userMatch as any)?.firstName || (userMatch as any)?.nombre || (localMatch?.nombre ? localMatch.nombre.split(" ")[0] : "") || p.firstName || "Paciente";
+          const lastName = person?.lastName || (userMatch as any)?.lastName || (userMatch as any)?.apellido || (localMatch?.nombre ? localMatch.nombre.split(" ").slice(1).join(" ") : "") || p.lastName || "";
+          const documentNumber = person?.documentNumber || (userMatch as any)?.documentNumber || (userMatch as any)?.cedula || localMatch?.documento || p.documentNumber || "";
+          const phone = person?.phone || (userMatch as any)?.phone || (userMatch as any)?.telefono || localMatch?.telefono || p.phone || (p.emergencyContactPhone && p.emergencyContactPhone !== "+573246030217" ? p.emergencyContactPhone : "") || "";
+          const email = person?.email || (userMatch as any)?.email || localMatch?.correo || p.email || "";
+
           return {
             ...p,
-            firstName: person?.firstName || p.firstName || "Paciente",
-            lastName: person?.lastName || p.lastName || "",
-            documentNumber: person?.documentNumber || p.documentNumber || "1098765432",
-            phone: person?.phone || p.phone || p.emergencyContactPhone || "3001234567",
-            email: person?.email || p.email,
+            firstName,
+            lastName,
+            documentNumber,
+            phone,
+            email,
           };
         });
+      }
 
-        // Aislamiento estricto de privacidad: Un paciente SOLO ve su propia historia clínica
-        if (isPaciente) {
-          const userDoc = user?.cedula || (user as any)?.documentNumber || (user as any)?.documento || "";
-          const userPhone = user?.telefono || (user as any)?.phone || "3001234567";
-          const nameParts = (user?.name || "").trim().split(" ");
-          const userFirstName = user?.nombre || (nameParts.length > 0 && nameParts[0] ? nameParts[0] : "Mi");
-          const userLastName = user?.apellido || (nameParts.length > 1 ? nameParts.slice(1).join(" ") : "");
+      // Aislamiento estricto de privacidad y resolución del paciente autenticado
+      if (isPaciente) {
+        const userDoc = user?.cedula || (user as any)?.documentNumber || (user as any)?.documento || "";
+        const userPhone = user?.telefono || (user as any)?.phone || "";
+        const userEmail = user?.email || "";
+        const rawName = (user?.name || "").trim();
+        const nameParts = rawName ? rawName.split(/\s+/) : [];
+        const userFirstName = user?.nombre || (nameParts.length > 0 ? nameParts[0] : "") || (rawName ? rawName.split(" ")[0] : "Paciente");
+        const userLastName = user?.apellido || (nameParts.length > 1 ? nameParts.slice(1).join(" ") : "") || (rawName ? rawName.split(" ").slice(1).join(" ") : "");
 
-          const myPt = enriched.find((p) =>
-            areGuidsEqual(p.personId, user?.personId) ||
-            areGuidsEqual(p.id, user?.id) ||
-            (userDoc && String(p.documentNumber).trim() === String(userDoc).trim()) ||
-            (user?.email && p.email?.toLowerCase().trim() === user.email.toLowerCase().trim()) ||
-            (user?.name && `${p.firstName} ${p.lastName}`.toLowerCase().includes(user.name.toLowerCase()))
-          );
-          if (myPt) {
-            enriched = [myPt];
-            setSelectedPatientId(String(myPt.id));
-          } else {
-            // Fallback sintético del paciente autenticado
-            const fallbackSelf = {
-              id: user?.personId || user?.id || "patient-self",
-              personId: user?.personId || user?.id || "person-self",
-              firstName: userFirstName,
-              lastName: userLastName,
-              documentNumber: userDoc || "1008765432",
-              phone: userPhone,
-              email: user?.email || "paciente@nexus.com",
-            } as any;
-            enriched = [fallbackSelf];
-            setSelectedPatientId(String(fallbackSelf.id));
-          }
-        }
+        const myPt = enriched.find((p) =>
+          areGuidsEqual(p.personId, user?.personId) ||
+          areGuidsEqual(p.id, user?.id) ||
+          areGuidsEqual(p.id, (user as any)?.patientId) ||
+          (userDoc && p.documentNumber && String(p.documentNumber).trim() === String(userDoc).trim()) ||
+          (userEmail && p.email && p.email.toLowerCase().trim() === userEmail.toLowerCase().trim()) ||
+          (rawName && `${p.firstName} ${p.lastName}`.toLowerCase().includes(rawName.toLowerCase())) ||
+          (userFirstName && p.firstName && p.firstName.toLowerCase().includes(userFirstName.toLowerCase()))
+        );
 
-        setPatients(enriched);
-        if (!isPaciente && enriched.length > 0) {
-          if (targetPatientId || targetPatientDoc || targetPatientName) {
-            const found = enriched.find((p) =>
-              (targetPatientId && (areGuidsEqual(p.id, targetPatientId) || String(p.id) === String(targetPatientId))) ||
-              (targetPatientDoc && String(p.documentNumber).trim().toLowerCase() === String(targetPatientDoc).trim().toLowerCase()) ||
-              (targetPatientName && `${p.firstName} ${p.lastName}`.toLowerCase().trim() === targetPatientName.toLowerCase().trim()) ||
-              (targetPatientName && `${p.firstName} ${p.lastName}`.toLowerCase().includes(targetPatientName.toLowerCase()))
-            );
-            if (found) {
-              setSelectedPatientId(String(found.id));
-            } else if (targetPatientId) {
-              setSelectedPatientId(String(targetPatientId));
-            } else if (!selectedPatientId) {
-              setSelectedPatientId(String(enriched[0].id));
-            }
-          } else if (!selectedPatientId) {
-            setSelectedPatientId(String(enriched[0].id));
-          }
-        }
-      } else {
-        if (isPaciente) {
-          const userDoc = user?.cedula || (user as any)?.documentNumber || (user as any)?.documento || "1008765432";
-          const userPhone = user?.telefono || (user as any)?.phone || "3001234567";
-          const nameParts = (user?.name || "").trim().split(" ");
-          const userFirstName = user?.nombre || (nameParts.length > 0 && nameParts[0] ? nameParts[0] : "Mi");
-          const userLastName = user?.apellido || (nameParts.length > 1 ? nameParts.slice(1).join(" ") : "");
-
-          const fallbackSelf = {
-            id: user?.personId || user?.id || "patient-self",
+        if (myPt) {
+          const resolvedPt: PatientResponseDto = {
+            ...myPt,
+            firstName: userFirstName || (myPt.firstName && myPt.firstName !== "Paciente" ? myPt.firstName : userFirstName) || "Paciente",
+            lastName: userLastName || myPt.lastName || "",
+            documentNumber: userDoc || (myPt.documentNumber && myPt.documentNumber !== "1098765432" && myPt.documentNumber !== "1008765432" ? myPt.documentNumber : "") || "No registrado",
+            phone: userPhone || (myPt.phone && myPt.phone !== "+573246030217" && myPt.phone !== "3001234567" ? myPt.phone : "") || "No registrado",
+            email: userEmail || myPt.email || "No registrado",
+          };
+          enriched = [resolvedPt];
+          setSelectedPatientId(String(resolvedPt.id));
+        } else {
+          // Fallback exacto con los datos reales del usuario autenticado
+          const fallbackSelf: PatientResponseDto = {
+            id: (user as any)?.patientId || user?.personId || user?.id || "patient-self",
             personId: user?.personId || user?.id || "person-self",
             firstName: userFirstName,
             lastName: userLastName,
-            documentNumber: userDoc,
-            phone: userPhone,
-            email: user?.email || "paciente@nexus.com",
-          } as any;
-          setPatients([fallbackSelf]);
+            documentNumber: userDoc || "No registrado",
+            phone: userPhone || "No registrado",
+            email: userEmail || "No registrado",
+            allergies: "Sin alergias declaradas",
+            createdAt: new Date().toISOString(),
+          };
+          enriched = [fallbackSelf];
           setSelectedPatientId(String(fallbackSelf.id));
-        } else {
-          setPatients([]);
+        }
+      }
+
+      setPatients(enriched);
+      if (!isPaciente && enriched.length > 0) {
+        if (targetPatientId || targetPatientDoc || targetPatientName) {
+          const found = enriched.find((p) =>
+            (targetPatientId && (areGuidsEqual(p.id, targetPatientId) || String(p.id) === String(targetPatientId))) ||
+            (targetPatientDoc && String(p.documentNumber).trim().toLowerCase() === String(targetPatientDoc).trim().toLowerCase()) ||
+            (targetPatientName && `${p.firstName} ${p.lastName}`.toLowerCase().trim() === targetPatientName.toLowerCase().trim()) ||
+            (targetPatientName && `${p.firstName} ${p.lastName}`.toLowerCase().includes(targetPatientName.toLowerCase()))
+          );
+          if (found) {
+            setSelectedPatientId(String(found.id));
+          } else if (targetPatientId) {
+            setSelectedPatientId(String(targetPatientId));
+          } else if (!selectedPatientId) {
+            setSelectedPatientId(String(enriched[0].id));
+          }
+        } else if (!selectedPatientId) {
+          setSelectedPatientId(String(enriched[0].id));
         }
       }
     } catch (err) {
       console.warn("Could not load patients for Historia Clínica:", err);
       if (isPaciente) {
-        const userDoc = user?.cedula || (user as any)?.documentNumber || (user as any)?.documento || "1008765432";
-        const userPhone = user?.telefono || (user as any)?.phone || "3001234567";
-        const nameParts = (user?.name || "").trim().split(" ");
-        const userFirstName = user?.nombre || (nameParts.length > 0 && nameParts[0] ? nameParts[0] : "Mi");
-        const userLastName = user?.apellido || (nameParts.length > 1 ? nameParts.slice(1).join(" ") : "");
+        const userDoc = user?.cedula || (user as any)?.documentNumber || (user as any)?.documento || "";
+        const userPhone = user?.telefono || (user as any)?.phone || "";
+        const userEmail = user?.email || "";
+        const rawName = (user?.name || "").trim();
+        const nameParts = rawName ? rawName.split(/\s+/) : [];
+        const userFirstName = user?.nombre || (nameParts.length > 0 ? nameParts[0] : "") || (rawName ? rawName.split(" ")[0] : "Paciente");
+        const userLastName = user?.apellido || (nameParts.length > 1 ? nameParts.slice(1).join(" ") : "") || (rawName ? rawName.split(" ").slice(1).join(" ") : "");
 
-        const fallbackSelf = {
-          id: user?.personId || user?.id || "patient-self",
+        const fallbackSelf: PatientResponseDto = {
+          id: (user as any)?.patientId || user?.personId || user?.id || "patient-self",
           personId: user?.personId || user?.id || "person-self",
           firstName: userFirstName,
           lastName: userLastName,
-          documentNumber: userDoc,
-          phone: userPhone,
-          email: user?.email || "paciente@nexus.com",
-        } as any;
+          documentNumber: userDoc || "No registrado",
+          phone: userPhone || "No registrado",
+          email: userEmail || "No registrado",
+          allergies: "Sin alergias declaradas",
+          createdAt: new Date().toISOString(),
+        };
         setPatients([fallbackSelf]);
         setSelectedPatientId(String(fallbackSelf.id));
       } else {
@@ -1033,7 +1064,7 @@ export function HistoriaClinicaView() {
           patient={{
             firstName: selectedPatient.firstName || "Paciente",
             lastName: selectedPatient.lastName || "",
-            documentNumber: selectedPatient.documentNumber || "1098765432",
+            documentNumber: selectedPatient.documentNumber || "",
             phone: selectedPatient.phone,
           }}
           doctorName={formProfesional}
@@ -1044,7 +1075,7 @@ export function HistoriaClinicaView() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `Formula_Medica_${selectedPatient.documentNumber || "1098765432"}_${Date.now()}.pdf`;
+      link.download = `Formula_Medica_${selectedPatient.documentNumber || "doc"}_${Date.now()}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -1069,7 +1100,7 @@ export function HistoriaClinicaView() {
           patient={{
             firstName: selectedPatient.firstName || "Paciente",
             lastName: selectedPatient.lastName || "",
-            documentNumber: selectedPatient.documentNumber || "1098765432",
+            documentNumber: selectedPatient.documentNumber || "",
             phone: selectedPatient.phone,
             email: selectedPatient.email,
             allergies: selectedPatient.allergies,
@@ -1096,7 +1127,7 @@ export function HistoriaClinicaView() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `Expediente_Clinico_${selectedPatient.documentNumber || "1098765432"}_${Date.now()}.pdf`;
+      link.download = `Expediente_Clinico_${selectedPatient.documentNumber || "doc"}_${Date.now()}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -1162,7 +1193,7 @@ export function HistoriaClinicaView() {
           patient={{
             firstName: selectedPatient.firstName || "Paciente",
             lastName: selectedPatient.lastName || "",
-            documentNumber: selectedPatient.documentNumber || "1098765432",
+            documentNumber: selectedPatient.documentNumber || "",
             documentType: (selectedPatient as any).documentType || "CC",
             phone: selectedPatient.phone,
             email: selectedPatient.email,
@@ -2722,7 +2753,7 @@ export function HistoriaClinicaView() {
                 </div>
                 <div>
                   <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold">Documento</span>
-                  <p className="font-bold text-slate-900 dark:text-white font-mono">{selectedPatient.documentNumber || "1098765432"}</p>
+                  <p className="font-bold text-slate-900 dark:text-white font-mono">{selectedPatient.documentNumber || "No registrado"}</p>
                 </div>
                 <div>
                   <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold">Fecha</span>

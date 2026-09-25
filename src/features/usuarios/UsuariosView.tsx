@@ -863,18 +863,16 @@ export function UsuariosView() {
                     <label htmlFor="nuevo-tipo-doc" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                       Tipo de Documento *
                     </label>
-                    <select
-                      id="nuevo-tipo-doc"
+                    <GlassSelect
                       value={nuevoTipoDocumento}
-                      onChange={(e) => setNuevoTipoDocumento(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all cursor-pointer"
-                    >
-                      {documentTypes.map((dt) => (
-                        <option key={dt.id} value={dt.id}>
-                          {dt.name || dt.code}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(val) => setNuevoTipoDocumento(val)}
+                      options={documentTypes.map((dt) => ({
+                        value: dt.id,
+                        label: dt.name || dt.code,
+                      }))}
+                      variant="form"
+                      fullWidth
+                    />
                   </div>
 
                   <div>
@@ -944,18 +942,16 @@ export function UsuariosView() {
                     <label htmlFor="nuevo-rol" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                       Rol Inicial *
                     </label>
-                    <select
-                      id="nuevo-rol"
+                    <GlassSelect
                       value={nuevoRol}
-                      onChange={(e) => setNuevoRol(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/20 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all cursor-pointer"
-                    >
-                      {roles.map((r) => (
-                        <option key={r.id} value={r.id}>
-                          {r.name}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(val) => setNuevoRol(val)}
+                      options={roles.map((r) => ({
+                        value: r.id,
+                        label: r.name,
+                      }))}
+                      variant="form"
+                      fullWidth
+                    />
                   </div>
                 </div>
 

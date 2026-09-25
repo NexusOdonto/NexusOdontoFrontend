@@ -5,7 +5,6 @@ import {
   Lock,
   Mail,
   Phone,
-  Calendar,
   CreditCard,
   Eye,
   EyeOff,
@@ -32,6 +31,8 @@ import {
 import fondoLoginLight from "../../assets/fondo-Login-ligh.webp";
 import fondoLoginDark from "../../assets/fondoLogin.webp";
 import logoNexus from "../../assets/nexus-odonto-logo.webp";
+import { GlassSelect } from "../../components/common/GlassSelect";
+import { GlassDatePicker } from "../../components/common/GlassDatePicker";
 
 type CatalogOption = RegisterOptionItem;
 
@@ -619,31 +620,19 @@ export default function RegisterPage() {
                     <span className="text-teal-600 dark:text-teal-400">*</span>
                   </label>
 
-                  <div className="relative min-w-0">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                      <CreditCard className="w-4 h-4" />
-                    </div>
-
-                    <select
-                      value={documentTypeId}
-                      onChange={(e) =>
-                        setDocumentTypeId(e.target.value)
-                      }
-                      disabled={loadingCatalogs}
-                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:bg-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 dark:bg-slate-800/70 dark:border-slate-700/60 dark:text-white dark:focus:bg-slate-800 dark:focus:border-teal-400 dark:focus:ring-teal-400 focus:outline-none transition-colors cursor-pointer"
-                      required
-                    >
-                      {documentTypes.map((dt) => (
-                        <option
-                          key={dt.id}
-                          value={dt.id}
-                          className="bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100"
-                        >
-                          {dt.name} ({dt.code})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <GlassSelect
+                    value={documentTypeId}
+                    onChange={(val) => setDocumentTypeId(val)}
+                    options={documentTypes.map((dt) => ({
+                      value: dt.id,
+                      label: `${dt.name} (${dt.code})`,
+                    }))}
+                    placeholder="Selecciona tipo de documento"
+                    icon={<CreditCard className="w-4 h-4" />}
+                    variant="form"
+                    fullWidth
+                    disabled={loadingCatalogs}
+                  />
                 </div>
 
                 <div className="space-y-1.5 min-w-0">
@@ -728,20 +717,13 @@ export default function RegisterPage() {
                     Fecha de Nacimiento (Opcional)
                   </label>
 
-                  <div className="relative min-w-0">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                      <Calendar className="w-4 h-4" />
-                    </div>
-
-                    <input
-                      type="date"
-                      value={dateOfBirth}
-                      onChange={(e) =>
-                        setDateOfBirth(e.target.value)
-                      }
-                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 dark:bg-slate-800/70 dark:border-slate-700/60 dark:text-white dark:placeholder:text-slate-500 dark:focus:bg-slate-800 dark:focus:border-teal-400 dark:focus:ring-teal-400 focus:outline-none transition-colors [color-scheme:light] dark:[color-scheme:dark]"
-                    />
-                  </div>
+                  <GlassDatePicker
+                    value={dateOfBirth}
+                    onChange={(val) => setDateOfBirth(val)}
+                    placeholder="Selecciona fecha (opcional)"
+                    maxDate={new Date().toISOString().split("T")[0]}
+                    variant="form"
+                  />
                 </div>
 
                 <div className="space-y-1.5 min-w-0">
@@ -749,34 +731,21 @@ export default function RegisterPage() {
                     Sexo / Género (Opcional)
                   </label>
 
-                  <div className="relative min-w-0">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                      <User className="w-4 h-4" />
-                    </div>
-
-                    <select
-                      value={sexId}
-                      onChange={(e) => setSexId(e.target.value)}
-                      className="w-full min-w-0 pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:bg-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 dark:bg-slate-800/70 dark:border-slate-700/60 dark:text-white dark:focus:bg-slate-800 dark:focus:border-teal-400 dark:focus:ring-teal-400 focus:outline-none transition-colors cursor-pointer"
-                    >
-                      <option
-                        value=""
-                        className="bg-white text-slate-500 dark:bg-slate-900 dark:text-slate-400"
-                      >
-                        Selecciona sexo (opcional)
-                      </option>
-
-                      {sexes.map((s) => (
-                        <option
-                          key={s.id}
-                          value={s.id}
-                          className="bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100"
-                        >
-                          {s.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <GlassSelect
+                    value={sexId}
+                    onChange={(val) => setSexId(val)}
+                    options={[
+                      { value: "", label: "Selecciona sexo (opcional)" },
+                      ...sexes.map((s) => ({
+                        value: s.id,
+                        label: s.name,
+                      })),
+                    ]}
+                    placeholder="Selecciona sexo (opcional)"
+                    icon={<User className="w-4 h-4" />}
+                    variant="form"
+                    fullWidth
+                  />
                 </div>
               </div>
 

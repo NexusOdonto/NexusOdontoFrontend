@@ -352,7 +352,7 @@ function OdontogramaUI() {
           id: user?.personId || user?.id || "patient-self",
           personId: user?.personId || user?.id || "person-self",
           nombre: userName,
-          cedula: userDoc || "1098765432",
+          cedula: userDoc || "No registrado",
           fotoUrl: user?.avatarUrl || user?.avatar,
           avatarUrl: user?.avatarUrl || user?.avatar,
         };
@@ -361,9 +361,9 @@ function OdontogramaUI() {
         setSelectedPaciente(selfPt);
       } else if (patientsData && patientsData.length > 0) {
         const mapped: PacienteItem[] = patientsData.map((p, idx) => {
-          const person = personsData.find((per) => per.id === p.personId);
+          const person = personsData.find((per) => areGuidsEqual(per.id, p.personId));
           const fullName = person ? `${person.firstName} ${person.lastName}` : (p.firstName ? `${p.firstName} ${p.lastName}` : `Paciente #${idx + 1}`);
-          const doc = person?.documentNumber || p.documentNumber || `10${idx}8765432`;
+          const doc = person?.documentNumber || p.documentNumber || "";
           const history = historiesData.find((h: any) => areGuidsEqual(h.patientId, p.id));
           const avatar = (person as any)?.fotoUrl || (person as any)?.avatarUrl || (p as any)?.fotoUrl || (p as any)?.avatarUrl;
           return {
@@ -408,7 +408,7 @@ function OdontogramaUI() {
           id: user?.personId || user?.id || "patient-self",
           personId: user?.personId || user?.id || "person-self",
           nombre: userName,
-          cedula: userDoc || "1098765432",
+          cedula: userDoc || "No registrado",
         };
         setPacientesList([fallbackSelf]);
         setSelectedPaciente(fallbackSelf);
