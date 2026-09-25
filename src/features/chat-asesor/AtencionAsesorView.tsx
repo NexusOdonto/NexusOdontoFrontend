@@ -130,26 +130,26 @@ function deduplicateMessages(msgs: ChatbotMessage[]): ChatbotMessage[] {
 }
 
 /**
- * Identidad visible en asesor:
- * - E.164 / @s.whatsapp.net → teléfono formateado (+57 …)
- * - LID aún sin resolver → id de conversación corto (o chatIdentifier), nunca "Contacto WhatsApp"
- * Nunca "Sin número" ni prefijo falso "WA ·" / +233 inventado / grupos LID espaciados.
+ * Identidad visible en asesor (un solo esquema, lista + cabecera):
+ * 1. E.164 real → solo teléfono formateado (+57 …), siempre igual
+ * 2. Sin E.164 → `ID · {uuid corto}…` (UUID de conversación, nunca dígitos LID crudos)
+ * Nunca "Contacto WhatsApp", "Sin número", "WA ·", +233 inventado ni grupos LID espaciados.
  */
 function shortenConversationId(id: string, max = 8): string {
   const s = (id || "").trim();
   if (!s) return "";
-  if (s.length <= max) return s;
-  return `${s.slice(0, max)}…`;
+  // Preferir el primer segmento UUID (hex) si aplica
+  const segment = s.includes("-") ? s.split("-")[0] : s;
+  const base = segment.length >= 4 ? segment : s;
+  if (base.length <= max) return base;
+  return `${base.slice(0, max)}…`;
 }
 
-/** Etiqueta cuando no hay E.164: conversación corta, o chatIdentifier completo. */
-function formatUnresolvedContactLabel(identifier: string, conversationId?: string): string {
+/** Sin E.164: solo `ID · {conversationUuid}…` — nunca chatIdentifier / LID en crudo. */
+function formatUnresolvedContactLabel(_identifier: string, conversationId?: string): string {
   const conv = (conversationId || "").trim();
-  if (conv) return shortenConversationId(conv);
-
-  const raw = (identifier || "").trim();
-  if (!raw) return "";
-  return raw;
+  if (!conv) return "";
+  return `ID · ${shortenConversationId(conv)}`;
 }
 
 function looksLikeLid(identifier: string): boolean {
@@ -232,8 +232,8 @@ function formatPhoneE164(identifier: string): string {
 }
 
 /**
- * Etiqueta de lista/detalle: teléfono E.164 real, o id de conversación mientras resuelve LID.
- * Vacío solo para placeholders / identificadores inválidos (se filtran).
+ * Etiqueta lista/cabecera: E.164 formateado, o `ID · uuid…` si aún no hay teléfono.
+ * Vacío solo para placeholders / probes (se filtran de la bandeja).
  */
 function formatPhone(identifier: string, conversationId?: string): string {
   const e164 = formatPhoneE164(identifier);
@@ -258,7 +258,8 @@ function formatPhone(identifier: string, conversationId?: string): string {
     return "";
   }
 
-  if (looksLikeLid(raw) && digitsOnly.length >= 14) {
+  // Sin E.164 (LID u otro): título = ID · conversationUuid — nunca dígitos LID
+  if (looksLikeLid(raw) || digitsOnly.length >= 14) {
     return formatUnresolvedContactLabel(raw, conversationId);
   }
 
@@ -324,16 +325,17 @@ function getAvatarText(name: string): string {
   if (!name) return "WA";
   const trimmed = name.trim();
   const digits = trimmed.replace(/\D/g, "");
-  // Teléfono / id conversación / LID / identificador → ícono de teléfono
+  // Teléfono / ID · uuid / LID / identificador → ícono de teléfono
   if (
     trimmed.startsWith("+") ||
+    trimmed.startsWith("ID ·") ||
     /^\d/.test(trimmed) ||
     digits.length >= 6 ||
     trimmed.includes("…") ||
     trimmed.includes("...") ||
     /^[0-9a-f]{8}/i.test(trimmed) ||
     /^whatsapp/i.test(trimmed) ||
-    /^contacto whatsapp$/i.test(trimmed) ||
+    /^sin teléfono/i.test(trimmed) ||
     /^sin número$/i.test(trimmed)
   ) {
     return "WA";
@@ -672,15 +674,14 @@ export function AtencionAsesorView() {
 
         for (const item of mapped) {
           const cleanDigits = (str?: string) => (str || "").replace(/\D/g, "");
-          const rawId = item.chatIdentifier || "";
-          const isLid =
-            rawId.toLowerCase().includes("@lid") || cleanDigits(rawId).length >= 14;
-          // Agrupar solo por teléfono real; LIDs quedan con clave propia (no mash last-10)
-          const keyDigits = cleanDigits(item.phone || (!isLid ? item.chatIdentifier : ""));
+          // Agrupar solo por teléfono E.164 real; sin número → clave por conversation id
+          const keyDigits = cleanDigits(
+            item.phone.startsWith("+") ? item.phone : ""
+          );
           const key =
-            !isLid && keyDigits.length >= 10
+            keyDigits.length >= 10
               ? keyDigits.slice(-10)
-              : `id:${item.chatIdentifier || item.id}`;
+              : `id:${item.id}`;
 
           if (!groupedByPhone.has(key)) {
             groupedByPhone.set(key, { ...item, allConversationIds: [item.id] });
@@ -2001,8 +2002,8 @@ export function AtencionAsesorView() {
                     <h3 className="text-xs font-semibold text-slate-900 dark:text-white truncate">
                       {selectedChat.phone}
                     </h3>
-                    <p className="text-[11px] text-teal-600 dark:text-teal-400 font-semibold truncate">
-                      Contacto WhatsApp
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium truncate">
+                      {selectedChat.phone.startsWith("+") ? "WhatsApp" : "Sin teléfono E.164"}
                     </p>
                   </div>
                 </div>
@@ -2017,8 +2018,8 @@ export function AtencionAsesorView() {
                   </div>
                   <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
                     <span>ID Conversación:</span>
-                    <span className="font-mono text-[10px] text-slate-600 dark:text-slate-300">
-                      {selectedChat.id.slice(0, 8)}...
+                    <span className="text-[10px] text-slate-600 dark:text-slate-300">
+                      {shortenConversationId(selectedChat.id)}
                     </span>
                   </div>
                 </div>
@@ -2120,8 +2121,8 @@ export function AtencionAsesorView() {
                     <h3 className="text-xs font-semibold text-slate-900 dark:text-white truncate">
                       {selectedChat.phone}
                     </h3>
-                    <p className="text-[11px] text-teal-600 dark:text-teal-400 font-semibold truncate">
-                      Contacto WhatsApp
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium truncate">
+                      {selectedChat.phone.startsWith("+") ? "WhatsApp" : "Sin teléfono E.164"}
                     </p>
                   </div>
                 </div>
@@ -2136,8 +2137,8 @@ export function AtencionAsesorView() {
                   </div>
                   <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
                     <span>ID Conversación:</span>
-                    <span className="font-mono text-[10px] text-slate-600 dark:text-slate-300">
-                      {selectedChat.id.slice(0, 8)}...
+                    <span className="text-[10px] text-slate-600 dark:text-slate-300">
+                      {shortenConversationId(selectedChat.id)}
                     </span>
                   </div>
                 </div>
