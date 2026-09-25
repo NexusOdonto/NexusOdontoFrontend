@@ -130,8 +130,10 @@ function deduplicateMessages(msgs: ChatbotMessage[]): ChatbotMessage[] {
 }
 
 /**
- * Identidad visible = teléfono WhatsApp E.164 real.
- * LID / placeholders → cadena vacía (la lista los filtra; nunca "Sin número" ni "WA · …").
+ * Identidad visible en asesor:
+ * - E.164 / @s.whatsapp.net → teléfono formateado
+ * - LID temporal → id de contacto (dígitos) mientras se resuelve a teléfono
+ * Nunca "Sin número" ni prefijo falso "WA ·" / +233 inventado.
  */
 function looksLikeLid(identifier: string): boolean {
   const raw = (identifier || "").trim();
@@ -141,7 +143,17 @@ function looksLikeLid(identifier: string): boolean {
   return digits.length >= 14;
 }
 
-function formatPhone(identifier: string): string {
+function formatContactId(digits: string): string {
+  // Agrupa dígitos LID para lectura (ej. 2337 9290 4147 010)
+  const parts: string[] = [];
+  for (let i = 0; i < digits.length; i += 4) {
+    parts.push(digits.slice(i, i + 4));
+  }
+  return parts.join(" ");
+}
+
+/** Teléfono E.164 formateado, o "" si no hay teléfono real. */
+function formatPhoneE164(identifier: string): string {
   const raw = (identifier || "").trim();
   if (!raw) return "";
 
@@ -165,7 +177,7 @@ function formatPhone(identifier: string): string {
     return "";
   }
 
-  // LID opaco: no mostrar (se filtra de la lista)
+  // LID opaco: no es teléfono
   if (isLid || digitsOnly.length >= 14) {
     return "";
   }
@@ -196,6 +208,39 @@ function formatPhone(identifier: string): string {
       return `+57 ${digitsOnly.slice(2, 5)} ${digitsOnly.slice(5, 8)} ${digitsOnly.slice(8)}`;
     }
     return `+${digitsOnly}`;
+  }
+
+  return "";
+}
+
+/**
+ * Etiqueta de lista/detalle: teléfono real, o id de contacto LID mientras se resuelve.
+ * Vacío solo para placeholders / identificadores inválidos (se filtran).
+ */
+function formatPhone(identifier: string): string {
+  const e164 = formatPhoneE164(identifier);
+  if (e164) return e164;
+
+  const raw = (identifier || "").trim();
+  if (!raw) return "";
+  const digitsOnly = raw.replace(/@.*$/, "").replace(/\D/g, "");
+  if (!digitsOnly) return "";
+
+  // Placeholders
+  const local10 =
+    digitsOnly.startsWith("57") && digitsOnly.length === 12 ? digitsOnly.slice(2) : digitsOnly;
+  if (
+    local10 === "3000000000" ||
+    local10 === "0000000000" ||
+    local10 === "1111111111" ||
+    local10 === "1234567890" ||
+    digitsOnly === "573000000000"
+  ) {
+    return "";
+  }
+
+  if (looksLikeLid(raw) && digitsOnly.length >= 14) {
+    return formatContactId(digitsOnly);
   }
 
   return "";
@@ -492,10 +537,10 @@ export function AtencionAsesorView() {
       ]);
 
       if (convs && convs.length > 0) {
-        // Intentar resolver LID→E.164 antes de pintar; si falla, se filtra (nunca "WA · …")
+        // Resolver LID→E.164 en poll; si aún no hay teléfono, igual se muestra el hilo (id contacto)
         await Promise.all(
           convs
-            .filter((c) => looksLikeLid(c.chatIdentifier) && !formatPhone(c.chatIdentifier))
+            .filter((c) => looksLikeLid(c.chatIdentifier) && !formatPhoneE164(c.chatIdentifier))
             .map(async (c) => {
               try {
                 const resolved = await chatbotService.resolveWhatsAppIdentity(
