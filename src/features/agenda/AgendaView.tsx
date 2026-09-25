@@ -29,7 +29,7 @@ import {
   FileText,
 } from "lucide-react";
 import { CarruselAlmuerzoUnificado } from "./CarruselAlmuerzoUnificado";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { UserAvatar } from "../../components/common/UserAvatar";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
 
@@ -246,6 +246,35 @@ export function AgendaView() {
   }, [odontologosSeleccionados]);
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+
+  // Preselección de odontólogo si se recibe por parámetro URL o navegación desde Profesionales
+  useEffect(() => {
+    const targetDoc =
+      searchParams.get("doctor") ||
+      (location.state as any)?.doctor ||
+      (location.state as any)?.odontologo;
+
+    if (targetDoc && typeof targetDoc === "string") {
+      const trimmedTarget = targetDoc.trim().toLowerCase();
+      const match = listaOdontologos.find((doc) => {
+        const docLower = doc.nombre.toLowerCase();
+        return (
+          docLower.includes(trimmedTarget) ||
+          trimmedTarget.includes(docLower) ||
+          docLower.replace(/dr\(a\)\.\s*|dr\.\s*|dra\.\s*/i, "").trim() ===
+            trimmedTarget.replace(/dr\(a\)\.\s*|dr\.\s*|dra\.\s*/i, "").trim()
+        );
+      });
+
+      if (match && match.nombre !== "Todos los odontólogos") {
+        setOdontologosSeleccionados([match.nombre]);
+      } else {
+        setOdontologosSeleccionados([targetDoc.trim()]);
+      }
+    }
+  }, [location.state, searchParams, listaOdontologos]);
   const [selectedClusterModal, setSelectedClusterModal] = useState<{
     fecha: string;
     horaInicio: string;

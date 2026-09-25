@@ -25,7 +25,6 @@ import {
   Table as TableIcon,
   CalendarDays,
   Activity,
-  Send,
   UserCheck,
   Edit3,
   Save,
@@ -1095,11 +1094,17 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
 
                       <button
                         type="button"
-                        onClick={() => navigate(`/citas`)}
+                        onClick={() => {
+                          const docName = prof.nombreCompleto || `Dr(a). ${prof.firstName || ""} ${prof.lastName || ""}`.trim();
+                          navigate(`/agenda?doctor=${encodeURIComponent(docName)}`, {
+                            state: { doctor: docName, doctorId: prof.id },
+                          });
+                        }}
                         className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-400 hover:to-cyan-400 text-slate-950 text-xs font-black transition-all cursor-pointer shadow-md shadow-cyan-500/20 active:scale-95"
+                        title="Ver agenda y calendario del odontólogo"
                       >
-                        <Send size={13} />
-                        <span>Agendar</span>
+                        <CalendarDays size={13} />
+                        <span>Ver Agenda</span>
                       </button>
                     </>
                   ) : (
@@ -1218,11 +1223,16 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => navigate(`/citas`)}
+                                onClick={() => {
+                                  const docName = prof.nombreCompleto || `Dr(a). ${prof.firstName || ""} ${prof.lastName || ""}`.trim();
+                                  navigate(`/agenda?doctor=${encodeURIComponent(docName)}`, {
+                                    state: { doctor: docName, doctorId: prof.id },
+                                  });
+                                }}
                                 className="p-1.5 rounded-lg bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-500/25 transition-colors font-bold cursor-pointer"
-                                title="Agendar cita con este doctor"
+                                title="Ver agenda y calendario del odontólogo"
                               >
-                                <Send size={14} />
+                                <CalendarDays size={14} />
                               </button>
                             </>
                           ) : (
