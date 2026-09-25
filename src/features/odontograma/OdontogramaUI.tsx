@@ -235,6 +235,39 @@ function matchLoggedInProfessional(
   });
 }
 
+/** Map API English specialty codes/names to Spanish UI labels. */
+function toSpanishSpecialty(raw?: string | null): string {
+  const value = (raw || "").trim();
+  if (!value) return "Odontología General";
+
+  const key = value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const map: Record<string, string> = {
+    "general dentistry": "Odontología General",
+    "odontologia general": "Odontología General",
+    odontologia_general: "Odontología General",
+    endodontics: "Endodoncia",
+    endodoncia: "Endodoncia",
+    periodontics: "Periodoncia",
+    periodoncia: "Periodoncia",
+    orthodontics: "Ortodoncia",
+    ortodoncia: "Ortodoncia",
+    "pediatric dentistry": "Odontopediatría",
+    odontopediatria: "Odontopediatría",
+    "oral surgery": "Cirugía Oral",
+    "cirugia oral": "Cirugía Oral",
+    cirugia_oral: "Cirugía Oral",
+  };
+
+  return map[key] || value;
+}
+
 function OdontogramaUI() {
   const { user } = useAuth();
   const { theme } = useTheme();
@@ -318,7 +351,9 @@ function OdontogramaUI() {
           return {
             id: pr.id,
             nombre: docName,
-            specialty: pr.specialtyName || pr.specialty || pr.speciality || "Odontología General",
+            specialty: toSpanishSpecialty(
+              pr.specialtyName || pr.specialty || pr.speciality
+            ),
             personId: pr.personId,
             documentNumber: pr.documentNumber,
             email: pr.email,
@@ -1308,7 +1343,7 @@ function OdontogramaUI() {
                         </span>
                         {currentDoctor?.specialty && (
                           <span className="hidden sm:inline-block text-[9px] font-medium text-teal-600 dark:text-teal-400 bg-teal-500/10 dark:bg-teal-500/20 px-1.5 py-0.5 rounded-md border border-teal-500/30 truncate max-w-[95px]">
-                            {currentDoctor.specialty}
+                            {toSpanishSpecialty(currentDoctor.specialty)}
                           </span>
                         )}
                       </div>
@@ -1387,7 +1422,7 @@ function OdontogramaUI() {
                                       {pr.nombre}
                                     </span>
                                     <span className="text-[10px] text-teal-600 dark:text-teal-400 font-medium truncate">
-                                      {pr.specialty || "Odontología General"}
+                                      {toSpanishSpecialty(pr.specialty)}
                                     </span>
                                   </div>
                                 </div>
