@@ -9,6 +9,7 @@ import {
   Mail,
   MapPin,
   Sliders,
+  Trash2,
 } from "lucide-react";
 import { GlassSelect } from "../../components/common/GlassSelect";
 
@@ -34,14 +35,14 @@ interface ConfiguracionClinica {
 }
 
 const CONFIG_DEFAULT: ConfiguracionClinica = {
-  nombreClinica: "NexusOdonto Dental Clinic",
-  razonSocial: "NexusOdonto Salud Oral S.A.S.",
-  nit: "901.458.729-3",
-  telefono: "+57 (601) 745-9000",
-  whatsapp: "+57 310 892 4512",
-  email: "contacto@nexusodonto.com",
-  direccion: "Calle 100 # 15-20, Centro Médico Odontológico",
-  ciudad: "Bogotá, Colombia",
+  nombreClinica: "",
+  razonSocial: "",
+  nit: "",
+  telefono: "",
+  whatsapp: "",
+  email: "",
+  direccion: "",
+  ciudad: "",
   horaApertura: "08:00",
   horaCierre: "17:00",
   duracionCitaDefault: 45,
@@ -65,11 +66,37 @@ const DIAS_SEMANA = [
 ];
 
 export default function ConfiguracionView() {
+  const [toastMensaje, setToastMensaje] = useState<string | null>(null);
+
   const [config, setConfig] = useState<ConfiguracionClinica>(() => {
     const saved = localStorage.getItem("nexus_configuracion_clinica");
     if (saved) {
       try {
-        return { ...CONFIG_DEFAULT, ...JSON.parse(saved) };
+        const parsed = JSON.parse(saved);
+        // Depurar automáticamente datos mock residuales si existían en el almacenamiento local
+        const isOldMock =
+          parsed.nombreClinica === "NexusOdonto Dental Clinic" ||
+          parsed.nit === "901.458.729-3" ||
+          parsed.razonSocial === "NexusOdonto Salud Oral S.A.S.";
+
+        if (isOldMock) {
+          const cleaned: ConfiguracionClinica = {
+            ...CONFIG_DEFAULT,
+            ...parsed,
+            nombreClinica: parsed.nombreClinica === "NexusOdonto Dental Clinic" ? "" : (parsed.nombreClinica || ""),
+            razonSocial: parsed.razonSocial === "NexusOdonto Salud Oral S.A.S." ? "" : (parsed.razonSocial || ""),
+            nit: parsed.nit === "901.458.729-3" ? "" : (parsed.nit || ""),
+            telefono: parsed.telefono === "+57 (601) 745-9000" ? "" : (parsed.telefono || ""),
+            whatsapp: parsed.whatsapp === "+57 310 892 4512" ? "" : (parsed.whatsapp || ""),
+            email: parsed.email === "contacto@nexusodonto.com" ? "" : (parsed.email || ""),
+            direccion: parsed.direccion === "Calle 100 # 15-20, Centro Médico Odontológico" ? "" : (parsed.direccion || ""),
+            ciudad: parsed.ciudad === "Bogotá, Colombia" ? "" : (parsed.ciudad || ""),
+          };
+          localStorage.setItem("nexus_configuracion_clinica", JSON.stringify(cleaned));
+          return cleaned;
+        }
+
+        return { ...CONFIG_DEFAULT, ...parsed };
       } catch (_e) {
         return CONFIG_DEFAULT;
       }
@@ -96,12 +123,27 @@ export default function ConfiguracionView() {
     });
   };
 
+  const handleLimpiarCache = () => {
+    localStorage.removeItem("nexus_configuracion_clinica");
+    setConfig(CONFIG_DEFAULT);
+    setToastMensaje("Datos en caché de la clínica eliminados correctamente.");
+    setGuardadoExitoso(true);
+    window.dispatchEvent(new Event("nexus_configuracion_actualizada"));
+    setTimeout(() => {
+      setGuardadoExitoso(false);
+      setToastMensaje(null);
+    }, 3500);
+  };
+
   const handleGuardar = (e: React.FormEvent) => {
     e.preventDefault();
     localStorage.setItem("nexus_configuracion_clinica", JSON.stringify(config));
+    window.dispatchEvent(new Event("nexus_configuracion_actualizada"));
+    setToastMensaje("Configuración de la clínica guardada correctamente.");
     setGuardadoExitoso(true);
     setTimeout(() => {
       setGuardadoExitoso(false);
+      setToastMensaje(null);
     }, 3000);
   };
 
@@ -111,7 +153,7 @@ export default function ConfiguracionView() {
       {guardadoExitoso && (
         <div className="fixed bottom-6 right-6 z-[99999] flex items-center gap-2.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 px-5 py-3 rounded-2xl shadow-2xl border border-teal-500/30 animate-slideUp backdrop-blur-md">
           <CheckCircle2 size={18} className="text-teal-400 dark:text-teal-600 flex-shrink-0" />
-          <span className="text-xs font-semibold">Configuración de la clínica guardada correctamente</span>
+          <span className="text-xs font-semibold">{toastMensaje || "Configuración de la clínica guardada correctamente"}</span>
         </div>
       )}
 
@@ -132,23 +174,35 @@ export default function ConfiguracionView() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={handleGuardar}
-          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 px-6 py-3 text-xs sm:text-sm font-black text-white dark:text-slate-950 shadow-lg shadow-cyan-500/25 transition-all active:scale-95 cursor-pointer transform hover:-translate-y-0.5"
-        >
-          {guardadoExitoso ? (
-            <>
-              <CheckCircle2 size={18} />
-              <span>Guardado Exitoso</span>
-            </>
-          ) : (
-            <>
-              <Save size={18} strokeWidth={2.4} />
-              <span>Guardar Cambios</span>
-            </>
-          )}
-        </button>
+        <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+          <button
+            type="button"
+            onClick={handleLimpiarCache}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-rose-500/30 dark:border-rose-400/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-700 dark:text-rose-300 px-4 py-3 text-xs sm:text-sm font-bold transition-all active:scale-95 cursor-pointer shadow-sm hover:shadow-md"
+            title="Borrar datos en caché y vaciar campos de prueba"
+          >
+            <Trash2 size={16} />
+            <span>Borrar Caché</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleGuardar}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-teal-500 via-cyan-500 to-cyan-600 hover:from-teal-400 hover:to-cyan-500 px-6 py-3 text-xs sm:text-sm font-black text-white dark:text-slate-950 shadow-lg shadow-cyan-500/25 transition-all active:scale-95 cursor-pointer transform hover:-translate-y-0.5"
+          >
+            {guardadoExitoso ? (
+              <>
+                <CheckCircle2 size={18} />
+                <span>Guardado Exitoso</span>
+              </>
+            ) : (
+              <>
+                <Save size={18} strokeWidth={2.4} />
+                <span>Guardar Cambios</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {guardadoExitoso && (
@@ -241,7 +295,8 @@ export default function ConfiguracionView() {
                   type="text"
                   value={config.nombreClinica}
                   onChange={(e) => handleChange("nombreClinica", e.target.value)}
-                  className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-slate-950/70 border border-slate-200/80 dark:border-white/15 text-slate-900 dark:text-white text-xs sm:text-sm font-semibold outline-none focus:border-cyan-500 dark:focus:border-cyan-400"
+                  placeholder="Ej: Clínica Dental Central"
+                  className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-slate-950/70 border border-slate-200/80 dark:border-white/15 text-slate-900 dark:text-white text-xs sm:text-sm font-semibold outline-none focus:border-cyan-500 dark:focus:border-cyan-400 placeholder:text-slate-400 dark:placeholder:text-slate-600"
                 />
               </div>
 
@@ -253,7 +308,8 @@ export default function ConfiguracionView() {
                   type="text"
                   value={config.razonSocial}
                   onChange={(e) => handleChange("razonSocial", e.target.value)}
-                  className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-slate-950/70 border border-slate-200/80 dark:border-white/15 text-slate-900 dark:text-white text-xs sm:text-sm outline-none focus:border-cyan-500 dark:focus:border-cyan-400"
+                  placeholder="Ej: Salud Oral Odontológica S.A.S."
+                  className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-slate-950/70 border border-slate-200/80 dark:border-white/15 text-slate-900 dark:text-white text-xs sm:text-sm outline-none focus:border-cyan-500 dark:focus:border-cyan-400 placeholder:text-slate-400 dark:placeholder:text-slate-600"
                 />
               </div>
 
@@ -265,7 +321,8 @@ export default function ConfiguracionView() {
                   type="text"
                   value={config.nit}
                   onChange={(e) => handleChange("nit", e.target.value)}
-                  className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-slate-950/70 border border-slate-200/80 dark:border-white/15 text-slate-900 dark:text-white font-mono text-xs sm:text-sm outline-none focus:border-cyan-500 dark:focus:border-cyan-400"
+                  placeholder="Ej: 900.123.456-7"
+                  className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-slate-950/70 border border-slate-200/80 dark:border-white/15 text-slate-900 dark:text-white font-mono text-xs sm:text-sm outline-none focus:border-cyan-500 dark:focus:border-cyan-400 placeholder:text-slate-400 dark:placeholder:text-slate-600"
                 />
               </div>
 
@@ -278,7 +335,8 @@ export default function ConfiguracionView() {
                   type="text"
                   value={config.telefono}
                   onChange={(e) => handleChange("telefono", e.target.value)}
-                  className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-slate-950/70 border border-slate-200/80 dark:border-white/15 text-slate-900 dark:text-white text-xs sm:text-sm outline-none focus:border-cyan-500 dark:focus:border-cyan-400"
+                  placeholder="Ej: +57 (601) 745-9000"
+                  className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-slate-950/70 border border-slate-200/80 dark:border-white/15 text-slate-900 dark:text-white text-xs sm:text-sm outline-none focus:border-cyan-500 dark:focus:border-cyan-400 placeholder:text-slate-400 dark:placeholder:text-slate-600"
                 />
               </div>
 
@@ -291,7 +349,8 @@ export default function ConfiguracionView() {
                   type="text"
                   value={config.whatsapp}
                   onChange={(e) => handleChange("whatsapp", e.target.value)}
-                  className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-slate-950/70 border border-slate-200/80 dark:border-white/15 text-slate-900 dark:text-white text-xs sm:text-sm outline-none focus:border-cyan-500 dark:focus:border-cyan-400"
+                  placeholder="Ej: +57 310 892 4512"
+                  className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-slate-950/70 border border-slate-200/80 dark:border-white/15 text-slate-900 dark:text-white text-xs sm:text-sm outline-none focus:border-cyan-500 dark:focus:border-cyan-400 placeholder:text-slate-400 dark:placeholder:text-slate-600"
                 />
               </div>
 
@@ -304,7 +363,8 @@ export default function ConfiguracionView() {
                   type="email"
                   value={config.email}
                   onChange={(e) => handleChange("email", e.target.value)}
-                  className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-slate-950/70 border border-slate-200/80 dark:border-white/15 text-slate-900 dark:text-white text-xs sm:text-sm outline-none focus:border-cyan-500 dark:focus:border-cyan-400"
+                  placeholder="Ej: contacto@nexusodonto.com"
+                  className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-slate-950/70 border border-slate-200/80 dark:border-white/15 text-slate-900 dark:text-white text-xs sm:text-sm outline-none focus:border-cyan-500 dark:focus:border-cyan-400 placeholder:text-slate-400 dark:placeholder:text-slate-600"
                 />
               </div>
 
@@ -317,7 +377,8 @@ export default function ConfiguracionView() {
                   type="text"
                   value={config.direccion}
                   onChange={(e) => handleChange("direccion", e.target.value)}
-                  className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-slate-950/70 border border-slate-200/80 dark:border-white/15 text-slate-900 dark:text-white text-xs sm:text-sm outline-none focus:border-cyan-500 dark:focus:border-cyan-400"
+                  placeholder="Ej: Calle 100 # 15-20, Centro Médico Odontológico"
+                  className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-slate-950/70 border border-slate-200/80 dark:border-white/15 text-slate-900 dark:text-white text-xs sm:text-sm outline-none focus:border-cyan-500 dark:focus:border-cyan-400 placeholder:text-slate-400 dark:placeholder:text-slate-600"
                 />
               </div>
 
@@ -329,7 +390,8 @@ export default function ConfiguracionView() {
                   type="text"
                   value={config.ciudad}
                   onChange={(e) => handleChange("ciudad", e.target.value)}
-                  className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-slate-950/70 border border-slate-200/80 dark:border-white/15 text-slate-900 dark:text-white text-xs sm:text-sm outline-none focus:border-cyan-500 dark:focus:border-cyan-400"
+                  placeholder="Ej: Bogotá, Colombia"
+                  className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-slate-950/70 border border-slate-200/80 dark:border-white/15 text-slate-900 dark:text-white text-xs sm:text-sm outline-none focus:border-cyan-500 dark:focus:border-cyan-400 placeholder:text-slate-400 dark:placeholder:text-slate-600"
                 />
               </div>
             </div>
