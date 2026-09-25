@@ -132,10 +132,25 @@ function deduplicateMessages(msgs: ChatbotMessage[]): ChatbotMessage[] {
 /**
  * Identidad visible en asesor:
  * - E.164 / @s.whatsapp.net → teléfono formateado (+57 …)
- * - LID aún sin resolver → "Contacto WhatsApp" (nunca grupos LID espaciados / OCR)
- * Nunca "Sin número" ni prefijo falso "WA ·" / +233 inventado.
+ * - LID aún sin resolver → id de conversación corto (o chatIdentifier), nunca "Contacto WhatsApp"
+ * Nunca "Sin número" ni prefijo falso "WA ·" / +233 inventado / grupos LID espaciados.
  */
-const LID_PENDING_LABEL = "Contacto WhatsApp";
+function shortenConversationId(id: string, max = 8): string {
+  const s = (id || "").trim();
+  if (!s) return "";
+  if (s.length <= max) return s;
+  return `${s.slice(0, max)}…`;
+}
+
+/** Etiqueta cuando no hay E.164: conversación corta, o chatIdentifier completo. */
+function formatUnresolvedContactLabel(identifier: string, conversationId?: string): string {
+  const conv = (conversationId || "").trim();
+  if (conv) return shortenConversationId(conv);
+
+  const raw = (identifier || "").trim();
+  if (!raw) return "";
+  return raw;
+}
 
 function looksLikeLid(identifier: string): boolean {
   const raw = (identifier || "").trim();
@@ -217,10 +232,10 @@ function formatPhoneE164(identifier: string): string {
 }
 
 /**
- * Etiqueta de lista/detalle: teléfono E.164 real, o "Contacto WhatsApp" mientras resuelve LID.
+ * Etiqueta de lista/detalle: teléfono E.164 real, o id de conversación mientras resuelve LID.
  * Vacío solo para placeholders / identificadores inválidos (se filtran).
  */
-function formatPhone(identifier: string): string {
+function formatPhone(identifier: string, conversationId?: string): string {
   const e164 = formatPhoneE164(identifier);
   if (e164) return e164;
 
@@ -244,7 +259,7 @@ function formatPhone(identifier: string): string {
   }
 
   if (looksLikeLid(raw) && digitsOnly.length >= 14) {
-    return LID_PENDING_LABEL;
+    return formatUnresolvedContactLabel(raw, conversationId);
   }
 
   return "";
@@ -309,11 +324,14 @@ function getAvatarText(name: string): string {
   if (!name) return "WA";
   const trimmed = name.trim();
   const digits = trimmed.replace(/\D/g, "");
-  // Teléfono / LID pendiente / identificador numérico → ícono de teléfono
+  // Teléfono / id conversación / LID / identificador → ícono de teléfono
   if (
     trimmed.startsWith("+") ||
     /^\d/.test(trimmed) ||
     digits.length >= 6 ||
+    trimmed.includes("…") ||
+    trimmed.includes("...") ||
+    /^[0-9a-f]{8}/i.test(trimmed) ||
     /^whatsapp/i.test(trimmed) ||
     /^contacto whatsapp$/i.test(trimmed) ||
     /^sin número$/i.test(trimmed)
@@ -542,7 +560,7 @@ export function AtencionAsesorView() {
       ]);
 
       if (convs && convs.length > 0) {
-        // Resolver LID→E.164 en cada poll (agresivo); título usa +57 o "Contacto WhatsApp"
+        // Resolver LID→E.164 en cada poll (agresivo); título usa +57 o id de conversación
         const unresolvedLids = convs.filter(
           (c) =>
             !isProbeIdentifier(c.chatIdentifier) &&
@@ -581,7 +599,7 @@ export function AtencionAsesorView() {
 
         const mapped: ChatItemDisplay[] = convs
           .filter((c) => !isProbeIdentifier(c.chatIdentifier))
-          .filter((c) => Boolean(formatPhone(c.chatIdentifier)))
+          .filter((c) => Boolean(formatPhone(c.chatIdentifier, c.id)))
           .map((c): ChatItemDisplay => {
           const matchedTicket = tickets.find(
             (t) => t.chatbotConversationId && String(t.chatbotConversationId).toLowerCase() === String(c.id).toLowerCase()
@@ -604,7 +622,7 @@ export function AtencionAsesorView() {
           }
 
           // Identidad = teléfono WhatsApp de origen (chatIdentifier), nunca nombre de paciente
-          const formattedPhone = formatPhone(c.chatIdentifier);
+          const formattedPhone = formatPhone(c.chatIdentifier, c.id);
 
           const cleanSummary = formatTicketSummary(matchedTicket?.chatbotSummary, matchedTicket?.title);
 
@@ -677,7 +695,7 @@ export function AtencionAsesorView() {
             const isEscalated = existing.status === "ESCALADA" || item.status === "ESCALADA";
 
             // Priorizar la información de la sesión más reciente para el último mensaje
-            // y preferir siempre etiqueta E.164 (+57) sobre "Contacto WhatsApp" pendiente.
+            // y preferir siempre etiqueta E.164 (+57) sobre id pendiente.
             const itemIsE164 = item.phone.startsWith("+");
             const existingIsE164 = existing.phone.startsWith("+");
             if (itemIsE164 && !existingIsE164) {
