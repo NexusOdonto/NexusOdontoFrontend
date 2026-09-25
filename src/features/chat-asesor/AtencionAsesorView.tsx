@@ -491,6 +491,9 @@ export function AtencionAsesorView() {
 
   const readSetRef = useRef<Set<string>>(new Set());
   const [unreadMap, setUnreadMap] = useState<Record<string, number>>({});
+  /** Refs so loadData/poll stay stable — selecting a chat must NOT recreate loadData or remount the list. */
+  const selectedChatIdRef = useRef(selectedChatId);
+  const unreadMapRef = useRef(unreadMap);
   const lastMsgCountRef = useRef<Record<string, number>>({});
   const chatsRef = useRef<ChatItemDisplay[]>([]);
   /** Mobile back to list: polling must not re-open a chat until the user picks one again. */
@@ -642,11 +645,11 @@ export function AtencionAsesorView() {
           const formattedTime = formatTime(rawTime);
           const displayLastMessage = lastMsg?.content || cleanSummary;
 
-          const isRead = readSetRef.current.has(c.id) || c.id === selectedChatId;
+          const isRead = readSetRef.current.has(c.id) || c.id === selectedChatIdRef.current;
           const currentUnreadCount = isRead
             ? 0
-            : unreadMap[c.id] !== undefined
-            ? unreadMap[c.id]
+            : unreadMapRef.current[c.id] !== undefined
+            ? unreadMapRef.current[c.id]
             : stCode === "ESCALADA"
             ? 1
             : 0;
@@ -755,23 +758,28 @@ export function AtencionAsesorView() {
         setChats(consolidated);
 
         setSelectedChatId((prev) => {
+          let next = "";
           if (prev && consolidated.some((ch) => ch.id === prev || ch.allConversationIds?.includes(prev))) {
             const matching = consolidated.find((ch) => ch.id === prev || ch.allConversationIds?.includes(prev));
             // Keep the same conversation id when possible so status/UI don't jump between JID/LID twins
             if (matching && matching.allConversationIds?.includes(prev)) {
-              return prev;
+              next = prev;
+            } else {
+              next = matching ? matching.id : prev;
             }
-            return matching ? matching.id : prev;
+          } else if (userDismissedSelectionRef.current) {
+            // User tapped back to the chat list — keep list until they select again
+            next = "";
+          } else {
+            // First load / no selection: stay on chat list (mobile) and empty pane (desktop)
+            next = "";
           }
-          // User tapped back to the chat list — keep list until they select again
-          if (userDismissedSelectionRef.current) {
-            return "";
-          }
-          // First load / no selection: stay on chat list (mobile) and empty pane (desktop)
-          return "";
+          selectedChatIdRef.current = next;
+          return next;
         });
       } else {
         setChats([]);
+        selectedChatIdRef.current = "";
         setSelectedChatId("");
       }
     } catch (err) {
@@ -780,7 +788,9 @@ export function AtencionAsesorView() {
     } finally {
       if (!isSilent) setLoadingChats(false);
     }
-  }, [selectedChatId, unreadMap]);
+  // Intentionally stable: selection/unread must not recreate loadData (that remounted the list).
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- selectedChatId/unreadMap via refs
+  }, []);
 
   useEffect(() => {
     loadData();
@@ -789,6 +799,14 @@ export function AtencionAsesorView() {
   useEffect(() => {
     chatsRef.current = chats;
   }, [chats]);
+
+  useEffect(() => {
+    selectedChatIdRef.current = selectedChatId;
+  }, [selectedChatId]);
+
+  useEffect(() => {
+    unreadMapRef.current = unreadMap;
+  }, [unreadMap]);
 
   const loadMessages = useCallback(async (convId: string, isSilent = false) => {
     if (!convId) {
@@ -863,7 +881,11 @@ export function AtencionAsesorView() {
       readSetRef.current.add(selectedChatId);
       setUnreadMap((prev) => ({ ...prev, [selectedChatId]: 0 }));
       setChats((prev) =>
-        prev.map((c) => (c.id === selectedChatId ? { ...c, unread: false, unreadCount: 0 } : c))
+        prev.map((c) =>
+          c.id === selectedChatId || c.allConversationIds?.includes(selectedChatId)
+            ? { ...c, unread: false, unreadCount: 0 }
+            : c
+        )
       );
       loadMessages(selectedChatId);
     } else {
@@ -875,8 +897,9 @@ export function AtencionAsesorView() {
     const handleReconnect = () => {
       if (typeof navigator !== "undefined" && !navigator.onLine) return;
       loadData(true);
-      if (selectedChatId) {
-        loadMessages(selectedChatId, true);
+      const id = selectedChatIdRef.current;
+      if (id) {
+        loadMessages(id, true);
       }
     };
 
@@ -887,8 +910,9 @@ export function AtencionAsesorView() {
       if (typeof navigator !== "undefined" && !navigator.onLine) return;
       if (typeof document !== "undefined" && document.hidden) return;
       loadData(true);
-      if (selectedChatId) {
-        loadMessages(selectedChatId, true);
+      const id = selectedChatIdRef.current;
+      if (id) {
+        loadMessages(id, true);
       }
     }, 4000);
 
@@ -897,10 +921,13 @@ export function AtencionAsesorView() {
       window.removeEventListener("online", handleReconnect);
       document.removeEventListener("visibilitychange", handleReconnect);
     };
-  }, [loadData, loadMessages, selectedChatId]);
+  }, [loadData, loadMessages]);
 
   const selectedChat = useMemo(
-    () => chats.find((c) => c.id === selectedChatId),
+    () =>
+      chats.find(
+        (c) => c.id === selectedChatId || c.allConversationIds?.includes(selectedChatId)
+      ),
     [chats, selectedChatId]
   );
 
@@ -1552,7 +1579,9 @@ export function AtencionAsesorView() {
               </div>
             ) : (
               filteredChats.map((chat) => {
-                const isSelected = chat.id === selectedChatId;
+                const isSelected =
+                  chat.id === selectedChatId ||
+                  Boolean(selectedChatId && chat.allConversationIds?.includes(selectedChatId));
                 const avatarCode = getAvatarText(chat.patientName);
 
                 return (
@@ -1560,6 +1589,7 @@ export function AtencionAsesorView() {
                     key={chat.id}
                     onClick={() => {
                       userDismissedSelectionRef.current = false;
+                      selectedChatIdRef.current = chat.id;
                       setSelectedChatId(chat.id);
                     }}
                     className={`p-4 transition-all cursor-pointer select-none flex items-start gap-3.5 relative border-l-4 ${
@@ -1646,6 +1676,7 @@ export function AtencionAsesorView() {
                     type="button"
                     onClick={() => {
                       userDismissedSelectionRef.current = true;
+                      selectedChatIdRef.current = "";
                       setSelectedChatId("");
                       setShowContactInfo(false);
                     }}
@@ -2536,6 +2567,7 @@ export function AtencionAsesorView() {
                           type="button"
                           onClick={() => {
                             userDismissedSelectionRef.current = false;
+                            selectedChatIdRef.current = alertChat.id;
                             setSelectedChatId(alertChat.id);
                             setFilterTab("TODAS");
                             setShowNotificationsModal(false);
