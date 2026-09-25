@@ -46,6 +46,7 @@ import { getUserRole } from "../../utils/routePermissions";
 import { UserAvatar } from "../../components/common/UserAvatar";
 import { GlassSelect, type GlassSelectOption } from "../../components/common/GlassSelect";
 import { GlassTimePicker } from "../../components/common/GlassTimePicker";
+import { getSpecialtyDisplayLabel } from "../../utils/specialtyLabels";
 
 interface TurnoDisponibilidad {
   dia: string;
@@ -181,7 +182,19 @@ const SPECIALTY_STYLES: Record<string, { bg: string; text: string; border: strin
     border: "border-purple-500/30 dark:border-purple-400/40",
     glow: "shadow-purple-500/20",
   },
+  Ortodoncia: {
+    bg: "bg-purple-500/15 dark:bg-purple-500/20",
+    text: "text-purple-700 dark:text-purple-300",
+    border: "border-purple-500/30 dark:border-purple-400/40",
+    glow: "shadow-purple-500/20",
+  },
   "Cirugía Oral & Implantología": {
+    bg: "bg-cyan-500/15 dark:bg-cyan-500/20",
+    text: "text-cyan-700 dark:text-cyan-300",
+    border: "border-cyan-500/30 dark:border-cyan-400/40",
+    glow: "shadow-cyan-500/20",
+  },
+  "Cirugía Oral": {
     bg: "bg-cyan-500/15 dark:bg-cyan-500/20",
     text: "text-cyan-700 dark:text-cyan-300",
     border: "border-cyan-500/30 dark:border-cyan-400/40",
@@ -193,7 +206,19 @@ const SPECIALTY_STYLES: Record<string, { bg: string; text: string; border: strin
     border: "border-amber-500/30 dark:border-amber-400/40",
     glow: "shadow-amber-500/20",
   },
+  Endodoncia: {
+    bg: "bg-amber-500/15 dark:bg-amber-500/20",
+    text: "text-amber-700 dark:text-amber-300",
+    border: "border-amber-500/30 dark:border-amber-400/40",
+    glow: "shadow-amber-500/20",
+  },
   "Estética Dental & Diseño de Sonrisa": {
+    bg: "bg-emerald-500/15 dark:bg-emerald-500/20",
+    text: "text-emerald-700 dark:text-emerald-300",
+    border: "border-emerald-500/30 dark:border-emerald-400/40",
+    glow: "shadow-emerald-500/20",
+  },
+  "Estética Dental": {
     bg: "bg-emerald-500/15 dark:bg-emerald-500/20",
     text: "text-emerald-700 dark:text-emerald-300",
     border: "border-emerald-500/30 dark:border-emerald-400/40",
@@ -205,7 +230,19 @@ const SPECIALTY_STYLES: Record<string, { bg: string; text: string; border: strin
     border: "border-rose-500/30 dark:border-rose-400/40",
     glow: "shadow-rose-500/20",
   },
+  Odontopediatría: {
+    bg: "bg-rose-500/15 dark:bg-rose-500/20",
+    text: "text-rose-700 dark:text-rose-300",
+    border: "border-rose-500/30 dark:border-rose-400/40",
+    glow: "shadow-rose-500/20",
+  },
   "Periodoncia & Salud Gingival": {
+    bg: "bg-teal-500/15 dark:bg-teal-500/20",
+    text: "text-teal-700 dark:text-teal-300",
+    border: "border-teal-500/30 dark:border-teal-400/40",
+    glow: "shadow-teal-500/20",
+  },
+  Periodoncia: {
     bg: "bg-teal-500/15 dark:bg-teal-500/20",
     text: "text-teal-700 dark:text-teal-300",
     border: "border-teal-500/30 dark:border-teal-400/40",
@@ -389,11 +426,17 @@ export function ProfesionalesView() {
 const SPECIALTY_ID_MAP: Record<string, string> = {
   "Odontología General": "18000000-0000-0000-0000-000000000001",
   "Ortodoncia & Brackets Invisibles": "18000000-0000-0000-0000-000000000002",
+  Ortodoncia: "18000000-0000-0000-0000-000000000002",
   "Endodoncia Microscópica": "18000000-0000-0000-0000-000000000003",
+  Endodoncia: "18000000-0000-0000-0000-000000000003",
   "Periodoncia & Salud Gingival": "18000000-0000-0000-0000-000000000004",
+  Periodoncia: "18000000-0000-0000-0000-000000000004",
   "Odontopediatría & Prevención": "18000000-0000-0000-0000-000000000005",
+  Odontopediatría: "18000000-0000-0000-0000-000000000005",
   "Cirugía Oral & Implantología": "18000000-0000-0000-0000-000000000006",
+  "Cirugía Oral": "18000000-0000-0000-0000-000000000006",
   "Estética Dental & Diseño de Sonrisa": "18000000-0000-0000-0000-000000000001",
+  "Estética Dental": "18000000-0000-0000-0000-000000000001",
 };
 
   // Carga de profesionales enriquecidos desde backend y Oracle
@@ -413,20 +456,9 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
             ? `Dr(a). ${p.firstName || ""} ${p.lastName || ""}`.trim()
             : fallback.nombre);
 
-          let specialtyName = p.specialtyName || fallback.especialidad;
-          if (specialtyName === "General Dentistry" || specialtyName === "ODONTOLOGIA_GENERAL") {
-            specialtyName = "Odontología General";
-          } else if (specialtyName === "Orthodontics" || specialtyName === "ORTODONCIA") {
-            specialtyName = "Ortodoncia & Brackets Invisibles";
-          } else if (specialtyName === "Endodontics" || specialtyName === "ENDODONCIA") {
-            specialtyName = "Endodoncia Microscópica";
-          } else if (specialtyName === "Periodontics" || specialtyName === "PERIODONCIA") {
-            specialtyName = "Periodoncia & Salud Gingival";
-          } else if (specialtyName === "Pediatric Dentistry" || specialtyName === "ODONTOPEDIATRIA") {
-            specialtyName = "Odontopediatría & Prevención";
-          } else if (specialtyName === "Oral Surgery" || specialtyName === "CIRUGIA_ORAL") {
-            specialtyName = "Cirugía Oral & Implantología";
-          }
+          const specialtyName = getSpecialtyDisplayLabel(
+            p.specialtyName || fallback.especialidad
+          );
 
           const email = p.email || fallback.email;
           const phone = p.phone || fallback.phone;

@@ -57,6 +57,7 @@ import { SelectOrWriteInput, type SelectOption } from "../../components/common/S
 import { ModernServiceSelect } from "../../components/common/ModernServiceSelect";
 import { ModernDoctorSelect } from "../../components/common/ModernDoctorSelect";
 import { areGuidsEqual } from "../../utils/roleUtils";
+import { getSpecialtyDisplayLabel } from "../../utils/specialtyLabels";
 import { resolveOrCreatePatient } from "../../utils/patientResolution";
 import { validateClinicAppointmentSchedule } from "../../utils/clinicSchedule";
 import {
@@ -186,7 +187,9 @@ export function AgendaView() {
           (p.firstName || p.lastName
             ? `Dr(a). ${p.firstName || ""} ${p.lastName || ""}`.trim()
             : p.name || "Dr. Odontólogo");
-        const specName = p.specialtyName || p.specialty || "Odontología General";
+        const specName = getSpecialtyDisplayLabel(
+          p.specialtyName || p.specialty || "Odontología General"
+        );
         return {
           id: p.id,
           label: nombre,

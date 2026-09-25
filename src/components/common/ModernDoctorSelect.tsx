@@ -4,6 +4,7 @@ import { ChevronDown, CheckCircle2, Search, Sparkles, X, UserCheck } from "lucid
 import { UserAvatar } from "./UserAvatar";
 import { type SelectOption } from "./SelectOrWriteInput";
 import { filterDoctorsByService } from "../../utils/dentalSpecialtyMatching";
+import { getSpecialtyDisplayLabel } from "../../utils/specialtyLabels";
 
 interface ModernDoctorSelectProps {
   value: string; // Nombre o ID del odontólogo seleccionado
@@ -327,8 +328,10 @@ export function ModernDoctorSelect({
                       (doc.id && selectedDoctor.id && doc.id === selectedDoctor.id))
                   );
 
-                  const specClean = (doc.subLabel || (doc.data as any)?.specialty || "Odontología General")
-                    .replace("Especialidad: ", "");
+                  const specClean = getSpecialtyDisplayLabel(
+                    (doc.subLabel || (doc.data as any)?.specialty || "Odontología General")
+                      .replace("Especialidad: ", "")
+                  );
 
                   return (
                     <button

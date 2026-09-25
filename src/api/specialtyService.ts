@@ -1,4 +1,5 @@
 import axiosClient from './axiosClient';
+import { getSpecialtyDisplayLabel } from '../utils/specialtyLabels';
 
 export interface SpecialtyDto {
   id: string;
@@ -12,11 +13,19 @@ export interface SpecialtyDto {
 export const specialtyService = {
   getAll: async (): Promise<SpecialtyDto[]> => {
     const response = await axiosClient.get('/v1/Specialties');
-    return response.data;
+    const raw = Array.isArray(response.data) ? response.data : [];
+    return raw.map((s: SpecialtyDto) => ({
+      ...s,
+      name: getSpecialtyDisplayLabel(s.name || s.code),
+    }));
   },
 
   getById: async (id: string): Promise<SpecialtyDto> => {
     const response = await axiosClient.get(`/v1/Specialties/${id}`);
-    return response.data;
+    const s = response.data as SpecialtyDto;
+    return {
+      ...s,
+      name: getSpecialtyDisplayLabel(s?.name || s?.code),
+    };
   },
 };

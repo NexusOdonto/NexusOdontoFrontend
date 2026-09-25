@@ -6,6 +6,7 @@ import {
   PROFESSIONAL_FALLBACK_LABEL,
   resolveProfessionalDisplayName,
 } from '../utils/professionalDisplayName';
+import { getSpecialtyDisplayLabel } from '../utils/specialtyLabels';
 
 export interface ProfessionalResponseDto {
   id: string;
@@ -122,7 +123,7 @@ export const professionalService = {
           documentNumber: person?.documentNumber || '',
           specialtyId: specialty?.id || p.specialtyIds?.[0],
           specialtyIds: p.specialtyIds || [],
-          specialtyName: specialty?.name || 'Odontología General',
+          specialtyName: getSpecialtyDisplayLabel(specialty?.name || specialty?.code) || 'Odontología General',
         });
       });
     } catch {

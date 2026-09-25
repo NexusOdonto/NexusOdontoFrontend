@@ -26,6 +26,7 @@ import { ModernServiceSelect, type ServiceItem } from "../../components/common/M
 import { ModernDoctorSelect } from "../../components/common/ModernDoctorSelect";
 import { GlassSelect } from "../../components/common/GlassSelect";
 import { areGuidsEqual } from "../../utils/roleUtils";
+import { getSpecialtyDisplayLabel } from "../../utils/specialtyLabels";
 import { resolveOrCreatePatient } from "../../utils/patientResolution";
 import { validateClinicAppointmentSchedule } from "../../utils/clinicSchedule";
 import {
@@ -311,7 +312,7 @@ export function CitasView() {
       const specialtiesMap: Record<string, string> = {};
       specialties.forEach((sp: any) => {
         if (sp.id) {
-          specialtiesMap[String(sp.id).toLowerCase()] = sp.name;
+          specialtiesMap[String(sp.id).toLowerCase()] = getSpecialtyDisplayLabel(sp.name || sp.code);
         }
       });
 
@@ -346,9 +347,10 @@ export function CitasView() {
         if (Array.isArray(p.specialtyIds) && p.specialtyIds.length > 0) {
           const firstSpec = specialtiesMap[String(p.specialtyIds[0]).toLowerCase()];
           if (firstSpec) specName = firstSpec;
-        } else if (p.specialty) {
-          specName = p.specialty;
+        } else if (p.specialtyName || p.specialty) {
+          specName = getSpecialtyDisplayLabel(p.specialtyName || p.specialty);
         }
+        specName = getSpecialtyDisplayLabel(specName);
 
         if (p.id) {
           profsMap[String(p.id).toLowerCase()] = profName;
