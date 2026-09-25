@@ -131,10 +131,12 @@ function deduplicateMessages(msgs: ChatbotMessage[]): ChatbotMessage[] {
 
 /**
  * Identidad visible en asesor:
- * - E.164 / @s.whatsapp.net → teléfono formateado
- * - LID temporal → id de contacto (dígitos) mientras se resuelve a teléfono
+ * - E.164 / @s.whatsapp.net → teléfono formateado (+57 …)
+ * - LID aún sin resolver → "Contacto WhatsApp" (nunca grupos LID espaciados / OCR)
  * Nunca "Sin número" ni prefijo falso "WA ·" / +233 inventado.
  */
+const LID_PENDING_LABEL = "Contacto WhatsApp";
+
 function looksLikeLid(identifier: string): boolean {
   const raw = (identifier || "").trim();
   if (!raw) return false;
@@ -143,13 +145,14 @@ function looksLikeLid(identifier: string): boolean {
   return digits.length >= 14;
 }
 
-function formatContactId(digits: string): string {
-  // Agrupa dígitos LID para lectura (ej. 2337 9290 4147 010)
-  const parts: string[] = [];
-  for (let i = 0; i < digits.length; i += 4) {
-    parts.push(digits.slice(i, i + 4));
-  }
-  return parts.join(" ");
+/** LIDs / hilos de prueba que no deben aparecer en la bandeja. */
+function isProbeIdentifier(identifier: string): boolean {
+  const digits = (identifier || "").replace(/@.*$/, "").replace(/\D/g, "");
+  if (!digits) return false;
+  // probe_create_lid_conv.py → 999888777666555@lid
+  if (digits === "999888777666555") return true;
+  if (digits.startsWith("999888777666")) return true;
+  return false;
 }
 
 /** Teléfono E.164 formateado, o "" si no hay teléfono real. */
@@ -214,7 +217,7 @@ function formatPhoneE164(identifier: string): string {
 }
 
 /**
- * Etiqueta de lista/detalle: teléfono real, o id de contacto LID mientras se resuelve.
+ * Etiqueta de lista/detalle: teléfono E.164 real, o "Contacto WhatsApp" mientras resuelve LID.
  * Vacío solo para placeholders / identificadores inválidos (se filtran).
  */
 function formatPhone(identifier: string): string {
@@ -223,6 +226,7 @@ function formatPhone(identifier: string): string {
 
   const raw = (identifier || "").trim();
   if (!raw) return "";
+  if (isProbeIdentifier(raw)) return "";
   const digitsOnly = raw.replace(/@.*$/, "").replace(/\D/g, "");
   if (!digitsOnly) return "";
 
@@ -240,7 +244,7 @@ function formatPhone(identifier: string): string {
   }
 
   if (looksLikeLid(raw) && digitsOnly.length >= 14) {
-    return formatContactId(digitsOnly);
+    return LID_PENDING_LABEL;
   }
 
   return "";
@@ -305,12 +309,13 @@ function getAvatarText(name: string): string {
   if (!name) return "WA";
   const trimmed = name.trim();
   const digits = trimmed.replace(/\D/g, "");
-  // Teléfono / identificador numérico → ícono de teléfono (no iniciales tipo "W(")
+  // Teléfono / LID pendiente / identificador numérico → ícono de teléfono
   if (
     trimmed.startsWith("+") ||
     /^\d/.test(trimmed) ||
     digits.length >= 6 ||
     /^whatsapp/i.test(trimmed) ||
+    /^contacto whatsapp$/i.test(trimmed) ||
     /^sin número$/i.test(trimmed)
   ) {
     return "WA";
@@ -537,34 +542,45 @@ export function AtencionAsesorView() {
       ]);
 
       if (convs && convs.length > 0) {
-        // Resolver LID→E.164 en poll; si aún no hay teléfono, igual se muestra el hilo (id contacto)
-        await Promise.all(
-          convs
-            .filter((c) => looksLikeLid(c.chatIdentifier) && !formatPhoneE164(c.chatIdentifier))
-            .map(async (c) => {
+        // Resolver LID→E.164 en cada poll (agresivo); título usa +57 o "Contacto WhatsApp"
+        const unresolvedLids = convs.filter(
+          (c) =>
+            !isProbeIdentifier(c.chatIdentifier) &&
+            looksLikeLid(c.chatIdentifier) &&
+            !formatPhoneE164(c.chatIdentifier)
+        );
+        // Hasta 8 en paralelo por ciclo para no saturar Evolution
+        const chunkSize = 8;
+        for (let i = 0; i < unresolvedLids.length; i += chunkSize) {
+          const chunk = unresolvedLids.slice(i, i + chunkSize);
+          await Promise.all(
+            chunk.map(async (c) => {
               try {
                 const resolved = await chatbotService.resolveWhatsAppIdentity(
                   c.chatIdentifier,
                   c.id
                 );
-                if (resolved?.phone) {
-                  c.chatIdentifier = resolved.phone;
+                const phone = (resolved?.phone || "").trim();
+                if (phone && formatPhoneE164(phone)) {
+                  c.chatIdentifier = phone;
                   await chatbotService
                     .updateConversation(c.id, {
                       conversationStatusId: c.conversationStatusId,
                       patientId: c.patientId,
                       closedAt: c.closedAt ?? null,
-                      chatIdentifier: resolved.phone,
+                      chatIdentifier: phone,
                     })
                     .catch(() => null);
                 }
               } catch {
-                // Siguiente mensaje / poll reintentará
+                // Siguiente poll reintentará
               }
             })
-        );
+          );
+        }
 
         const mapped: ChatItemDisplay[] = convs
+          .filter((c) => !isProbeIdentifier(c.chatIdentifier))
           .filter((c) => Boolean(formatPhone(c.chatIdentifier)))
           .map((c): ChatItemDisplay => {
           const matchedTicket = tickets.find(
@@ -661,11 +677,21 @@ export function AtencionAsesorView() {
             const isEscalated = existing.status === "ESCALADA" || item.status === "ESCALADA";
 
             // Priorizar la información de la sesión más reciente para el último mensaje
-            if (parseTimestamp(item.rawTimestamp) > parseTimestamp(existing.rawTimestamp)) {
-              existing.id = item.id;
+            // y preferir siempre etiqueta E.164 (+57) sobre "Contacto WhatsApp" pendiente.
+            const itemIsE164 = item.phone.startsWith("+");
+            const existingIsE164 = existing.phone.startsWith("+");
+            if (itemIsE164 && !existingIsE164) {
               existing.chatIdentifier = item.chatIdentifier;
               existing.patientName = item.phone;
               existing.phone = item.phone;
+            }
+            if (parseTimestamp(item.rawTimestamp) > parseTimestamp(existing.rawTimestamp)) {
+              existing.id = item.id;
+              if (itemIsE164 || !existingIsE164) {
+                existing.chatIdentifier = item.chatIdentifier;
+                existing.patientName = item.phone;
+                existing.phone = item.phone;
+              }
               existing.lastMessage = item.lastMessage;
               existing.lastMessageTime = item.lastMessageTime;
               existing.rawTimestamp = item.rawTimestamp;
@@ -1534,7 +1560,7 @@ export function AtencionAsesorView() {
 
                     <div className="flex-1 min-w-0 space-y-1">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate font-mono">
+                        <h3 className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate">
                           {chat.phone}
                         </h3>
                         
@@ -1625,8 +1651,8 @@ export function AtencionAsesorView() {
                       )}
                     </div>
                     <div className="min-w-0">
-                      <h2 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
-                        <span className="truncate font-mono">{selectedChat.phone}</span>
+                      <h2 className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
+                        <span className="truncate">{selectedChat.phone}</span>
                       </h2>
                       <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 truncate">
                         <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium shrink-0">
@@ -1954,7 +1980,7 @@ export function AtencionAsesorView() {
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h3 className="text-xs font-bold text-slate-900 dark:text-white truncate font-mono">
+                    <h3 className="text-xs font-semibold text-slate-900 dark:text-white truncate">
                       {selectedChat.phone}
                     </h3>
                     <p className="text-[11px] text-teal-600 dark:text-teal-400 font-semibold truncate">
@@ -2073,7 +2099,7 @@ export function AtencionAsesorView() {
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h3 className="text-xs font-bold text-slate-900 dark:text-white truncate font-mono">
+                    <h3 className="text-xs font-semibold text-slate-900 dark:text-white truncate">
                       {selectedChat.phone}
                     </h3>
                     <p className="text-[11px] text-teal-600 dark:text-teal-400 font-semibold truncate">
@@ -2478,7 +2504,7 @@ export function AtencionAsesorView() {
                             </span>
                           </div>
 
-                          <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate font-mono">
+                          <h4 className="text-xs font-semibold text-slate-900 dark:text-white truncate">
                             {alertChat.phone}
                           </h4>
 
