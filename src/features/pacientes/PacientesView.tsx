@@ -108,8 +108,8 @@ export function PacientesView() {
           const patientPersonId = (p.personId || "").toLowerCase();
           const patientId = (p.id || "").toString().toLowerCase();
           const hasActiveSession = (patientPersonId && activePersonIds.has(patientPersonId)) || (patientId && activeUserIds.has(patientId));
-          const accountActive = p.isActive !== false && (person?.isActive !== false);
-          const resolvedEstado = !accountActive ? "Inactivo" : hasActiveSession ? "Activo" : "Inactivo";
+          // Soft-deleted rows were already filtered out above; session drives online status label.
+          const resolvedEstado = hasActiveSession ? "Activo" : "Inactivo";
 
           const key = (doc || email || fullName).toLowerCase();
 
@@ -125,7 +125,7 @@ export function PacientesView() {
               estado: resolvedEstado,
               correo: email,
               fechaNacimiento: person?.dateOfBirth || p.dateOfBirth,
-              ...( { isActive: accountActive } as any ),
+              ...( { isActive: true } as any ),
             });
           }
         });
