@@ -10,9 +10,10 @@ export interface GlassDatePickerProps {
   minDate?: string; // "YYYY-MM-DD"
   maxDate?: string; // "YYYY-MM-DD"
   className?: string;
-  variant?: "cyan" | "teal" | "blue";
+  variant?: "cyan" | "teal" | "blue" | "form";
   disabled?: boolean;
   required?: boolean;
+  yearRange?: { start?: number; end?: number };
 }
 
 const MONTH_NAMES = [
@@ -26,28 +27,41 @@ export const GlassDatePicker: React.FC<GlassDatePickerProps> = ({
   value,
   onChange,
   label,
-  placeholder = "Seleccionar fecha...",
+  placeholder = "dd/mm/aaaa",
   minDate,
   maxDate,
   className = "",
-  variant = "cyan",
+  variant = "form",
   disabled = false,
   required = false,
+  yearRange,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [coords, setCoords] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
+  const currentYear = new Date().getFullYear();
+  const startYear = yearRange?.start ?? 1920;
+  const endYear = yearRange?.end ?? currentYear + 5;
+
+  const yearsList = React.useMemo(() => {
+    const list: number[] = [];
+    for (let y = endYear; y >= startYear; y--) {
+      list.push(y);
+    }
+    return list;
+  }, [startYear, endYear]);
+
   const initialDate = value ? new Date(value + "T12:00:00") : new Date();
-  const [viewYear, setViewYear] = useState(isNaN(initialDate.getFullYear()) ? new Date().getFullYear() : initialDate.getFullYear());
+  const [viewYear, setViewYear] = useState(isNaN(initialDate.getFullYear()) ? currentYear : initialDate.getFullYear());
   const [viewMonth, setViewMonth] = useState(isNaN(initialDate.getMonth()) ? new Date().getMonth() : initialDate.getMonth());
 
   const updateCoords = () => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
-    const dropdownEstimatedHeight = 340;
-    const dropdownEstimatedWidth = 280;
+    const dropdownEstimatedHeight = 350;
+    const dropdownEstimatedWidth = 300;
     const spaceBelow = window.innerHeight - rect.bottom;
     const openUpward = spaceBelow < dropdownEstimatedHeight && rect.top > dropdownEstimatedHeight;
 
@@ -58,7 +72,7 @@ export const GlassDatePicker: React.FC<GlassDatePickerProps> = ({
     if (left < 16) left = 16;
 
     setCoords({
-      top: openUpward ? rect.top - dropdownEstimatedHeight - 8 : rect.bottom + 8,
+      top: openUpward ? Math.max(8, rect.top - dropdownEstimatedHeight - 8) : rect.bottom + 8,
       left,
     });
   };
@@ -169,6 +183,16 @@ export const GlassDatePicker: React.FC<GlassDatePickerProps> = ({
     setIsOpen(false);
   };
 
+  const triggerBaseStyle =
+    variant === "form"
+      ? "w-full flex items-center justify-between gap-2.5 px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/70 hover:bg-slate-100/80 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/60 hover:border-teal-500/50 dark:hover:border-teal-400/50 rounded-xl text-sm transition-all cursor-pointer select-none disabled:opacity-50 disabled:cursor-not-allowed shadow-xs"
+      : "w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border text-left text-xs sm:text-sm transition-all backdrop-blur-xl shadow-xs cursor-pointer select-none";
+
+  const triggerActiveStyle =
+    isOpen
+      ? "border-teal-500 ring-2 ring-teal-500/20 bg-white dark:bg-slate-800"
+      : "";
+
   return (
     <div className={`relative ${className}`} ref={containerRef}>
       {label && (
@@ -186,31 +210,32 @@ export const GlassDatePicker: React.FC<GlassDatePickerProps> = ({
             setIsOpen((prev) => !prev);
           }
         }}
-        className={`w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border text-left text-xs sm:text-sm transition-all backdrop-blur-xl shadow-xs cursor-pointer select-none ${
-          disabled
-            ? "opacity-50 cursor-not-allowed bg-slate-100 dark:bg-slate-900 border-slate-300 dark:border-slate-800"
-            : isOpen
-            ? variant === "teal"
-              ? "border-teal-500 ring-2 ring-teal-500/20 bg-white dark:bg-slate-900"
-              : "border-cyan-500 ring-2 ring-cyan-500/20 bg-white dark:bg-slate-900"
-            : "border-slate-200/90 dark:border-white/15 bg-white/90 dark:bg-slate-950/65 hover:border-teal-500/60 dark:hover:border-teal-400/50"
-        } ${value ? "text-slate-900 dark:text-white" : "text-slate-400 dark:text-slate-500"}`}
+        className={`${triggerBaseStyle} ${triggerActiveStyle} ${
+          value ? "text-slate-900 dark:text-white" : "text-slate-400 dark:text-slate-500"
+        }`}
       >
-        <div className="flex items-center gap-2 min-w-0">
-          <Calendar size={15} className="text-cyan-500 shrink-0" />
-          <span className="truncate font-medium">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <Calendar
+            size={16}
+            className={`shrink-0 transition-colors ${
+              isOpen
+                ? "text-teal-600 dark:text-teal-400"
+                : "text-slate-400 dark:text-slate-400"
+            }`}
+          />
+          <span className="truncate font-normal text-sm">
             {value ? formatDisplayDate(value) : placeholder}
           </span>
         </div>
 
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0">
           {value && !disabled && (
             <span
               onClick={handleClear}
-              className="p-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+              className="p-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
               title="Borrar fecha"
             >
-              <X size={13} />
+              <X size={14} />
             </span>
           )}
         </div>
@@ -225,32 +250,60 @@ export const GlassDatePicker: React.FC<GlassDatePickerProps> = ({
               position: "fixed",
               top: `${coords.top}px`,
               left: `${coords.left}px`,
-              width: "280px",
+              width: "300px",
               zIndex: 999999,
             }}
-            className="rounded-2xl border border-slate-200/90 dark:border-white/20 bg-white/95 dark:bg-slate-900/95 shadow-2xl backdrop-blur-2xl p-4 text-slate-900 dark:text-white animate-scaleIn select-none"
+            className="rounded-2xl border border-slate-200/90 dark:border-slate-700/80 bg-white/98 dark:bg-slate-900/98 shadow-[0_20px_50px_rgba(0,0,0,0.35)] backdrop-blur-2xl p-4 text-slate-900 dark:text-white animate-scaleIn select-none"
           >
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/10">
+            {/* Header with Month and Year Selectors */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 gap-1.5">
               <button
                 type="button"
                 onClick={handlePrevMonth}
                 className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
+                title="Mes anterior"
               >
                 <ChevronLeft size={16} />
               </button>
-              <span className="text-xs font-bold tracking-wide">
-                {MONTH_NAMES[viewMonth]} {viewYear}
-              </span>
+
+              <div className="flex items-center gap-1.5">
+                <select
+                  value={viewMonth}
+                  onChange={(e) => setViewMonth(parseInt(e.target.value, 10))}
+                  className="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold rounded-lg px-2 py-1 outline-none border border-transparent focus:border-teal-500 cursor-pointer"
+                >
+                  {MONTH_NAMES.map((name, idx) => (
+                    <option key={name} value={idx} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                      {name}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={viewYear}
+                  onChange={(e) => setViewYear(parseInt(e.target.value, 10))}
+                  className="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold rounded-lg px-2 py-1 outline-none border border-transparent focus:border-teal-500 cursor-pointer"
+                >
+                  {yearsList.map((y) => (
+                    <option key={y} value={y} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                      {y}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <button
                 type="button"
                 onClick={handleNextMonth}
                 className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
+                title="Mes siguiente"
               >
                 <ChevronRight size={16} />
               </button>
             </div>
 
-            <div className="grid grid-cols-7 gap-1 pt-3 text-center text-[10px] font-bold text-slate-400">
+            {/* Days of the week */}
+            <div className="grid grid-cols-7 gap-1 pt-3 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">
               {DAY_LABELS.map((d, i) => (
                 <div key={i} className="py-1">
                   {d}
@@ -258,6 +311,7 @@ export const GlassDatePicker: React.FC<GlassDatePickerProps> = ({
               ))}
             </div>
 
+            {/* Calendar Days */}
             <div className="grid grid-cols-7 gap-1 pt-1 text-xs">
               {Array.from({ length: firstDayOfMonth }).map((_, i) => (
                 <div key={`empty-${i}`} className="h-7 w-7" />
@@ -276,15 +330,13 @@ export const GlassDatePicker: React.FC<GlassDatePickerProps> = ({
                     type="button"
                     disabled={disabledDate}
                     onClick={() => handleSelectDay(dayNum)}
-                    className={`h-7 w-7 rounded-lg flex items-center justify-center font-semibold text-xs transition-all ${
+                    className={`h-7 w-7 mx-auto rounded-lg flex items-center justify-center font-medium text-xs transition-all ${
                       disabledDate
-                        ? "opacity-30 cursor-not-allowed text-slate-400 line-through"
+                        ? "opacity-25 cursor-not-allowed text-slate-400 line-through"
                         : isSelected
-                        ? variant === "teal"
-                          ? "bg-teal-600 text-white shadow-md font-bold scale-105"
-                          : "bg-cyan-600 text-white shadow-md font-bold scale-105"
+                        ? "bg-teal-600 text-white shadow-md font-bold scale-105"
                         : isToday
-                        ? "border border-cyan-500/60 text-cyan-600 dark:text-cyan-400 font-bold hover:bg-cyan-500/10"
+                        ? "border border-teal-500/70 text-teal-600 dark:text-teal-400 font-bold hover:bg-teal-500/10"
                         : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                     }`}
                   >
@@ -294,19 +346,31 @@ export const GlassDatePicker: React.FC<GlassDatePickerProps> = ({
               })}
             </div>
 
-            <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-white/10 flex items-center justify-between text-[11px]">
-              <button
-                type="button"
-                onClick={handleSetToday}
-                className="font-bold text-teal-600 dark:text-teal-400 hover:underline cursor-pointer"
-              >
-                Hoy
-              </button>
+            {/* Footer actions */}
+            <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleSetToday}
+                  className="font-semibold text-teal-600 dark:text-teal-400 hover:underline cursor-pointer"
+                >
+                  Hoy
+                </button>
+                {value && (
+                  <button
+                    type="button"
+                    onClick={handleClear}
+                    className="font-medium text-rose-500 hover:underline cursor-pointer"
+                  >
+                    Borrar
+                  </button>
+                )}
+              </div>
 
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
+                className="font-medium text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
               >
                 Cerrar
               </button>
