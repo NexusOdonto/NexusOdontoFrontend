@@ -45,11 +45,42 @@ const saveReadNotifId = (id: string) => {
   try {
     const current = getReadNotifIds();
     current.add(id);
+    // Stable aliases so summary IDs that embed a count stay marked after refresh.
+    if (id.startsWith('pending-appointments-summary')) {
+      current.add('pending-appointments-summary');
+    }
+    if (id.startsWith('doc-today-summary-')) {
+      current.add(`doc-today-summary-${new Date().toISOString().split('T')[0]}`);
+    }
     sessionStorage.setItem('nexus_read_notif_ids', JSON.stringify(Array.from(current)));
   } catch {
     // Ignore
   }
 };
+
+/** Prefer sessionStorage + in-memory read flags so in-flight refresh cannot resurrect unread badges. */
+const isNotifRead = (
+  id: string,
+  readIds: Set<string>,
+  prev: SystemNotification[],
+): boolean => {
+  if (readIds.has(id)) return true;
+  if (id.startsWith('pending-appointments-summary') && readIds.has('pending-appointments-summary')) {
+    return true;
+  }
+  if (id.startsWith('doc-today-summary-')) {
+    const dayKey = `doc-today-summary-${new Date().toISOString().split('T')[0]}`;
+    if (readIds.has(dayKey)) return true;
+  }
+  return prev.some((n) => n.id === id && n.read);
+};
+
+const applyReadFlags = (
+  items: SystemNotification[],
+  readIds: Set<string>,
+  prev: SystemNotification[],
+): SystemNotification[] =>
+  items.map((n) => ({ ...n, read: n.read || isNotifRead(n.id, readIds, prev) }));
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
@@ -92,7 +123,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     try {
       const isStaff = role === 'RECEPCIONISTA' || role === 'ADMINISTRADOR';
       const isDoctor = role === 'ODONTOLOGO';
-      const readIds = getReadNotifIds();
 
       // 1. Consultar catálogos y citas desde backend API y local storage
       const [apiAppsRes, profsRes, personsRes, srvsRes] = await Promise.allSettled([
@@ -196,7 +226,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
               title: 'Atención requerida en WhatsApp',
               message: `El contacto ${c.chatIdentifier} requiere intervención de un asesor humano.`,
               time: 'Reciente',
-              read: readIds.has(notifId),
+              read: false,
               type: 'whatsapp_escalated' as const,
               link: '/atencion-chat',
             };
@@ -211,8 +241,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const staffNotifs: SystemNotification[] = [];
 
         if (combinedPending.length > 0) {
-          // Notificación global resumida
-          const summaryNotifId = `pending-appointments-summary-${combinedPending.length}`;
+          // Stable id so mark-as-read survives pending-count changes on refresh.
+          const summaryNotifId = 'pending-appointments-summary';
           staffNotifs.push({
             id: summaryNotifId,
             title: 'Solicitudes de Citas Pendientes',
@@ -220,7 +250,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
               combinedPending.length === 1 ? 'nueva cita pendiente' : 'nuevas citas pendientes'
             } por revisar y gestionar en la agenda.`,
             time: 'Ahora',
-            read: readIds.has(summaryNotifId) || readIds.has('pending-appointments-summary'),
+            read: false,
             type: 'appointment_pending',
             link: '/agenda',
           });
@@ -240,7 +270,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
               title: `Cita Pendiente • ${pName}`,
               message: `${sName} para el ${fechaStr}${horaStr ? ` a las ${horaStr}` : ''} con ${dName}.`,
               time: horaStr || 'Reciente',
-              read: readIds.has(notifId),
+              read: false,
               type: 'appointment_pending',
               link: '/agenda',
             });
@@ -248,8 +278,18 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         }
 
         setNotifications((prev) => {
-          const liveNotifs = prev.filter((n) => n.id.startsWith('notif-'));
-          const merged = [...liveNotifs, ...staffNotifs, ...waNotifs];
+          // Re-read after awaits so mark-as-read during refresh is not lost.
+          const freshReadIds = getReadNotifIds();
+          const liveNotifs = applyReadFlags(
+            prev.filter((n) => n.id.startsWith('notif-')),
+            freshReadIds,
+            prev,
+          );
+          const merged = applyReadFlags(
+            [...liveNotifs, ...staffNotifs, ...waNotifs],
+            freshReadIds,
+            prev,
+          );
           return merged.filter((v, i, a) => a.findIndex((t) => t.id === v.id) === i).slice(0, 20);
         });
       } else if (isDoctor) {
@@ -302,13 +342,13 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const totalHoy = Math.max(todayDocAppts.length, todayLocalCitas.length);
 
         if (totalHoy > 0) {
-          const notifId = `doc-today-summary-${todayStr}-${totalHoy}`;
+          const notifId = `doc-today-summary-${todayStr}`;
           docNotifs.push({
             id: notifId,
             title: 'Agenda del Día',
             message: `Tienes ${totalHoy} ${totalHoy === 1 ? 'paciente programado' : 'pacientes programados'} para hoy.`,
             time: 'Hoy',
-            read: readIds.has(notifId),
+            read: false,
             type: 'appointment_confirmed',
             link: '/agenda',
           });
@@ -326,7 +366,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             title: 'Cita Asignada en Agenda',
             message: `Consulta con ${pName} programada para el ${fechaStr} a las ${horaStr}.`,
             time: fechaStr,
-            read: readIds.has(notifId),
+            read: false,
             type: 'appointment_confirmed',
             link: '/agenda',
           });
@@ -340,7 +380,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
               title: 'Cita en Agenda',
               message: `Cita con ${c.paciente || 'Paciente'} el ${c.fecha || ''} a las ${c.hora || c.horaInicio || ''}.`,
               time: c.fecha || 'Agenda',
-              read: readIds.has(notifId),
+              read: false,
               type: 'appointment_confirmed',
               link: '/agenda',
             });
@@ -348,8 +388,13 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         });
 
         setNotifications((prev) => {
-          const liveNotifs = prev.filter((n) => n.id.startsWith('notif-'));
-          const combined = [...liveNotifs, ...docNotifs];
+          const freshReadIds = getReadNotifIds();
+          const liveNotifs = applyReadFlags(
+            prev.filter((n) => n.id.startsWith('notif-')),
+            freshReadIds,
+            prev,
+          );
+          const combined = applyReadFlags([...liveNotifs, ...docNotifs], freshReadIds, prev);
           return combined.filter((v, i, a) => a.findIndex((t) => t.id === v.id) === i).slice(0, 15);
         });
       } else if (role === 'PACIENTE') {
@@ -405,7 +450,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
               title: 'Cita en Proceso de Aprobación',
               message: `Tu solicitud para ${sName} el ${fechaStr}${horaStr ? ` a las ${horaStr}` : ''} está siendo evaluada por recepción.`,
               time: horaStr || 'Reciente',
-              read: readIds.has(notifId),
+              read: false,
               type: 'appointment_pending',
               link: '/citas',
             });
@@ -415,7 +460,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
               title: 'Cita Cancelada',
               message: `Tu cita para ${sName} el ${fechaStr} ha sido cancelada.`,
               time: fechaStr,
-              read: readIds.has(notifId),
+              read: false,
               type: 'appointment_confirmed',
               link: '/citas',
             });
@@ -425,7 +470,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
               title: 'Atención Odontológica Completada',
               message: `Tu cita para ${sName} del ${fechaStr} fue atendida con éxito.`,
               time: fechaStr,
-              read: readIds.has(notifId),
+              read: false,
               type: 'appointment_confirmed',
               link: '/citas',
             });
@@ -435,7 +480,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
               title: 'Cita Confirmada en Clínica',
               message: `Tu cita para ${sName} está programada para el ${fechaStr}${horaStr ? ` a las ${horaStr}` : ''} con ${dName}.`,
               time: fechaStr,
-              read: readIds.has(notifId),
+              read: false,
               type: 'appointment_confirmed',
               link: '/citas',
             });
@@ -443,14 +488,26 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         });
 
         setNotifications((prev) => {
-          const liveNotifs = prev
-            .filter((n) => n.id.startsWith('notif-'))
-            .map((n) => ({ ...n, link: '/citas' }));
-          const combined = [...liveNotifs, ...patientNotifs];
+          const freshReadIds = getReadNotifIds();
+          const liveNotifs = applyReadFlags(
+            prev
+              .filter((n) => n.id.startsWith('notif-'))
+              .map((n) => ({ ...n, link: '/citas' })),
+            freshReadIds,
+            prev,
+          );
+          const combined = applyReadFlags([...liveNotifs, ...patientNotifs], freshReadIds, prev);
           return combined.filter((v, i, a) => a.findIndex((t) => t.id === v.id) === i).slice(0, 15);
         });
       } else {
-        setNotifications((prev) => prev.filter((n) => n.id.startsWith('notif-')));
+        setNotifications((prev) => {
+          const freshReadIds = getReadNotifIds();
+          return applyReadFlags(
+            prev.filter((n) => n.id.startsWith('notif-')),
+            freshReadIds,
+            prev,
+          );
+        });
       }
     } catch (err) {
       console.warn('Could not refresh notifications from API:', err);
@@ -514,15 +571,18 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     };
   }, [userId, refreshNotifications, addNotification]);
 
-  const markAsRead = (id: string) => {
+  const markAsRead = useCallback((id: string) => {
     saveReadNotifId(id);
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
-  };
+  }, []);
 
-  const markAllAsRead = () => {
-    notifications.forEach((n) => saveReadNotifId(n.id));
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  };
+  const markAllAsRead = useCallback(() => {
+    setNotifications((prev) => {
+      prev.forEach((n) => saveReadNotifId(n.id));
+      saveReadNotifId('pending-appointments-summary');
+      return prev.map((n) => ({ ...n, read: true }));
+    });
+  }, []);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
