@@ -316,7 +316,7 @@ export default function PerfilView() {
               <button
                 type="button"
                 onClick={handleCancel}
-                className="p-2.5 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/30 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-md active:scale-95 text-xs font-semibold shadow-sm"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-white/15 bg-white/80 dark:bg-slate-950/30 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 transition-all cursor-pointer backdrop-blur-md active:scale-95 px-5 py-2.5 text-xs font-semibold shadow-sm"
               >
                 <X size={15} />
                 <span>Cancelar</span>
