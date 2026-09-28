@@ -258,9 +258,13 @@ export function ServicioModal({
               required
               min="1"
               step="1"
-              value={duracion}
-              onChange={(e) => setDuracion(Number(e.target.value))}
-              className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-slate-950/70 border border-slate-200 dark:border-white/15 text-slate-900 dark:text-white font-mono font-black text-base outline-none focus:border-cyan-500 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 transition-all"
+              value={duracion === 0 ? "" : duracion}
+              onChange={(e) => {
+                const val = parseInt(e.target.value, 10);
+                setDuracion(isNaN(val) ? 0 : Math.max(0, val));
+              }}
+              placeholder="Ej. 45"
+              className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-slate-950/70 border border-slate-200 dark:border-white/15 text-slate-900 dark:text-white font-mono font-black text-base outline-none focus:border-cyan-500 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 transition-all placeholder:text-slate-400"
             />
           </div>
 
@@ -282,8 +286,11 @@ export function ServicioModal({
                   required
                   min="1000"
                   step="1000"
-                  value={precio}
-                  onChange={(e) => setPrecio(Number(e.target.value))}
+                  value={precio === 0 ? "" : precio}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    setPrecio(isNaN(val) ? 0 : Math.max(0, val));
+                  }}
                   placeholder="80000"
                   className="w-full pl-18 pr-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-white/15 text-slate-900 dark:text-white font-mono font-black text-base outline-none focus:border-cyan-500 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
                 />
