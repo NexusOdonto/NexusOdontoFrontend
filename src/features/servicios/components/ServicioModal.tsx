@@ -14,8 +14,6 @@ import {
   Smile,
   Activity,
   Stethoscope,
-  Plus,
-  Minus,
   CheckCircle2,
 } from "lucide-react";
 
@@ -29,8 +27,6 @@ export const CATEGORIAS_ODONTOLOGICAS = [
   "Odontopediatría",
   "Odontología General",
 ];
-
-const PRESETS_DURACION = [15, 30, 45, 60, 90, 120];
 
 interface ServicioModalProps {
   isOpen: boolean;
@@ -167,14 +163,6 @@ export function ServicioModal({
   const isEditing = Boolean(servicioInicial?.id);
   const { Icon: CategoryIcon, color: catColor, bg: catBg } = getCategoryIcon(categoria);
 
-  const cambiarDuracion = (delta: number) => {
-    setDuracion((prev) => Math.max(5, prev + delta));
-  };
-
-  const cambiarPrecio = (delta: number) => {
-    setPrecio((prev) => Math.max(1000, prev + delta));
-  };
-
   if (!isOpen) return null;
 
   return createPortal(
@@ -256,60 +244,24 @@ export function ServicioModal({
             </div>
           </div>
 
-          {/* Duración con Selector Unificado */}
+          {/* Duración */}
           <div className="p-4.5 rounded-3xl border border-slate-200 dark:border-white/10 bg-slate-50/70 dark:bg-white/[0.03] space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
                 <Clock size={14} className="text-cyan-600 dark:text-cyan-400" />
                 Duración del Sillón Dental
               </label>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-800 dark:text-cyan-200 font-mono font-black text-xs">
-                <span>{duracion} minutos</span>
-              </div>
+              <span className="text-xs font-mono font-bold text-slate-500 dark:text-slate-400">minutos</span>
             </div>
-
-            {/* Presets rápidos */}
-            <div className="grid grid-cols-6 gap-2">
-              {PRESETS_DURACION.map((min) => (
-                <button
-                  key={min}
-                  type="button"
-                  onClick={() => setDuracion(min)}
-                  className={`py-2 px-1 rounded-xl text-xs font-mono font-bold transition-all border cursor-pointer ${
-                    duracion === min
-                      ? "bg-cyan-600 text-white border-cyan-600 dark:bg-cyan-500/30 dark:border-cyan-400 dark:text-cyan-100 shadow-sm"
-                      : "bg-white dark:bg-slate-950/60 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-white/20"
-                  }`}
-                >
-                  {min}m
-                </button>
-              ))}
-            </div>
-
-            {/* Ajuste fino +/- */}
-            <div className="flex items-center justify-between pt-1 text-xs text-slate-500 dark:text-slate-400">
-              <span className="text-[11px]">Ajuste fino de tiempo:</span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => cambiarDuracion(-5)}
-                  className="px-2.5 py-1 rounded-lg bg-white dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/15 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 flex items-center gap-1 cursor-pointer transition-colors"
-                  title="Restar 5 min"
-                >
-                  <Minus size={12} />
-                  <span>5m</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => cambiarDuracion(5)}
-                  className="px-2.5 py-1 rounded-lg bg-white dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/15 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 flex items-center gap-1 cursor-pointer transition-colors"
-                  title="Sumar 5 min"
-                >
-                  <Plus size={12} />
-                  <span>5m</span>
-                </button>
-              </div>
-            </div>
+            <input
+              type="number"
+              required
+              min="1"
+              step="1"
+              value={duracion}
+              onChange={(e) => setDuracion(Number(e.target.value))}
+              className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-slate-950/70 border border-slate-200 dark:border-white/15 text-slate-900 dark:text-white font-mono font-black text-base outline-none focus:border-cyan-500 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 transition-all"
+            />
           </div>
 
           {/* Tarifa y Estado Operativo */}
@@ -337,22 +289,7 @@ export function ServicioModal({
                 />
               </div>
 
-              {/* Botones de incremento rápido */}
               <div className="flex items-center gap-1.5 pt-0.5">
-                <button
-                  type="button"
-                  onClick={() => cambiarPrecio(10000)}
-                  className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-emerald-500/20 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 text-[10px] font-mono cursor-pointer transition-colors"
-                >
-                  + $10k
-                </button>
-                <button
-                  type="button"
-                  onClick={() => cambiarPrecio(50000)}
-                  className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-emerald-500/20 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 text-[10px] font-mono cursor-pointer transition-colors"
-                >
-                  + $50k
-                </button>
                 <span className="text-[11px] font-mono font-bold text-teal-700 dark:text-emerald-400 ml-auto">
                   {formatCurrency(precio || 0)}
                 </span>
