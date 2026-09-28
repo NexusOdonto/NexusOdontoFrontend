@@ -14,8 +14,6 @@ import {
   Smile,
   Activity,
   Stethoscope,
-  Plus,
-  Minus,
   CheckCircle2,
 } from "lucide-react";
 
@@ -29,8 +27,6 @@ export const CATEGORIAS_ODONTOLOGICAS = [
   "Odontopediatría",
   "Odontología General",
 ];
-
-const PRESETS_DURACION = [15, 30, 45, 60, 90, 120];
 
 interface ServicioModalProps {
   isOpen: boolean;
@@ -167,14 +163,6 @@ export function ServicioModal({
   const isEditing = Boolean(servicioInicial?.id);
   const { Icon: CategoryIcon, color: catColor, bg: catBg } = getCategoryIcon(categoria);
 
-  const cambiarDuracion = (delta: number) => {
-    setDuracion((prev) => Math.max(5, prev + delta));
-  };
-
-  const cambiarPrecio = (delta: number) => {
-    setPrecio((prev) => Math.max(1000, prev + delta));
-  };
-
   if (!isOpen) return null;
 
   return createPortal(
@@ -256,59 +244,36 @@ export function ServicioModal({
             </div>
           </div>
 
-          {/* Duración con Selector Unificado */}
-          <div className="p-4.5 rounded-3xl border border-slate-200 dark:border-white/10 bg-slate-50/70 dark:bg-white/[0.03] space-y-3">
+          {/* Duración con Input directo */}
+          <div className="p-4.5 rounded-3xl border border-slate-200 dark:border-white/10 bg-slate-50/70 dark:bg-white/[0.03] space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
                 <Clock size={14} className="text-cyan-600 dark:text-cyan-400" />
-                Duración del Sillón Dental
+                Duración del Sillón Dental *
               </label>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-800 dark:text-cyan-200 font-mono font-black text-xs">
-                <span>{duracion} minutos</span>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-800 dark:text-cyan-200 font-mono font-black text-xs">
+                <span>{duracion > 0 ? `${duracion} minutos` : "0 min"}</span>
               </div>
             </div>
 
-            {/* Presets rápidos */}
-            <div className="grid grid-cols-6 gap-2">
-              {PRESETS_DURACION.map((min) => (
-                <button
-                  key={min}
-                  type="button"
-                  onClick={() => setDuracion(min)}
-                  className={`py-2 px-1 rounded-xl text-xs font-mono font-bold transition-all border cursor-pointer ${
-                    duracion === min
-                      ? "bg-cyan-600 text-white border-cyan-600 dark:bg-cyan-500/30 dark:border-cyan-400 dark:text-cyan-100 shadow-sm"
-                      : "bg-white dark:bg-slate-950/60 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-white/20"
-                  }`}
-                >
-                  {min}m
-                </button>
-              ))}
-            </div>
-
-            {/* Ajuste fino +/- */}
-            <div className="flex items-center justify-between pt-1 text-xs text-slate-500 dark:text-slate-400">
-              <span className="text-[11px]">Ajuste fino de tiempo:</span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => cambiarDuracion(-5)}
-                  className="px-2.5 py-1 rounded-lg bg-white dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/15 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 flex items-center gap-1 cursor-pointer transition-colors"
-                  title="Restar 5 min"
-                >
-                  <Minus size={12} />
-                  <span>5m</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => cambiarDuracion(5)}
-                  className="px-2.5 py-1 rounded-lg bg-white dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/15 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 flex items-center gap-1 cursor-pointer transition-colors"
-                  title="Sumar 5 min"
-                >
-                  <Plus size={12} />
-                  <span>5m</span>
-                </button>
-              </div>
+            <div className="relative flex items-center">
+              <input
+                type="number"
+                required
+                min="5"
+                max="480"
+                step="5"
+                value={duracion === 0 ? "" : duracion}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  setDuracion(isNaN(val) ? 0 : Math.max(0, val));
+                }}
+                placeholder="Ej. 45"
+                className="w-full pl-4 pr-20 py-3 rounded-2xl bg-white dark:bg-slate-950/70 border border-slate-200 dark:border-white/15 text-slate-900 dark:text-white font-mono font-bold text-sm outline-none focus:border-cyan-500 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 transition-all placeholder:text-slate-400"
+              />
+              <span className="absolute right-4 text-xs font-mono font-bold text-slate-500 dark:text-slate-400 select-none">
+                minutos
+              </span>
             </div>
           </div>
 
@@ -316,10 +281,15 @@ export function ServicioModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
             {/* Tarifa */}
             <div className="space-y-2">
-              <label className="block text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                <DollarSign size={14} className="text-teal-600 dark:text-emerald-400" />
-                Tarifa Oficial (COP) *
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <DollarSign size={14} className="text-teal-600 dark:text-emerald-400" />
+                  Tarifa Oficial (COP) *
+                </label>
+                <span className="text-[11px] font-mono font-bold text-teal-700 dark:text-emerald-400">
+                  {formatCurrency(precio || 0)}
+                </span>
+              </div>
 
               <div className="relative flex items-center">
                 <span className="absolute left-4 font-mono font-black text-xs text-teal-700 dark:text-emerald-400 select-none">
@@ -330,32 +300,14 @@ export function ServicioModal({
                   required
                   min="1000"
                   step="1000"
-                  value={precio}
-                  onChange={(e) => setPrecio(Number(e.target.value))}
+                  value={precio === 0 ? "" : precio}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    setPrecio(isNaN(val) ? 0 : Math.max(0, val));
+                  }}
                   placeholder="80000"
                   className="w-full pl-18 pr-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-white/15 text-slate-900 dark:text-white font-mono font-black text-base outline-none focus:border-cyan-500 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
                 />
-              </div>
-
-              {/* Botones de incremento rápido */}
-              <div className="flex items-center gap-1.5 pt-0.5">
-                <button
-                  type="button"
-                  onClick={() => cambiarPrecio(10000)}
-                  className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-emerald-500/20 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 text-[10px] font-mono cursor-pointer transition-colors"
-                >
-                  + $10k
-                </button>
-                <button
-                  type="button"
-                  onClick={() => cambiarPrecio(50000)}
-                  className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-emerald-500/20 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 text-[10px] font-mono cursor-pointer transition-colors"
-                >
-                  + $50k
-                </button>
-                <span className="text-[11px] font-mono font-bold text-teal-700 dark:text-emerald-400 ml-auto">
-                  {formatCurrency(precio || 0)}
-                </span>
               </div>
             </div>
 
