@@ -73,6 +73,9 @@ import {
   getDoctorScheduleBlocks,
   validateDoctorScheduleAppointment,
 } from "../../utils/doctorSchedules";
+import { syncDoctorSchedulesFromApi } from "../../api/availabilityService";
+import { useRequiresReschedule } from "../../utils/useRequiresReschedule";
+import { RequiresRescheduleBadge } from "../../components/common/RequiresRescheduleBadge";
 
 const getDoctorColorClass = (docName: string, lista: { nombre: string; color: string }[]) => {
   const found = lista.find(
@@ -166,6 +169,7 @@ export function AgendaView() {
   const role = getUserRole(user);
   const isPaciente = role === "PACIENTE";
   const isOdontologo = role === "ODONTOLOGO";
+  const { requiresReschedule } = useRequiresReschedule(!isPaciente);
 
   // Modo de visualización: semana completa o vista diaria por odontólogo
   const [modoVista, setModoVista] = useState<"semana" | "odontologos">("semana");
@@ -359,6 +363,7 @@ export function AgendaView() {
       // 1. Odontólogos
       if (profs.status === "fulfilled" && Array.isArray(profs.value) && profs.value.length > 0) {
         setProfesionalesEntities(profs.value);
+        void syncDoctorSchedulesFromApi(profs.value);
         const colores = ["bg-cyan-400", "bg-blue-400", "bg-amber-400", "bg-purple-400", "bg-emerald-400"];
         const docsMapeados = profs.value.map((p: any, idx: number) => {
           const nombre =
@@ -1307,6 +1312,7 @@ export function AgendaView() {
   const renderCitaCard = (cita: CitaPosicionada) => {
     const clusterList = cita.clusterCitas && cita.clusterCitas.length > 0 ? cita.clusterCitas : [cita];
     const totalCitas = clusterList.length;
+    const needsReschedule = clusterList.some((c) => requiresReschedule(c.rawGuid));
 
     return (
       <div
@@ -1344,6 +1350,12 @@ export function AgendaView() {
             <span>{totalCitas} {totalCitas === 1 ? "Cita" : "Citas"}</span>
           </span>
         </div>
+
+        {needsReschedule && (
+          <div className="mt-1 min-w-0">
+            <RequiresRescheduleBadge className="max-w-full truncate" />
+          </div>
+        )}
 
         {/* Pie: Botón / Enlace de Acción a Ancho Completo */}
         <div className="w-full mt-auto pt-2 flex items-center justify-between text-xs font-bold font-sans text-sky-700 dark:text-sky-300 border-t border-sky-500/20 group-hover:text-sky-950 dark:group-hover:text-sky-100 transition-colors">
@@ -2269,6 +2281,9 @@ export function AgendaView() {
                           {citaDetalle.estado}
                         </span>
                       )}
+                      {requiresReschedule(citaDetalle.rawGuid) && (
+                        <RequiresRescheduleBadge className="ml-1.5 mt-1" />
+                      )}
                     </div>
                   </div>
                 </div>
@@ -2475,6 +2490,7 @@ export function AgendaView() {
                             <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${docTheme.badge}`}>
                               {cita.estado}
                             </span>
+                            {requiresReschedule(cita.rawGuid) && <RequiresRescheduleBadge />}
                           </div>
 
                           <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 flex-wrap mt-1">

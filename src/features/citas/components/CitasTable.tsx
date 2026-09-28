@@ -19,6 +19,7 @@ import { type Cita, type EstadoCita } from "../types";
 import { useAuth } from "../../auth/AuthContext";
 import { getUserRole } from "../../../utils/routePermissions";
 import { UserAvatar } from "../../../components/common/UserAvatar";
+import { RequiresRescheduleBadge } from "../../../components/common/RequiresRescheduleBadge";
 
 interface CitasTableProps {
   citas: Cita[];
@@ -26,6 +27,7 @@ interface CitasTableProps {
   onOpenAssignModal?: (cita: Cita) => void;
   onOpenEditModal?: (cita: Cita) => void;
   onUpdateStatus?: (citaId: number, nuevoEstado: EstadoCita) => void;
+  requiresReschedule?: (appointmentId?: string) => boolean;
 }
 
 function formatearFecha(fecha: string) {
@@ -117,6 +119,7 @@ export function CitasTable({
   onOpenAssignModal,
   onOpenEditModal,
   onUpdateStatus,
+  requiresReschedule,
 }: CitasTableProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -264,6 +267,11 @@ export function CitasTable({
                 {/* ESTADO */}
                 <td className="px-4 py-3.5 whitespace-nowrap">
                   {estadoBadge(cita.estado)}
+                  {requiresReschedule?.(cita.appointmentId) && (
+                    <div className="mt-1">
+                      <RequiresRescheduleBadge />
+                    </div>
+                  )}
                 </td>
 
                 {/* ACCIONES SEGÚN ROL (tabla solo en lg+; etiquetas siempre visibles) */}
@@ -550,7 +558,10 @@ export function CitasTable({
                   )}
                 </div>
               </div>
-              {estadoBadge(cita.estado)}
+              <div className="flex flex-col items-end gap-1">
+                {estadoBadge(cita.estado)}
+                {requiresReschedule?.(cita.appointmentId) && <RequiresRescheduleBadge />}
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 dark:text-slate-300 pt-2 border-t border-slate-200/80 dark:border-white/15">

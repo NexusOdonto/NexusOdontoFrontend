@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useSearchParams, useLocation } from "react-router-dom";
 
 import { CitasTable } from "./components/CitasTable";
+import { useRequiresReschedule } from "../../utils/useRequiresReschedule";
 import { type Cita, type EstadoCita } from "./types";
 import { useAuth } from "../auth/AuthContext";
 import { getUserRole } from "../../utils/routePermissions";
@@ -84,6 +85,7 @@ export function CitasView() {
   const role = getUserRole(user);
 
   const isPaciente = role === "PACIENTE";
+  const { requiresReschedule } = useRequiresReschedule(!isPaciente);
   const isOdontologo = role === "ODONTOLOGO";
   const isRecepcionista = role === "RECEPCIONISTA";
   const isAdmin = role === "ADMINISTRADOR";
@@ -1822,6 +1824,7 @@ export function CitasView() {
           onOpenAssignModal={handleOpenAssign}
           onOpenEditModal={handleOpenEdit}
           onUpdateStatus={handleUpdateStatus}
+          requiresReschedule={requiresReschedule}
         />
       </div>
 

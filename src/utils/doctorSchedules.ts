@@ -106,6 +106,22 @@ export const saveDoctorSchedule = (profIdOrName: string, turnos: TurnoDisponibil
   }
 };
 
+/** Escribe varios horarios (clave → turnos) de una sola vez y notifica a las vistas abiertas. */
+export const saveDoctorSchedulesBulk = (entries: Record<string, TurnoDisponibilidad[]>) => {
+  const keys = Object.keys(entries);
+  if (keys.length === 0) return;
+  try {
+    const schedules = loadSavedDoctorSchedules();
+    keys.forEach((k) => {
+      schedules[k.toLowerCase().trim()] = entries[k];
+    });
+    localStorage.setItem(SCHEDULES_STORAGE_KEY, JSON.stringify(schedules));
+    window.dispatchEvent(new CustomEvent("nexus_schedules_updated", { detail: { bulk: true } }));
+  } catch (err) {
+    console.error("Error saving doctor schedules:", err);
+  }
+};
+
 /**
  * Retorna el turno específico de un doctor para una fecha determinada.
  */

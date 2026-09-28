@@ -34,12 +34,25 @@ import {
   Eye,
   EyeOff,
   KeyRound,
+  BellRing,
+  Loader2,
 } from "lucide-react";
 
 import {
   professionalService,
   type ProfessionalResponseDto,
 } from "../../api/professionalService";
+import {
+  availabilityService,
+  type AffectedAppointmentDto,
+  type AvailabilityDto,
+  type AvailabilityRowDto,
+  buildSchedulesFromApi,
+  doctorScheduleKeys,
+  getAvailabilityErrorMessage,
+  isGuid,
+  turnosToAvailabilityRows,
+} from "../../api/availabilityService";
 import { useAuth } from "../auth/AuthContext";
 import { getUserRole } from "../../utils/routePermissions";
 import { UserAvatar } from "../../components/common/UserAvatar";
@@ -50,7 +63,7 @@ import {
   type TurnoDisponibilidad,
   SILLONES_DISPONIBLES,
   loadSavedDoctorSchedules as loadSavedSchedules,
-  saveDoctorSchedule,
+  saveDoctorSchedulesBulk,
   getDefaultTurnosForDoctor as getTurnosForDoctor,
 } from "../../utils/doctorSchedules";
 
@@ -81,6 +94,25 @@ export const formatTurnoHorario = (turno?: TurnoDisponibilidad): string => {
     return `${turno.horaInicio} a ${almLlegada} — ${almSalida} a ${turno.horaFin}`;
   }
   return `${turno.horaInicio} a ${turno.horaFin}`;
+};
+
+const formatFechaCitaAfectada = (iso: string): string => {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso || "—";
+  const txt = new Intl.DateTimeFormat("es-CO", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(d);
+  return txt.charAt(0).toUpperCase() + txt.slice(1);
+};
+
+const formatHoraCitaAfectada = (startIso: string, endIso?: string): string => {
+  const fmt = (iso: string) => {
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime())
+      ? ""
+      : new Intl.DateTimeFormat("es-CO", { hour: "numeric", minute: "2-digit", hour12: true }).format(d);
+  };
+  const start = fmt(startIso);
+  const end = endIso ? fmt(endIso) : "";
+  return start && end ? `${start} - ${end}` : start || "—";
 };
 
 const ESPECIALIDADES_CATALOGO = [
@@ -278,6 +310,10 @@ export function ProfesionalesView() {
   const [editingTurnos, setEditingTurnos] = useState<TurnoDisponibilidad[]>([]);
   const [isEditingSchedule, setIsEditingSchedule] = useState(false);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const [savingSchedule, setSavingSchedule] = useState(false);
+  const [affectedAppointments, setAffectedAppointments] = useState<AffectedAppointmentDto[] | null>(null);
+  const [pendingScheduleRows, setPendingScheduleRows] = useState<AvailabilityRowDto[] | null>(null);
+  const [affectedError, setAffectedError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
@@ -302,10 +338,71 @@ export function ProfesionalesView() {
     setEditingTurnos(prof.turnos ? JSON.parse(JSON.stringify(prof.turnos)) : getTurnosForDoctor(0));
     setIsEditingSchedule(false);
     setScheduleError(null);
+    setAffectedAppointments(null);
+    setPendingScheduleRows(null);
+    setAffectedError(null);
   }, []);
 
-  const handleSaveCustomSchedule = () => {
-    if (!selectedProfForSchedule || !canEditSchedule) return;
+  const applySavedSchedule = (prof: ProfessionalFull, turnos: TurnoDisponibilidad[]) => {
+    const updatedTurnos: TurnoDisponibilidad[] = JSON.parse(JSON.stringify(turnos));
+    const entries: Record<string, TurnoDisponibilidad[]> = {};
+    doctorScheduleKeys({ ...prof, fullName: prof.nombreCompleto }).forEach((k) => {
+      entries[k] = updatedTurnos;
+    });
+    saveDoctorSchedulesBulk(entries);
+
+    setProfesionales((prev) =>
+      prev.map((p) =>
+        p.id === prof.id || p.nombreCompleto === prof.nombreCompleto ? { ...p, turnos: updatedTurnos } : p
+      )
+    );
+    setSelectedProfForSchedule((prev) => (prev ? { ...prev, turnos: updatedTurnos } : null));
+    setIsEditingSchedule(false);
+  };
+
+  const persistScheduleToApi = async (rows: AvailabilityRowDto[], notifyPatients: boolean) => {
+    if (!selectedProfForSchedule) return;
+    const prof = selectedProfForSchedule;
+    const result = await availabilityService.replaceForProfessional(prof.id, rows, notifyPatients);
+    applySavedSchedule(prof, editingTurnos);
+    setAffectedAppointments(null);
+    setPendingScheduleRows(null);
+    setAffectedError(null);
+
+    if (notifyPatients) {
+      const total = result.notified + result.failed;
+      const detalle =
+        result.failed > 0
+          ? `Se avisó a ${result.notified} de ${total} pacientes; ${result.failed} aviso(s) no se pudieron enviar.`
+          : `Se avisó a ${result.notified} paciente(s).`;
+      showToast(`Horario de ${prof.nombreCompleto} guardado. ${detalle}`);
+    } else {
+      showToast(`¡Horarios de ${prof.nombreCompleto} guardados y actualizados con éxito!`);
+    }
+  };
+
+  const handleConfirmSaveAndNotify = async () => {
+    if (!pendingScheduleRows || savingSchedule) return;
+    setSavingSchedule(true);
+    setAffectedError(null);
+    try {
+      await persistScheduleToApi(pendingScheduleRows, true);
+    } catch (err) {
+      setAffectedError(getAvailabilityErrorMessage(err, "No se pudo guardar el horario ni avisar a los pacientes. Intenta de nuevo."));
+    } finally {
+      setSavingSchedule(false);
+    }
+  };
+
+  const handleCancelAffectedModal = () => {
+    if (savingSchedule) return;
+    setAffectedAppointments(null);
+    setPendingScheduleRows(null);
+    setAffectedError(null);
+  };
+
+  const handleSaveCustomSchedule = async () => {
+    if (!selectedProfForSchedule || !canEditSchedule || savingSchedule) return;
     setScheduleError(null);
 
     // Validar horarios en días activos
@@ -336,23 +433,31 @@ export function ProfesionalesView() {
       }
     }
 
-    const doctorId = selectedProfForSchedule.id || selectedProfForSchedule.nombreCompleto;
-    saveDoctorSchedule(doctorId, editingTurnos);
-    saveDoctorSchedule(selectedProfForSchedule.nombreCompleto, editingTurnos);
+    // Perfiles de demostración (sin id real en la API): solo se guardan localmente.
+    if (!isGuid(selectedProfForSchedule.id)) {
+      applySavedSchedule(selectedProfForSchedule, editingTurnos);
+      showToast(`¡Horarios de ${selectedProfForSchedule.nombreCompleto} guardados y actualizados con éxito!`);
+      return;
+    }
 
-    const updatedTurnos = JSON.parse(JSON.stringify(editingTurnos));
-
-    setProfesionales((prev) =>
-      prev.map((p) =>
-        p.id === selectedProfForSchedule.id || p.nombreCompleto === selectedProfForSchedule.nombreCompleto
-          ? { ...p, turnos: updatedTurnos }
-          : p
-      )
-    );
-
-    setSelectedProfForSchedule((prev) => (prev ? { ...prev, turnos: updatedTurnos } : null));
-    setIsEditingSchedule(false);
-    showToast(`¡Horarios de ${selectedProfForSchedule.nombreCompleto} guardados y actualizados con éxito!`);
+    const rows = turnosToAvailabilityRows(editingTurnos);
+    setSavingSchedule(true);
+    try {
+      const affected = await availabilityService.getImpact(selectedProfForSchedule.id, rows);
+      if (affected.length > 0) {
+        setPendingScheduleRows(rows);
+        setAffectedError(null);
+        setAffectedAppointments(
+          [...affected].sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())
+        );
+        return;
+      }
+      await persistScheduleToApi(rows, false);
+    } catch (err) {
+      setScheduleError(getAvailabilityErrorMessage(err, "No se pudo guardar el horario. Intenta de nuevo."));
+    } finally {
+      setSavingSchedule(false);
+    }
   };
 
   const handleResetScheduleToDefault = (idx: number = 0) => {
@@ -381,9 +486,14 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
   const fetchProfessionals = useCallback(async () => {
     setLoading(true);
     try {
-      const profData = await professionalService.getAll().catch(() => []);
+      const [profData, availabilityRows] = await Promise.all([
+        professionalService.getAll().catch(() => []),
+        availabilityService.getAll().catch((): AvailabilityDto[] => []),
+      ]);
       const profs = Array.isArray(profData) ? profData : [];
       const savedSchedules = loadSavedSchedules();
+      const apiSchedules = buildSchedulesFromApi(availabilityRows, profs, savedSchedules);
+      saveDoctorSchedulesBulk(apiSchedules.entries);
 
       if (profs && profs.length > 0) {
         const mapped: ProfessionalFull[] = profs.map((p, idx) => {
@@ -405,7 +515,8 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
 
           const theme = SPECIALTY_STYLES[specialtyName] || SPECIALTY_STYLES["Odontología General"];
 
-          const customTurnos = savedSchedules[p.id?.toLowerCase() || ""] ||
+          const customTurnos = apiSchedules.byProfessionalId[p.id?.toLowerCase() || ""] ||
+                               savedSchedules[p.id?.toLowerCase() || ""] ||
                                savedSchedules[fullName.toLowerCase().trim()] ||
                                savedSchedules[(p.firstName || "").toLowerCase().trim()] ||
                                getTurnosForDoctor(idx);
@@ -1621,10 +1732,11 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                     <button
                       type="button"
                       onClick={handleSaveCustomSchedule}
-                      className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-sm transition-all active:scale-95 cursor-pointer"
+                      disabled={savingSchedule}
+                      className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-sm transition-all active:scale-95 cursor-pointer disabled:opacity-60 disabled:cursor-wait"
                     >
-                      <Save size={14} />
-                      <span>Guardar Horarios</span>
+                      {savingSchedule ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                      <span>{savingSchedule ? "Revisando citas..." : "Guardar Horarios"}</span>
                     </button>
                   </>
                 ) : (
@@ -1654,6 +1766,102 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
         </div>,
         document.body
       )}
+
+      {/* MODAL DE CITAS AFECTADAS POR EL CAMBIO DE HORARIO */}
+      {selectedProfForSchedule &&
+        affectedAppointments &&
+        affectedAppointments.length > 0 &&
+        createPortal(
+          <div className="fixed inset-0 z-[110] flex items-start sm:items-center justify-center overflow-y-auto p-3 sm:p-4 bg-slate-900/60 dark:bg-slate-950/75 backdrop-blur-md animate-fadeIn">
+            <div className="w-full max-w-2xl my-auto rounded-3xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/20 p-6 shadow-2xl space-y-4 max-h-[min(92dvh,100%)] overflow-y-auto">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-300">
+                    <AlertCircle size={22} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                      {affectedAppointments.length === 1
+                        ? "1 cita queda por fuera del nuevo horario"
+                        : `${affectedAppointments.length} citas quedan por fuera del nuevo horario`}
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {selectedProfForSchedule.nombreCompleto} • Las citas no se cancelan: quedan marcadas como "Requiere reprogramación".
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCancelAffectedModal}
+                  disabled={savingSchedule}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer disabled:cursor-wait"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {affectedError && (
+                <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
+                  <AlertCircle size={16} className="shrink-0 text-rose-500" />
+                  <span>{affectedError}</span>
+                </div>
+              )}
+
+              <div className="rounded-2xl border border-slate-200 dark:border-white/10 overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-slate-50 dark:bg-slate-900/90 text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-bold">Paciente</th>
+                      <th className="px-3 py-2 text-left font-bold">Servicio</th>
+                      <th className="px-3 py-2 text-left font-bold">Fecha</th>
+                      <th className="px-3 py-2 text-left font-bold">Hora</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 dark:divide-white/10">
+                    {affectedAppointments.map((a) => (
+                      <tr key={a.appointmentId} className="text-slate-700 dark:text-slate-300">
+                        <td className="px-3 py-2.5">
+                          <span className="font-semibold text-slate-900 dark:text-white block">{a.patientName || "Paciente"}</span>
+                          {a.patientPhone && (
+                            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">{a.patientPhone}</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2.5">{a.serviceName || "—"}</td>
+                        <td className="px-3 py-2.5 whitespace-nowrap">{formatFechaCitaAfectada(a.startsAt)}</td>
+                        <td className="px-3 py-2.5 whitespace-nowrap font-mono">{formatHoraCitaAfectada(a.startsAt, a.endsAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Al confirmar se guarda el nuevo horario y se escribe por WhatsApp a cada paciente para ofrecerle otra hora con el mismo odontólogo u otro disponible.
+              </p>
+
+              <div className="pt-3 border-t border-slate-200 dark:border-white/10 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={handleCancelAffectedModal}
+                  disabled={savingSchedule}
+                  className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-wait"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmSaveAndNotify}
+                  disabled={savingSchedule}
+                  className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-sm transition-all active:scale-95 cursor-pointer disabled:opacity-60 disabled:cursor-wait"
+                >
+                  {savingSchedule ? <Loader2 size={14} className="animate-spin" /> : <BellRing size={14} />}
+                  <span>{savingSchedule ? "Guardando y avisando..." : "Guardar y avisar a pacientes"}</span>
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
 
       {/* MODAL NUEVO ODONTÓLOGO */}
       {showCreateModal &&
