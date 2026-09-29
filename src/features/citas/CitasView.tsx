@@ -660,17 +660,7 @@ export function CitasView() {
         mapped.sort((x, y) => (y.fecha + y.hora).localeCompare(x.fecha + x.hora));
         setCitas(mapped);
       } else {
-        const saved = localStorage.getItem("nexus_citas");
-        if (saved) {
-          try {
-            const parsed = JSON.parse(saved);
-            setCitas(Array.isArray(parsed) ? parsed : citasFallback);
-          } catch {
-            setCitas(citasFallback);
-          }
-        } else {
-          setCitas(citasFallback);
-        }
+        setCitas(citasFallback);
       }
     } catch (error: any) {
       console.error("Fallo crítico al cargar citas en /citas:", error);

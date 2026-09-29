@@ -508,7 +508,7 @@ export function AgendaView() {
       setPatientOptions(opts);
 
       // 4. Citas guardadas en API backend
-      if (apiApps.status === "fulfilled" && Array.isArray(apiApps.value) && apiApps.value.length > 0) {
+      if (apiApps.status === "fulfilled" && Array.isArray(apiApps.value)) {
         const mappedFromBackend: Cita[] = apiApps.value
           .filter((a: AppointmentResponseDto) => !a.cancelledAt)
           .map((a: AppointmentResponseDto, idx: number) => {
@@ -628,10 +628,12 @@ export function AgendaView() {
             };
           });
 
+        // The API is the source of truth: only keep local entries never saved to it (no rawGuid).
         setCitas((prev) => {
           const combinadas = [...mappedFromBackend];
           prev.forEach((p) => {
             if (
+              !p.rawGuid &&
               !combinadas.some(
                 (c) =>
                   c.fecha === p.fecha &&
@@ -1128,7 +1130,11 @@ export function AgendaView() {
   const eliminarCita = async (id: number, rawGuid?: string) => {
     try {
       if (rawGuid && rawGuid.length > 10) {
-        await appointmentService.delete(rawGuid);
+        try {
+          await appointmentService.delete(rawGuid);
+        } catch (deleteError: any) {
+          if (deleteError?.response?.status !== 404) throw deleteError;
+        }
       }
       // A-08: Filtrar por rawGuid solo si existe; de lo contrario, filtrar exclusivamente por id
       setCitas((actuales) =>
