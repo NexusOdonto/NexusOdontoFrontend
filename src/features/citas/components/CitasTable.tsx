@@ -185,18 +185,18 @@ export function CitasTable({
 
   return (
     <div className="w-full max-w-full overflow-x-clip rounded-3xl border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-slate-900/70 backdrop-blur-2xl shadow-lg shadow-slate-900/5 dark:shadow-[0_12px_36px_rgba(0,0,0,0.5)]">
-      {/* TABLA ESCRITORIO — lg+ so phones/tablets use cards (avoids clipped actions) */}
-      <div className="hidden lg:block w-full overflow-x-auto">
-        <table className="w-full min-w-[960px] table-fixed border-collapse">
+      {/* TABLA ESCRITORIO — xl+ so narrower screens use cards (avoids clipped actions) */}
+      <div className="hidden xl:block w-full overflow-x-auto">
+        <table className="w-full min-w-[1040px] table-fixed border-collapse">
           {/* CABECERA */}
           <thead>
             <tr className="border-b border-slate-200/80 dark:border-white/15 bg-slate-100/75 dark:bg-slate-900/60 text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-              <th className="w-[19%] px-4 py-3.5 text-left truncate">Paciente</th>
-              <th className="w-[15%] px-4 py-3.5 text-left whitespace-nowrap">Fecha y Hora</th>
-              <th className="w-[16%] px-4 py-3.5 text-left truncate">Profesional</th>
-              <th className="w-[19%] px-4 py-3.5 text-left truncate">Servicio / Motivo</th>
-              <th className="w-[11%] px-4 py-3.5 text-left whitespace-nowrap">Estado</th>
-              <th className="w-[20%] min-w-[210px] px-4 py-3.5 text-right whitespace-nowrap">Acciones</th>
+              <th className="w-[17%] px-4 py-3.5 text-left truncate">Paciente</th>
+              <th className="w-[14%] px-4 py-3.5 text-left whitespace-nowrap">Fecha y Hora</th>
+              <th className="w-[15%] px-4 py-3.5 text-left truncate">Profesional</th>
+              <th className="w-[15%] px-4 py-3.5 text-left truncate">Servicio / Motivo</th>
+              <th className="w-[15%] px-4 py-3.5 text-left whitespace-nowrap">Estado</th>
+              <th className="w-[24%] px-4 py-3.5 text-right whitespace-nowrap">Acciones</th>
             </tr>
           </thead>
 
@@ -265,11 +265,11 @@ export function CitasTable({
                 </td>
 
                 {/* ESTADO */}
-                <td className="px-4 py-3.5 whitespace-nowrap">
+                <td className="px-4 py-3.5 whitespace-nowrap overflow-hidden">
                   {estadoBadge(cita.estado)}
                   {requiresReschedule?.(cita.appointmentId) && (
                     <div className="mt-1">
-                      <RequiresRescheduleBadge />
+                      <RequiresRescheduleBadge compact />
                     </div>
                   )}
                 </td>
@@ -535,7 +535,7 @@ export function CitasTable({
       </div>
 
       {/* VISTA MÓVIL / TABLET (TARJETAS) — visible bajo lg (~1024px), incl. ~414px */}
-      <div className="space-y-3 p-3 lg:hidden">
+      <div className="space-y-3 p-3 xl:hidden">
         {displayedCitas.map((cita) => (
           <div
             key={cita.id}

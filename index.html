@@ -5,9 +5,20 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="canonical" href="https://nexusodonto.com/" />
-    <!-- Preload critical LCP Hero background and brand assets -->
-    <link rel="preload" as="image" href="/cuadro-landing-dark.webp" type="image/webp" fetchpriority="high" />
-    <link rel="preload" as="image" href="/nexus-odonto-logo.webp" type="image/webp" fetchpriority="high" />
+    <!-- Preload landing hero assets only on the landing route; elsewhere they go unused -->
+    <script>
+      if (location.pathname === "/") {
+        ["/cuadro-landing-dark.webp", "/nexus-odonto-logo.webp"].forEach(function (href) {
+          var link = document.createElement("link");
+          link.rel = "preload";
+          link.as = "image";
+          link.type = "image/webp";
+          link.href = href;
+          link.setAttribute("fetchpriority", "high");
+          document.head.appendChild(link);
+        });
+      }
+    </script>
     <!-- High-Performance Asynchronous Google Fonts (Zero Render-Blocking) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
