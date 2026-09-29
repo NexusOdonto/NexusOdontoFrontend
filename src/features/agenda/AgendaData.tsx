@@ -18,8 +18,13 @@ export interface Cita {
   horaInicio: string;
   horaFin: string;
   estado: EstadoCita;
-  /** Cancelled or no-show: nobody may attend it. */
+  /** Cancelled appointments are hidden from the agenda. */
   cancelada?: boolean;
+}
+
+/** "No disponible" means no-show (or expired unattended, which the API also records as no-show). */
+export function etiquetaEstadoAgenda(estado: EstadoCita): string {
+  return estado === "No disponible" ? "No asistió" : estado;
 }
 
 
@@ -156,10 +161,10 @@ export function obtenerColorEvento(
     case "Confirmada":
       return {
         contenedor:
-          "border-cyan-500/40 bg-cyan-500/15 dark:bg-cyan-500/10 text-cyan-900 dark:text-cyan-100 hover:bg-cyan-500/25 dark:hover:bg-cyan-500/20",
-        punto: "bg-cyan-500",
-        titulo: "text-cyan-950 dark:text-cyan-100",
-        texto: "text-cyan-800/80 dark:text-slate-400",
+          "border-teal-500/40 bg-teal-500/15 dark:bg-teal-500/10 text-teal-900 dark:text-teal-100 hover:bg-teal-500/25 dark:hover:bg-teal-500/20",
+        punto: "bg-teal-500",
+        titulo: "text-teal-950 dark:text-teal-100",
+        texto: "text-teal-800/80 dark:text-slate-400",
       };
 
     case "En Atención":
@@ -183,10 +188,10 @@ export function obtenerColorEvento(
     case "Completada":
       return {
         contenedor:
-          "border-emerald-500/40 bg-emerald-500/15 dark:bg-emerald-500/10 text-emerald-900 dark:text-emerald-100 hover:bg-emerald-500/25 dark:hover:bg-emerald-500/20",
-        punto: "bg-emerald-500",
-        titulo: "text-emerald-950 dark:text-emerald-100",
-        texto: "text-emerald-800/80 dark:text-slate-400",
+          "border-purple-500/40 bg-purple-500/15 dark:bg-purple-500/10 text-purple-900 dark:text-purple-100 hover:bg-purple-500/25 dark:hover:bg-purple-500/20",
+        punto: "bg-purple-500",
+        titulo: "text-purple-950 dark:text-purple-100",
+        texto: "text-purple-800/80 dark:text-slate-400",
       };
 
     case "Disponible":

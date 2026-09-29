@@ -29,6 +29,7 @@ import {
   FileText,
 } from "lucide-react";
 import { CarruselAlmuerzoUnificado } from "./CarruselAlmuerzoUnificado";
+import { estiloEstadoCita, puntoEstadoCita } from "../../utils/appointmentStatusStyle";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { UserAvatar } from "../../components/common/UserAvatar";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
@@ -43,6 +44,7 @@ import {
   formatoFechaInput,
   obtenerNombreMes,
   obtenerRangoSemana,
+  etiquetaEstadoAgenda,
 } from "./AgendaData";
 
 import { useAuth } from "../auth/AuthContext";
@@ -573,7 +575,6 @@ export function AgendaView() {
               cancelada = true;
             } else if (stId === "10000000-0000-0000-0000-000000000006" || sn.includes("NO_ASIST") || sn.includes("NO ASIST")) {
               estadoMapeado = "No disponible";
-              cancelada = true;
             } else if (stId === "10000000-0000-0000-0000-000000000004" || sn.includes("COMPLET") || sn.includes("ATENDIDA")) {
               estadoMapeado = "Completada";
             } else if (stId === "10000000-0000-0000-0000-000000000003" || sn.includes("ATEN") || sn.includes("ATTEND")) {
@@ -666,10 +667,11 @@ export function AgendaView() {
   }, [inicioSemana]);
 
   const citasFiltradas = useMemo(() => {
+    const activas = citas.filter((cita) => !cita.cancelada);
     if (odontologosSeleccionados.includes("Todos los odontólogos")) {
-      return citas;
+      return activas;
     }
-    return citas.filter((cita) =>
+    return activas.filter((cita) =>
       odontologosSeleccionados.includes(cita.odontologo)
     );
   }, [citas, odontologosSeleccionados]);
@@ -1190,12 +1192,17 @@ export function AgendaView() {
         });
       }
 
+      const seCancela = nuevoEstado === "No disponible";
       setCitas((prev) =>
-        prev.map((c) => (c.id === targetCita.id || (targetCita.rawGuid && c.rawGuid === targetCita.rawGuid) ? { ...c, estado: nuevoEstado } : c))
+        prev.map((c) =>
+          c.id === targetCita.id || (targetCita.rawGuid && c.rawGuid === targetCita.rawGuid)
+            ? { ...c, estado: nuevoEstado, cancelada: seCancela || c.cancelada }
+            : c
+        )
       );
 
       if (citaDetalle && (citaDetalle.id === targetCita.id || (targetCita.rawGuid && citaDetalle.rawGuid === targetCita.rawGuid))) {
-        setCitaDetalle((prev) => (prev ? { ...prev, estado: nuevoEstado } : null));
+        setCitaDetalle((prev) => (prev && !seCancela ? { ...prev, estado: nuevoEstado } : null));
       }
 
       refreshNotifications();
@@ -2269,27 +2276,20 @@ export function AgendaView() {
                       <span>Estado Clínico</span>
                     </div>
                     <div className="pt-0.5">
-                      {citaDetalle.cancelada ? (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-500/15 text-rose-800 dark:text-rose-300 border border-rose-500/30">
-                          <Ban size={13} className="text-rose-500" />
-                          Cancelada
-                        </span>
-                      ) : citaDetalle.estado === "Completada" ? (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30">
-                          <CheckCircle2 size={13} className="text-emerald-500" />
-                          Completada / Finalizada
-                        </span>
-                      ) : citaDetalle.estado === "En Atención" ? (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-500/15 text-blue-800 dark:text-blue-300 border border-blue-500/30 animate-pulse">
-                          <PlayCircle size={13} className="text-blue-500" />
-                          En Atención Clínica
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-cyan-500/15 text-cyan-800 dark:text-cyan-300 border border-cyan-500/30">
-                          <span className="h-2 w-2 rounded-full bg-cyan-500 animate-pulse" />
-                          {citaDetalle.estado}
-                        </span>
-                      )}
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${estiloEstadoCita(etiquetaEstadoAgenda(citaDetalle.estado))} ${citaDetalle.estado === "En Atención" ? "animate-pulse" : ""}`}
+                      >
+                        {citaDetalle.estado === "Completada" ? (
+                          <CheckCircle2 size={13} />
+                        ) : citaDetalle.estado === "En Atención" ? (
+                          <PlayCircle size={13} />
+                        ) : citaDetalle.estado === "No disponible" ? (
+                          <Ban size={13} />
+                        ) : (
+                          <span className={`h-2 w-2 rounded-full ${puntoEstadoCita(citaDetalle.estado)}`} />
+                        )}
+                        {etiquetaEstadoAgenda(citaDetalle.estado)}
+                      </span>
                       {requiresReschedule(citaDetalle.rawGuid) && (
                         <RequiresRescheduleBadge className="ml-1.5 mt-1" />
                       )}
@@ -2309,11 +2309,11 @@ export function AgendaView() {
                     </span>
                   </div>
 
-                  {citaDetalle.cancelada ? (
-                    <div className="flex items-center gap-2.5 p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-800 dark:text-rose-300 shadow-xs">
-                      <Ban size={20} className="text-rose-500 shrink-0" />
+                  {citaDetalle.estado === "No disponible" ? (
+                    <div className={`flex items-center gap-2.5 p-3.5 rounded-xl border shadow-xs ${estiloEstadoCita("No asistió")}`}>
+                      <Ban size={20} className="shrink-0" />
                       <div>
-                        <p className="text-xs font-extrabold">Esta cita está cancelada y no puede ser atendida</p>
+                        <p className="text-xs font-extrabold">El paciente no asistió a esta cita y no puede ser atendida</p>
                         <p className="text-[11px] opacity-80">Si el paciente necesita atención, agenda una nueva cita.</p>
                       </div>
                     </div>
@@ -2483,7 +2483,6 @@ export function AgendaView() {
               {/* Lista de Citas */}
               <div className="p-6 overflow-y-auto space-y-3.5 flex-1 max-h-[55vh]">
                 {selectedClusterModal.citas.map((cita, idx) => {
-                  const docTheme = getDoctorTheme(cita.odontologo, listaOdontologos);
                   return (
                     <div
                       key={cita.id || idx}
@@ -2504,8 +2503,8 @@ export function AgendaView() {
                             <h3 className="text-sm font-extrabold text-slate-900 dark:text-white truncate" title={cita.paciente}>
                               {cita.paciente}
                             </h3>
-                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${docTheme.badge}`}>
-                              {cita.cancelada ? "Cancelada" : cita.estado}
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${estiloEstadoCita(etiquetaEstadoAgenda(cita.estado))}`}>
+                              {etiquetaEstadoAgenda(cita.estado)}
                             </span>
                             {requiresReschedule(cita.rawGuid) && <RequiresRescheduleBadge />}
                           </div>
@@ -2542,7 +2541,7 @@ export function AgendaView() {
                           Ver Detalle
                         </button>
 
-                        {(role === "ODONTOLOGO" || role === "ADMINISTRADOR") && !cita.cancelada && (
+                        {(role === "ODONTOLOGO" || role === "ADMINISTRADOR") && cita.estado !== "No disponible" && (
                           <button
                             type="button"
                             onClick={() => {

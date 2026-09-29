@@ -20,6 +20,7 @@ import { useAuth } from "../../auth/AuthContext";
 import { getUserRole } from "../../../utils/routePermissions";
 import { UserAvatar } from "../../../components/common/UserAvatar";
 import { RequiresRescheduleBadge } from "../../../components/common/RequiresRescheduleBadge";
+import { estiloEstadoCita, puntoEstadoCita } from "../../../utils/appointmentStatusStyle";
 
 interface CitasTableProps {
   citas: Cita[];
@@ -61,52 +62,27 @@ function formatearHora(hora: string) {
 }
 
 function estadoBadge(estado: EstadoCita) {
+  const base = `inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${estiloEstadoCita(estado)}`;
   switch (estado) {
-    case "Pendiente":
-      return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-          Pendiente
-        </span>
-      );
-    case "Confirmada":
-      return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-teal-500/15 text-teal-700 dark:text-teal-300 border border-teal-500/30">
-          <span className="w-1.5 h-1.5 rounded-full bg-teal-500" />
-          Confirmada
-        </span>
-      );
-    case "En Atención":
-      return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30 animate-pulse">
-          <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-          En Atención
-        </span>
-      );
     case "Completada":
       return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30">
+        <span className={base}>
           <CheckCircle size={13} />
           Completada
         </span>
       );
-        case "No Asistió":
-      return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
-          <XCircle size={13} />
-          No Asistió
-        </span>
-      );
+    case "No Asistió":
     case "Cancelada":
       return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30">
+        <span className={base}>
           <XCircle size={13} />
-          Cancelada
+          {estado}
         </span>
       );
     default:
       return (
-        <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-slate-500/15 text-slate-300">
+        <span className={`${base} ${estado === "En Atención" ? "animate-pulse" : ""}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${puntoEstadoCita(estado)} ${estado === "Pendiente" ? "animate-pulse" : ""}`} />
           {estado}
         </span>
       );
