@@ -233,12 +233,9 @@ export default function LandingPage() {
 
                   <div className="max-w-[680px]">
                     <h1 className="font-prata text-[2.2rem] font-bold leading-[1.1] tracking-tight text-[#050505] sm:text-5xl lg:text-[3.6rem] dark:text-[#F4F0E6]">
-                      Atención odontológica
-                    </h1>
-
-                    <h1 className="mt-2 font-prata text-[2.2rem] font-bold leading-[1.1] tracking-tight sm:text-5xl lg:text-[3.6rem]">
+                      Atención odontológica{" "}
                       <span
-                        className={`bg-clip-text text-transparent ${
+                        className={`mt-2 block bg-clip-text text-transparent ${
                           isDark
                             ? "bg-gradient-to-r from-[#F4F0E6] via-[#CFE1DD] to-[#7DADAA]"
                             : "bg-gradient-to-r from-[#050505] via-[#153B36] to-[#24574F]"
