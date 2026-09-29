@@ -565,12 +565,15 @@ export function AgendaView() {
 
             const stId = a.appointmentStatusId ? String(a.appointmentStatusId).toLowerCase() : "";
             let estadoMapeado: EstadoCita = "Confirmada";
+            let cancelada = false;
             const sn = (a.statusName || "").toUpperCase();
 
             if (a.cancelledAt || stId === "10000000-0000-0000-0000-000000000005" || sn.includes("CANCEL")) {
               estadoMapeado = "No disponible";
+              cancelada = true;
             } else if (stId === "10000000-0000-0000-0000-000000000006" || sn.includes("NO_ASIST") || sn.includes("NO ASIST")) {
               estadoMapeado = "No disponible";
+              cancelada = true;
             } else if (stId === "10000000-0000-0000-0000-000000000004" || sn.includes("COMPLET") || sn.includes("ATENDIDA")) {
               estadoMapeado = "Completada";
             } else if (stId === "10000000-0000-0000-0000-000000000003" || sn.includes("ATEN") || sn.includes("ATTEND")) {
@@ -620,6 +623,7 @@ export function AgendaView() {
               horaInicio: inicio,
               horaFin: fin,
               estado: estadoMapeado,
+              cancelada,
             };
           });
 
@@ -2265,7 +2269,12 @@ export function AgendaView() {
                       <span>Estado Clínico</span>
                     </div>
                     <div className="pt-0.5">
-                      {citaDetalle.estado === "Completada" ? (
+                      {citaDetalle.cancelada ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-500/15 text-rose-800 dark:text-rose-300 border border-rose-500/30">
+                          <Ban size={13} className="text-rose-500" />
+                          Cancelada
+                        </span>
+                      ) : citaDetalle.estado === "Completada" ? (
                         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30">
                           <CheckCircle2 size={13} className="text-emerald-500" />
                           Completada / Finalizada
@@ -2300,7 +2309,15 @@ export function AgendaView() {
                     </span>
                   </div>
 
-                  {citaDetalle.estado === "Completada" ? (
+                  {citaDetalle.cancelada ? (
+                    <div className="flex items-center gap-2.5 p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-800 dark:text-rose-300 shadow-xs">
+                      <Ban size={20} className="text-rose-500 shrink-0" />
+                      <div>
+                        <p className="text-xs font-extrabold">Esta cita está cancelada y no puede ser atendida</p>
+                        <p className="text-[11px] opacity-80">Si el paciente necesita atención, agenda una nueva cita.</p>
+                      </div>
+                    </div>
+                  ) : citaDetalle.estado === "Completada" ? (
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 shadow-xs">
                       <div className="flex items-center gap-2.5">
                         <CheckCircle2 size={20} className="text-emerald-500 shrink-0" />
@@ -2488,7 +2505,7 @@ export function AgendaView() {
                               {cita.paciente}
                             </h3>
                             <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${docTheme.badge}`}>
-                              {cita.estado}
+                              {cita.cancelada ? "Cancelada" : cita.estado}
                             </span>
                             {requiresReschedule(cita.rawGuid) && <RequiresRescheduleBadge />}
                           </div>
@@ -2525,7 +2542,7 @@ export function AgendaView() {
                           Ver Detalle
                         </button>
 
-                        {(role === "ODONTOLOGO" || role === "ADMINISTRADOR") && (
+                        {(role === "ODONTOLOGO" || role === "ADMINISTRADOR") && !cita.cancelada && (
                           <button
                             type="button"
                             onClick={() => {

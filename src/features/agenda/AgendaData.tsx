@@ -18,6 +18,8 @@ export interface Cita {
   horaInicio: string;
   horaFin: string;
   estado: EstadoCita;
+  /** Cancelled or no-show: nobody may attend it. */
+  cancelada?: boolean;
 }
 
 
