@@ -9,6 +9,15 @@ import { personService } from '../api/personService';
 import { serviceCatalogService } from '../api/serviceCatalogService';
 import { areGuidsEqual } from '../utils/roleUtils';
 import { signalRService } from '../api/signalrService';
+import { hubNotificationService, type HubNotificationDto } from '../api/hubNotificationService';
+
+/** La API guarda CreatedAt en UTC sin zona; se interpreta como UTC. */
+const formatHubTime = (createdAt: string): string => {
+  const iso = /[zZ]|[+-]\d{2}:?\d{2}$/.test(createdAt) ? createdAt : `${createdAt}Z`;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return 'Reciente';
+  return d.toLocaleString('es-CO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+};
 
 export interface SystemNotification {
   id: string;
@@ -159,12 +168,50 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const isPatient = role === 'PACIENTE';
 
       // 1. Consultar catálogos y citas desde backend API y local storage
-      const [apiAppsRes, profsRes, personsRes, srvsRes] = await Promise.allSettled([
+      const [apiAppsRes, profsRes, personsRes, srvsRes, hubRes] = await Promise.allSettled([
         appointmentService.getAll(),
         professionalService.getAll(),
         personService.getAll(),
         serviceCatalogService.getAll(),
+        hubNotificationService.getMine(),
       ]);
+
+      if (refreshForUserId !== userIdRef.current) return;
+
+      // Persisted panel notifications (e.g. schedule changes) so they show even if the user was offline.
+      // The `notif-${userId}-` prefix keeps them in every role's merge below.
+      const hubItems: HubNotificationDto[] =
+        hubRes.status === 'fulfilled' && Array.isArray(hubRes.value) ? hubRes.value : [];
+      if (hubItems.length > 0) {
+        const hubNotifs: SystemNotification[] = hubItems.map((h) => ({
+          id: `notif-${userId}-hub-${h.id}`,
+          title: h.title,
+          message: h.content,
+          time: formatHubTime(h.createdAt),
+          read: false,
+          type: 'system',
+          link:
+            role === 'PACIENTE'
+              ? '/citas'
+              : h.entityType === 'PROFESSIONAL_SCHEDULE'
+                ? '/profesionales'
+                : '/agenda',
+        }));
+        setNotifications((prev) => {
+          const hubKeys = new Set(hubNotifs.map((n) => `${n.title}\u0000${n.message}`));
+          // Drop the live SignalR copy of the same notification; keep its read state.
+          const liveReadKeys = new Set(
+            prev.filter((n) => n.read && hubKeys.has(`${n.title}\u0000${n.message}`)).map((n) => `${n.title}\u0000${n.message}`)
+          );
+          const rest = prev.filter(
+            (n) => n.id.includes('-hub-') || !hubKeys.has(`${n.title}\u0000${n.message}`)
+          );
+          const fresh = hubNotifs
+            .filter((n) => !rest.some((r) => r.id === n.id))
+            .map((n) => ({ ...n, read: liveReadKeys.has(`${n.title}\u0000${n.message}`) }));
+          return applyReadFlags([...fresh, ...rest], getReadNotifIds(userId), prev);
+        });
+      }
 
       const appointments: AppointmentResponseDto[] =
         apiAppsRes.status === 'fulfilled' && Array.isArray(apiAppsRes.value) ? apiAppsRes.value : [];

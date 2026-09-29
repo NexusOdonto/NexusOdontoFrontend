@@ -47,10 +47,14 @@ import {
   type AffectedAppointmentDto,
   type AvailabilityDto,
   type AvailabilityRowDto,
+  type ReplaceScheduleResultDto,
   buildSchedulesFromApi,
+  colombiaTomorrowIso,
   doctorScheduleKeys,
+  formatEffectiveFrom,
   getAvailabilityErrorMessage,
   isGuid,
+  saveApiSchedules,
   turnosToAvailabilityRows,
 } from "../../api/availabilityService";
 import { useAuth } from "../auth/AuthContext";
@@ -64,6 +68,7 @@ import {
   type TurnoDisponibilidad,
   SILLONES_DISPONIBLES,
   loadSavedDoctorSchedules as loadSavedSchedules,
+  replacePendingDoctorSchedules,
   saveDoctorSchedulesBulk,
   getDefaultTurnosForDoctor as getTurnosForDoctor,
 } from "../../utils/doctorSchedules";
@@ -71,7 +76,11 @@ import {
 interface ProfessionalFull extends ProfessionalResponseDto {
   nombreCompleto: string;
   especialidad: string;
+  /** Horario que rige hoy. */
   turnos: TurnoDisponibilidad[];
+  /** Horario ya guardado que rige desde `pendingFrom` (YYYY-MM-DD). */
+  pendingTurnos?: TurnoDisponibilidad[];
+  pendingFrom?: string;
   rating?: number;
   pacientesAtendidos: number;
   experienciaAnios: number;
@@ -336,7 +345,9 @@ export function ProfesionalesView() {
 
   const handleOpenScheduleModal = useCallback((prof: ProfessionalFull) => {
     setSelectedProfForSchedule(prof);
-    setEditingTurnos(prof.turnos ? JSON.parse(JSON.stringify(prof.turnos)) : getTurnosForDoctor(0));
+    // Si ya hay un cambio pendiente, se edita ese (un segundo guardado el mismo día lo reemplaza).
+    const baseTurnos = prof.pendingTurnos || prof.turnos;
+    setEditingTurnos(baseTurnos ? JSON.parse(JSON.stringify(baseTurnos)) : getTurnosForDoctor(0));
     setIsEditingSchedule(false);
     setScheduleError(null);
     setAffectedAppointments(null);
@@ -361,24 +372,48 @@ export function ProfesionalesView() {
     setIsEditingSchedule(false);
   };
 
+  /** El horario guardado en la API rige desde mañana: hoy se conserva el actual y el nuevo queda pendiente. */
+  const applyPendingSchedule = (prof: ProfessionalFull, turnos: TurnoDisponibilidad[], result: ReplaceScheduleResultDto) => {
+    const pendingTurnos: TurnoDisponibilidad[] | undefined = result.revertedToCurrent
+      ? undefined
+      : JSON.parse(JSON.stringify(turnos));
+    const pendingFrom = pendingTurnos ? result.effectiveFrom || colombiaTomorrowIso() : undefined;
+
+    const keys = doctorScheduleKeys({ ...prof, fullName: prof.nombreCompleto });
+    const entries = pendingTurnos && pendingFrom
+      ? Object.fromEntries(keys.map((k) => [k, { effectiveFrom: pendingFrom, turnos: pendingTurnos }]))
+      : {};
+    replacePendingDoctorSchedules(entries, keys);
+
+    const update = (p: ProfessionalFull): ProfessionalFull => ({ ...p, pendingTurnos, pendingFrom });
+    setProfesionales((prev) =>
+      prev.map((p) => (p.id === prof.id || p.nombreCompleto === prof.nombreCompleto ? update(p) : p))
+    );
+    setSelectedProfForSchedule((prev) => (prev ? update(prev) : null));
+    setIsEditingSchedule(false);
+  };
+
   const persistScheduleToApi = async (rows: AvailabilityRowDto[], notifyPatients: boolean) => {
     if (!selectedProfForSchedule) return;
     const prof = selectedProfForSchedule;
     const result = await availabilityService.replaceForProfessional(prof.id, rows, notifyPatients);
-    applySavedSchedule(prof, editingTurnos);
+    applyPendingSchedule(prof, editingTurnos, result);
     setAffectedAppointments(null);
     setPendingScheduleRows(null);
     setAffectedError(null);
 
+    const rige = result.revertedToCurrent
+      ? "Se mantiene el horario actual."
+      : `Rige desde ${formatEffectiveFrom(result.effectiveFrom || colombiaTomorrowIso())}; las citas de hoy no cambian.`;
     if (notifyPatients) {
       const total = result.notified + result.failed;
       const detalle =
         result.failed > 0
           ? `Se avisó a ${result.notified} de ${total} pacientes; ${result.failed} aviso(s) no se pudieron enviar.`
           : `Se avisó a ${result.notified} paciente(s).`;
-      showToast(`Horario de ${prof.nombreCompleto} guardado. ${detalle}`);
+      showToast(`Horario de ${prof.nombreCompleto} guardado. ${rige} ${detalle}`);
     } else {
-      showToast(`¡Horarios de ${prof.nombreCompleto} guardados y actualizados con éxito!`);
+      showToast(`Horario de ${prof.nombreCompleto} guardado. ${rige}`);
     }
   };
 
@@ -494,7 +529,7 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
       const profs = Array.isArray(profData) ? profData : [];
       const savedSchedules = loadSavedSchedules();
       const apiSchedules = buildSchedulesFromApi(availabilityRows, profs, savedSchedules);
-      saveDoctorSchedulesBulk(apiSchedules.entries);
+      saveApiSchedules(apiSchedules);
 
       if (profs && profs.length > 0) {
         const mapped: ProfessionalFull[] = profs.map((p, idx) => {
@@ -521,6 +556,7 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                                savedSchedules[fullName.toLowerCase().trim()] ||
                                savedSchedules[(p.firstName || "").toLowerCase().trim()] ||
                                getTurnosForDoctor(idx);
+          const pending = apiSchedules.pendingByProfessionalId[p.id?.toLowerCase() || ""];
 
           return {
             ...p,
@@ -531,6 +567,8 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
             phone,
             bio,
             turnos: customTurnos,
+            pendingTurnos: pending?.turnos,
+            pendingFrom: pending?.effectiveFrom,
             rating: fallback.rating,
             pacientesAtendidos: fallback.pacientesAtendidos + (idx * 35),
             experienciaAnios: fallback.experienciaAnios,
@@ -1174,6 +1212,12 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                         </span>
                       </div>
                     )}
+                    {prof.pendingFrom && (
+                      <div className="flex items-center gap-1.5 pt-1.5 border-t border-slate-200/60 dark:border-white/5 text-[11px] font-semibold text-cyan-700 dark:text-cyan-300">
+                        <CalendarDays size={12} className="text-cyan-500 shrink-0" />
+                        <span>Nuevo horario rige desde {formatEffectiveFrom(prof.pendingFrom)}</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Contacto directo */}
@@ -1498,6 +1542,17 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
               </div>
             )}
 
+            {selectedProfForSchedule.pendingFrom && (
+              <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/25 text-cyan-800 dark:text-cyan-200 text-xs flex items-start gap-2">
+                <CalendarDays size={16} className="shrink-0 text-cyan-500 mt-0.5" />
+                <span>
+                  {isEditingSchedule && canEditSchedule
+                    ? `Estás editando el nuevo horario que rige desde ${formatEffectiveFrom(selectedProfForSchedule.pendingFrom)}. Si guardas, reemplaza ese cambio pendiente.`
+                    : `Nuevo horario rige desde ${formatEffectiveFrom(selectedProfForSchedule.pendingFrom)}. Abajo ves el horario vigente hoy; usa "Modificar Horarios" para ver o ajustar el nuevo.`}
+                </span>
+              </div>
+            )}
+
             {scheduleError && (
               <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
                 <AlertCircle size={16} className="shrink-0 text-rose-500" />
@@ -1715,7 +1770,9 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
               <div>
                 {isEditingSchedule && canEditSchedule && (
                   <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                    * Los cambios se aplicarán inmediatamente en la agenda y citas.
+                    {isGuid(selectedProfForSchedule.id)
+                      ? `* Los cambios rigen desde ${formatEffectiveFrom(colombiaTomorrowIso())}. Las citas de hoy se mantienen como están.`
+                      : "* Los cambios se aplicarán inmediatamente en la agenda y citas."}
                   </span>
                 )}
               </div>
@@ -1783,8 +1840,8 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                   <div>
                     <h3 className="text-base font-bold text-slate-900 dark:text-white">
                       {affectedAppointments.length === 1
-                        ? "1 cita queda por fuera del nuevo horario"
-                        : `${affectedAppointments.length} citas quedan por fuera del nuevo horario`}
+                        ? "1 cita desde mañana queda por fuera del nuevo horario"
+                        : `${affectedAppointments.length} citas desde mañana quedan por fuera del nuevo horario`}
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
                       {selectedProfForSchedule.nombreCompleto} • Las citas no se cancelan: quedan marcadas como "Requiere reprogramación".
@@ -1837,7 +1894,7 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
               </div>
 
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Al confirmar se guarda el nuevo horario y se escribe por WhatsApp a cada paciente para ofrecerle otra hora con el mismo odontólogo u otro disponible.
+                Al confirmar, el nuevo horario rige desde {formatEffectiveFrom(colombiaTomorrowIso())} (las citas de hoy no cambian), se escribe por WhatsApp a cada paciente para ofrecerle otra hora con el mismo odontólogo u otro disponible y se le avisa al odontólogo en su panel.
               </p>
 
               <div className="pt-3 border-t border-slate-200 dark:border-white/10 flex items-center justify-end gap-2">

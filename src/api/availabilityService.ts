@@ -1,10 +1,12 @@
 import axiosClient from './axiosClient';
 import { areGuidsEqual } from '../utils/roleUtils';
 import {
+  type PendingDoctorSchedule,
   type TurnoDisponibilidad,
   getDefaultTurnosForDoctor,
   loadSavedDoctorSchedules,
   normalizeDoctorKey,
+  replacePendingDoctorSchedules,
   saveDoctorSchedulesBulk,
 } from '../utils/doctorSchedules';
 
@@ -19,6 +21,10 @@ export interface AvailabilityDto {
   lunchEndTime: string;
   endTime: string;
   isActive?: boolean;
+  /** Primer día (YYYY-MM-DD, inclusive) en que rige la fila; null = desde siempre. */
+  effectiveFrom?: string | null;
+  /** Último día (YYYY-MM-DD, inclusive) en que rige la fila; null = sin fin. */
+  effectiveTo?: string | null;
 }
 
 export interface AvailabilityRowDto {
@@ -54,7 +60,54 @@ export interface ReplaceScheduleResultDto {
   affected: AffectedAppointmentDto[];
   notified: number;
   failed: number;
+  /** Día (YYYY-MM-DD) desde el que rige el horario guardado: siempre mañana. */
+  effectiveFrom?: string;
+  /** true si el guardado solo canceló un cambio pendiente y se conserva el horario actual. */
+  revertedToCurrent?: boolean;
 }
+
+/** Fecha de hoy en Colombia (YYYY-MM-DD). */
+export const colombiaTodayIso = (): string =>
+  new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Bogota',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+
+/** Fecha local de un Date (YYYY-MM-DD), para comparar con effectiveFrom/effectiveTo. */
+export const dateToIso = (date: Date): string =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+const addDaysIso = (iso: string, days: number): string => {
+  const [y, m, d] = iso.split('-').map(Number);
+  return dateToIso(new Date(y, m - 1, d + days));
+};
+
+/** Día desde el que rige un horario guardado hoy (los cambios nunca aplican el mismo día). */
+export const colombiaTomorrowIso = (): string => addDaysIso(colombiaTodayIso(), 1);
+
+const isoDay = (value?: string | null): string => (value ? String(value).slice(0, 10) : '');
+
+/** Una fila rige el día `dateIso` si está activa y el día cae en [effectiveFrom, effectiveTo] (null = abierto). */
+export const isRowEffectiveOn = (row: AvailabilityDto, dateIso: string): boolean => {
+  if (row.isActive === false) return false;
+  const from = isoDay(row.effectiveFrom);
+  const to = isoDay(row.effectiveTo);
+  if (from && dateIso < from) return false;
+  if (to && dateIso > to) return false;
+  return true;
+};
+
+/** "mañana (miércoles 30 de septiembre)" o "el jueves 1 de octubre". */
+export const formatEffectiveFrom = (iso: string): string => {
+  const [y, m, d] = iso.split('-').map(Number);
+  if (!y || !m || !d) return iso;
+  const txt = new Intl.DateTimeFormat('es-CO', { weekday: 'long', day: 'numeric', month: 'long' }).format(
+    new Date(y, m - 1, d)
+  );
+  return iso === colombiaTomorrowIso() ? `mañana (${txt})` : `el ${txt}`;
+};
 
 export const availabilityService = {
   /** La API devuelve todas las filas (ignora filtros); se filtra en el cliente. */
@@ -65,7 +118,8 @@ export const availabilityService = {
 
   getActiveByProfessional: async (professionalId: string): Promise<AvailabilityDto[]> => {
     const all = await availabilityService.getAll();
-    return all.filter((r) => r.isActive !== false && areGuidsEqual(r.professionalId, professionalId));
+    const today = colombiaTodayIso();
+    return all.filter((r) => isRowEffectiveOn(r, today) && areGuidsEqual(r.professionalId, professionalId));
   },
 
   getImpact: async (professionalId: string, rows: AvailabilityRowDto[]): Promise<AffectedAppointmentDto[]> => {
@@ -88,6 +142,8 @@ export const availabilityService = {
       affected: Array.isArray(data.affected) ? data.affected : [],
       notified: Number(data.notified) || 0,
       failed: Number(data.failed) || 0,
+      effectiveFrom: data.effectiveFrom ? String(data.effectiveFrom).slice(0, 10) : undefined,
+      revertedToCurrent: Boolean(data.revertedToCurrent),
     };
   },
 
@@ -223,17 +279,34 @@ export const doctorScheduleKeys = (professional: {
 
 type ProfessionalLike = { id?: string; fullName?: string; firstName?: string; lastName?: string };
 
+export interface ApiSchedules {
+  /** Horario que rige hoy, por cada clave del doctor. */
+  entries: Record<string, TurnoDisponibilidad[]>;
+  byProfessionalId: Record<string, TurnoDisponibilidad[]>;
+  /** Horario ya guardado que empieza a regir en una fecha futura (normalmente mañana). */
+  pendingEntries: Record<string, PendingDoctorSchedule>;
+  pendingByProfessionalId: Record<string, PendingDoctorSchedule>;
+  /** Claves de los doctores que tienen filas en la API (para limpiar pendientes viejos). */
+  apiKeys: string[];
+}
+
 /**
  * Construye el mapa clave → turnos a partir de las filas de la API, solo para los doctores que tienen filas.
- * Devuelve también los turnos por id de profesional.
+ * Separa el horario que rige hoy del que está pendiente (rige desde mañana).
  */
 export const buildSchedulesFromApi = (
   rows: AvailabilityDto[],
   professionals: ProfessionalLike[],
   savedSchedules: Record<string, TurnoDisponibilidad[]>
-): { entries: Record<string, TurnoDisponibilidad[]>; byProfessionalId: Record<string, TurnoDisponibilidad[]> } => {
-  const entries: Record<string, TurnoDisponibilidad[]> = {};
-  const byProfessionalId: Record<string, TurnoDisponibilidad[]> = {};
+): ApiSchedules => {
+  const result: ApiSchedules = {
+    entries: {},
+    byProfessionalId: {},
+    pendingEntries: {},
+    pendingByProfessionalId: {},
+    apiKeys: [],
+  };
+  const today = colombiaTodayIso();
   const activeRows = rows.filter((r) => r.isActive !== false);
 
   professionals.forEach((p) => {
@@ -241,24 +314,53 @@ export const buildSchedulesFromApi = (
     const profRows = activeRows.filter((r) => areGuidsEqual(r.professionalId, p.id));
     if (profRows.length === 0) return;
     const keys = doctorScheduleKeys(p);
+    result.apiKeys.push(...keys);
     const baseKey = keys.find((k) => savedSchedules[k]);
-    const turnos = availabilityRowsToTurnos(profRows, baseKey ? savedSchedules[baseKey] : undefined);
-    byProfessionalId[p.id.toLowerCase()] = turnos;
-    keys.forEach((k) => {
-      entries[k] = turnos;
-    });
+    const base = baseKey ? savedSchedules[baseKey] : undefined;
+    const profId = p.id.toLowerCase();
+
+    const currentRows = profRows.filter((r) => isRowEffectiveOn(r, today));
+    if (currentRows.length > 0) {
+      const turnos = availabilityRowsToTurnos(currentRows, base);
+      result.byProfessionalId[profId] = turnos;
+      keys.forEach((k) => {
+        result.entries[k] = turnos;
+      });
+    }
+
+    const futureRows = profRows.filter((r) => isoDay(r.effectiveFrom) > today);
+    if (futureRows.length > 0) {
+      const effectiveFrom = futureRows.map((r) => isoDay(r.effectiveFrom)).sort()[0];
+      const pending: PendingDoctorSchedule = {
+        effectiveFrom,
+        turnos: availabilityRowsToTurnos(
+          futureRows.filter((r) => isRowEffectiveOn(r, effectiveFrom)),
+          base
+        ),
+      };
+      result.pendingByProfessionalId[profId] = pending;
+      keys.forEach((k) => {
+        result.pendingEntries[k] = pending;
+      });
+    }
   });
 
-  return { entries, byProfessionalId };
+  return result;
+};
+
+/** Guarda en localStorage el horario de hoy y el pendiente de cada doctor que tiene filas en la API. */
+export const saveApiSchedules = (schedules: ApiSchedules) => {
+  saveDoctorSchedulesBulk(schedules.entries);
+  replacePendingDoctorSchedules(schedules.pendingEntries, schedules.apiKeys);
 };
 
 /** Refleja en nexus_doctor_schedules los horarios guardados en la API (falla en silencio). */
 export const syncDoctorSchedulesFromApi = async (professionals: ProfessionalLike[]): Promise<boolean> => {
   try {
     const rows = await availabilityService.getAll();
-    const { entries } = buildSchedulesFromApi(rows, professionals, loadSavedDoctorSchedules());
-    if (Object.keys(entries).length === 0) return false;
-    saveDoctorSchedulesBulk(entries);
+    const schedules = buildSchedulesFromApi(rows, professionals, loadSavedDoctorSchedules());
+    if (schedules.apiKeys.length === 0) return false;
+    saveApiSchedules(schedules);
     return true;
   } catch {
     return false;

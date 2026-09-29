@@ -16,6 +16,15 @@ export interface TurnoDisponibilidad {
 
 export const SCHEDULES_STORAGE_KEY = "nexus_doctor_schedules";
 
+/** Horarios ya guardados que empiezan a regir en una fecha futura (un cambio nunca aplica el mismo día). */
+export const PENDING_SCHEDULES_STORAGE_KEY = "nexus_doctor_schedules_pending";
+
+export interface PendingDoctorSchedule {
+  /** YYYY-MM-DD desde el que rige (inclusive). */
+  effectiveFrom: string;
+  turnos: TurnoDisponibilidad[];
+}
+
 export const SILLONES_DISPONIBLES = [
   "Sillón 1 - Principal",
   "Sillón 2 - Quirúrgico",
@@ -122,8 +131,61 @@ export const saveDoctorSchedulesBulk = (entries: Record<string, TurnoDisponibili
   }
 };
 
+let pendingCache: { raw: string | null; parsed: Record<string, PendingDoctorSchedule> } = { raw: null, parsed: {} };
+
+export const loadPendingDoctorSchedules = (): Record<string, PendingDoctorSchedule> => {
+  try {
+    const raw = localStorage.getItem(PENDING_SCHEDULES_STORAGE_KEY);
+    if (raw !== pendingCache.raw) {
+      pendingCache = { raw, parsed: raw ? JSON.parse(raw) : {} };
+    }
+    return pendingCache.parsed;
+  } catch {
+    return {};
+  }
+};
+
+/**
+ * Reemplaza los horarios pendientes de las claves indicadas: las que vienen en `entries` quedan
+ * con su pendiente y el resto de `keys` se limpia (ya no tienen cambio pendiente).
+ */
+export const replacePendingDoctorSchedules = (
+  entries: Record<string, PendingDoctorSchedule>,
+  keys: string[]
+) => {
+  try {
+    const pending = { ...loadPendingDoctorSchedules() };
+    keys.forEach((k) => {
+      delete pending[k.toLowerCase().trim()];
+    });
+    Object.keys(entries).forEach((k) => {
+      pending[k.toLowerCase().trim()] = entries[k];
+    });
+    localStorage.setItem(PENDING_SCHEDULES_STORAGE_KEY, JSON.stringify(pending));
+    window.dispatchEvent(new CustomEvent("nexus_schedules_updated", { detail: { pending: true } }));
+  } catch (err) {
+    console.error("Error saving pending doctor schedules:", err);
+  }
+};
+
+function findDoctorEntry<T>(map: Record<string, T>, doctorNameOrId: string): T | undefined {
+  const rawKey = (doctorNameOrId || "").toLowerCase().trim();
+  const normKey = normalizeDoctorKey(doctorNameOrId);
+  const direct = map[rawKey] || map[normKey];
+  if (direct) return direct;
+  // Buscar coincidencia parcial
+  const foundKey = Object.keys(map).find(
+    (k) => (normKey && k.includes(normKey)) || (k && normKey && normKey.includes(k))
+  );
+  return foundKey ? map[foundKey] : undefined;
+}
+
+const localDateIso = (date: Date): string =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
 /**
  * Retorna el turno específico de un doctor para una fecha determinada.
+ * Si hay un horario pendiente y la fecha es igual o posterior a su inicio, usa ese.
  */
 export function getDoctorTurnoForDate(
   doctorNameOrId: string,
@@ -131,19 +193,11 @@ export function getDoctorTurnoForDate(
   schedulesMap?: Record<string, TurnoDisponibilidad[]>
 ): TurnoDisponibilidad {
   const map = schedulesMap || loadSavedDoctorSchedules();
-  const rawKey = (doctorNameOrId || "").toLowerCase().trim();
-  const normKey = normalizeDoctorKey(doctorNameOrId);
+  let doctorTurnos: TurnoDisponibilidad[] | undefined = findDoctorEntry(map, doctorNameOrId);
 
-  let doctorTurnos: TurnoDisponibilidad[] | undefined = map[rawKey] || map[normKey];
-
-  if (!doctorTurnos) {
-    // Buscar coincidencia parcial
-    const foundKey = Object.keys(map).find(
-      (k) => (normKey && k.includes(normKey)) || (k && normKey && normKey.includes(k))
-    );
-    if (foundKey) {
-      doctorTurnos = map[foundKey];
-    }
+  const pending = findDoctorEntry(loadPendingDoctorSchedules(), doctorNameOrId);
+  if (pending?.effectiveFrom && Array.isArray(pending.turnos) && localDateIso(date) >= pending.effectiveFrom) {
+    doctorTurnos = pending.turnos;
   }
 
   const dayOfWeekIndex = date.getDay(); // 0: Domingo, 1: Lunes, ..., 6: Sábado
