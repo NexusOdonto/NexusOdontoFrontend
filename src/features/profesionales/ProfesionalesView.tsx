@@ -59,6 +59,7 @@ import { UserAvatar } from "../../components/common/UserAvatar";
 import { GlassSelect, type GlassSelectOption } from "../../components/common/GlassSelect";
 import { GlassTimePicker } from "../../components/common/GlassTimePicker";
 import { getSpecialtyDisplayLabel } from "../../utils/specialtyLabels";
+import { formatConsultorioLabel } from "../../utils/consultorioLabel";
 import {
   type TurnoDisponibilidad,
   SILLONES_DISPONIBLES,
@@ -128,7 +129,7 @@ const ESPECIALIDADES_CATALOGO = [
 
 const SILLON_SELECT_OPTIONS: GlassSelectOption[] = SILLONES_DISPONIBLES.map((s) => ({
   value: s,
-  label: s,
+  label: formatConsultorioLabel(s),
 }));
 
 const ESPECIALIDADES_SELECT_OPTIONS: GlassSelectOption[] = ESPECIALIDADES_CATALOGO.filter(
@@ -139,10 +140,10 @@ const ESPECIALIDADES_SELECT_OPTIONS: GlassSelectOption[] = ESPECIALIDADES_CATALO
 }));
 
 const SILLON_CREATE_OPTIONS: GlassSelectOption[] = [
-  { value: "Sillón 1 - Principal", label: "Sillón 1 - Principal" },
-  { value: "Sillón 2 - Quirúrgico", label: "Sillón 2 - Quirúrgico" },
-  { value: "Sillón 3 - Estética Dental", label: "Sillón 3 - Estética Dental" },
-  { value: "Sillón 4 - Infantil & Preventivo", label: "Sillón 4 - Infantil & Preventivo" },
+  { value: "Sillón 1 - Principal", label: "Consultorio 1 - Principal" },
+  { value: "Sillón 2 - Quirúrgico", label: "Consultorio 2 - Quirúrgico" },
+  { value: "Sillón 3 - Estética Dental", label: "Consultorio 3 - Estética Dental" },
+  { value: "Sillón 4 - Infantil & Preventivo", label: "Consultorio 4 - Infantil & Preventivo" },
 ];
 
 const SPECIALTY_STYLES: Record<string, { bg: string; text: string; border: string; glow: string }> = {
@@ -844,7 +845,7 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
             <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm max-w-2xl font-medium font-sans">
               {isOdontologo
                 ? "Directorio clínico del equipo de odontólogos, especialidades activas y disponibilidad de consultorios de tus colegas."
-                : "Gestión clínica del staff de especialistas, sillones de atención, quirófanos y disponibilidad semanal en NexusOdonto."}
+                : "Gestión clínica del staff de especialistas, consultorios de atención, quirófanos y disponibilidad semanal en NexusOdonto."}
             </p>
           </div>
 
@@ -910,7 +911,7 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
         <div className="p-5 rounded-3xl bg-white/85 dark:bg-slate-950/70 border border-slate-200/80 dark:border-white/10 backdrop-blur-xl shadow-lg relative overflow-hidden group hover:border-cyan-500/40 transition-all">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Sillones & Quirófanos
+              Consultorios & Quirófanos
             </span>
             <div className="p-2.5 rounded-2xl bg-teal-500/10 text-teal-600 dark:text-teal-400 icon-animated-interactive group-hover:scale-110 group-hover:bg-teal-500/20 transition-all">
               <Activity size={20} className="group-hover:animate-icon-pulse" />
@@ -920,7 +921,7 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
             <span className="text-3xl font-black text-slate-900 dark:text-white">{Math.max(3, stats.sillonesActivos)}</span>
             <span className="text-xs font-bold text-teal-600 dark:text-teal-400">Consultorios activos</span>
           </div>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-medium">Sillón 1, Sillón 2 y Quirófano</p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-medium">Consultorio 1, Consultorio 2 y Quirófano</p>
         </div>
 
         <div className="p-5 rounded-3xl bg-white/85 dark:bg-slate-950/70 border border-slate-200/80 dark:border-white/10 backdrop-blur-xl shadow-lg relative overflow-hidden group hover:border-cyan-500/40 transition-all">
@@ -1147,10 +1148,10 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                     <div className="flex items-center justify-between">
                       <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-1.5">
                         <MapPin size={13} className="text-cyan-500" />
-                        Consultorio / Sillón:
+                        Consultorio:
                       </span>
                       <span className="font-bold text-slate-900 dark:text-white">
-                        {activeTurno?.sillon || "Sillón 1 - Principal"}
+                        {formatConsultorioLabel(activeTurno?.sillon || "Sillón 1 - Principal")}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
@@ -1292,7 +1293,7 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-300">
                           <MapPin size={13} className="text-cyan-500 shrink-0" />
-                          <span>{activeTurno?.sillon || "Sillón 1 - Principal"}</span>
+                          <span>{formatConsultorioLabel(activeTurno?.sillon || "Sillón 1 - Principal")}</span>
                         </div>
                       </td>
 
@@ -1689,7 +1690,7 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
                             {turno.dia}
                           </span>
                           <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                            {turno.sillon}
+                            {formatConsultorioLabel(turno.sillon)}
                           </span>
                         </div>
                       </div>
@@ -1942,7 +1943,7 @@ const SPECIALTY_ID_MAP: Record<string, string> = {
 
                   <div className="sm:col-span-4 min-w-0">
                     <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Sillón / Consultorio Habitual
+                      Consultorio Habitual
                     </label>
                     <GlassSelect
                       value={formSillon}

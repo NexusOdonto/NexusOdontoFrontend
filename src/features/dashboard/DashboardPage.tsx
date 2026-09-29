@@ -27,7 +27,15 @@ import { patientService } from "../../api/patientService";
 import { personService } from "../../api/personService";
 import { professionalService } from "../../api/professionalService";
 import { serviceCatalogService } from "../../api/serviceCatalogService";
+import { availabilityService } from "../../api/availabilityService";
 import { areGuidsEqual } from "../../utils/roleUtils";
+import { loadSavedDoctorSchedules } from "../../utils/doctorSchedules";
+import {
+  type EquipoTurnoItem,
+  buildEquipoEnTurno,
+  getConsultorioForProfessional,
+  isEnTurnoAhora,
+} from "./equipoEnTurno";
 import {
   PROFESSIONAL_FALLBACK_LABEL,
   resolveProfessionalDisplayName,
@@ -46,12 +54,6 @@ interface CitaItem {
   estado: "Confirmada" | "En Atención" | "Pendiente" | "Completada";
   valor: number;
 }
-
-const odontologosTurno = [
-  { nombre: "Dra. Laura Gómez", especialidad: "Ortodoncia y Estética", sillon: "Sillón 1", citasHoy: 0, activo: true },
-  { nombre: "Dr. Juan Martínez", especialidad: "Cirugía Oral e Implantes", sillon: "Sillón 2", citasHoy: 0, activo: true },
-  { nombre: "Dra. Patricia Silva", especialidad: "Endodoncia", sillon: "Sillón 3", citasHoy: 0, activo: true },
-];
 
 const distribucionServicios = [
   { nombre: "Profilaxis y Limpieza", porcentaje: 38, count: 14, color: "bg-teal-500" },
@@ -76,7 +78,21 @@ export default function DashboardPage() {
   const [citasHoy, setCitasHoy] = useState<CitaItem[]>([]);
   const [totalPacientes, setTotalPacientes] = useState(0);
   const [agendaPage, setAgendaPage] = useState(1);
+  const [equipoTurno, setEquipoTurno] = useState<EquipoTurnoItem[]>([]);
+  const [now, setNow] = useState(() => new Date());
   const AGENDA_PAGE_SIZE = 8;
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const equipoOrdenado = useMemo(() => {
+    return equipoTurno
+      .map((doc) => ({ ...doc, enTurnoAhora: isEnTurnoAhora(doc, now) }))
+      .sort((a, b) => Number(b.enTurnoAhora) - Number(a.enTurnoAhora) || a.nombre.localeCompare(b.nombre, "es"));
+  }, [equipoTurno, now]);
+  const equipoActivosCount = equipoOrdenado.filter((doc) => doc.enTurnoAhora).length;
 
   const totalAgendaPages = Math.max(1, Math.ceil(citasHoy.length / AGENDA_PAGE_SIZE));
   const displayedCitas = useMemo(() => {
@@ -98,18 +114,30 @@ export default function DashboardPage() {
   const loadRealData = useCallback(async () => {
     setLoading(true);
     try {
-      const [citasRes, pacientesRes, personasRes, profesionalesRes, serviciosRes] = await Promise.allSettled([
+      const [citasRes, pacientesRes, personasRes, profesionalesRes, serviciosRes, disponibilidadRes] = await Promise.allSettled([
         appointmentService.getAll(),
         patientService.getAll(),
         personService.getAll(),
         professionalService.getAll(),
         serviceCatalogService.getAll(),
+        availabilityService.getAll(),
       ]);
 
       const pacientesList = pacientesRes.status === "fulfilled" && Array.isArray(pacientesRes.value) ? pacientesRes.value : [];
       const personasList = personasRes.status === "fulfilled" && Array.isArray(personasRes.value) ? personasRes.value : [];
       const profesionalesList = profesionalesRes.status === "fulfilled" && Array.isArray(profesionalesRes.value) ? profesionalesRes.value : [];
       const servicesCatalog = serviciosRes.status === "fulfilled" && Array.isArray(serviciosRes.value) ? serviciosRes.value : [];
+      const citasList = citasRes.status === "fulfilled" && Array.isArray(citasRes.value) ? citasRes.value : [];
+      const savedSchedules = loadSavedDoctorSchedules();
+
+      setEquipoTurno(
+        buildEquipoEnTurno({
+          professionals: profesionalesList,
+          availabilityRows: disponibilidadRes.status === "fulfilled" ? disponibilidadRes.value : null,
+          appointments: citasList,
+          savedSchedules,
+        })
+      );
 
       if (pacientesList.length > 0) {
         setTotalPacientes(pacientesList.length);
@@ -175,6 +203,12 @@ export default function DashboardPage() {
           if (!servName) servName = "Consulta Odontológica";
 
           const servPrice = getEstimatedPrice(dto.serviceId, servName);
+          const citaDate = dto.startsAt ? new Date(dto.startsAt) : new Date();
+          const consultorio = getConsultorioForProfessional(
+            profesionalesList.find((p: any) => areGuidsEqual(p.id, dto.professionalId)),
+            Number.isNaN(citaDate.getTime()) ? new Date() : citaDate,
+            savedSchedules
+          );
 
           return {
             id: dto.id || `c-${idx}`,
@@ -182,7 +216,7 @@ export default function DashboardPage() {
             paciente: resolvedPatientName || "Paciente Registrado",
             doctor: resolvedDoctorName || PROFESSIONAL_FALLBACK_LABEL,
             servicio: servName,
-            sillon: `Sillón ${(idx % 3) + 1}`,
+            sillon: consultorio,
             estado: (dto.status || dto.estado || "Confirmada") as any,
             valor: servPrice,
           };
@@ -379,7 +413,7 @@ export default function DashboardPage() {
             </span>
           </div>
           <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-white/10 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-instrument">
-            <span>3 doctores en turno</span>
+            <span>{equipoTurno.length} {equipoTurno.length === 1 ? "doctor" : "doctores"} en turno</span>
             <span
               className="font-bold text-purple-600 dark:text-purple-400 cursor-pointer hover:underline group-hover:translate-x-0.5 transition-transform"
               onClick={() => navigate("/profesionales")}
@@ -406,7 +440,7 @@ export default function DashboardPage() {
                     Cronograma de Citas de Hoy
                   </h2>
                   <p className="text-xs text-slate-500 dark:text-slate-400 font-instrument">
-                    Seguimiento en tiempo real de pacientes y sillones de atención
+                    Seguimiento en tiempo real de pacientes y consultorios de atención
                   </p>
                 </div>
               </div>
@@ -449,8 +483,12 @@ export default function DashboardPage() {
                         <span className="text-cyan-700 dark:text-cyan-400 font-semibold truncate max-w-[160px]" title={cita.servicio}>{cita.servicio}</span>
                         <span>•</span>
                         <span className="truncate max-w-[140px]" title={cita.doctor}>{cita.doctor}</span>
-                        <span>•</span>
-                        <span className="font-spacemono text-[11px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">{cita.sillon}</span>
+                        {cita.sillon && (
+                          <>
+                            <span>•</span>
+                            <span className="font-spacemono text-[11px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">{cita.sillon}</span>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -566,29 +604,40 @@ export default function DashboardPage() {
                 <span>Equipo en Turno Hoy</span>
               </h3>
               <span className="text-[11px] font-bold font-instrument text-emerald-600 dark:text-emerald-400">
-                3 Activos
+                {equipoActivosCount} {equipoActivosCount === 1 ? "Activo" : "Activos"}
               </span>
             </div>
 
             <div className="space-y-3">
-              {odontologosTurno.map((doc) => (
+              {equipoOrdenado.length === 0 ? (
+                <p className="py-4 text-center text-xs text-slate-500 dark:text-slate-400 font-medium font-instrument">
+                  No hay odontólogos con turno programado para hoy.
+                </p>
+              ) : (
+                equipoOrdenado.map((doc) => (
                 <div
-                  key={doc.nombre}
+                  key={doc.id}
                   className="p-3.5 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/70 dark:border-white/10 space-y-1 font-instrument"
                 >
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-bold text-slate-900 dark:text-white">
                       {doc.nombre}
                     </h4>
-                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span
+                      className={`h-2 w-2 rounded-full ${doc.enTurnoAhora ? "bg-emerald-500 animate-pulse" : "bg-slate-400 dark:bg-slate-600"}`}
+                      title={doc.enTurnoAhora ? "En turno ahora" : "Fuera de turno en este momento"}
+                    />
                   </div>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400">{doc.especialidad}</p>
                   <div className="pt-1.5 flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400 border-t border-slate-200/60 dark:border-white/5">
-                    <span className="font-spacemono">{doc.sillon}</span>
-                    <span className="font-semibold text-cyan-700 dark:text-cyan-400">{doc.citasHoy} citas hoy</span>
+                    <span className="font-spacemono">{doc.consultorio || "Consultorio —"}</span>
+                    <span className="font-semibold text-cyan-700 dark:text-cyan-400">
+                      {doc.citasHoy} {doc.citasHoy === 1 ? "cita" : "citas"} hoy
+                    </span>
                   </div>
                 </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
 
@@ -620,7 +669,7 @@ export default function DashboardPage() {
                   >
                     <div className="flex items-center gap-2.5">
                       <Calendar size={16} className="text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform" />
-                      <span>Calendario de Sillones</span>
+                      <span>Calendario de Consultorios</span>
                     </div>
                     <ArrowRight size={13} className="text-slate-400 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all" />
                   </button>
@@ -682,7 +731,7 @@ export default function DashboardPage() {
                   >
                     <div className="flex items-center gap-2.5">
                       <Calendar size={16} className="text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform" />
-                      <span>Calendario de Sillones</span>
+                      <span>Calendario de Consultorios</span>
                     </div>
                     <ArrowRight size={13} className="text-slate-400 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all" />
                   </button>
