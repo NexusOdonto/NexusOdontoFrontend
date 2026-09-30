@@ -100,6 +100,7 @@ src/
 │
 ├── components/                   # 🧩 COMPONENTES REUTILIZABLES
 │   ├── common/
+│   │   ├── AiAssistantTip.tsx    # [NUEVO] Mensajes interactivos de ayuda contextual estilo IA
 │   │   ├── BrandLogo.tsx         # Logo interactivo con efectos de gradiente
 │   │   ├── DentistryReloadIcon.tsx # Loader animado con temática odontológica
 │   │   ├── ErrorBoundary.tsx     # Capturador de fallos de interfaz
