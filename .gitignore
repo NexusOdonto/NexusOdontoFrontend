@@ -93,10 +93,12 @@ $RECYCLE.BIN/
 *.tgz
 *.tar.gz
 
-# Markdown files (ignorar todos excepto README.md)
+# Markdown files (ignorar todos excepto README.md y GUIA_CODIGO.md)
 *.md
 **/*.md
 !README.md
 !**/README.md
+!GUIA_CODIGO.md
+!**/GUIA_CODIGO.md
 testsprite_tests/tmp/
 testsprite_tests/tmp/config.json
