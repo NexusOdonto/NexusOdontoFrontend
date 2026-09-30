@@ -9,7 +9,7 @@ Esta guía explica **todo el código del frontend** de forma integral y didácti
 ## 📑 ÍNDICE GENERAL
 
 1. [Cómo Arranca la App y Flujo de Providers](#1-cómo-arranca-la-app)
-2. [Árbol de Carpetas Completo y Actualizado](#2-árbol-de-carpetas)
+2. [Arquitectura del Frontend y Árbol de Carpetas](#2-arquitectura-del-frontend-y-árbol-de-carpetas)
 3. [Conexión con el Backend (Axios + SignalR + FastAPI)](#3-conexión-con-el-backend)
 4. [Autenticación, Seguridad y Gestión de Sesión](#4-autenticación-y-sesión)
 5. [Sistema de Rutas, Guards y Control de Acceso por Rol](#5-sistema-de-rutas-y-permisos)
@@ -69,7 +69,30 @@ createRoot(document.getElementById("root")!).render(
 
 ---
 
-## 2. ÁRBOL DE CARPETAS
+## 2. ARQUITECTURA DEL FRONTEND Y ÁRBOL DE CARPETAS
+
+### 2.1 Nombre Oficial y Principios de la Arquitectura
+El frontend de NexusOdonto implementa una **Arquitectura Modular Basada en Características (Feature-Driven Architecture)**, comúnmente conocida en la industria como **"Screaming Architecture" (Arquitectura que Grita su Dominio)**, complementada con los siguientes patrones arquitectónicos modernos:
+
+1. **Feature-Driven / Screaming Architecture (Uncle Bob Martin):**
+   - **Qué significa:** La estructura de carpetas no agrupa archivos por tipo técnico primitivo (`views/`, `controllers/`, `models/`), sino que **"grita" las capacidades y el dominio clínico del negocio**: `features/odontograma`, `features/agenda`, `features/historia-clinica`, `features/citas`, `features/servicios`, `features/dashboard`.
+   - **Ventaja en NexusOdonto:** Cada funcionalidad clínica es un submódulo autosuficiente y desacoplado que contiene sus propias pantallas, subcomponentes, tipos y lógica auxiliar. Si un desarrollador necesita modificar el odontograma FDI, no busca entre cientos de archivos dispersos, sino que entra directamente a `src/features/odontograma/`.
+
+2. **Arquitectura Basada en Componentes (Component-Driven Architecture - CDA):**
+   - Construcción de abajo hacia arriba (*Bottom-Up*). Los elementos reutilizables se encapsulan en `src/components/ui/` (botones, inputs, badges, selectores glassmorphism) y `src/components/common/` (logos, animaciones de carga, error boundaries), asegurando coherencia visual en Dark/Light mode y accesibilidad WCAG AA.
+
+3. **Patrón de Capa de Servicios (Service Layer Pattern):**
+   - Ubicado en `src/api/`. Ningún componente React realiza peticiones HTTP directas ni conoce URLs duras. Todas las operaciones consumen métodos fuertemente tipados de servicios desacoplados (`appointmentService`, `odontogramService`, `availabilityService`, etc.) conectados al cliente Axios centralizado (`axiosClient.ts`).
+
+4. **Patrón Proveedor / Inyección de Contextos (Context Provider Pattern):**
+   - Gestión transversal de estados globales (`ThemeProvider`, `AuthProvider`, `NotificationProvider`) que inyectan sesión, tokens JWT, roles, persistencia de preferencias y sockets SignalR a cualquier nivel del árbol sin incurrir en *prop drilling*.
+
+5. **Code-Splitting y Carga Diferida (Route-Level Lazy Loading & Dynamic Imports):**
+   - División estratégica de bundles en `src/routes/index.tsx` mediante `React.lazy()` y `Suspense`. Módulos hiper-pesados (como `@react-pdf/renderer` para exportar historias clínicas u odontogramas) se cargan de forma asíncrona mediante `await import()` solo cuando el profesional clínico los solicita, manteniendo la Landing Page y el Login con una carga inicial ultraliviana (< 1.2s).
+
+---
+
+### 2.2 Árbol de Carpetas Completo y Actualizado
 
 ```
 src/
@@ -475,16 +498,23 @@ El backend implementa **Clean Architecture** en .NET 9 sobre **Oracle Database 2
 
 ### Preguntas Clave que Pueden Hacer los Evaluadores:
 
-1. **¿Por qué los cambios de horario de los odontólogos no aplican inmediatamente el mismo día?**
+1. **¿Cómo se llama la arquitectura que implementamos en el Frontend y cuáles son sus pilares?**
+   - *Respuesta:* Implementamos una **Arquitectura Modular Basada en Características (Feature-Driven Architecture)**, también conocida formalmente como **"Screaming Architecture" (Uncle Bob)**. A diferencia de las estructuras tradicionales organizadas por capas técnicas (`/views`, `/controllers`), aquí el árbol de carpetas en `src/features/` **"grita" el dominio del negocio odontológico** (`odontograma`, `historia-clinica`, `agenda`, `citas`, `servicios`). Esta arquitectura se complementa con:
+     - **Component-Driven Architecture (CDA):** Componentes visuales y de diseño reutilizables construidos de forma modular en `src/components/ui/` y `src/components/common/`.
+     - **Service Layer Pattern:** Desacoplamiento total del transporte HTTP en `src/api/` usando TypeScript y DTOs tipados.
+     - **Provider / Context Pattern:** Inyección de dependencias para sesión, tema y notificaciones en cascada en `src/App.tsx`.
+     - **Route-Level Code-Splitting:** Carga perezosa con `React.lazy` y `Suspense` para mantener el bundle inicial ultraliviano.
+
+2. **¿Por qué los cambios de horario de los odontólogos no aplican inmediatamente el mismo día?**
    - *Respuesta:* Por integridad clínica y respeto al paciente. Si un doctor cambia su turno a las 10:00 AM, no podemos cancelar automáticamente a los pacientes que ya están en sala de espera ese mismo día. La política de la clínica establece que cualquier cambio rige a partir de mañana, detectando citas afectadas y marcándolas con "Requiere reprogramación" para su gestión asistida.
 
-2. **¿Cómo garantizan que la aplicación cargue rápido si incluye librerías tan pesadas como generación de PDFs y odontogramas interactivos?**
+3. **¿Cómo garantizan que la aplicación cargue rápido si incluye librerías tan pesadas como generación de PDFs y odontogramas interactivos?**
    - *Respuesta:* Aplicamos **Code-Splitting a nivel de rutas** con `React.lazy` y **carga dinámica diferida** (`await import(...)`). El generador de PDF `@react-pdf/renderer` (que pesa ~1.2 MB) no se descarga cuando el usuario entra a la Landing Page o al Login; solo se transfiere por red en el instante exacto en que el doctor pulsa el botón "Descargar PDF".
 
-3. **¿Cómo funciona la persistencia de la configuración de la clínica entre diferentes dispositivos?**
+4. **¿Cómo funciona la persistencia de la configuración de la clínica entre diferentes dispositivos?**
    - *Respuesta:* En `clinicSettingsService`, la configuración se envía al endpoint `/v1/clinic-settings` para guardarse en la base de datos central. Además, cuenta con una estrategia de caché y fallback en `localStorage` con emisión de eventos reactivos (`nexus_configuracion_updated`), asegurando que cualquier cambio se sincronice de inmediato en toda la interfaz.
 
-4. **¿Cómo se manejaron los estándares de accesibilidad y SEO en el frontend?**
+5. **¿Cómo se manejaron los estándares de accesibilidad y SEO en el frontend?**
    - *Respuesta:* El proyecto alcanzó **100/100 en Accesibilidad (WCAG AA)** y **100/100 en SEO**. Unificamos la jerarquía semántica para que cada página contenga una única etiqueta `<h1>` representativa, añadimos etiquetas descriptivas ARIA en todos los componentes interactivos y optimizamos los contrastes tanto en tema claro como en tema oscuro.
 
 ---
