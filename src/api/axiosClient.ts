@@ -1,5 +1,26 @@
 import axios from 'axios';
 
+/**
+ * 🤖 [AI ASSISTANT GUIDE - CLIENTE HTTP Y SEGURIDAD REST]:
+ * -------------------------------------------------------------------------------------------------
+ * 📌 PROPÓSITO:
+ *    Instancia centralizada de Axios que orquesta todas las peticiones hacia la API .NET y Oracle.
+ * 
+ * 🔍 PATRONES DE INTERCEPCIÓN IMPLEMENTADOS:
+ *    1. Interceptor de Petición (Request Interceptor):
+ *       • Discrimina rutas anónimas públicas (/auth/login, /auth/register) para no enviar tokens obsoletos.
+ *       • En cualquier otra ruta protegida, extrae el JWT de localStorage y lo inyecta como:
+ *         `Authorization: Bearer <token>`
+ *    2. Interceptor de Respuesta (Response Interceptor):
+ *       • Captura respuestas 401 Unauthorized emitidas por el backend.
+ *       • Si la sesión expiró o fue revocada, limpia el almacenamiento y emite el evento global `auth:expired`.
+ *       • AuthContext escucha este evento y cierra la sesión reactivamente sin recargar la página.
+ * 
+ * 💡 TIPS PARA LA SUSTENTACIÓN:
+ *    "La autenticación es completamente stateless vía JWT. El cliente frontend no almacena contraseñas,
+ *    únicamente el token de acceso firmado con expiración controlada."
+ * -------------------------------------------------------------------------------------------------
+ */
 const axiosClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5170/api',
   headers: {

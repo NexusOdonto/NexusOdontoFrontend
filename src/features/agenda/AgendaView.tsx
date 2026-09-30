@@ -47,6 +47,25 @@ import {
   etiquetaEstadoAgenda,
 } from "./AgendaData";
 
+/**
+ * 🤖 [AI ASSISTANT GUIDE - MATRIZ DE AGENDAMIENTO CLÍNICO SEMANAL]:
+ * -------------------------------------------------------------------------------------------------
+ * 📌 PROPÓSITO:
+ *    Representación visual del calendario clínico semanal (Lun-Dom) dividido en franjas de 60 minutos.
+ * 
+ * 🔍 REGLAS CLÍNICAS Y ARQUITECTURA:
+ *    • Agrupamiento en Carpetas Dossier: Si coinciden varias citas en la misma hora, se consolidan
+ *      en una tarjeta "📁 N Citas" para evitar solapamientos gráficos y mantener legibilidad.
+ *    • Protección de Franja de Almuerzo: El carrusel unificado (12:00 a 14:00) bloquea visualmente
+ *      y previene agendamientos que colisionen con el descanso reglamentario del personal médico.
+ *    • Consistencia de Estados: Las citas canceladas o marcadas como inasistencia ("No asistió")
+ *      se diferencian cromáticamente y deshabilitan el acceso a la atención médica.
+ * 
+ * 💡 TIPS PARA LA SUSTENTACIÓN:
+ *    "La agenda valida dinámicamente la duración en sillón configurada para cada servicio dental,
+ *    evitando sobreventas de turnos y asegurando tiempos quirúrgicos reales."
+ * -------------------------------------------------------------------------------------------------
+ */
 import { useAuth } from "../auth/AuthContext";
 import { getUserRole } from "../../utils/routePermissions";
 import { useNotifications } from "../../context/NotificationContext";

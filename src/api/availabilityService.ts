@@ -10,6 +10,24 @@ import {
   saveDoctorSchedulesBulk,
 } from '../utils/doctorSchedules';
 
+/**
+ * 🤖 [AI ASSISTANT GUIDE - POLÍTICA CLÍNICA DE HORARIOS Y DISPONIBILIDADES]:
+ * -------------------------------------------------------------------------------------------------
+ * 📌 PROPÓSITO:
+ *    Administra los turnos semanales de los odontólogos, cálculo de impacto en citas y reprogramaciones.
+ * 
+ * 🔍 REGLA DE NEGOCIO INSTITUCIONAL: "LOS CAMBIOS RIGEN DESDE MAÑANA"
+ *    • ¿Por qué?: Si un doctor edita su disponibilidad a las 10:00 AM, las citas del día actual no pueden
+ *      ser canceladas arbitrariamente porque los pacientes ya están en camino o en sala de espera.
+ *    • Cálculo de vigencia: `colombiaTomorrowIso()` garantiza que el nuevo horario comience en D+1 (mañana).
+ *    • Citas afectadas: Las citas agendadas desde mañana en adelante que colisionen con el nuevo horario
+ *      se marcan con `RequiresRescheduleBadge` ("Requiere reprogramación") y se notifica al odontólogo.
+ * 
+ * 💡 TIPS PARA LA SUSTENTACIÓN:
+ *    "Protege la operación del consultorio en tiempo real. Demuestra cómo el sistema maneja la consistencia
+ *    temporal y previene conflictos de agenda con trazabilidad automática."
+ * -------------------------------------------------------------------------------------------------
+ */
 export interface AvailabilityDto {
   id: string;
   professionalId: string;

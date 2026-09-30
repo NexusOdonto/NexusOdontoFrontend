@@ -62,6 +62,23 @@ const SEED_TRANSLATIONS: Record<string, { name: string; description: string; cat
   },
 };
 
+/**
+ * 🤖 [AI ASSISTANT GUIDE - CATÁLOGO DE SERVICIOS Y TARIFARIO OFICIAL]:
+ * -------------------------------------------------------------------------------------------------
+ * 📌 PROPÓSITO:
+ *    Administra el catálogo de procedimientos odontológicos, precios oficiales en COP y tiempos de sillón.
+ * 
+ * 🔍 REGLAS CLÍNICAS Y ARQUITECTURA:
+ *    • Tarifa Oficial Abierta: Permite el ingreso libre de cualquier valor numérico sin restricciones de botones fijos.
+ *    • Duración en Sillón Dental (Minutos): Calibra el tiempo médico estimado que ocupará el paciente
+ *      en la Agenda Semanal (ej: 30 min valoración, 60 min endodoncia, 90 min cirugía).
+ *    • Persistencia en Backend: Sincroniza directamente con los endpoints `/v1/Services` de la API .NET y Oracle.
+ * 
+ * 💡 TIPS PARA LA SUSTENTACIÓN:
+ *    "Permite parametrizar procedimientos con códigos oficiales y controlar la eficiencia operativa
+ *    del consultorio al modelar los tiempos reales de atención por cada tipo de tratamiento."
+ * -------------------------------------------------------------------------------------------------
+ */
 const FALLBACK_SERVICES: Servicio[] = [
   {
     id: "14000000-0000-0000-0000-000000000001",

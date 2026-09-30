@@ -10,6 +10,25 @@ import {
 import { markUserOffline, markUserOnline, touchPresence } from './presenceService';
 import { usePresenceSync } from './usePresenceSync';
 
+/**
+ * 🤖 [AI ASSISTANT GUIDE - MOTOR DE AUTENTICACIÓN Y SESIÓN]:
+ * -------------------------------------------------------------------------------------------------
+ * 📌 PROPÓSITO:
+ *    Contexto de seguridad central de NexusOdonto. Gestiona la identidad del usuario, tokens JWT,
+ *    cálculo de inactividad, presencia en tiempo real y cierre de sesión seguro.
+ * 
+ * 🔍 MECANISMOS DE SEGURIDAD IMPLEMENTADOS:
+ *    1. Persistencia de Sesión: Guarda `auth_token` (JWT) y `auth_user` en localStorage con chequeo de validez.
+ *    2. Timer de Inactividad (20 min): Reseteado ante eventos del usuario (mousemove, keydown, touchstart).
+ *    3. Expiración de Token (15 seg): Intervalo que evalúa el claim `exp` del JWT y desconecta al expirar.
+ *    4. Presencia Híbrida: Conecta con SignalR (`/hubs/notifications`) y BroadcastChannel para saber quién está online.
+ *    5. Protección de Cuentas de Servicio: Bloquea intentos de inicio de sesión con cuentas del bot de WhatsApp.
+ * 
+ * 💡 TIPS PARA LA SUSTENTACIÓN:
+ *    "Garantiza el estándar HIPAA / Ley de Protección de Datos de Salud: ante 20 minutos de inactividad
+ *    en el consultorio, la sesión se cierra automáticamente para resguardar la privacidad de los pacientes."
+ * -------------------------------------------------------------------------------------------------
+ */
 export interface User {
   id: string;
   personId: string;

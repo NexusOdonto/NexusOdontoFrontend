@@ -13,6 +13,23 @@ type AvailabilityWithEffective = AvailabilityDto & {
   effectiveTo?: string | null;
 };
 
+/**
+ * 🤖 [AI ASSISTANT GUIDE - MOTOR EN VIVO: EQUIPO EN TURNO HOY]:
+ * -------------------------------------------------------------------------------------------------
+ * 📌 PROPÓSITO:
+ *    Calcula dinámicamente qué odontólogos están en jornada activa, en receso de almuerzo o fuera de turno hoy.
+ * 
+ * 🔍 LÓGICA DE COMPUTACIÓN:
+ *    1. Extrae los minutos actuales del día (hora * 60 + minutos).
+ *    2. Evalúa las franjas de turno y receso de almuerzo (lunchStartMinutes / lunchEndMinutes).
+ *    3. Excluye citas canceladas o marcadas como inasistencia para calcular la carga real de pacientes del día.
+ *    4. Nomenclatura: Formatea automáticamente "Sillón N" a "Consultorio N" para cumplir la directiva clínica.
+ * 
+ * 💡 TIPS PARA LA SUSTENTACIÓN:
+ *    "Permite a recepcionistas y directores médicos visualizar de inmediato la capacidad operativa
+ *    instalada de la clínica en cualquier momento del día."
+ * -------------------------------------------------------------------------------------------------
+ */
 export interface EquipoTurnoItem {
   id: string;
   nombre: string;

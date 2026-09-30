@@ -44,6 +44,25 @@ import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon
 import PatientDashboardView from "./PatientDashboardView";
 import { AnimatedCounter } from "../../components/ui/animated-counter";
 
+/**
+ * 🤖 [AI ASSISTANT GUIDE - PANEL PRINCIPAL CLÍNICO Y OPERATIVO]:
+ * -------------------------------------------------------------------------------------------------
+ * 📌 PROPÓSITO:
+ *    Centro de mando de NexusOdonto. Se adapta reactivamente al rol del usuario autenticado.
+ * 
+ * 🔍 REGLAS CLÍNICAS Y ARQUITECTURA:
+ *    • Bifurcación por Rol: Si el usuario autenticado tiene el rol `PACIENTE`, renderiza directamente
+ *      `PatientDashboardView` con su portal personalizado de próximas citas y recetas.
+ *    • Equipo en Turno Hoy: Evalúa la hora actual y la disponibilidad de los odontólogos para informar
+ *      quién está en consulta, en receso de almuerzo o fuera de jornada.
+ *    • Nomenclatura Institucional: Muestra los sillones dentales bajo la etiqueta formal "Consultorio N".
+ *    • Métricas Dinámicas: Cuenta citas confirmadas, pendientes, atendidas y pacientes activos del día.
+ * 
+ * 💡 TIPS PARA LA SUSTENTACIÓN:
+ *    "Demuestra el principio de segregación de interfaces (SOLID): cada tipo de usuario recibe
+ *    la información exacta que necesita sin saturar su experiencia operativa."
+ * -------------------------------------------------------------------------------------------------
+ */
 interface CitaItem {
   id: string;
   hora: string;

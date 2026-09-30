@@ -11,9 +11,6 @@ import fondoDark from "../assets/fondo-darck.webp";
 
 import { ErrorBoundary } from "../components/common/ErrorBoundary";
 
-import { AiAssistantTip } from "../components/common/AiAssistantTip";
-import ChatBotWidget from "../components/chatbot/ChatBotWidget";
-
 interface DashboardLayoutProps {
   children: ReactNode;
 }
@@ -70,18 +67,12 @@ export function DashboardLayout({
         <main className="flex min-w-0 flex-1 flex-col transition-all duration-300 relative">
           {/* Contenido principal fluido con ancho máximo de 1440px */}
           <div className="relative z-10 w-full max-w-[1440px] mx-auto p-4 sm:p-6 md:p-8">
-            {/* Mensajes de ayuda contextuales con estetica y guia de IA */}
-            <AiAssistantTip />
-
             <ErrorBoundary>
               {children}
             </ErrorBoundary>
           </div>
         </main>
       </div>
-
-      {/* Asistente interactivo flotante NexusBot */}
-      <ChatBotWidget />
     </div>
   );
 }
