@@ -9,9 +9,12 @@ import {
   Lock,
   Sparkles,
   CheckCircle2,
+  Save,
+  RotateCcw,
 } from "lucide-react";
 import { roleService, type Role } from "../../api/roleService";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
+import { ROLE_PERMISSIONS_STORAGE_KEY, DEFAULT_ROLE_PERMISSIONS } from "../../utils/routePermissions";
 
 const modulosSistema = [
   { id: "pacientes", nombre: "Gestión de Pacientes" },
@@ -24,23 +27,34 @@ const modulosSistema = [
   { id: "roles", nombre: "Roles y Permisos del Sistema" },
 ];
 
-const rolesFallback: (Role & { permisos: Record<string, { ver: boolean; crear: boolean; editar: boolean; eliminar: boolean }> })[] = [
+type ModulePermissions = Record<string, { ver: boolean; crear: boolean; editar: boolean; eliminar: boolean }>;
+
+function getSavedPermissionsMap(): Record<string, ModulePermissions> {
+  try {
+    const raw = localStorage.getItem(ROLE_PERMISSIONS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function savePermissionsMap(map: Record<string, ModulePermissions>) {
+  try {
+    localStorage.setItem(ROLE_PERMISSIONS_STORAGE_KEY, JSON.stringify(map));
+    window.dispatchEvent(new Event("permissionsUpdated"));
+  } catch (e) {
+    console.error("Error saving role permissions:", e);
+  }
+}
+
+const rolesFallback: (Role & { permisos: ModulePermissions })[] = [
   {
     id: "13000000-0000-0000-0000-000000000001",
     code: "ADMINISTRADOR",
     name: "Administrador del Sistema",
     description: "Acceso total para configurar el sistema, gestionar usuarios, roles, catálogo y finanzas.",
     isActive: true,
-    permisos: {
-      pacientes: { ver: true, crear: true, editar: true, eliminar: true },
-      citas: { ver: true, crear: true, editar: true, eliminar: true },
-      odontograma: { ver: true, crear: true, editar: true, eliminar: true },
-      historia_clinica: { ver: true, crear: true, editar: true, eliminar: true },
-      servicios: { ver: true, crear: true, editar: true, eliminar: true },
-      profesionales: { ver: true, crear: true, editar: true, eliminar: true },
-      usuarios: { ver: true, crear: true, editar: true, eliminar: true },
-      roles: { ver: true, crear: true, editar: true, eliminar: true },
-    },
+    permisos: DEFAULT_ROLE_PERMISSIONS.ADMINISTRADOR,
   },
   {
     id: "13000000-0000-0000-0000-000000000002",
@@ -48,50 +62,15 @@ const rolesFallback: (Role & { permisos: Record<string, { ver: boolean; crear: b
     name: "Odontólogo Especialista",
     description: "Atención clínica de pacientes, registro de odontograma, evolución clínica y consulta de agenda.",
     isActive: true,
-    permisos: {
-      pacientes: { ver: true, crear: true, editar: true, eliminar: false },
-      citas: { ver: true, crear: false, editar: true, eliminar: false },
-      odontograma: { ver: true, crear: true, editar: true, eliminar: false },
-      historia_clinica: { ver: true, crear: true, editar: true, eliminar: false },
-      servicios: { ver: true, crear: false, editar: false, eliminar: false },
-      profesionales: { ver: true, crear: false, editar: false, eliminar: false },
-      usuarios: { ver: false, crear: false, editar: false, eliminar: false },
-      roles: { ver: false, crear: false, editar: false, eliminar: false },
-    },
+    permisos: DEFAULT_ROLE_PERMISSIONS.ODONTOLOGO,
   },
   {
     id: "13000000-0000-0000-0000-000000000003",
     code: "RECEPCIONISTA",
     name: "Recepcionista / Admisiones",
-    description: "Agendamiento, recepción de pacientes, validación de citas y control de pagos.",
+    description: "Agendamiento, recepción de pacientes, validación de citas y control de admisiones.",
     isActive: true,
-    permisos: {
-      pacientes: { ver: true, crear: true, editar: true, eliminar: false },
-      citas: { ver: true, crear: true, editar: true, eliminar: true },
-      odontograma: { ver: true, crear: false, editar: false, eliminar: false },
-      historia_clinica: { ver: false, crear: false, editar: false, eliminar: false },
-      servicios: { ver: true, crear: false, editar: false, eliminar: false },
-      profesionales: { ver: true, crear: false, editar: false, eliminar: false },
-      usuarios: { ver: false, crear: false, editar: false, eliminar: false },
-      roles: { ver: false, crear: false, editar: false, eliminar: false },
-    },
-  },
-  {
-    id: "13000000-0000-0000-0000-000000000004",
-    code: "ASISTENTE",
-    name: "Asistente Dental",
-    description: "Apoyo en procedimientos clínicos, preparación de instrumental y visualización de agenda.",
-    isActive: true,
-    permisos: {
-      pacientes: { ver: true, crear: false, editar: false, eliminar: false },
-      citas: { ver: true, crear: false, editar: false, eliminar: false },
-      odontograma: { ver: true, crear: false, editar: false, eliminar: false },
-      historia_clinica: { ver: true, crear: false, editar: false, eliminar: false },
-      servicios: { ver: true, crear: false, editar: false, eliminar: false },
-      profesionales: { ver: true, crear: false, editar: false, eliminar: false },
-      usuarios: { ver: false, crear: false, editar: false, eliminar: false },
-      roles: { ver: false, crear: false, editar: false, eliminar: false },
-    },
+    permisos: DEFAULT_ROLE_PERMISSIONS.RECEPCIONISTA,
   },
   {
     id: "13000000-0000-0000-0000-000000000005",
@@ -99,16 +78,7 @@ const rolesFallback: (Role & { permisos: Record<string, { ver: boolean; crear: b
     name: "Paciente (Portal Web)",
     description: "Solicitud y consulta de citas propias, historial de atenciones y visualización de odontograma.",
     isActive: true,
-    permisos: {
-      pacientes: { ver: false, crear: false, editar: false, eliminar: false },
-      citas: { ver: true, crear: true, editar: false, eliminar: false },
-      odontograma: { ver: true, crear: false, editar: false, eliminar: false },
-      historia_clinica: { ver: false, crear: false, editar: false, eliminar: false },
-      servicios: { ver: true, crear: false, editar: false, eliminar: false },
-      profesionales: { ver: true, crear: false, editar: false, eliminar: false },
-      usuarios: { ver: false, crear: false, editar: false, eliminar: false },
-      roles: { ver: false, crear: false, editar: false, eliminar: false },
-    },
+    permisos: DEFAULT_ROLE_PERMISSIONS.PACIENTE,
   },
 ];
 
@@ -119,6 +89,8 @@ export function RolesPermisosView() {
   const [search, setSearch] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showSaveConfirm, setShowSaveConfirm] = useState(false);
 
   // Form nuevo rol
   const [nuevoNombre, setNuevoNombre] = useState("");
@@ -131,7 +103,6 @@ export function RolesPermisosView() {
     if (c.includes("ADMIN") || n.includes("admin")) return "Administrador del Sistema";
     if (c.includes("ODONT") || c.includes("DENTIST") || n.includes("dentist") || n.includes("odont")) return "Odontólogo Especialista";
     if (c.includes("RECEPC") || c.includes("RECEPT") || n.includes("reception")) return "Recepcionista / Admisiones";
-    if (c.includes("ASIST") || c.includes("ASSIST") || n.includes("assistant") || n.includes("auxil")) return "Asistente Dental";
     if (c.includes("PACIENT") || c.includes("PATIENT") || n.includes("patient") || n.includes("paciente")) return "Paciente (Portal Web)";
     return name || "Rol del Sistema";
   };
@@ -147,9 +118,6 @@ export function RolesPermisosView() {
     }
     if (lower.includes("reception") || lower.includes("admission") || lower.includes("appointment")) {
       return "Agendamiento, recepción de pacientes, validación de citas y control de admisiones.";
-    }
-    if (lower.includes("assist") || lower.includes("support")) {
-      return "Apoyo en procedimientos clínicos, preparación de instrumental y visualización de agenda.";
     }
     if (lower.includes("patient") || lower.includes("own appointment")) {
       return "Solicitud y consulta de citas propias, historial de atenciones y visualización de odontograma.";
@@ -168,8 +136,19 @@ export function RolesPermisosView() {
     setLoading(true);
     try {
       const data = await roleService.getAll();
-      if (data && data.length > 0) {
-        const mapped = data.map((r, idx) => {
+      const savedMap = getSavedPermissionsMap();
+
+      // Excluir rol de asistente dental y servicios internos como BOT_SERVICE
+      const filtered = (data || []).filter(
+        (r) =>
+          r.code?.toUpperCase() !== "ASISTENTE" &&
+          !r.name?.toLowerCase().includes("asistente") &&
+          r.code?.toUpperCase() !== "BOT_SERVICE" &&
+          !r.code?.toUpperCase().includes("BOT")
+      );
+
+      if (filtered && filtered.length > 0) {
+        const mapped = filtered.map((r, idx) => {
           const fallbackMatch = rolesFallback.find(
             (fb) => fb.code?.toUpperCase() === r.code?.toUpperCase()
           ) || rolesFallback[idx % rolesFallback.length] || rolesFallback[0];
@@ -178,7 +157,10 @@ export function RolesPermisosView() {
           const allTruePerms = modulosSistema.reduce((acc, m) => {
             acc[m.id] = { ver: true, crear: true, editar: true, eliminar: true };
             return acc;
-          }, {} as Record<string, { ver: boolean; crear: boolean; editar: boolean; eliminar: boolean }>);
+          }, {} as ModulePermissions);
+
+          // Si hay permisos guardados por el administrador en localStorage para este código de rol, usarlos
+          const savedPerms = savedMap[r.code?.toUpperCase()];
 
           return {
             id: r.id,
@@ -186,21 +168,37 @@ export function RolesPermisosView() {
             name: translateRoleName(r.code, r.name),
             description: translateRoleDescription(r.description, fallbackMatch?.description),
             isActive: r.isActive,
-            permisos: isAdmin ? allTruePerms : (fallbackMatch?.permisos || {}),
+            permisos: isAdmin
+              ? allTruePerms
+              : savedPerms
+              ? { ...(fallbackMatch?.permisos || {}), ...savedPerms }
+              : (fallbackMatch?.permisos || {}),
           };
         });
         setRoles(mapped);
-        setSelectedRole(mapped[0]);
+        setSelectedRole((prev) => mapped.find((r) => r.id === prev?.id) || mapped[0]);
       } else {
-        setRoles(rolesFallback);
-        setSelectedRole(rolesFallback[0]);
+        // Fallback local con permisos persistidos
+        const fallbackMapped = rolesFallback.map((r) => {
+          const savedPerms = savedMap[r.code?.toUpperCase()];
+          return savedPerms ? { ...r, permisos: { ...r.permisos, ...savedPerms } } : r;
+        });
+        setRoles(fallbackMapped);
+        setSelectedRole((prev) => fallbackMapped.find((r) => r.id === prev?.id) || fallbackMapped[0]);
       }
     } catch (err) {
       console.warn("API Roles unavailable, using fallback:", err);
-      setRoles(rolesFallback);
-      setSelectedRole(rolesFallback[0]);
+      const savedMap = getSavedPermissionsMap();
+      const fallbackMapped = rolesFallback.map((r) => {
+        const savedPerms = savedMap[r.code?.toUpperCase()];
+        return savedPerms ? { ...r, permisos: { ...r.permisos, ...savedPerms } } : r;
+      });
+      setRoles(fallbackMapped);
+      setSelectedRole((prev) => fallbackMapped.find((r) => r.id === prev?.id) || fallbackMapped[0]);
     } finally {
       setLoading(false);
+      setHasUnsavedChanges(false);
+      setShowSaveConfirm(false);
     }
   }, []);
 
@@ -211,30 +209,86 @@ export function RolesPermisosView() {
   const handleTogglePermission = (moduloId: string, action: "ver" | "crear" | "editar" | "eliminar") => {
     if (!selectedRole || isAdministratorRole(selectedRole)) return;
 
-    setRoles((prevRoles) => {
-      const updated = prevRoles.map((r) => {
-        if (r.id === selectedRole.id) {
-          const modPerm = r.permisos[moduloId] || { ver: false, crear: false, editar: false, eliminar: false };
-          return {
-            ...r,
-            permisos: {
-              ...r.permisos,
-              [moduloId]: {
-                ...modPerm,
-                [action]: !modPerm[action],
-              },
-            },
-          };
-        }
-        return r;
-      });
-      const updatedSel = updated.find((r) => r.id === selectedRole.id);
-      if (updatedSel) {
-        setSelectedRole(updatedSel);
-      }
-      return updated;
-    });
+    const modPerm = selectedRole.permisos[moduloId] || { ver: false, crear: false, editar: false, eliminar: false };
+    const updatedPerm = {
+      ...modPerm,
+      [action]: !modPerm[action],
+    };
+
+    const nextPermisos = {
+      ...selectedRole.permisos,
+      [moduloId]: updatedPerm,
+    };
+
+    const updatedRole = {
+      ...selectedRole,
+      permisos: nextPermisos,
+    };
+
+    setSelectedRole(updatedRole);
+
+    setRoles((prevRoles) =>
+      prevRoles.map((r) => (r.id === selectedRole.id ? updatedRole : r))
+    );
+
+    setHasUnsavedChanges(true);
+    setShowSaveConfirm(false);
   };
+
+  const handleConfirmSave = () => {
+    if (!selectedRole) return;
+    const currentSaved = getSavedPermissionsMap();
+    currentSaved[selectedRole.code?.toUpperCase()] = selectedRole.permisos;
+    savePermissionsMap(currentSaved);
+
+    setShowSaveConfirm(false);
+    setHasUnsavedChanges(false);
+
+    setSuccessToast(`Permisos de "${selectedRole.name}" guardados y aplicados exitosamente.`);
+    setTimeout(() => setSuccessToast(null), 3000);
+  };
+
+  const handleResetDefaults = () => {
+    if (!selectedRole || isAdministratorRole(selectedRole) || !hasUnsavedChanges) return;
+
+    const roleCodeUpper = (selectedRole.code || "").toUpperCase();
+
+    // Obtener los permisos guardados actualmente para este rol (o el original si nunca se modificó)
+    const savedMap = getSavedPermissionsMap();
+    const savedPermsForRole = savedMap[roleCodeUpper];
+
+    const fallbackMatch = rolesFallback.find(
+      (fb) => fb.code?.toUpperCase() === roleCodeUpper
+    );
+
+    // Vuelve al estado guardado (protegiendo los cambios que el usuario ya guardó)
+    const targetPerms: ModulePermissions = savedPermsForRole
+      ? JSON.parse(JSON.stringify(savedPermsForRole))
+      : fallbackMatch
+      ? JSON.parse(JSON.stringify(fallbackMatch.permisos))
+      : modulosSistema.reduce((acc, m) => {
+          acc[m.id] = { ver: false, crear: false, editar: false, eliminar: false };
+          return acc;
+        }, {} as ModulePermissions);
+
+    // Actualiza la vista descartando las modificaciones no guardadas
+    const updatedRole = {
+      ...selectedRole,
+      permisos: targetPerms,
+    };
+
+    setSelectedRole(updatedRole);
+    setRoles((prevRoles) =>
+      prevRoles.map((r) => (r.id === selectedRole.id ? updatedRole : r))
+    );
+
+    setShowSaveConfirm(false);
+    setHasUnsavedChanges(false);
+
+    setSuccessToast(`Cambios descartados. Se mantuvo el estado guardado de "${selectedRole.name}".`);
+    setTimeout(() => setSuccessToast(null), 3000);
+  };
+
 
   const handleCreateRole = (e: React.FormEvent) => {
     e.preventDefault();
@@ -243,7 +297,7 @@ export function RolesPermisosView() {
     const newId = `role-${Date.now()}`;
     const codeGen = nuevoCodigo.trim() ? nuevoCodigo.toUpperCase() : nuevoNombre.toUpperCase().replace(/\s+/g, "_");
 
-    const newRole: (Role & { permisos: Record<string, { ver: boolean; crear: boolean; editar: boolean; eliminar: boolean }> }) = {
+    const newRole: (Role & { permisos: ModulePermissions }) = {
       id: newId,
       code: codeGen,
       name: nuevoNombre,
@@ -263,6 +317,11 @@ export function RolesPermisosView() {
 
     setRoles((prev) => [...prev, newRole]);
     setSelectedRole(newRole);
+
+    const currentSaved = getSavedPermissionsMap();
+    currentSaved[codeGen] = newRole.permisos;
+    savePermissionsMap(currentSaved);
+
     setShowCreateModal(false);
     setNuevoNombre("");
     setNuevoCodigo("");
@@ -270,6 +329,7 @@ export function RolesPermisosView() {
     setSuccessToast(`Rol "${newRole.name}" creado con éxito.`);
     setTimeout(() => setSuccessToast(null), 3000);
   };
+
 
   const rolesFiltrados = roles.filter(
     (r) =>
@@ -342,7 +402,11 @@ export function RolesPermisosView() {
               return (
                 <div
                   key={rol.id}
-                  onClick={() => setSelectedRole(rol)}
+                  onClick={() => {
+                    setSelectedRole(rol);
+                    setShowSaveConfirm(false);
+                    setHasUnsavedChanges(false);
+                  }}
                   className={`p-4 rounded-2xl border transition-all duration-200 cursor-pointer backdrop-blur-xl ${
                     isSelected
                       ? "border-cyan-500/80 bg-cyan-500/10 dark:bg-cyan-500/20 shadow-lg scale-[1.01]"
@@ -402,11 +466,80 @@ export function RolesPermisosView() {
                   </p>
                 </div>
 
-                <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100/80 dark:bg-slate-900/60 px-3 py-1.5 rounded-xl border border-slate-200/80 dark:border-white/10 self-start sm:self-auto">
-                  <Lock size={12} className="inline mr-1 text-cyan-500" />
-                  Validación RBAC en tiempo real
+                <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+
+                  {!isAdministratorRole(selectedRole) && (
+                    <>
+                      <button
+                        type="button"
+                        disabled={!hasUnsavedChanges}
+                        onClick={handleResetDefaults}
+                        className={`text-xs font-semibold px-3 py-1.5 rounded-xl border transition-all flex items-center gap-1.5 ${
+                          hasUnsavedChanges
+                            ? "border-slate-200/80 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:text-rose-600 dark:hover:text-rose-400 bg-slate-100/90 dark:bg-slate-900/70 hover:bg-rose-500/10 dark:hover:bg-rose-500/10 cursor-pointer active:scale-95 shadow-sm"
+                            : "text-slate-400 dark:text-slate-600 bg-slate-100/30 dark:bg-slate-900/20 border-slate-200/40 dark:border-white/5 cursor-not-allowed opacity-40 shadow-none"
+                        }`}
+                        title={
+                          hasUnsavedChanges
+                            ? "Descartar cambios no guardados y volver al estado guardado"
+                            : "No hay cambios pendientes por restablecer (los cambios guardados están protegidos)"
+                        }
+                      >
+                        <RotateCcw size={13} />
+                        <span>Restablecer</span>
+                      </button>
+
+                      {showSaveConfirm ? (
+                        <div className="flex items-center gap-1.5 bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/40 px-3 py-1 rounded-xl animate-fadeIn">
+                          <span className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-200">
+                            ¿Estás seguro de guardar cambios para {selectedRole.name}?
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleConfirmSave}
+                            className="text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 px-3 py-1 rounded-lg shadow-sm cursor-pointer transition-all active:scale-95"
+                          >
+                            Sí, Guardar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setShowSaveConfirm(false)}
+                            className="text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-slate-200/80 dark:bg-slate-800 px-2 py-1 rounded-lg cursor-pointer transition-all active:scale-95"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={!hasUnsavedChanges}
+                          onClick={() => hasUnsavedChanges && setShowSaveConfirm(true)}
+                          className={`text-xs font-bold px-4 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
+                            hasUnsavedChanges
+                              ? "text-white bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 shadow-md shadow-emerald-500/25 ring-2 ring-emerald-400 animate-pulse cursor-pointer active:scale-95"
+                              : "text-slate-400 dark:text-slate-600 bg-slate-100/40 dark:bg-slate-900/30 border border-slate-200/40 dark:border-white/5 cursor-not-allowed opacity-40 shadow-none"
+                          }`}
+                          title={
+                            hasUnsavedChanges
+                              ? "Confirmar y guardar permisos para este rol en el sistema"
+                              : "No hay modificaciones pendientes por guardar"
+                          }
+                        >
+                          <Save size={13} />
+                          <span>{hasUnsavedChanges ? "Guardar Cambios *" : "Guardar Cambios"}</span>
+                        </button>
+                      )}
+                    </>
+                  )}
+
+
+                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100/80 dark:bg-slate-900/60 px-3 py-1.5 rounded-xl border border-slate-200/80 dark:border-white/10">
+                    <Lock size={12} className="inline mr-1 text-cyan-500" />
+                    Validación RBAC en tiempo real
+                  </div>
                 </div>
               </div>
+
 
               {isAdministratorRole(selectedRole) && (
                 <div className="flex items-center gap-2.5 rounded-xl bg-amber-500/10 dark:bg-amber-500/20 border border-amber-500/30 p-3 text-xs text-amber-800 dark:text-amber-200 animate-fadeIn">

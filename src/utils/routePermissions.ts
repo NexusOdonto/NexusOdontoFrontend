@@ -123,8 +123,89 @@ const ROUTE_ALIASES: Record<string, string> = {
   "/turnos": "/profesionales",
 };
 
+export const ROLE_PERMISSIONS_STORAGE_KEY = "nexus_custom_role_permissions_v1";
+
+export const ROUTE_TO_MODULE: Record<string, string> = {
+  "/citas": "citas",
+  "/agenda": "citas",
+  "/atencion-chat": "citas",
+  "/pacientes": "pacientes",
+  "/pacientes/nuevo": "pacientes",
+  "/odontograma": "odontograma",
+  "/historia-clinica": "historia_clinica",
+  "/servicios": "servicios",
+  "/profesionales": "profesionales",
+  "/usuarios": "usuarios",
+  "/roles-permisos": "roles",
+  "/configuracion": "roles",
+};
+
+export const DEFAULT_ROLE_PERMISSIONS: Record<
+  string,
+  Record<string, { ver: boolean; crear: boolean; editar: boolean; eliminar: boolean }>
+> = {
+  ADMINISTRADOR: {
+    pacientes: { ver: true, crear: true, editar: true, eliminar: true },
+    citas: { ver: true, crear: true, editar: true, eliminar: true },
+    odontograma: { ver: true, crear: true, editar: true, eliminar: true },
+    historia_clinica: { ver: true, crear: true, editar: true, eliminar: true },
+    servicios: { ver: true, crear: true, editar: true, eliminar: true },
+    profesionales: { ver: true, crear: true, editar: true, eliminar: true },
+    usuarios: { ver: true, crear: true, editar: true, eliminar: true },
+    roles: { ver: true, crear: true, editar: true, eliminar: true },
+  },
+  ODONTOLOGO: {
+    pacientes: { ver: true, crear: true, editar: true, eliminar: false },
+    citas: { ver: true, crear: false, editar: true, eliminar: false },
+    odontograma: { ver: true, crear: true, editar: true, eliminar: false },
+    historia_clinica: { ver: true, crear: true, editar: true, eliminar: false },
+    servicios: { ver: true, crear: false, editar: false, eliminar: false },
+    profesionales: { ver: true, crear: false, editar: false, eliminar: false },
+    usuarios: { ver: false, crear: false, editar: false, eliminar: false },
+    roles: { ver: false, crear: false, editar: false, eliminar: false },
+  },
+  RECEPCIONISTA: {
+    pacientes: { ver: true, crear: true, editar: true, eliminar: false },
+    citas: { ver: true, crear: true, editar: true, eliminar: true },
+    odontograma: { ver: true, crear: false, editar: false, eliminar: false },
+    historia_clinica: { ver: false, crear: false, editar: false, eliminar: false },
+    servicios: { ver: true, crear: false, editar: false, eliminar: false },
+    profesionales: { ver: true, crear: false, editar: false, eliminar: false },
+    usuarios: { ver: false, crear: false, editar: false, eliminar: false },
+    roles: { ver: false, crear: false, editar: false, eliminar: false },
+  },
+  PACIENTE: {
+    pacientes: { ver: false, crear: false, editar: false, eliminar: false },
+    citas: { ver: true, crear: true, editar: false, eliminar: false },
+    odontograma: { ver: true, crear: false, editar: false, eliminar: false },
+    historia_clinica: { ver: false, crear: false, editar: false, eliminar: false },
+    servicios: { ver: true, crear: false, editar: false, eliminar: false },
+    profesionales: { ver: true, crear: false, editar: false, eliminar: false },
+    usuarios: { ver: false, crear: false, editar: false, eliminar: false },
+    roles: { ver: false, crear: false, editar: false, eliminar: false },
+  },
+};
+
+export function getCustomPermissionsForRole(
+  roleCode: string
+): Record<string, { ver: boolean; crear: boolean; editar: boolean; eliminar: boolean }> | null {
+  try {
+    const raw = localStorage.getItem(ROLE_PERMISSIONS_STORAGE_KEY);
+    if (raw) {
+      const all = JSON.parse(raw);
+      if (all && all[roleCode]) {
+        return all[roleCode];
+      }
+    }
+  } catch {
+    // ignorar error de lectura
+  }
+  return DEFAULT_ROLE_PERMISSIONS[roleCode] || null;
+}
+
 /**
- * Valida de forma estricta si un usuario tiene acceso a una ruta específica según su rol.
+ * Valida de forma estricta si un usuario tiene acceso a una ruta específica según su rol
+ * y según los permisos dinámicos configurados en la matriz de Roles y Permisos.
  * El dashboard y perfil siempre son accesibles para todo usuario autenticado.
  */
 export function hasRouteAccess(user: unknown, path: string): boolean {
@@ -141,11 +222,29 @@ export function hasRouteAccess(user: unknown, path: string): boolean {
 
   const role = getUserRole(user);
 
-  // Si es ADMINISTRADOR, acceso total
+  // Si es ADMINISTRADOR, acceso total permanente
   if (role === "ADMINISTRADOR") {
     return true;
   }
 
+  // 1. Evaluar matriz dinámica de permisos configurada desde el módulo de Roles
+  const moduleKey = ROUTE_TO_MODULE[targetPath];
+  if (moduleKey) {
+    const customPerms = getCustomPermissionsForRole(role);
+    if (customPerms && customPerms[moduleKey]) {
+      // Si el permiso de visualización ('ver') está denegado, bloquear la ruta
+      if (customPerms[moduleKey].ver === false) {
+        return false;
+      }
+      // Si está explícitamente permitido, conceder acceso
+      if (customPerms[moduleKey].ver === true) {
+        return true;
+      }
+    }
+  }
+
+  // 2. Fallback a la matriz estática de rutas permitidas
   const allowedRoutes = ROLE_ALLOWED_ROUTES[role] || [];
   return allowedRoutes.includes(targetPath);
 }
+

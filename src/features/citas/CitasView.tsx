@@ -7,13 +7,13 @@ import {
   Trash2,
 } from "lucide-react";
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
-import { useSearchParams, useLocation } from "react-router-dom";
+import { useSearchParams, useLocation, useNavigate } from "react-router-dom";
 
 import { CitasTable } from "./components/CitasTable";
 import { useRequiresReschedule } from "../../utils/useRequiresReschedule";
 import { type Cita, type EstadoCita } from "./types";
 import { useAuth } from "../auth/AuthContext";
-import { getUserRole } from "../../utils/routePermissions";
+import { getUserRole, getCustomPermissionsForRole } from "../../utils/routePermissions";
 import { appointmentService, type AppointmentResponseDto } from "../../api/appointmentService";
 import { serviceCatalogService } from "../../api/serviceCatalogService";
 import { professionalService } from "../../api/professionalService";
@@ -55,19 +55,11 @@ const defaultSeedDoctors: SelectOption[] = [
   { label: "Dra. Patricia Silva", subLabel: "Especialidad: Endodoncia Microscópica", specialty: "Endodoncia Microscópica" },
 ];
 
-const defaultSeedServices: ServiceItem[] = [
-  { id: "14000000-0000-0000-0000-000000000001", name: "Valoración General Odontológica", durationMinutes: 30, price: 50000, category: "Higiene y Prevención", description: "Evaluación clínica integral y diagnóstico odontológico." },
-  { id: "14000000-0000-0000-0000-000000000002", name: "Profilaxis y Limpieza Dental con Ultrasonido", durationMinutes: 45, price: 80000, category: "Higiene y Prevención", description: "Eliminación de cálculo supragingival con ultrasonido y pulido coronario." },
-  { id: "14000000-0000-0000-0000-000000000003", name: "Restauración en Resina Fotocurable", durationMinutes: 45, price: 75000, category: "Operatoria / Resinas", description: "Reconstrucción estética y funcional con resina nanohíbrida." },
-  { id: "14000000-0000-0000-0000-000000000004", name: "Blanqueamiento Dental Clínico LED", durationMinutes: 60, price: 280000, category: "Estética Dental", description: "Aclaramiento dental profesional en consultorio con fotoactivación." },
-  { id: "14000000-0000-0000-0000-000000000005", name: "Extracción Dental Simple y Quirúrgica", durationMinutes: 45, price: 95000, category: "Cirugía Oral", description: "Extracción mínimamente invasiva con anestesia local controlada." },
-  { id: "14000000-0000-0000-0000-000000000006", name: "Tratamiento de Conducto (Endodoncia)", durationMinutes: 60, price: 260000, category: "Endodoncia", description: "Desinfección biomecánica y obturación tridimensional de conductos." },
-  { id: "14000000-0000-0000-0000-000000000007", name: "Control y Ajuste de Ortodoncia", durationMinutes: 45, price: 120000, category: "Ortodoncia", description: "Revisión mensual de aparatología fija o alineadores invisibles." },
-];
 
 const citasFallback: Cita[] = [];
 
 export function CitasView() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { refreshNotifications, addNotification } = useNotifications();
   const location = useLocation();
@@ -80,6 +72,8 @@ export function CitasView() {
     patientName?: string;
     patientDocument?: string;
     patientId?: string;
+    returnTo?: string;
+    from?: string;
   } | null;
   const handledNavKeyRef = useRef<string>("");
   const role = getUserRole(user);
@@ -92,8 +86,8 @@ export function CitasView() {
 
   const [citas, setCitas] = useState<Cita[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [servicesList, setServicesList] = useState<string[]>(defaultSeedServices.map((s) => s.name));
-  const [servicesRaw, setServicesRaw] = useState<ServiceItem[]>(defaultSeedServices);
+  const [servicesList, setServicesList] = useState<string[]>([]);
+  const [servicesRaw, setServicesRaw] = useState<ServiceItem[]>([]);
   const [professionalsList, setProfessionalsList] = useState<string[]>([
     "Dra. Laura Gómez",
     "Dr. Roberto Martínez",
@@ -233,7 +227,7 @@ export function CitasView() {
   // Formulario de creación/solicitud
   const [formPaciente, setFormPaciente] = useState("");
   const [selectedServiceId, setSelectedServiceId] = useState<string>("");
-  const [formServicio, setFormServicio] = useState("Valoración General Odontológica");
+  const [formServicio, setFormServicio] = useState("");
   const [formFecha, setFormFecha] = useState(() => {
     const d = new Date();
     const year = d.getFullYear();
@@ -241,14 +235,7 @@ export function CitasView() {
     const day = String(d.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   });
-  const [formHora, setFormHora] = useState(() => {
-    const now = new Date();
-    const nextHour = now.getHours() + 1;
-    if (nextHour >= 7 && nextHour <= 16) {
-      return `${String(nextHour).padStart(2, "0")}:00`;
-    }
-    return "09:00";
-  });
+  const [formHora, setFormHora] = useState("");
   const [formProfesional, setFormProfesional] = useState("");
   const [formMotivo, setFormMotivo] = useState("");
 
@@ -401,7 +388,7 @@ export function CitasView() {
       const profNamesList = enrichedProfs.map((ep) => ep.label);
       setProfessionalsList(profNamesList);
       if (profNamesList.length > 0) {
-        setFormProfesional((prev) => (prev && profNamesList.includes(prev) ? prev : profNamesList[0]));
+        setFormProfesional((prev) => (prev && profNamesList.includes(prev) ? prev : ""));
       }
 
       const patientToPersonMap: Record<string, string> = {};
@@ -429,7 +416,7 @@ export function CitasView() {
 
       // Catálogo de servicios sincronizado estrictamente con API y Catálogo de Servicios
       let mergedServices: ServiceItem[] = [];
-      if (services.length > 0) {
+      if (servicesData.status === "fulfilled") {
         mergedServices = services
           .filter((s: any) => s.isActive !== false && s.activo !== false)
           .map((s: any) => ({
@@ -447,7 +434,7 @@ export function CitasView() {
             const localList: any[] = JSON.parse(localCatalogRaw);
             if (Array.isArray(localList) && localList.length > 0) {
               mergedServices = localList
-                .filter((ls) => ls.activo !== false)
+                .filter((ls) => ls.activo !== false && !String(ls.id).startsWith("14000000-0000-0000"))
                 .map((ls) => ({
                   id: ls.id,
                   name: ls.nombre || ls.name,
@@ -461,18 +448,17 @@ export function CitasView() {
         } catch (err) {
           console.warn("Error reading nexus_servicios_catalog:", err);
         }
-
-        if (mergedServices.length === 0) {
-          mergedServices = defaultSeedServices;
-        }
       }
 
       setServicesRaw(mergedServices);
       const names = mergedServices.map((s) => s.name);
       setServicesList(names);
       if (mergedServices.length > 0) {
-        setSelectedServiceId((prev) => (prev && mergedServices.some((t) => areGuidsEqual(t.id, prev)) ? prev : mergedServices[0].id));
-        setFormServicio((prev) => (prev && names.includes(prev) ? prev : names[0]));
+        setSelectedServiceId((prev) => (prev && mergedServices.some((t) => areGuidsEqual(t.id, prev)) ? prev : ""));
+        setFormServicio((prev) => (prev && names.includes(prev) ? prev : ""));
+      } else {
+        setSelectedServiceId("");
+        setFormServicio("");
       }
 
       // Catálogo y opciones de pacientes para búsqueda / filtrado
@@ -711,24 +697,22 @@ export function CitasView() {
     }
 
     const defaultDate = todayDateString;
-    const defaultHour = getNextValidHour(defaultDate);
     setFormFecha(defaultDate);
-    setFormHora(defaultHour);
+    setFormHora(getNextValidHour(defaultDate));
     setFormMotivo("");
     setFormError(null);
-
-    if (servicesRaw.length > 0) {
-      if (!selectedServiceId || !servicesRaw.some((s) => areGuidsEqual(s.id, selectedServiceId))) {
-        setSelectedServiceId(servicesRaw[0].id);
-        setFormServicio(servicesRaw[0].name);
-      }
-    }
+    setSelectedServiceId("");
+    setFormServicio("");
 
     if (isOdontologo && user?.name) {
       const myProf = professionalsOptions.find((p) => p.label.toLowerCase().includes(user.name.toLowerCase()));
       if (myProf) {
         setFormProfesional(myProf.label);
+      } else {
+        setFormProfesional("");
       }
+    } else {
+      setFormProfesional("");
     }
 
     setShowRequestModal(true);
@@ -745,6 +729,20 @@ export function CitasView() {
     selectedServiceId,
     professionalsOptions,
   ]);
+
+  const handleCloseRequestModal = useCallback(() => {
+    setShowRequestModal(false);
+    const returnTo = navState?.returnTo || searchParams.get("returnTo");
+    if (returnTo) {
+      navigate(returnTo);
+    } else if (navState?.openAgendar || searchParams.get("action") === "agendar") {
+      if (window.history.length > 1) {
+        navigate(-1);
+      } else {
+        navigate("/pacientes");
+      }
+    }
+  }, [navState, searchParams, navigate]);
 
   // Helper para normalizar cadenas eliminando tildes y espacios
   const normalizeText = (str?: string) =>
@@ -877,6 +875,24 @@ export function CitasView() {
     e.preventDefault();
     setFormError(null);
     setErrorMessage(null);
+
+    if (!isPaciente && !formPaciente.trim()) {
+      setFormError("Por favor busque o ingrese un paciente.");
+      return;
+    }
+    if (!formServicio?.trim() && !selectedServiceId) {
+      setFormError("Por favor seleccione un tratamiento o servicio.");
+      return;
+    }
+    if (!isPaciente && !formProfesional?.trim()) {
+      setFormError("Por favor seleccione un odontólogo asignado.");
+      return;
+    }
+    if (!formHora?.trim()) {
+      setFormError("Por favor seleccione un horario disponible para la cita.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -954,8 +970,9 @@ export function CitasView() {
       } else if (!targetServiceId && servicesEntities.length > 0) {
         targetServiceId = servicesEntities[0].id;
       } else if (!targetServiceId) {
-        const fallbackServiceId = "30000000-0000-0000-0000-000000000001";
-        targetServiceId = fallbackServiceId;
+        setFormError("No hay servicios disponibles en el catálogo para asignar a la cita. Por favor cree un procedimiento en el Catálogo de Servicios.");
+        setIsSubmitting(false);
+        return;
       }
 
       const matchedDurationService =
@@ -968,6 +985,15 @@ export function CitasView() {
       const scheduleError = validateClinicAppointmentSchedule(fechaValida, horaValida, durationMinutes);
       if (scheduleError) {
         setFormError(scheduleError);
+        setIsSubmitting(false);
+        return;
+      }
+
+      const role = getUserRole(user);
+      const customPerms = getCustomPermissionsForRole(role);
+      const canCreate = role === "ADMINISTRADOR" || (customPerms ? customPerms.citas?.crear !== false : role !== "ODONTOLOGO");
+      if (!canCreate) {
+        setFormError("No tienes acceso ni permisos asignados para crear o agendar citas en el sistema con tu perfil actual.");
         setIsSubmitting(false);
         return;
       }
@@ -1082,6 +1108,20 @@ export function CitasView() {
             ? "No hay odontólogos disponibles en ese horario. Por favor selecciona otra hora."
             : "El odontólogo ya tiene una cita asignada en ese rango horario. Por favor selecciona otra hora u otro profesional.";
           setFormError(conflictMsg);
+          setIsSubmitting(false);
+          return;
+        } else if (
+          err?.response?.status === 403 ||
+          err?.response?.status === 401 ||
+          serverMsg.includes("forbidden") ||
+          serverMsg.includes("unauthorized") ||
+          serverMsg.includes("permiso") ||
+          serverMsg.includes("privilegio") ||
+          serverMsg.includes("acceso") ||
+          serverMsg.includes("error interno") ||
+          err?.response?.status === 500
+        ) {
+          setFormError("No tienes acceso ni permisos asignados para crear o agendar citas en el sistema con tu perfil actual.");
           setIsSubmitting(false);
           return;
         } else if (detailsMsg) {
@@ -1667,23 +1707,22 @@ export function CitasView() {
             type="button"
             onClick={() => {
               const defaultDate = todayDateString;
-              const defaultHour = getNextValidHour(defaultDate);
               setFormPaciente(isPaciente ? (user?.name || "Andrés Pérez") : "");
               setFormFecha(defaultDate);
-              setFormHora(defaultHour);
+              setFormHora(getNextValidHour(defaultDate));
               setFormMotivo("");
               setFormError(null);
+              setSelectedServiceId("");
+              setFormServicio("");
               if (isOdontologo && user?.name) {
                 const myProf = professionalsOptions.find(p => p.label.toLowerCase().includes(user.name.toLowerCase()));
                 if (myProf) {
                   setFormProfesional(myProf.label);
+                } else {
+                  setFormProfesional("");
                 }
-              }
-              if (servicesRaw.length > 0) {
-                if (!selectedServiceId || !servicesRaw.some(s => areGuidsEqual(s.id, selectedServiceId))) {
-                  setSelectedServiceId(servicesRaw[0].id);
-                  setFormServicio(servicesRaw[0].name);
-                }
+              } else {
+                setFormProfesional("");
               }
               setShowRequestModal(true);
             }}
@@ -1820,9 +1859,9 @@ export function CitasView() {
 
       {/* MODAL 1: SOLICITAR / CREAR CITA */}
       {showRequestModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-fadeIn">
-          <div className="w-full max-w-lg rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-scaleIn">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-lg rounded-3xl bg-white/95 dark:bg-slate-900/95 border border-slate-200/90 dark:border-white/15 shadow-2xl overflow-hidden animate-scaleIn">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/70 backdrop-blur-md">
               <div>
                 <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">
                   {isPaciente ? "Solicitar Cita Médica" : "Agendar Nueva Cita"}
@@ -1835,8 +1874,8 @@ export function CitasView() {
               </div>
               <button
                 type="button"
-                onClick={() => setShowRequestModal(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                onClick={handleCloseRequestModal}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -1871,6 +1910,7 @@ export function CitasView() {
                   setFormError(null);
                 }}
                 services={servicesRaw}
+                placeholder="Seleccione un tratamiento o servicio..."
                 required
               />
 
@@ -1887,18 +1927,19 @@ export function CitasView() {
                 label={isPaciente ? "Odontólogo de Preferencia" : "Odontólogo Asignado"}
                 optionalLabel={isPaciente ? "Opcional" : undefined}
                 required={!isPaciente}
-                placeholder={isPaciente ? "✨ Sin preferencia (Cualquier odontólogo)" : "Seleccionar odontólogo..."}
+                placeholder={isPaciente ? "✨ Sin preferencia (Cualquier odontólogo)" : "Seleccione un odontólogo..."}
               />
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <GlassDatePicker
-                    label="Fecha"
+                    label="Fecha de la Cita"
                     required
                     minDate={todayDateString}
                     value={formFecha}
                     onChange={(newDate) => {
                       setFormFecha(newDate);
+                      setFormError(null);
                       if (newDate === todayDateString) {
                         const [currH] = (formHora || "00:00").split(":").map(Number);
                         const nowH = new Date().getHours();
@@ -1953,7 +1994,7 @@ export function CitasView() {
               <div className="pt-2 flex items-center justify-end gap-2.5 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setShowRequestModal(false)}
+                  onClick={handleCloseRequestModal}
                   disabled={isSubmitting}
                   className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-colors text-xs font-medium cursor-pointer disabled:opacity-50"
                 >

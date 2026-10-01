@@ -14,6 +14,7 @@ interface PacientesGridProps {
   totalPages?: number;
   onPageChange?: (page: number) => void;
   onSelectPaciente?: (paciente: Paciente) => void;
+  onAgendarPaciente?: (paciente: Paciente) => void;
 }
 
 export function PacientesGrid({
@@ -23,6 +24,7 @@ export function PacientesGrid({
   totalPages = 1,
   onPageChange,
   onSelectPaciente,
+  onAgendarPaciente,
 }: PacientesGridProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -198,14 +200,19 @@ export function PacientesGrid({
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  navigate(`/citas?action=agendar&paciente=${encodeURIComponent(paciente.nombre)}&cedula=${encodeURIComponent(paciente.documento)}&pacienteId=${encodeURIComponent(paciente.patientId || String(paciente.id))}`, {
-                    state: {
-                      openAgendar: true,
-                      paciente: paciente.nombre,
-                      pacienteCedula: paciente.documento,
-                      pacienteId: paciente.patientId || String(paciente.id),
-                    },
-                  });
+                  if (onAgendarPaciente) {
+                    onAgendarPaciente(paciente);
+                  } else {
+                    navigate(`/citas?action=agendar&paciente=${encodeURIComponent(paciente.nombre)}&cedula=${encodeURIComponent(paciente.documento)}&pacienteId=${encodeURIComponent(paciente.patientId || String(paciente.id))}`, {
+                      state: {
+                        openAgendar: true,
+                        paciente: paciente.nombre,
+                        pacienteCedula: paciente.documento,
+                        pacienteId: paciente.patientId || String(paciente.id),
+                        returnTo: "/pacientes",
+                      },
+                    });
+                  }
                 }}
                 className="flex flex-col items-center justify-center gap-1 h-12 p-1 rounded-xl bg-slate-100/90 dark:bg-slate-900/75 hover:bg-cyan-50 dark:hover:bg-cyan-500/30 border border-slate-200/80 dark:border-white/20 hover:border-cyan-400/50 text-slate-700 dark:text-slate-200 hover:text-cyan-700 dark:hover:text-white transition-all text-[11px] font-semibold cursor-pointer active:scale-95 shadow-sm overflow-hidden"
                 title="Agendar Cita"

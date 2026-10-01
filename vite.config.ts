@@ -28,9 +28,21 @@ function isReactFamily(id: string): boolean {
 export default defineConfig({
   base: '/',
   plugins: [react(), tailwindcss()],
+  optimizeDeps: {
+    include: [
+      'blobatar',
+      '@blobatar/react',
+      'lucide-react',
+      'date-fns',
+      'axios',
+      '@microsoft/signalr',
+      'clsx',
+      'tailwind-merge',
+    ],
+  },
   server: {
     port: 5174,
-    strictPort: false,
+    strictPort: true,
     headers: {
       'Cache-Control': 'no-cache',
     },

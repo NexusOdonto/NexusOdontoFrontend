@@ -47,27 +47,8 @@ import {
   etiquetaEstadoAgenda,
 } from "./AgendaData";
 
-/**
- * 🤖 [AI ASSISTANT GUIDE - MATRIZ DE AGENDAMIENTO CLÍNICO SEMANAL]:
- * -------------------------------------------------------------------------------------------------
- * 📌 PROPÓSITO:
- *    Representación visual del calendario clínico semanal (Lun-Dom) dividido en franjas de 60 minutos.
- * 
- * 🔍 REGLAS CLÍNICAS Y ARQUITECTURA:
- *    • Agrupamiento en Carpetas Dossier: Si coinciden varias citas en la misma hora, se consolidan
- *      en una tarjeta "📁 N Citas" para evitar solapamientos gráficos y mantener legibilidad.
- *    • Protección de Franja de Almuerzo: El carrusel unificado (12:00 a 14:00) bloquea visualmente
- *      y previene agendamientos que colisionen con el descanso reglamentario del personal médico.
- *    • Consistencia de Estados: Las citas canceladas o marcadas como inasistencia ("No asistió")
- *      se diferencian cromáticamente y deshabilitan el acceso a la atención médica.
- * 
- * 💡 TIPS PARA LA SUSTENTACIÓN:
- *    "La agenda valida dinámicamente la duración en sillón configurada para cada servicio dental,
- *    evitando sobreventas de turnos y asegurando tiempos quirúrgicos reales."
- * -------------------------------------------------------------------------------------------------
- */
 import { useAuth } from "../auth/AuthContext";
-import { getUserRole } from "../../utils/routePermissions";
+import { getUserRole, getCustomPermissionsForRole } from "../../utils/routePermissions";
 import { useNotifications } from "../../context/NotificationContext";
 import { appointmentService, type AppointmentResponseDto } from "../../api/appointmentService";
 import { professionalService } from "../../api/professionalService";
@@ -92,7 +73,6 @@ import {
   type DoctorScheduleBlocks,
   loadSavedDoctorSchedules,
   getDoctorScheduleBlocks,
-  validateDoctorScheduleAppointment,
 } from "../../utils/doctorSchedules";
 import { syncDoctorSchedulesFromApi } from "../../api/availabilityService";
 import { useRequiresReschedule } from "../../utils/useRequiresReschedule";
@@ -362,10 +342,10 @@ export function AgendaView() {
   const [nuevaCita, setNuevaCita] = useState({
     paciente: isPaciente ? (user?.name || "Paciente") : "",
     patientId: isPaciente ? (user?.id || "") : "",
-    servicio: "Valoración General",
-    odontologo: PROFESSIONAL_FALLBACK_LABEL,
-    horaInicio: "09:00",
-    horaFin: "10:00",
+    servicio: "",
+    odontologo: "",
+    horaInicio: "",
+    horaFin: "",
     estado: "Confirmada" as EstadoCita,
   });
 
@@ -423,15 +403,11 @@ export function AgendaView() {
             setOdontologosSeleccionados([myDoc.nombre]);
           }
         }
-
-        if (uniqueDocs.length > 0) {
-          setNuevaCita((prev) => ({ ...prev, odontologo: uniqueDocs[0].nombre }));
-        }
       }
 
       // 2. Catálogo de Servicios sincronizado estrictamente con API y Catálogo de Servicios
       let mergedAgendaServices: any[] = [];
-      if (srvs.status === "fulfilled" && Array.isArray(srvs.value) && srvs.value.length > 0) {
+      if (srvs.status === "fulfilled" && Array.isArray(srvs.value)) {
         mergedAgendaServices = srvs.value
           .filter((s: any) => s.isActive !== false && s.activo !== false)
           .map((s: any) => ({
@@ -449,7 +425,7 @@ export function AgendaView() {
             const localList: any[] = JSON.parse(localCatalogRaw);
             if (Array.isArray(localList) && localList.length > 0) {
               mergedAgendaServices = localList
-                .filter((ls) => ls.activo !== false)
+                .filter((ls) => ls.activo !== false && !String(ls.id).startsWith("14000000-0000-0000"))
                 .map((ls) => ({
                   id: ls.id,
                   name: ls.nombre || ls.name,
@@ -466,12 +442,6 @@ export function AgendaView() {
       }
 
       setServiciosEntities(mergedAgendaServices);
-      if (mergedAgendaServices.length > 0) {
-        setNuevaCita((prev) => ({
-          ...prev,
-          servicio: prev.servicio && mergedAgendaServices.some((s) => s.name === prev.servicio) ? prev.servicio : mergedAgendaServices[0].name,
-        }));
-      }
 
       // 3. Pacientes y Personas (Autocomplete interactivo)
       const ptsList = pts.status === "fulfilled" && Array.isArray(pts.value) ? pts.value : [];
@@ -833,39 +803,15 @@ export function AgendaView() {
     setFormError(null);
     setFechaSeleccionada(fechaStr);
 
-    let docToSelect = odontologoPredeterminado;
-    if (!docToSelect) {
-      if (odontologosSeleccionados.length === 1 && odontologosSeleccionados[0] !== "Todos los odontólogos") {
-        docToSelect = odontologosSeleccionados[0];
-      } else if (listaOdontologos.length > 1) {
-        docToSelect = listaOdontologos[1].nombre;
-      } else if (listaOdontologos.length === 1) {
-        docToSelect = listaOdontologos[0].nombre;
-      } else {
-        docToSelect = PROFESSIONAL_FALLBACK_LABEL;
-      }
-    }
-
-    if (docToSelect && docToSelect !== "Todos los odontólogos") {
-      const docScheduleError = validateDoctorScheduleAppointment(
-        docToSelect,
-        fechaStr,
-        hora,
-        30,
-        doctorSchedulesMap
-      );
-      if (docScheduleError) {
-        setErrorMessage(docScheduleError);
-        setTimeout(() => setErrorMessage(null), 5000);
-        return;
-      }
-    }
+    const docToSelect = odontologoPredeterminado && odontologoPredeterminado !== "Todos los odontólogos"
+      ? odontologoPredeterminado
+      : "";
 
     setNuevaCita({
       paciente: isPaciente ? (user?.name || "Paciente") : "",
       patientId: isPaciente ? (user?.id || "") : "",
-      servicio: serviciosEntities.length > 0 ? serviciosEntities[0].name : "Valoración General",
-      odontologo: docToSelect || PROFESSIONAL_FALLBACK_LABEL,
+      servicio: "",
+      odontologo: docToSelect,
       horaInicio: hora,
       horaFin,
       estado: isPaciente ? "Pendiente" : "Confirmada",
@@ -895,6 +841,12 @@ export function AgendaView() {
     if (!nuevaCita.odontologo?.trim() && !isPaciente) {
       setFormError("Debes seleccionar un odontólogo.");
       setErrorMessage("Debes seleccionar un profesional.");
+      setTimeout(() => setErrorMessage(null), 5000);
+      return;
+    }
+    if (!nuevaCita.horaInicio?.trim()) {
+      setFormError("Debes seleccionar un horario disponible para la cita.");
+      setErrorMessage("Debes seleccionar un horario disponible.");
       setTimeout(() => setErrorMessage(null), 5000);
       return;
     }
@@ -938,6 +890,18 @@ export function AgendaView() {
         setFormError("No hay un profesional activo disponible en el sistema.");
         setErrorMessage("No hay un profesional disponible.");
         setTimeout(() => setErrorMessage(null), 5000);
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Validación previa de permisos del rol para crear citas
+      const customPerms = getCustomPermissionsForRole(role);
+      const canCreate = role === "ADMINISTRADOR" || (customPerms ? customPerms.citas?.crear !== false : !isOdontologo);
+      if (!canCreate) {
+        const msg = "No tienes acceso ni permisos asignados para crear o agendar citas en el sistema con tu perfil actual.";
+        setFormError(msg);
+        setErrorMessage(msg);
+        setTimeout(() => setErrorMessage(null), 6000);
         setIsSubmitting(false);
         return;
       }
@@ -1132,6 +1096,18 @@ export function AgendaView() {
         errorMsg = isPaciente
           ? "No hay odontólogos disponibles en ese horario. Por favor selecciona otra hora."
           : "El odontólogo ya tiene una cita asignada en ese rango horario. Por favor selecciona otra hora u otro profesional.";
+      } else if (
+        error?.response?.status === 403 ||
+        error?.response?.status === 401 ||
+        serverMsg.includes("forbidden") ||
+        serverMsg.includes("unauthorized") ||
+        serverMsg.includes("permiso") ||
+        serverMsg.includes("privilegio") ||
+        serverMsg.includes("acceso") ||
+        serverMsg.includes("error interno") ||
+        error?.response?.status === 500
+      ) {
+        errorMsg = "No tienes acceso ni permisos asignados para crear o agendar citas en el sistema con tu perfil actual.";
       } else if (detailsMsg) {
         errorMsg = detailsMsg;
       } else if (error?.response?.data?.message) {
@@ -2177,7 +2153,7 @@ export function AgendaView() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setCitaDetalle(null)}
-              className="fixed inset-0 bg-slate-950/75 backdrop-blur-md"
+              className="fixed inset-0 bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-sm"
             />
 
             <motion.div
@@ -2465,7 +2441,7 @@ export function AgendaView() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setSelectedClusterModal(null)}
-              className="fixed inset-0 bg-slate-950/75 backdrop-blur-md"
+              className="fixed inset-0 bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-sm"
             />
 
             <motion.div
@@ -2640,13 +2616,13 @@ export function AgendaView() {
 
       {/* Modal Agendar Cita */}
       {mostrarModal && (
-        <div className="fixed inset-0 z-100 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xl animate-scaleIn text-slate-900 dark:text-white">
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-slate-900/40 dark:bg-slate-950/70 p-4 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xl animate-scaleIn text-slate-900 dark:text-white max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
               <div>
                 <h2 className="text-lg font-bold text-slate-900 dark:text-white">Agendar Cita en Agenda</h2>
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  {fechaSeleccionada} · {nuevaCita.horaInicio}
+                  {fechaSeleccionada}{nuevaCita.horaInicio ? ` · ${nuevaCita.horaInicio}` : ""}
                 </p>
               </div>
 
@@ -2674,8 +2650,12 @@ export function AgendaView() {
                 <input
                   type="date"
                   required
+                  min={formatoFechaInput(new Date())}
                   value={fechaSeleccionada}
-                  onChange={(e) => setFechaSeleccionada(e.target.value)}
+                  onChange={(e) => {
+                    setFechaSeleccionada(e.target.value);
+                    setFormError(null);
+                  }}
                   className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2.5 text-sm text-slate-900 dark:text-white outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-cyan-500 transition-all"
                 />
               </div>
@@ -2684,13 +2664,14 @@ export function AgendaView() {
                 label="Paciente"
                 required
                 value={nuevaCita.paciente}
-                onChange={(val, opt) =>
+                onChange={(val, opt) => {
                   setNuevaCita((actual) => ({
                     ...actual,
                     paciente: val,
                     patientId: opt?.data?.patientId || opt?.id || actual.patientId,
-                  }))
-                }
+                  }));
+                  setFormError(null);
+                }}
                 options={patientOptions}
                 placeholder="Escribe o busca por nombre o documento..."
                 type="paciente"
@@ -2699,30 +2680,33 @@ export function AgendaView() {
               <ModernServiceSelect
                 label="Tratamiento / Servicio"
                 value={nuevaCita.servicio}
-                onChange={(_id, name) =>
+                onChange={(_id, name) => {
                   setNuevaCita((actual) => ({
                     ...actual,
                     servicio: name,
-                  }))
-                }
+                  }));
+                  setFormError(null);
+                }}
                 services={serviciosEntities}
+                placeholder="Seleccione un tratamiento o servicio..."
                 required
               />
 
               <ModernDoctorSelect
                 label="Odontólogo"
                 value={nuevaCita.odontologo}
-                onChange={(val) =>
+                onChange={(val) => {
                   setNuevaCita((actual) => ({
                     ...actual,
                     odontologo: val,
-                  }))
-                }
+                  }));
+                  setFormError(null);
+                }}
                 doctors={doctorSelectOptions}
                 selectedServiceName={nuevaCita.servicio}
                 allowNoPreference={false}
                 required
-                placeholder="Seleccionar odontólogo..."
+                placeholder="Seleccione un odontólogo..."
               />
 
               <div className="grid grid-cols-2 gap-3">
@@ -2743,6 +2727,7 @@ export function AgendaView() {
                         horaInicio: val,
                         horaFin: endStr,
                       }));
+                      setFormError(null);
                     }}
                     minHour={7}
                     maxHour={19}
@@ -2759,12 +2744,13 @@ export function AgendaView() {
                   </label>
                   <GlassTimePicker
                     value={nuevaCita.horaFin}
-                    onChange={(val) =>
+                    onChange={(val) => {
                       setNuevaCita((actual) => ({
                         ...actual,
                         horaFin: val,
-                      }))
-                    }
+                      }));
+                      setFormError(null);
+                    }}
                     minHour={8}
                     maxHour={20}
                     minuteStep={15}

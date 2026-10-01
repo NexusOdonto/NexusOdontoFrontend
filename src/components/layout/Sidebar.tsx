@@ -15,7 +15,7 @@ import {
   X,
 } from "lucide-react";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../features/auth/AuthContext";
 import { hasRouteAccess, getUserRole } from "../../utils/routePermissions";
@@ -32,10 +32,22 @@ export function Sidebar({
 }: SidebarProps) {
   const { user } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(true);
+  const [, setPermissionsVersion] = useState(0);
+
+  useEffect(() => {
+    const handleUpdate = () => setPermissionsVersion((v) => v + 1);
+    window.addEventListener("permissionsUpdated", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    return () => {
+      window.removeEventListener("permissionsUpdated", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
+  }, []);
 
   const role = getUserRole(user);
   const isPaciente = role === "PACIENTE";
   const isOdontologo = role === "ODONTOLOGO";
+
 
   const menuItems = [
     {

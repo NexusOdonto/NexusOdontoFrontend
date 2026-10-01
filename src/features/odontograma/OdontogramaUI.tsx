@@ -46,26 +46,6 @@ import {
   createDefaultToothState,
 } from "./types";
 
-/**
- * 🤖 [AI ASSISTANT GUIDE - MOTOR DEL ODONTOGRAMA CLÍNICO FDI]:
- * -------------------------------------------------------------------------------------------------
- * 📌 PROPÓSITO:
- *    Lienzo interactivo odontológico que representa el estado patológico y terapéutico de la dentadura.
- * 
- * 🔍 REGLAS CLÍNICAS Y ARQUITECTURA:
- *    • Nomenclatura FDI: Cuadrantes 1 al 4 para dentadura permanente (32 dientes: 11-18, 21-28, 31-38, 41-48)
- *      y cuadrantes 5 al 8 para dentadura temporal/infantil (51-55, 61-65, 71-75, 81-85).
- *    • 5 Superficies Anatómicas: Mesial (M), Distal (D), Oclusal/Incisal (O), Vestibular (V) y Lingual (L).
- *    • Persistencia en Backend: Al guardar, llama a `odontogramService.saveFull()` enviando todos los dientes
- *      con sus estados y hallazgos estructurados para la base de datos Oracle.
- *    • Reactividad Event-Driven: Dispara `window.dispatchEvent(new CustomEvent('nexus_odontograma_updated'))`
- *      permitiendo que la Historia Clínica capture los cambios sin acoplamiento directo ni recargas.
- * 
- * 💡 TIPS PARA LA SUSTENTACIÓN:
- *    "El odontograma cumple con la norma técnica de historia clínica odontológica colombiana (Resolución 1995/1999).
- *    La generación de PDF usa renderizado vectorial en cliente sin consumir CPU del servidor."
- * -------------------------------------------------------------------------------------------------
- */
 // Fallback quadrants defined locally to ensure teeth always render
 const FALLBACK_PERMANENT_QUADRANTS: Quadrants = {
   topRight: [18, 17, 16, 15, 14, 13, 12, 11],

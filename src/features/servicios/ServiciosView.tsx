@@ -62,96 +62,6 @@ const SEED_TRANSLATIONS: Record<string, { name: string; description: string; cat
   },
 };
 
-/**
- * 🤖 [AI ASSISTANT GUIDE - CATÁLOGO DE SERVICIOS Y TARIFARIO OFICIAL]:
- * -------------------------------------------------------------------------------------------------
- * 📌 PROPÓSITO:
- *    Administra el catálogo de procedimientos odontológicos, precios oficiales en COP y tiempos de sillón.
- * 
- * 🔍 REGLAS CLÍNICAS Y ARQUITECTURA:
- *    • Tarifa Oficial Abierta: Permite el ingreso libre de cualquier valor numérico sin restricciones de botones fijos.
- *    • Duración en Sillón Dental (Minutos): Calibra el tiempo médico estimado que ocupará el paciente
- *      en la Agenda Semanal (ej: 30 min valoración, 60 min endodoncia, 90 min cirugía).
- *    • Persistencia en Backend: Sincroniza directamente con los endpoints `/v1/Services` de la API .NET y Oracle.
- * 
- * 💡 TIPS PARA LA SUSTENTACIÓN:
- *    "Permite parametrizar procedimientos con códigos oficiales y controlar la eficiencia operativa
- *    del consultorio al modelar los tiempos reales de atención por cada tipo de tratamiento."
- * -------------------------------------------------------------------------------------------------
- */
-const FALLBACK_SERVICES: Servicio[] = [
-  {
-    id: "14000000-0000-0000-0000-000000000001",
-    codigo: "SRV-001",
-    nombre: "Valoración General Odontológica",
-    categoria: "Higiene y Prevención",
-    descripcion: "Evaluación clínica integral, diagnóstico odontológico y formulación de plan de tratamiento personalizado.",
-    duracion: 30,
-    precio: 50000,
-    activo: true,
-  },
-  {
-    id: "14000000-0000-0000-0000-000000000002",
-    codigo: "SRV-002",
-    nombre: "Profilaxis y Limpieza Dental con Ultrasonido",
-    categoria: "Higiene y Prevención",
-    descripcion: "Eliminación de placa bacteriana, remoción de cálculo supragingival con ultrasonido y pulido coronario.",
-    duracion: 45,
-    precio: 80000,
-    activo: true,
-  },
-  {
-    id: "14000000-0000-0000-0000-000000000003",
-    codigo: "SRV-003",
-    nombre: "Restauración en Resina Fotocurable",
-    categoria: "Operatoria / Resinas",
-    descripcion: "Reconstrucción estética y funcional de piezas dentales afectadas por caries con resina nanohíbrida.",
-    duracion: 45,
-    precio: 75000,
-    activo: true,
-  },
-  {
-    id: "14000000-0000-0000-0000-000000000004",
-    codigo: "SRV-004",
-    nombre: "Blanqueamiento Dental Clínico LED",
-    categoria: "Estética Dental",
-    descripcion: "Aclaramiento dental profesional en consultorio con fotoactivación y gel de peróxido de alta pureza.",
-    duracion: 60,
-    precio: 280000,
-    activo: true,
-  },
-  {
-    id: "14000000-0000-0000-0000-000000000005",
-    codigo: "SRV-005",
-    nombre: "Extracción Dental Simple y Quirúrgica",
-    categoria: "Cirugía Oral",
-    descripcion: "Procedimiento de extracción mínimamente invasiva con anestesia local controlada y sutura reabsorbible.",
-    duracion: 45,
-    precio: 95000,
-    activo: true,
-  },
-  {
-    id: "14000000-0000-0000-0000-000000000006",
-    codigo: "SRV-006",
-    nombre: "Tratamiento de Conducto (Endodoncia)",
-    categoria: "Endodoncia",
-    descripcion: "Desinfección biomecánica y obturación tridimensional del sistema de conductos radiculares.",
-    duracion: 60,
-    precio: 260000,
-    activo: true,
-  },
-  {
-    id: "14000000-0000-0000-0000-000000000007",
-    codigo: "SRV-007",
-    nombre: "Control y Ajuste de Ortodoncia",
-    categoria: "Ortodoncia",
-    descripcion: "Revisión mensual de aparatología fija o alineadores invisibles, cambio de arcos y ligaduras elásticas.",
-    duracion: 45,
-    precio: 120000,
-    activo: true,
-  },
-];
-
 function mapApiService(item: ServiceResponseDto): Servicio {
   const seed = SEED_TRANSLATIONS[(item.name || "").trim().toLowerCase()];
   return {
@@ -215,12 +125,7 @@ export function ServiciosView() {
       setLoading(true);
       setErrorCarga(null);
       const data = await serviceCatalogService.getAll();
-      let mapped: Servicio[] = [];
-      if (Array.isArray(data) && data.length > 0) {
-        mapped = data.map(mapApiService);
-      } else {
-        mapped = FALLBACK_SERVICES;
-      }
+      const mapped: Servicio[] = Array.isArray(data) ? data.map(mapApiService) : [];
       setServicios(mapped);
       try {
         localStorage.setItem("nexus_servicios_catalog", JSON.stringify(mapped));
@@ -228,10 +133,11 @@ export function ServiciosView() {
         // ignore
       }
     } catch (err: unknown) {
-      console.warn("Using fallback service catalog:", err);
-      setServicios(FALLBACK_SERVICES);
+      console.error("Error al cargar catálogo de servicios desde API:", err);
+      setErrorCarga("No se pudo cargar el catálogo de servicios desde el servidor.");
+      setServicios([]);
       try {
-        localStorage.setItem("nexus_servicios_catalog", JSON.stringify(FALLBACK_SERVICES));
+        localStorage.removeItem("nexus_servicios_catalog");
       } catch {
         // ignore
       }
@@ -241,6 +147,15 @@ export function ServiciosView() {
   }, []);
 
   useEffect(() => {
+    // Limpieza preventiva de datos mock legacy guardados en localStorage
+    try {
+      const raw = localStorage.getItem("nexus_servicios_catalog");
+      if (raw && (raw.includes("14000000-0000-0000") || raw.includes("srv-local-"))) {
+        localStorage.removeItem("nexus_servicios_catalog");
+      }
+    } catch {
+      // ignore
+    }
     fetchServicios();
   }, [fetchServicios]);
 
@@ -274,29 +189,9 @@ export function ServiciosView() {
       }
       await fetchServicios();
     } catch (err: unknown) {
-      console.warn("Error guardando en API, aplicando persistencia local:", err);
-      const newServicio: Servicio = {
-        id: servicioData.id || `srv-local-${Date.now()}`,
-        codigo: servicioData.codigo,
-        nombre: servicioData.nombre,
-        categoria: servicioData.categoria || "Odontología General",
-        descripcion: servicioData.descripcion || "",
-        duracion: servicioData.duracion || 45,
-        precio: servicioData.precio || 0,
-        activo: servicioData.activo !== undefined ? servicioData.activo : true,
-      };
-
-      setServicios((prev) => {
-        const filtered = prev.filter((s) => s.id !== newServicio.id);
-        const updated = [newServicio, ...filtered];
-        try {
-          localStorage.setItem("nexus_servicios_catalog", JSON.stringify(updated));
-        } catch {
-          // ignore
-        }
-        return updated;
-      });
-      showToast("Servicio guardado en el catálogo.", "success");
+      console.error("Error guardando servicio en API:", err);
+      showToast(apiErrorMessage(err, "No se pudo guardar el servicio en el servidor."), "error");
+      throw err;
     }
   };
 

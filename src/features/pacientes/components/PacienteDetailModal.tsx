@@ -16,9 +16,10 @@ import { UserAvatar } from "../../../components/common/UserAvatar";
 interface PacienteDetailModalProps {
   paciente: Paciente | null;
   onClose: () => void;
+  onAgendar?: (paciente: Paciente) => void;
 }
 
-export function PacienteDetailModal({ paciente, onClose }: PacienteDetailModalProps) {
+export function PacienteDetailModal({ paciente, onClose, onAgendar }: PacienteDetailModalProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   usePresenceTick();
@@ -212,14 +213,19 @@ export function PacienteDetailModal({ paciente, onClose }: PacienteDetailModalPr
             type="button"
             onClick={() => {
               onClose();
-              navigate(`/citas?action=agendar&paciente=${encodeURIComponent(paciente.nombre)}&cedula=${encodeURIComponent(paciente.documento)}&pacienteId=${encodeURIComponent(paciente.patientId || String(paciente.id))}`, {
-                state: {
-                  openAgendar: true,
-                  paciente: paciente.nombre,
-                  pacienteCedula: paciente.documento,
-                  pacienteId: paciente.patientId || String(paciente.id),
-                },
-              });
+              if (onAgendar) {
+                onAgendar(paciente);
+              } else {
+                navigate(`/citas?action=agendar&paciente=${encodeURIComponent(paciente.nombre)}&cedula=${encodeURIComponent(paciente.documento)}&pacienteId=${encodeURIComponent(paciente.patientId || String(paciente.id))}`, {
+                  state: {
+                    openAgendar: true,
+                    paciente: paciente.nombre,
+                    pacienteCedula: paciente.documento,
+                    pacienteId: paciente.patientId || String(paciente.id),
+                    returnTo: "/pacientes",
+                  },
+                });
+              }
             }}
             className="group inline-flex items-center gap-2 text-sm font-sans font-bold text-teal-700 dark:text-[#d4a373] hover:text-teal-900 dark:hover:text-[#e6b88a] transition-all cursor-pointer"
           >

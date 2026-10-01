@@ -159,9 +159,11 @@ export function UsuariosView() {
       const humanRoles = (rolesData || []).filter(
         (r: any) =>
           r.code?.toUpperCase() !== "BOT_SERVICE" &&
+          r.code?.toUpperCase() !== "ASISTENTE" &&
           !r.code?.toUpperCase().includes("BOT") &&
           !r.name?.toLowerCase().includes("bot") &&
-          !r.name?.toLowerCase().includes("chatbot")
+          !r.name?.toLowerCase().includes("chatbot") &&
+          !r.name?.toLowerCase().includes("asistente")
       );
       setRoles(humanRoles);
       setDocumentTypes(docTypesData);
@@ -169,7 +171,7 @@ export function UsuariosView() {
         setNuevoTipoDocumento(docTypesData[0].id);
       }
       if (humanRoles.length > 0) {
-        const defaultRole = humanRoles.find((r: any) => r.code !== "ASISTENTE") || humanRoles[0];
+        const defaultRole = humanRoles[0];
         setNuevoRol(defaultRole.id);
       }
     } catch (error) {

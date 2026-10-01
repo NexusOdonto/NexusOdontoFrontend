@@ -13,7 +13,8 @@ import { patientService } from "../../api/patientService";
 import { personService } from "../../api/personService";
 import { areGuidsEqual } from "../../utils/roleUtils";
 import { DentistryReloadIcon } from "../../components/common/DentistryReloadIcon";
-import { Plus, LayoutGrid, List, Download, FileText, Table as TableIcon } from "lucide-react";
+import { AgendarCitaModal } from "../../components/common/AgendarCitaModal";
+import { Plus, LayoutGrid, List, Download, FileText, Table as TableIcon, CheckCircle2 } from "lucide-react";
 import { generateBlobatarPng } from "../../utils/blobatarHelper";
 import { renderPdfBlob } from "../../utils/renderPdfBlob";
 
@@ -50,6 +51,8 @@ export function PacientesView() {
   const [selectedPaciente, setSelectedPaciente] = useState<Paciente | null>(null);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [pacienteToAgendar, setPacienteToAgendar] = useState<Paciente | null>(null);
+  const [toastSuccess, setToastSuccess] = useState<string | null>(null);
 
   const fetchPacientes = useCallback(async () => {
     setLoading(true);
@@ -442,6 +445,7 @@ export function PacientesView() {
             totalPages={totalPages}
             onPageChange={handlePageChange}
             onSelectPaciente={(p) => setSelectedPaciente(p)}
+            onAgendarPaciente={(p) => setPacienteToAgendar(p)}
           />
         ) : (
           <PacientesTable
@@ -461,7 +465,29 @@ export function PacientesView() {
         <PacienteDetailModal
           paciente={selectedPaciente}
           onClose={() => setSelectedPaciente(null)}
+          onAgendar={(p) => setPacienteToAgendar(p)}
         />
+      )}
+
+      {/* MODAL DIRECTO PARA AGENDAR CITA SIN SALIR DE PACIENTES */}
+      {pacienteToAgendar && (
+        <AgendarCitaModal
+          paciente={pacienteToAgendar}
+          onClose={() => setPacienteToAgendar(null)}
+          onSuccess={() => {
+            setPacienteToAgendar(null);
+            setToastSuccess(`¡Cita agendada y confirmada con éxito para ${pacienteToAgendar.nombre}!`);
+            setTimeout(() => setToastSuccess(null), 4000);
+          }}
+        />
+      )}
+
+      {/* TOAST FLOTANTE DE CONFIRMACIÓN */}
+      {toastSuccess && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl bg-teal-600 dark:bg-teal-500 text-white shadow-xl shadow-teal-950/40 animate-slideUp">
+          <CheckCircle2 size={18} className="text-white shrink-0" />
+          <span className="text-xs sm:text-sm font-semibold">{toastSuccess}</span>
+        </div>
       )}
     </div>
   );

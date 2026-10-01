@@ -9,7 +9,6 @@ import {
   Mail,
   MapPin,
   Sliders,
-  Trash2,
   Loader2,
 } from "lucide-react";
 import { GlassSelect } from "../../components/common/GlassSelect";
@@ -79,22 +78,6 @@ export default function ConfiguracionView() {
     });
   };
 
-  const handleLimpiarCache = async () => {
-    setIsSaving(true);
-    try {
-      const saved = await clinicSettingsService.updateSettings(CONFIG_CLINICA_DEFAULT);
-      setConfig(saved);
-      setToastMensaje("Datos de la clínica restaurados por defecto.");
-      setGuardadoExitoso(true);
-    } finally {
-      setIsSaving(false);
-      setTimeout(() => {
-        setGuardadoExitoso(false);
-        setToastMensaje(null);
-      }, 3500);
-    }
-  };
-
   const handleGuardar = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
@@ -143,16 +126,6 @@ export default function ConfiguracionView() {
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
-          <button
-            type="button"
-            onClick={handleLimpiarCache}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-rose-500/30 dark:border-rose-400/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-700 dark:text-rose-300 px-4 py-3 text-xs sm:text-sm font-bold transition-all active:scale-95 cursor-pointer shadow-sm hover:shadow-md"
-            title="Borrar datos en caché y vaciar campos de prueba"
-          >
-            <Trash2 size={16} />
-            <span>Borrar Caché</span>
-          </button>
-
           <button
             type="button"
             onClick={handleGuardar}

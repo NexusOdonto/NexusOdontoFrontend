@@ -1,28 +1,58 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { AlertTriangle, RefreshCw, Home } from "lucide-react";
+import { useLocation } from "react-router-dom";
 
 interface Props {
   children: ReactNode;
   fallbackTitle?: string;
+  locationKey?: string;
 }
 
 interface State {
   hasError: boolean;
   error: Error | null;
+  prevLocationKey?: string;
 }
 
-export class ErrorBoundary extends Component<Props, State> {
+class ErrorBoundaryClass extends Component<Props, State> {
   public state: State = {
     hasError: false,
     error: null,
+    prevLocationKey: this.props.locationKey,
   };
 
-  public static getDerivedStateFromError(error: Error): State {
+  public static getDerivedStateFromError(error: Error): Partial<State> {
     return { hasError: true, error };
+  }
+
+  public static getDerivedStateFromProps(props: Props, state: State): Partial<State> | null {
+    // Si el usuario navegó a otra ruta, limpiar el estado de error para no bloquear la aplicación
+    if (props.locationKey && props.locationKey !== state.prevLocationKey) {
+      return {
+        hasError: false,
+        error: null,
+        prevLocationKey: props.locationKey,
+      };
+    }
+    return null;
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("ErrorBoundary caught an unhandled error:", error, errorInfo);
+
+    // Si falló por módulo dinámico desactualizado de Vite en desarrollo o recarga de chunks
+    const msg = error?.message || "";
+    if (
+      msg.includes("Failed to fetch dynamically imported module") ||
+      msg.includes("Outdated Optimize Dep") ||
+      msg.includes("dynamically imported module")
+    ) {
+      const reloadKey = "chunk_autoreload_" + window.location.pathname;
+      if (!sessionStorage.getItem(reloadKey)) {
+        sessionStorage.setItem(reloadKey, "true");
+        window.location.reload();
+      }
+    }
   }
 
   private handleReload = () => {
@@ -82,5 +112,15 @@ export class ErrorBoundary extends Component<Props, State> {
     }
 
     return this.props.children;
+  }
+}
+
+export function ErrorBoundary(props: { children: ReactNode; fallbackTitle?: string }) {
+  try {
+    const location = useLocation();
+    return <ErrorBoundaryClass {...props} locationKey={location.pathname} />;
+  } catch {
+    // Si se usa fuera de un Router, funciona como ErrorBoundary clásico
+    return <ErrorBoundaryClass {...props} />;
   }
 }

@@ -54,25 +54,6 @@ import {
   mapFindingToDiagnosis,
 } from "../odontograma/types";
 
-/**
- * 🤖 [AI ASSISTANT GUIDE - EXPEDIENTE CLÍNICO ODONTOLÓGICO]:
- * -------------------------------------------------------------------------------------------------
- * 📌 PROPÓSITO:
- *    Gestión integral del historial clínico, evoluciones médicas por cita, antecedentes y diagnósticos CIE-10.
- * 
- * 🔍 REGLAS CLÍNICAS Y ARQUITECTURA:
- *    • Trazabilidad por Cita: Cada nueva evolución clínica (ClinicalAttention) debe encadenarse a una cita activa.
- *      Esto garantiza que no se creen registros huérfanos sin cita previa ni profesional responsable.
- *    • Diagnósticos Estandarizados CIE-10: Los hallazgos del Odontograma (caries K02.1, pulpitis K04.0, etc.)
- *      se asocian automáticamente a la carpeta de diagnósticos clínicos.
- *    • Generación de Documentos en Cliente: Los componentes de PDF (ExpedienteClinico, PrescripcionPdf)
- *      se cargan dinámicamente con `renderPdfBlob()` bajo demanda, sin penalizar el rendimiento inicial.
- * 
- * 💡 TIPS PARA LA SUSTENTACIÓN:
- *    "Garantiza el cumplimiento de la custodia de la historia clínica digital, con firma del profesional,
- *    fecha inmutable, antecedentes patológicos y trazabilidad legal."
- * -------------------------------------------------------------------------------------------------
- */
 interface LocalAttention {
   id: string;
   fecha: string;
