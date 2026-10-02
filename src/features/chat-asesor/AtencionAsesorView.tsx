@@ -66,6 +66,72 @@ interface ChatItemDisplay {
   reason?: string;
 }
 
+function getSavedReadChatIds(): Set<string> {
+  try {
+    const raw = sessionStorage.getItem("nexus_read_chat_ids");
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function saveReadChatIdToStorage(id: string) {
+  try {
+    const current = getSavedReadChatIds();
+    current.add(id);
+    sessionStorage.setItem("nexus_read_chat_ids", JSON.stringify(Array.from(current)));
+  } catch {
+    // Ignore
+  }
+}
+
+function getSavedChatStickyModes(): Map<string, { mode: "manual" | "bot"; at: number }> {
+  try {
+    const raw = sessionStorage.getItem("nexus_chat_sticky_modes");
+    if (!raw) return new Map();
+    const parsed = JSON.parse(raw);
+    return new Map(Object.entries(parsed));
+  } catch {
+    return new Map();
+  }
+}
+
+function saveChatStickyModeToStorage(key: string, mode: "manual" | "bot") {
+  try {
+    const map = getSavedChatStickyModes();
+    map.set(key, { mode, at: Date.now() });
+    const obj: Record<string, { mode: "manual" | "bot"; at: number }> = {};
+    for (const [k, v] of map.entries()) {
+      obj[k] = v;
+    }
+    sessionStorage.setItem("nexus_chat_sticky_modes", JSON.stringify(obj));
+  } catch {
+    // Ignore
+  }
+}
+
+function removeChatStickyModeFromStorage(key: string) {
+  try {
+    const map = getSavedChatStickyModes();
+    map.delete(key);
+    const obj: Record<string, { mode: "manual" | "bot"; at: number }> = {};
+    for (const [k, v] of map.entries()) {
+      obj[k] = v;
+    }
+    sessionStorage.setItem("nexus_chat_sticky_modes", JSON.stringify(obj));
+  } catch {
+    // Ignore
+  }
+}
+
+function clearAllChatStickyModesFromStorage() {
+  try {
+    sessionStorage.removeItem("nexus_chat_sticky_modes");
+  } catch {
+    // Ignore
+  }
+}
+
 // Limpia comillas escapadas accidentales y formato en bruto de respuestas del bot
 function cleanMessageContent(content: string): string {
   if (!content) return "";
@@ -390,7 +456,13 @@ export function AtencionAsesorView() {
   const { addNotification } = useNotifications();
 
   const [chats, setChats] = useState<ChatItemDisplay[]>([]);
-  const [selectedChatId, setSelectedChatId] = useState<string>("");
+  const [selectedChatId, setSelectedChatId] = useState<string>(() => {
+    try {
+      return sessionStorage.getItem("nexus_selected_chat_id") || "";
+    } catch {
+      return "";
+    }
+  });
   const [showContactInfo, setShowContactInfo] = useState<boolean>(false);
   const [messages, setMessages] = useState<ChatbotMessage[]>([]);
   const [inputText, setInputText] = useState("");
@@ -489,7 +561,7 @@ export function AtencionAsesorView() {
     }
   };
 
-  const readSetRef = useRef<Set<string>>(new Set());
+  const readSetRef = useRef<Set<string>>(getSavedReadChatIds());
   const [unreadMap, setUnreadMap] = useState<Record<string, number>>({});
   /** Refs so loadData/poll stay stable — selecting a chat must NOT recreate loadData or remount the list. */
   const selectedChatIdRef = useRef(selectedChatId);
@@ -498,13 +570,18 @@ export function AtencionAsesorView() {
   const chatsRef = useRef<ChatItemDisplay[]>([]);
   /** Mobile back to list: polling must not re-open a chat until the user picks one again. */
   const userDismissedSelectionRef = useRef(false);
+  /** Negative cache for unresolvable LIDs (chatIdentifier -> epoch ms) to avoid hammering backend every 4s */
+  const unresolvableLidsRef = useRef<Map<string, number>>(new Map());
+  /** Cache for full message list so silent polling does not download all messages every 4s */
+  const cachedAllMsgsRef = useRef<ChatbotMessage[]>([]);
+  const lastAllMsgsFetchRef = useRef<number>(0);
   /**
    * Sticky mode by phone (last 10 digits). Polling merges JID/LID twins and can
    * briefly disagree (one twin ACTIVA, another ATENDIDA_HUMANO) → UI flips while typing
    * or right after Activar NexusBot.
    * Cleared/overwritten only by explicit user action (Uso Manual / Activar NexusBot / Cerrar).
    */
-  const modeStickyByPhoneRef = useRef<Map<string, { mode: "manual" | "bot"; at: number }>>(new Map());
+  const modeStickyByPhoneRef = useRef<Map<string, { mode: "manual" | "bot"; at: number }>>(getSavedChatStickyModes());
   const MODE_STICKY_MS = 60 * 60 * 1000; // 1h
   const statusUpdateInFlightRef = useRef(false);
 
@@ -558,22 +635,38 @@ export function AtencionAsesorView() {
   const loadData = useCallback(async (isSilent = false) => {
     if (!isSilent) setLoadingChats(true);
     try {
+      const now = Date.now();
+      const shouldFetchAllMsgs =
+        !isSilent ||
+        cachedAllMsgsRef.current.length === 0 ||
+        now - lastAllMsgsFetchRef.current > 60000;
+
       const [convs, tickets, allMsgs] = await Promise.all([
         chatbotService.getConversations().catch(() => []),
         chatbotService.getSupportTickets().catch(() => []),
-        chatbotService.getAllMessages().catch(() => []),
+        shouldFetchAllMsgs
+          ? chatbotService
+              .getAllMessages()
+              .then((res) => {
+                cachedAllMsgsRef.current = res || [];
+                lastAllMsgsFetchRef.current = Date.now();
+                return res || [];
+              })
+              .catch(() => cachedAllMsgsRef.current)
+          : Promise.resolve(cachedAllMsgsRef.current),
       ]);
 
       if (convs && convs.length > 0) {
-        // Resolver LID→E.164 en cada poll (agresivo); título usa +57 o id de conversación
+        // Resolver LID→E.164 en cada poll respetando cooldown de 5 min para LIDs fallidos
         const unresolvedLids = convs.filter(
           (c) =>
             !isProbeIdentifier(c.chatIdentifier) &&
             looksLikeLid(c.chatIdentifier) &&
-            !formatPhoneE164(c.chatIdentifier)
+            !formatPhoneE164(c.chatIdentifier) &&
+            now - (unresolvableLidsRef.current.get(c.chatIdentifier) || 0) > 300000
         );
-        // Hasta 8 en paralelo por ciclo para no saturar Evolution
-        const chunkSize = 8;
+        // Hasta 4 en paralelo por ciclo para no saturar backend / proxy
+        const chunkSize = 4;
         for (let i = 0; i < unresolvedLids.length; i += chunkSize) {
           const chunk = unresolvedLids.slice(i, i + chunkSize);
           await Promise.all(
@@ -586,6 +679,7 @@ export function AtencionAsesorView() {
                 const phone = (resolved?.phone || "").trim();
                 if (phone && formatPhoneE164(phone)) {
                   c.chatIdentifier = phone;
+                  unresolvableLidsRef.current.delete(c.chatIdentifier);
                   await chatbotService
                     .updateConversation(c.id, {
                       conversationStatusId: c.conversationStatusId,
@@ -594,9 +688,11 @@ export function AtencionAsesorView() {
                       chatIdentifier: phone,
                     })
                     .catch(() => null);
+                } else {
+                  unresolvableLidsRef.current.set(c.chatIdentifier, Date.now());
                 }
               } catch {
-                // Siguiente poll reintentará
+                unresolvableLidsRef.current.set(c.chatIdentifier, Date.now());
               }
             })
           );
@@ -722,12 +818,11 @@ export function AtencionAsesorView() {
 
             // Preservar la jerarquía de estado:
             // 1. ESCALADA si hay alerta o ticket pendiente
-            // 2. ACTIVA si la interacción más reciente pertenece al bot
-            // 3. ATENDIDA_HUMANO si un asesor la tiene en atención manual activa
+            // 2. ATENDIDA_HUMANO si un asesor la tiene en atención manual activa (no claudica ante gemelo ACTIVA)
+            // 3. ACTIVA si la interacción pertenece al bot
+            // 4. CERRADA si no hay actividad pendiente
             if (isEscalated) {
               existing.status = "ESCALADA";
-            } else if (item.status === "ACTIVA" && parseTimestamp(item.rawTimestamp) >= parseTimestamp(existing.rawTimestamp)) {
-              existing.status = "ACTIVA";
             } else if (isHumanActive) {
               existing.status = "ATENDIDA_HUMANO";
             } else if (existing.status === "ACTIVA" || item.status === "ACTIVA") {
@@ -743,7 +838,10 @@ export function AtencionAsesorView() {
         // Sticky mode: no dejar que gemelos JID/LID desincronizados tumben Manual↔Bot
         const nowSticky = Date.now();
         for (const [k, entry] of [...modeStickyByPhoneRef.current.entries()]) {
-          if (nowSticky - entry.at > MODE_STICKY_MS) modeStickyByPhoneRef.current.delete(k);
+          if (nowSticky - entry.at > MODE_STICKY_MS) {
+            modeStickyByPhoneRef.current.delete(k);
+            removeChatStickyModeFromStorage(k);
+          }
         }
         for (const chat of groupedByPhone.values()) {
           const sk = phoneStickyKey(chat.phone || chat.chatIdentifier);
@@ -763,13 +861,22 @@ export function AtencionAsesorView() {
 
         setSelectedChatId((prev) => {
           let next = "";
-          if (prev && consolidated.some((ch) => ch.id === prev || ch.allConversationIds?.includes(prev))) {
-            const matching = consolidated.find((ch) => ch.id === prev || ch.allConversationIds?.includes(prev));
+          let candidateId = prev;
+          if (!candidateId && !userDismissedSelectionRef.current) {
+            try {
+              candidateId = sessionStorage.getItem("nexus_selected_chat_id") || "";
+            } catch {
+              candidateId = "";
+            }
+          }
+
+          if (candidateId && consolidated.some((ch) => ch.id === candidateId || ch.allConversationIds?.includes(candidateId))) {
+            const matching = consolidated.find((ch) => ch.id === candidateId || ch.allConversationIds?.includes(candidateId));
             // Keep the same conversation id when possible so status/UI don't jump between JID/LID twins
-            if (matching && matching.allConversationIds?.includes(prev)) {
-              next = prev;
+            if (matching && matching.allConversationIds?.includes(candidateId)) {
+              next = candidateId;
             } else {
-              next = matching ? matching.id : prev;
+              next = matching ? matching.id : candidateId;
             }
           } else if (userDismissedSelectionRef.current) {
             // User tapped back to the chat list — keep list until they select again
@@ -779,6 +886,19 @@ export function AtencionAsesorView() {
             next = "";
           }
           selectedChatIdRef.current = next;
+          if (next) {
+            try {
+              sessionStorage.setItem("nexus_selected_chat_id", next);
+            } catch {
+              // Ignore
+            }
+          } else if (userDismissedSelectionRef.current) {
+            try {
+              sessionStorage.removeItem("nexus_selected_chat_id");
+            } catch {
+              // Ignore
+            }
+          }
           return next;
         });
       } else {
@@ -883,6 +1003,12 @@ export function AtencionAsesorView() {
     if (selectedChatId) {
       stickToBottomRef.current = true;
       readSetRef.current.add(selectedChatId);
+      saveReadChatIdToStorage(selectedChatId);
+      try {
+        sessionStorage.setItem("nexus_selected_chat_id", selectedChatId);
+      } catch {
+        // Ignore
+      }
       setUnreadMap((prev) => ({ ...prev, [selectedChatId]: 0 }));
       setChats((prev) =>
         prev.map((c) =>
@@ -1015,6 +1141,7 @@ export function AtencionAsesorView() {
       setMessages((prev) => deduplicateMessages([...prev, newMsgObj]));
       setInputText("");
       readSetRef.current.add(selectedChat.id);
+      saveReadChatIdToStorage(selectedChat.id);
 
       setChats((prev) => {
         const updated = prev.map((c) =>
@@ -1066,6 +1193,7 @@ export function AtencionAsesorView() {
     const previousStatus = selectedChat.status;
     const previousTicket = selectedChat.ticket;
     readSetRef.current.add(targetConvId);
+    saveReadChatIdToStorage(targetConvId);
 
     // Optimistic UI — apply to all JID/LID twins in the group
     setChats((prev) =>
@@ -1088,12 +1216,15 @@ export function AtencionAsesorView() {
     const stickyKey = phoneStickyKey(selectedChat.phone || selectedChat.chatIdentifier);
     if (newStatus === "ATENDIDA_HUMANO") {
       modeStickyByPhoneRef.current.set(stickyKey, { mode: "manual", at: Date.now() });
+      saveChatStickyModeToStorage(stickyKey, "manual");
       setFilterTab("ATENDIDAS");
     } else if (newStatus === "ACTIVA") {
       modeStickyByPhoneRef.current.set(stickyKey, { mode: "bot", at: Date.now() });
+      saveChatStickyModeToStorage(stickyKey, "bot");
       setFilterTab("BOT");
     } else if (newStatus === "CERRADA") {
       modeStickyByPhoneRef.current.delete(stickyKey);
+      removeChatStickyModeFromStorage(stickyKey);
       setFilterTab("TODAS");
     }
 
@@ -1144,6 +1275,7 @@ export function AtencionAsesorView() {
     } catch (err: any) {
       console.warn("Could not update conversation status via API:", err);
       modeStickyByPhoneRef.current.delete(stickyKey);
+      removeChatStickyModeFromStorage(stickyKey);
       setChats((prev) =>
         prev.map((c) =>
           c.id === targetConvId
@@ -1187,6 +1319,7 @@ export function AtencionAsesorView() {
     setIsResumingAll(true);
     try {
       modeStickyByPhoneRef.current.clear();
+      clearAllChatStickyModesFromStorage();
       await chatbotService.resumeAllConversations();
       showToast("Se reactivaron los chats con NexusBot exitosamente.");
       await loadData(false);
@@ -1574,6 +1707,11 @@ export function AtencionAsesorView() {
                       userDismissedSelectionRef.current = false;
                       selectedChatIdRef.current = chat.id;
                       setSelectedChatId(chat.id);
+                      try {
+                        sessionStorage.setItem("nexus_selected_chat_id", chat.id);
+                      } catch {
+                        // Ignore
+                      }
                     }}
                     className={`p-4 transition-all cursor-pointer select-none flex items-start gap-3.5 relative border-l-4 ${
                       isSelected
@@ -1661,6 +1799,11 @@ export function AtencionAsesorView() {
                       userDismissedSelectionRef.current = true;
                       selectedChatIdRef.current = "";
                       setSelectedChatId("");
+                      try {
+                        sessionStorage.removeItem("nexus_selected_chat_id");
+                      } catch {
+                        // Ignore
+                      }
                       setShowContactInfo(false);
                     }}
                     className="md:hidden -ml-1 p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-200/80 dark:hover:bg-slate-800 transition-all cursor-pointer flex items-center justify-center shrink-0 active:scale-90"
@@ -2552,6 +2695,11 @@ export function AtencionAsesorView() {
                             userDismissedSelectionRef.current = false;
                             selectedChatIdRef.current = alertChat.id;
                             setSelectedChatId(alertChat.id);
+                            try {
+                              sessionStorage.setItem("nexus_selected_chat_id", alertChat.id);
+                            } catch {
+                              // Ignore
+                            }
                             setFilterTab("TODAS");
                             setShowNotificationsModal(false);
                             showToast(`Atendiendo caso de ${alertChat.phone}`);

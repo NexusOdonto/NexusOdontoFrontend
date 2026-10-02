@@ -185,27 +185,38 @@ export const chatbotService = {
     return response.data;
   },
 
-  /** Resuelve LID WhatsApp → E.164 vía chatbot/Evolution. No inventa +233. */
+  /** Resuelve LID WhatsApp → E.164 vía .NET proxy / Evolution. No inventa +233. */
   resolveWhatsAppIdentity: async (
     identifier: string,
     conversationId?: string
   ): Promise<{ status: string; phone?: string | null; via?: string }> => {
     try {
-      const res = await chatbotClient.post(
-        '/api/v1/whatsapp/resolve-identity',
+      const res = await axiosClient.post(
+        '/v1/Chatbot/resolve-identity',
         {
           identifier,
-          conversation_id: conversationId || null,
-        },
-        {
-          headers: {
-            'X-Internal-Secret': 'TOKEN_SECRETO_INTERNO_NET_2026',
-          },
+          conversationId: conversationId || null,
         }
       );
       return res.data || { status: 'unresolved', phone: null };
     } catch {
-      return { status: 'unresolved', phone: null };
+      try {
+        const res = await chatbotClient.post(
+          '/api/v1/whatsapp/resolve-identity',
+          {
+            identifier,
+            conversation_id: conversationId || null,
+          },
+          {
+            headers: {
+              'X-Internal-Secret': 'TOKEN_SECRETO_INTERNO_NET_2026',
+            },
+          }
+        );
+        return res.data || { status: 'unresolved', phone: null };
+      } catch {
+        return { status: 'unresolved', phone: null };
+      }
     }
   },
 
@@ -328,44 +339,57 @@ export const chatbotService = {
     return res.data;
   },
 
-  // Reactivación de conversación y retorno al bot (FastAPI)
+  // Reactivación de conversación y retorno al bot (Vía .NET proxy / FastAPI)
   resumeConversation: async (phoneNumber: string, clearHistory: boolean = false): Promise<any> => {
     try {
-      const res = await chatbotClient.post(
-        '/api/v1/conversations/resume',
-        {
-          phone_number: phoneNumber,
-          clear_history: clearHistory,
-        },
-        {
-          headers: {
-            'X-Internal-Secret': 'TOKEN_SECRETO_INTERNO_NET_2026',
-          },
-        }
-      );
+      const res = await axiosClient.post('/v1/Chatbot/resume', {
+        phoneNumber,
+        clearHistory,
+      });
       return res.data;
-    } catch (err) {
-      console.warn('resumeConversation failed:', err);
-      return null;
+    } catch {
+      try {
+        const res = await chatbotClient.post(
+          '/api/v1/conversations/resume',
+          {
+            phone_number: phoneNumber,
+            clear_history: clearHistory,
+          },
+          {
+            headers: {
+              'X-Internal-Secret': 'TOKEN_SECRETO_INTERNO_NET_2026',
+            },
+          }
+        );
+        return res.data;
+      } catch (err) {
+        console.warn('resumeConversation failed:', err);
+        return null;
+      }
     }
   },
 
-  // Reactivación masiva de todas las conversaciones abiertas al bot (FastAPI)
+  // Reactivación masiva de todas las conversaciones abiertas al bot (Vía .NET proxy / FastAPI)
   resumeAllConversations: async (): Promise<any> => {
     try {
-      const res = await chatbotClient.post(
-        '/api/v1/conversations/resume-all',
-        {},
-        {
-          headers: {
-            'X-Internal-Secret': 'TOKEN_SECRETO_INTERNO_NET_2026',
-          },
-        }
-      );
+      const res = await axiosClient.post('/v1/Chatbot/resume-all');
       return res.data;
-    } catch (err) {
-      console.warn('resumeAllConversations failed:', err);
-      return null;
+    } catch {
+      try {
+        const res = await chatbotClient.post(
+          '/api/v1/conversations/resume-all',
+          {},
+          {
+            headers: {
+              'X-Internal-Secret': 'TOKEN_SECRETO_INTERNO_NET_2026',
+            },
+          }
+        );
+        return res.data;
+      } catch (err) {
+        console.warn('resumeAllConversations failed:', err);
+        return null;
+      }
     }
   },
 
@@ -388,35 +412,53 @@ export const chatbotService = {
     }
   },
 
-  // WhatsApp QR Code Endpoints
+  // WhatsApp QR Code Endpoints (Vía .NET proxy / FastAPI)
   getQrData: async (): Promise<{ connected: boolean; state: string; base64?: string; instanceName?: string }> => {
     try {
-      const res = await chatbotClient.get('/qr/data', {
+      const res = await axiosClient.get('/v1/Chatbot/qr', {
         params: { t: Date.now() },
         headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
       });
       return res.data;
-    } catch (err) {
-      console.warn('Could not fetch QR data:', err);
-      return { connected: false, state: 'error' };
+    } catch {
+      try {
+        const res = await chatbotClient.get('/qr/data', {
+          params: { t: Date.now() },
+          headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+        });
+        return res.data;
+      } catch (err) {
+        console.warn('Could not fetch QR data:', err);
+        return { connected: false, state: 'error' };
+      }
     }
   },
 
   restartQrInstance: async (): Promise<any> => {
     try {
-      const res = await chatbotClient.post('/qr/restart');
+      const res = await axiosClient.post('/v1/Chatbot/qr/restart');
       return res.data;
-    } catch (err) {
-      console.warn('Could not restart QR instance:', err);
-      return { status: 'error' };
+    } catch {
+      try {
+        const res = await chatbotClient.post('/qr/restart');
+        return res.data;
+      } catch (err) {
+        console.warn('Could not restart QR instance:', err);
+        return { status: 'error' };
+      }
     }
   },
 
   logoutQrInstance: async (): Promise<any> => {
-    const res = await chatbotClient.post('/qr/logout', null, {
-      headers: { 'Cache-Control': 'no-cache' },
-    });
-    return res.data;
+    try {
+      const res = await axiosClient.post('/v1/Chatbot/qr/logout');
+      return res.data;
+    } catch {
+      const res = await chatbotClient.post('/qr/logout', null, {
+        headers: { 'Cache-Control': 'no-cache' },
+      });
+      return res.data;
+    }
   },
 
   getTicketStatuses: async (): Promise<CatalogItem[]> => {
