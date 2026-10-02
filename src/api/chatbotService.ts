@@ -350,6 +350,25 @@ export const chatbotService = {
     }
   },
 
+  // Reactivación masiva de todas las conversaciones abiertas al bot (FastAPI)
+  resumeAllConversations: async (): Promise<any> => {
+    try {
+      const res = await chatbotClient.post(
+        '/api/v1/conversations/resume-all',
+        {},
+        {
+          headers: {
+            'X-Internal-Secret': 'TOKEN_SECRETO_INTERNO_NET_2026',
+          },
+        }
+      );
+      return res.data;
+    } catch (err) {
+      console.warn('resumeAllConversations failed:', err);
+      return null;
+    }
+  },
+
   // Catálogos
   getConversationStatuses: async (): Promise<CatalogItem[]> => {
     try {

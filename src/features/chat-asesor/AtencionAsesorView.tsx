@@ -720,12 +720,16 @@ export function AtencionAsesorView() {
               existing.ticket = item.ticket || existing.ticket;
             }
 
-            // Preservar la jerarquía de estado para no perder el control manual ni las alertas:
-            // ATENDIDA_HUMANO (Uso Manual) > ESCALADA (Alerta) > ACTIVA (Bot) > CERRADA
-            if (isHumanActive) {
-              existing.status = "ATENDIDA_HUMANO";
-            } else if (isEscalated) {
+            // Preservar la jerarquía de estado:
+            // 1. ESCALADA si hay alerta o ticket pendiente
+            // 2. ACTIVA si la interacción más reciente pertenece al bot
+            // 3. ATENDIDA_HUMANO si un asesor la tiene en atención manual activa
+            if (isEscalated) {
               existing.status = "ESCALADA";
+            } else if (item.status === "ACTIVA" && parseTimestamp(item.rawTimestamp) >= parseTimestamp(existing.rawTimestamp)) {
+              existing.status = "ACTIVA";
+            } else if (isHumanActive) {
+              existing.status = "ATENDIDA_HUMANO";
             } else if (existing.status === "ACTIVA" || item.status === "ACTIVA") {
               existing.status = "ACTIVA";
             } else {
@@ -1177,6 +1181,22 @@ export function AtencionAsesorView() {
     }, 150);
   };
 
+  const [isResumingAll, setIsResumingAll] = useState(false);
+
+  const handleResumeAllToBot = async () => {
+    setIsResumingAll(true);
+    try {
+      modeStickyByPhoneRef.current.clear();
+      await chatbotService.resumeAllConversations();
+      showToast("Se reactivaron los chats con NexusBot exitosamente.");
+      await loadData(false);
+    } catch (err: any) {
+      showErrorToast("No se pudieron reactivar los chats: " + (err?.message || "Error de conexión"));
+    } finally {
+      setIsResumingAll(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-[calc(100vh-7.5rem)] sm:h-[calc(100vh-8.5rem)] md:h-[calc(100vh-9.5rem)] max-h-[960px] bg-white dark:bg-slate-900/95 text-slate-900 dark:text-slate-100 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800/80 shadow-2xl overflow-hidden font-sans backdrop-blur-2xl relative transition-colors duration-200">
       
@@ -1285,6 +1305,20 @@ export function AtencionAsesorView() {
               <span className="w-2 h-2 rounded-full bg-emerald-500" />
             )}
           </button>
+
+          {/* BOTÓN RESTABLECER TODOS AL BOT */}
+          {counts.atendidas > 0 && (
+            <button
+              type="button"
+              onClick={handleResumeAllToBot}
+              disabled={loadingChats || isResumingAll}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-50 dark:bg-cyan-950/40 hover:bg-cyan-100 dark:hover:bg-cyan-900/50 border border-cyan-200 dark:border-cyan-800/60 text-cyan-700 dark:text-cyan-300 text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-95 disabled:opacity-50"
+              title="Devolver todos los chats en atención manual a NexusBot"
+            >
+              <Bot size={15} />
+              <span className="hidden md:inline">Reactivar Bot ({counts.atendidas})</span>
+            </button>
+          )}
 
           <button
             type="button"
